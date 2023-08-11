@@ -1,31 +1,12 @@
-import torch
 from omegaconf import DictConfig
 
 import audyn
+from audyn.utils.distributed import is_distributed
 
 
 @audyn.main()
 def main(config: DictConfig) -> None:
-    if torch.cuda.is_available():
-        num_gpus = torch.cuda.device_count()
-        availability = str(config.system.distributed.enable).lower()
-
-        if num_gpus > 1:
-            if availability == "false":
-                raise ValueError(
-                    "Set config.system.distributed.enable=true for multi GPU training."
-                )
-            else:
-                is_distributed = True
-        else:
-            if availability == "true":
-                is_distributed = True
-            else:
-                is_distributed = False
-    else:
-        is_distributed = False
-
-    print(str(is_distributed).lower())
+    print(str(is_distributed(config.system)).lower())
 
 
 if __name__ == "__main__":
