@@ -1,0 +1,1443 @@
+from typing import Any, Optional, Tuple
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.nn.common_types import _size_1_t
+
+__all__ = ["WaveNet", "MultiSpeakerWaveNet"]
+
+
+class WaveNet(nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        hidden_channels: int,
+        skip_channels: Optional[int] = None,
+        num_layers: int = 10,
+        num_stacks: int = 3,
+        num_post_layers: int = 2,
+        kernel_size: int = 3,
+        dilated: bool = True,
+        bias: bool = True,
+        causal: bool = True,
+        conv: str = "gated",
+        upsample: Optional[nn.Module] = None,
+        local_dim: Optional[int] = None,
+        global_dim: Optional[int] = None,
+        weight_norm: bool = True,
+    ) -> None:
+        super().__init__()
+
+        if skip_channels is None:
+            skip_channels = hidden_channels
+
+        self.in_channels, self.out_channels = in_channels, out_channels
+        self.num_stacks = num_stacks
+
+        if local_dim is None:
+            assert upsample is None, "upsample is expected to None."
+        else:
+            assert upsample is not None, "upsample is expected to be given."
+
+        self.upsample = upsample
+
+        self.causal_conv1d = nn.Conv1d(
+            in_channels, hidden_channels, kernel_size=1, stride=1, dilation=1, bias=bias
+        )
+
+        backbone = []
+
+        for stack_idx in range(num_stacks):
+            if stack_idx == num_stacks - 1:
+                dual_head = False
+            else:
+                dual_head = True
+
+            backbone.append(
+                StackedResidualConvBlock1d(
+                    hidden_channels,
+                    hidden_channels,
+                    skip_channels=skip_channels,
+                    num_layers=num_layers,
+                    kernel_size=kernel_size,
+                    dilated=dilated,
+                    bias=bias,
+                    causal=causal,
+                    dual_head=dual_head,
+                    conv=conv,
+                    local_dim=local_dim,
+                    global_dim=global_dim,
+                    weight_norm=weight_norm,
+                )
+            )
+
+        self.backbone = nn.ModuleList(backbone)
+        self.post_net = PostNet(
+            skip_channels,
+            out_channels,
+            num_layers=num_post_layers,
+            weight_norm=weight_norm,
+        )
+
+        # registered_weight_norms manages normalization status of backbone and post_net
+        self.registered_weight_norms = set()
+
+        if weight_norm:
+            self.registered_weight_norms.add("backbone")
+            self.registered_weight_norms.add("post_net")
+            self.weight_norm_()
+
+    def forward(
+        self,
+        input: torch.Tensor,
+        local_conditioning: Optional[torch.Tensor] = None,
+        global_conditioning: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """Forward pass of WaveNet.
+
+        Args:
+            input (torch.Tensor): Input tensor like waveform. Two types of input are
+                supported.
+                1) discrete long type input (batch_size, num_frames).
+                2) continuous float type input (batch_size, in_channels, num_frames).
+            local_conditioning (torch.Tensor, optional): Local conditioning of shape
+                (batch_size, local_dim, num_local_frames).
+            global_conditioning (torch.Tensor, optional): Global conditioning of shape
+                (batch_size, global_dim) or (batch_size, global_dim, 1).
+
+        Returns:
+            torch.Tensor: Output of shape (batch_size, out_channels, num_frames).
+
+        """
+        if local_conditioning is None:
+            h_local = None
+        else:
+            num_timesteps = input.size(-1)
+            h_local = self.upsample(local_conditioning)
+            num_local_time_steps = h_local.size(-1)
+
+            assert num_local_time_steps >= num_timesteps, "Upsampling scale is small."
+
+            h_local = F.pad(h_local, (0, num_timesteps - num_local_time_steps))
+
+        h_global = global_conditioning
+
+        x = self.transform_input(input)
+        x = self.causal_conv1d(x)
+        residual = 0
+
+        for stack_idx in range(self.num_stacks):
+            x, skip = self.backbone[stack_idx](
+                x, local_conditioning=h_local, global_conditioning=h_global
+            )
+            residual = residual + skip
+
+        output = self.post_net(residual)
+
+        return output
+
+    @torch.no_grad()
+    def inference(
+        self,
+        initial_state: torch.Tensor,
+        local_conditioning: Optional[torch.Tensor] = None,
+        global_conditioning: Optional[torch.Tensor] = None,
+        max_length: int = None,
+    ) -> torch.Tensor:
+        """Inference of WaveNet.
+
+        Args:
+            initial_state (torch.Tensor): Input tensor of shape
+                (batch_size, in_channels, 1).
+            local_conditioning (torch.Tensor, optional): Local conditioning of shape
+                (batch_size, local_dim, local_length).
+            global_conditioning (torch.Tensor, optional): Global conditioning of shape
+                (batch_size, global_dim) or (batch_size, global_dim, 1).
+
+        Returns:
+            torch.Tensor: Output of shape (batch_size, out_channels, max_length).
+
+        """
+        if max_length is None:
+            if local_conditioning is None:
+                raise ValueError("max_length is not specified.")
+            else:
+                upsampled = self.upsample(local_conditioning)
+                max_length = upsampled.size(-1)
+
+        in_channels, out_channels = self.in_channels, self.out_channels
+        batch_size, length = initial_state.size(0), initial_state.size(-1)
+        dim = initial_state.dim()
+
+        if length != 1:
+            raise ValueError("Length of initial_state must be 1, but given {}.".format(length))
+
+        factory_kwargs = {
+            "dtype": initial_state.dtype,
+            "device": initial_state.device,
+        }
+
+        if dim == 2:
+            if initial_state.dtype not in [
+                torch.int8,
+                torch.int16,
+                torch.int32,
+                torch.int64,
+                torch.uint8,
+            ]:
+                raise TypeError(
+                    "torch.LongTensor is expected as initial_state, but {} is given.".format(
+                        type(initial_state)
+                    )
+                )
+            incremental_buffered_output = torch.zeros((batch_size, 0), **factory_kwargs)
+        elif dim == 3:
+            if initial_state.dtype not in [torch.float16, torch.float32, torch.float64]:
+                raise TypeError(
+                    "torch.FloatTensor is expected as initial_state, but {} is given.".format(
+                        type(initial_state)
+                    )
+                )
+            if out_channels != in_channels:
+                raise ValueError(
+                    "out_channels {} != in_channels {}.".format(out_channels, in_channels)
+                )
+            incremental_buffered_output = torch.zeros(
+                (batch_size, out_channels, 0), **factory_kwargs
+            )
+        else:
+            raise ValueError(
+                "Only 2 and 3D are supported as initial_state, but given {}D.".format(dim)
+            )
+
+        self.clear_buffer()
+
+        last_output = initial_state
+
+        for _ in range(max_length):
+            last_output = self.incremental_forward(
+                last_output,
+                local_conditioning=local_conditioning,
+                global_conditioning=global_conditioning,
+            )
+
+            if dim == 2:
+                # sampling from categorical distribution
+                last_output = torch.softmax(last_output, dim=1)
+                last_output = last_output.permute(0, 2, 1)
+                last_output = torch.distributions.Categorical(last_output).sample()
+
+            incremental_buffered_output = torch.cat(
+                [incremental_buffered_output, last_output], dim=-1
+            )
+
+        self.clear_buffer()
+
+        return incremental_buffered_output
+
+    def incremental_forward(
+        self,
+        input: torch.Tensor,
+        local_conditioning: Optional[torch.Tensor] = None,
+        global_conditioning: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """Incremental forward pass of WaveNet.
+
+        Args:
+            input (torch.Tensor): Input tensor of shape
+                (batch_size, in_channels, 1).
+            local_conditioning (torch.Tensor, optional): Local conditioning of shape
+                (batch_size, local_dim, num_local_frames).
+            global_conditioning (torch.Tensor, optional): Global conditioning of shape
+                (batch_size, global_dim) or (batch_size, global_dim, 1).
+
+        Returns:
+            torch.Tensor: Output of shape (batch_size, out_channels, 1).
+
+        """
+        if local_conditioning is None:
+            h_local = None
+        else:
+            if not hasattr(self, "local_buffer"):
+                self.local_buffer = None
+
+            if self.local_buffer is None:
+                local_buffer = self.upsample(local_conditioning)
+            else:
+                # Since local_conditioning is saved as local_buffer,
+                # we don't use local_conditioning argument here.
+                local_buffer = self.local_buffer
+
+            num_local_time_steps = local_buffer.size(-1)
+            h_local, local_buffer = torch.split(
+                local_buffer, [1, num_local_time_steps - 1], dim=-1
+            )
+            self.local_buffer = local_buffer
+
+        h_global = global_conditioning
+
+        x = self.transform_input(input)
+        x = self.causal_conv1d(x)
+        residual = 0
+
+        for stack_idx in range(self.num_stacks):
+            stack: StackedResidualConvBlock1d = self.backbone[stack_idx]
+            x, skip = stack.incremental_forward(
+                x, local_conditioning=h_local, global_conditioning=h_global
+            )
+            residual = residual + skip
+
+        output = self.post_net(residual)
+
+        return output
+
+    def clear_buffer(self) -> None:
+        if hasattr(self, "local_buffer"):
+            self.local_buffer = None
+
+        for module in self.modules():
+            if module is self:
+                continue
+
+            if hasattr(module, "clear_buffer") and callable(module.clear_buffer):
+                module.clear_buffer()
+
+    def transform_input(self, input: torch.Tensor) -> torch.Tensor:
+        dim = input.dim()
+
+        if dim == 2:
+            if input.dtype not in [
+                torch.int8,
+                torch.int16,
+                torch.int32,
+                torch.int64,
+                torch.uint8,
+            ]:
+                raise TypeError(
+                    "torch.LongTensor is expected as input, but {} is given.".format(type(input))
+                )
+            x = F.one_hot(input, num_classes=self.in_channels)
+            output = x.permute(0, 2, 1).float()
+        elif dim == 3:
+            if input.dtype not in [torch.float16, torch.float32, torch.float64]:
+                raise TypeError(
+                    "torch.FloatTensor is expected as input, but {} is given.".format(type(input))
+                )
+            output = input
+        else:
+            raise ValueError("Only 2 and 3D inputs are supported, but given {}D.".format(dim))
+
+        return output
+
+    def weight_norm_(self) -> None:
+        """Applies weight normalization to self.causal_conv1d.
+
+        .. note::
+
+            This method applies normalizations to self.backbone
+            and self.post_net as well if necessary.
+
+        """
+        self.causal_conv1d = nn.utils.weight_norm(self.causal_conv1d)
+
+        if "backbone" not in self.registered_weight_norms:
+            for module in self.backbone:
+                module.weight_norm_()
+
+            self.registered_weight_norms.add("backbone")
+
+        if "post_net" not in self.registered_weight_norms:
+            self.post_net.weight_norm_()
+            self.registered_weight_norms.add("post_net")
+
+    def remove_weight_norm_(self) -> None:
+        self.causal_conv1d = nn.utils.remove_weight_norm(self.causal_conv1d)
+
+        for module in self.backbone:
+            module.remove_weight_norm_()
+
+        self.registered_weight_norms.remove("backbone")
+
+        self.post_net.remove_weight_norm_()
+        self.registered_weight_norms.remove("post_net")
+
+
+class MultiSpeakerWaveNet(WaveNet):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        hidden_channels: int,
+        skip_channels: Optional[int] = None,
+        num_layers: int = 10,
+        num_stacks: int = 3,
+        num_post_layers: int = 2,
+        kernel_size: int = 3,
+        dilated: bool = True,
+        bias: bool = True,
+        causal: bool = True,
+        conv: str = "gated",
+        upsample: Optional[nn.Module] = None,
+        speaker_encoder: nn.Module = None,
+        local_dim: Optional[int] = None,
+        global_dim: Optional[int] = None,
+        weight_norm: bool = True,
+    ) -> None:
+        # Use nn.Module.__init__ just for readability of
+        # print(MultiSpeakerWaveNet(...))
+        super(WaveNet, self).__init__()
+
+        if skip_channels is None:
+            skip_channels = hidden_channels
+
+        self.in_channels, self.out_channels = in_channels, out_channels
+        self.num_stacks = num_stacks
+
+        if local_dim is None:
+            assert upsample is None, "upsample is expected to None."
+        else:
+            assert upsample is not None, "upsample is expected to be given."
+
+        self.speaker_encoder = speaker_encoder
+        self.upsample = upsample
+
+        self.causal_conv1d = nn.Conv1d(
+            in_channels,
+            hidden_channels,
+            kernel_size=1,
+            stride=1,
+            dilation=1,
+            bias=bias,
+        )
+
+        backbone = []
+
+        for stack_idx in range(num_stacks):
+            if stack_idx == num_stacks - 1:
+                dual_head = False
+            else:
+                dual_head = True
+
+            backbone.append(
+                StackedResidualConvBlock1d(
+                    hidden_channels,
+                    hidden_channels,
+                    skip_channels=skip_channels,
+                    num_layers=num_layers,
+                    kernel_size=kernel_size,
+                    dilated=dilated,
+                    bias=bias,
+                    causal=causal,
+                    dual_head=dual_head,
+                    conv=conv,
+                    local_dim=local_dim,
+                    global_dim=global_dim,
+                    weight_norm=weight_norm,
+                )
+            )
+
+        self.backbone = nn.ModuleList(backbone)
+        self.post_net = PostNet(
+            skip_channels,
+            out_channels,
+            num_layers=num_post_layers,
+            weight_norm=weight_norm,
+        )
+
+        # registered_weight_norms manages normalization status of backbone and post_net
+        self.registered_weight_norms = set()
+
+        if weight_norm:
+            self.registered_weight_norms.add("backbone")
+            self.registered_weight_norms.add("post_net")
+            self.weight_norm_()
+
+    def forward(
+        self,
+        input: torch.Tensor,
+        local_conditioning: Optional[torch.Tensor] = None,
+        speaker: torch.Tensor = None,
+    ) -> torch.Tensor:
+        """Forward pass of MultiSpeakerWaveNet.
+
+        Args:
+            input (torch.Tensor): Input tensor like waveform. Two types of input are
+                supported.
+                1) discrete long type input (batch_size, num_frames).
+                2) continuous float type input (batch_size, in_channels, num_frames).
+            local_conditioning (torch.Tensor, optional): Local conditioning of shape
+                (batch_size, local_dim, num_local_frames).
+            speaker (torch.Tensor): Speaker feature passed to self.speaker_encoder. Usually,
+                this is speaker index of shape (batch_size,), but other shapes supported
+                by self.speaker_encoder can be specified.
+
+        Returns:
+            torch.Tensor: Output of shape (batch_size, out_channels, num_frames).
+
+        """
+        global_conditioning = self._transform_speaker(speaker)
+
+        output = super().forward(
+            input,
+            local_conditioning=local_conditioning,
+            global_conditioning=global_conditioning,
+        )
+
+        return output
+
+    @torch.no_grad()
+    def inference(
+        self,
+        initial_state: torch.Tensor,
+        local_conditioning: Optional[torch.Tensor] = None,
+        speaker: torch.Tensor = None,
+        max_length: int = None,
+    ) -> torch.Tensor:
+        """Inference of MultiSpeakerWaveNet.
+
+        Args:
+            initial_state (torch.Tensor): Input tensor of shape
+                (batch_size, in_channels, 1).
+            local_conditioning (torch.Tensor, optional): Local conditioning of shape
+                (batch_size, local_dim, local_length).
+            speaker (torch.Tensor): Speaker feature passed to self.speaker_encoder. Usually,
+                this is speaker index of shape (batch_size,), but other shapes supported
+                by self.speaker_encoder can be specified.
+
+        Returns:
+            torch.Tensor: Output of shape (batch_size, out_channels, max_length).
+
+        """
+        global_conditioning = self._transform_speaker(speaker)
+
+        incremental_buffered_output = super().inference(
+            initial_state,
+            local_conditioning=local_conditioning,
+            global_conditioning=global_conditioning,
+            max_length=max_length,
+        )
+
+        return incremental_buffered_output
+
+    def incremental_forward(
+        self,
+        input: torch.Tensor,
+        local_conditioning: Optional[torch.Tensor] = None,
+        *,
+        speaker: Optional[torch.Tensor] = None,
+        global_conditioning: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        if speaker is not None and global_conditioning is not None:
+            raise ValueError(
+                "At least, one of speaker and global_conditioning should be None.",
+            )
+
+        if speaker is not None:
+            global_conditioning = self._transform_speaker(speaker)
+
+        return super().incremental_forward(
+            input,
+            local_conditioning=local_conditioning,
+            global_conditioning=global_conditioning,
+        )
+
+    def _transform_speaker(
+        self,
+        speaker: Optional[torch.Tensor],
+    ) -> Optional[torch.Tensor]:
+        """Transform speaker into global conditioning.
+
+        Args:
+            speaker (torch.Tensor): Speaker feature passed to self.speaker_encoder. Usually,
+                this is speaker index of shape (batch_size,), but other shapes supported
+                by self.speaker_encoder can be specified.
+
+        Returns:
+            torch.Tensor: Global conditioning. Its shape is determined by self.speaker_encoder.
+
+        """
+        if speaker is None:
+            global_conditioning = None
+        elif self.speaker_encoder is None:
+            global_conditioning = speaker
+        else:
+            global_conditioning = self.speaker_encoder(speaker)
+
+        return global_conditioning
+
+
+class StackedResidualConvBlock1d(nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        hidden_channels: int,
+        skip_channels: Optional[int] = None,
+        num_layers: int = 10,
+        kernel_size: int = 3,
+        dilated: bool = True,
+        bias: bool = True,
+        causal: bool = True,
+        dual_head: bool = True,
+        conv: str = "gated",
+        local_dim: Optional[int] = None,
+        global_dim: Optional[int] = None,
+        weight_norm: bool = True,
+    ) -> None:
+        super().__init__()
+
+        if skip_channels is None:
+            skip_channels = hidden_channels
+
+        self.num_layers = num_layers
+
+        net = []
+
+        for layer_idx in range(num_layers):
+            if dilated:
+                dilation = 2**layer_idx
+            else:
+                dilation = 1
+
+            if layer_idx < num_layers - 1 or dual_head:
+                _dual_head = True
+            else:
+                _dual_head = False
+
+            net.append(
+                ResidualConvBlock1d(
+                    in_channels,
+                    hidden_channels,
+                    skip_channels=skip_channels,
+                    kernel_size=kernel_size,
+                    stride=1,
+                    dilation=dilation,
+                    bias=bias,
+                    causal=causal,
+                    dual_head=_dual_head,
+                    conv=conv,
+                    local_dim=local_dim,
+                    global_dim=global_dim,
+                    weight_norm=weight_norm,
+                )
+            )
+
+        self.net = nn.ModuleList(net)
+
+    def forward(
+        self,
+        input: torch.Tensor,
+        local_conditioning: Optional[torch.Tensor] = None,
+        global_conditioning: Optional[torch.Tensor] = None,
+    ) -> Tuple[Optional[torch.Tensor], torch.Tensor]:
+        """Forward pass of stacked residual convolution.
+
+        Args:
+            input (torch.Tensor): Input tensor of shape
+                (batch_size, in_channels, num_frames).
+            local_conditioning (torch.Tensor, optional): Local conditioning of shape
+                (batch_size, local_dim, num_frames).
+            global_conditioning (torch.Tensor, optional): Global conditioning of shape
+                (batch_size, global_dim) or (batch_size, global_dim, 1).
+
+        Returns:
+            Tuple of torch.Tensor containing:
+            - torch.Tensor: Output of shape (batch_size, in_channels, num_frames).
+            - torch.Tensor: Output of shape (batch_size, in_channels, num_frames).
+
+        """
+        x = input
+        skip_connection = 0
+
+        for layer_idx in range(self.num_layers):
+            x, skip = self.net[layer_idx](
+                x,
+                local_conditioning=local_conditioning,
+                global_conditioning=global_conditioning,
+            )
+            skip_connection = skip_connection + skip
+
+        output = x
+
+        return output, skip_connection
+
+    def incremental_forward(
+        self,
+        input: torch.Tensor,
+        local_conditioning: Optional[torch.Tensor] = None,
+        global_conditioning: Optional[torch.Tensor] = None,
+    ) -> Tuple[Optional[torch.Tensor], torch.Tensor]:
+        assert input.size(-1) == 1
+
+        if local_conditioning is not None:
+            assert local_conditioning.size(-1) == 1
+
+        x = input
+        skip_connection = 0
+
+        for layer_idx in range(self.num_layers):
+            layer: ResidualConvBlock1d = self.net[layer_idx]
+            x, skip = layer.incremental_forward(
+                x,
+                local_conditioning=local_conditioning,
+                global_conditioning=global_conditioning,
+            )
+            skip_connection = skip_connection + skip
+
+        output = x
+
+        return output, skip_connection
+
+    def weight_norm_(self) -> None:
+        for module in self.net:
+            module.weight_norm_()
+
+    def remove_weight_norm_(self) -> None:
+        for module in self.net:
+            module.remove_weight_norm_()
+
+
+class ResidualConvBlock1d(nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        hidden_channels: int,
+        skip_channels: Optional[int] = None,
+        kernel_size: int = 3,
+        stride: int = 1,
+        dilation: int = 1,
+        bias: bool = True,
+        causal: bool = True,
+        dual_head: bool = True,
+        conv: str = "gated",
+        local_dim: Optional[int] = None,
+        global_dim: Optional[int] = None,
+        weight_norm: bool = True,
+    ) -> None:
+        super().__init__()
+
+        if skip_channels is None:
+            skip_channels = hidden_channels
+
+        self.in_channels = in_channels
+        self.skip_channels = skip_channels
+        self.kernel_size, self.dilation = kernel_size, dilation
+        self.causal = causal
+        self.dual_head = dual_head
+
+        if conv == "gated":
+            assert stride == 1, f"stride is expected to 1, but given {stride}."
+
+            self.conv1d = GatedConv1d(
+                in_channels,
+                hidden_channels,
+                kernel_size=kernel_size,
+                stride=1,
+                dilation=dilation,
+                bias=bias,
+                causal=causal,
+                local_dim=local_dim,
+                global_dim=global_dim,
+                weight_norm=weight_norm,
+            )
+        else:
+            raise ValueError("{} is not supported for conv.".format(conv))
+
+        if dual_head:
+            self.output_conv1d = nn.Conv1d(
+                hidden_channels, in_channels, kernel_size=1, stride=1, bias=bias
+            )
+        else:
+            self.output_conv1d = None
+
+        self.skip_conv1d = nn.Conv1d(
+            hidden_channels, skip_channels, kernel_size=1, stride=1, bias=bias
+        )
+
+        # registered_weight_norms manages normalization status of conv1d
+        self.registered_weight_norms = set()
+
+        if weight_norm:
+            self.registered_weight_norms.add("conv1d")
+            self.weight_norm_()
+
+    def forward(
+        self,
+        input: torch.Tensor,
+        local_conditioning: Optional[torch.Tensor] = None,
+        global_conditioning: Optional[torch.Tensor] = None,
+    ) -> Tuple[Optional[torch.Tensor], torch.Tensor]:
+        """Forward pass of residual convolution block.
+
+        Args:
+            input (torch.Tensor): Input tensor of shape
+                (batch_size, in_channels, num_frames).
+            local_conditioning (torch.Tensor, optional): Local conditioning of shape
+                (batch_size, local_dim, num_frames).
+            global_conditioning (torch.Tensor, optional): Global conditioning of shape
+                (batch_size, global_dim) or (batch_size, global_dim, 1).
+
+        Returns:
+            Tuple of torch.Tensor containing:
+            - torch.Tensor: Output of shape (batch_size, in_channels, num_frames).
+            - torch.Tensor: Output of shape (batch_size, in_channels, num_frames).
+
+        """
+        residual = input
+        x = self.conv1d(
+            input,
+            local_conditioning=local_conditioning,
+            global_conditioning=global_conditioning,
+        )
+        skip = self.skip_conv1d(x)
+
+        if self.dual_head:
+            output = self.output_conv1d(x)
+            output = residual + output
+        else:
+            output = None
+
+        return output, skip
+
+    def incremental_forward(
+        self,
+        input: torch.Tensor,
+        local_conditioning: Optional[torch.Tensor] = None,
+        global_conditioning: Optional[torch.Tensor] = None,
+    ) -> Tuple[Optional[torch.Tensor], torch.Tensor]:
+        causal = self.causal
+
+        if not causal:
+            raise NotImplementedError("Only causal forward is supported.")
+
+        assert input.size(-1) == 1
+
+        if local_conditioning is not None:
+            assert local_conditioning.size(-1) == 1
+
+        residual = input
+        x = self.conv1d.incremental_forward(
+            input,
+            local_conditioning=local_conditioning,
+            global_conditioning=global_conditioning,
+        )
+        skip = self.skip_conv1d(x)
+
+        if self.dual_head:
+            output = self.output_conv1d(x)
+            output = residual + output
+        else:
+            output = None
+
+        return output, skip
+
+    def weight_norm_(self) -> None:
+        """Applies weight normalizations to self.output_conv1d and self.skip_conv1d.
+
+        .. note::
+
+            This method applies normalization to self.conv1d
+            as well if necessary.
+
+        """
+        if "conv1d" not in self.registered_weight_norms:
+            self.conv1d.weight_norm_()
+            self.registered_weight_norms.add("conv1d")
+
+        if self.output_conv1d is not None:
+            self.output_conv1d = nn.utils.weight_norm(self.output_conv1d)
+
+        self.skip_conv1d = nn.utils.weight_norm(self.skip_conv1d)
+
+    def remove_weight_norm_(self) -> None:
+        """Remove weight normalization from weights of convolution modules."""
+        self.conv1d.remove_weight_norm_()
+        self.registered_weight_norms.remove("conv1d")
+
+        if self.output_conv1d is not None:
+            self.output_conv1d = nn.utils.remove_weight_norm(self.output_conv1d)
+
+        self.skip_conv1d = nn.utils.remove_weight_norm(self.skip_conv1d)
+
+
+class GatedConv1d(nn.Module):
+    """Gated convolution used in WaveNet.
+
+    Args:
+        weight_norm (bool): If ``True``, weight normalization is used for weights of convolution.
+
+    """
+
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int = 3,
+        stride: int = 2,
+        dilation: int = 1,
+        bias: bool = True,
+        causal: bool = True,
+        local_dim: Optional[int] = None,
+        global_dim: Optional[int] = None,
+        weight_norm: bool = True,
+    ):
+        super().__init__()
+
+        self.kernel_size, self.stride, self.dilation = kernel_size, stride, dilation
+        self.causal = causal
+
+        self.conv1d_tanh = nn.Conv1d(
+            in_channels,
+            out_channels,
+            kernel_size=kernel_size,
+            stride=stride,
+            dilation=dilation,
+            bias=bias,
+        )
+        self.conv1d_sigmoid = nn.Conv1d(
+            in_channels,
+            out_channels,
+            kernel_size=kernel_size,
+            stride=stride,
+            dilation=dilation,
+            bias=bias,
+        )
+
+        if local_dim is None:
+            self.local_conv1d_tanh = None
+            self.local_conv1d_sigmoid = None
+        else:
+            self.local_conv1d_tanh = nn.Conv1d(
+                local_dim,
+                out_channels,
+                kernel_size=1,
+                stride=1,
+                bias=bias,
+            )
+            self.local_conv1d_sigmoid = nn.Conv1d(
+                local_dim,
+                out_channels,
+                kernel_size=1,
+                stride=1,
+                bias=bias,
+            )
+
+        if global_dim is None:
+            self.global_conv1d_tanh = None
+            self.global_conv1d_sigmoid = None
+        else:
+            self.global_conv1d_tanh = nn.Conv1d(
+                global_dim,
+                out_channels,
+                kernel_size=1,
+                stride=1,
+                bias=bias,
+            )
+            self.global_conv1d_sigmoid = nn.Conv1d(
+                global_dim,
+                out_channels,
+                kernel_size=1,
+                stride=1,
+                bias=bias,
+            )
+
+        # for weight normalization
+        self.weight_norm_conv_names = set()
+
+        if weight_norm:
+            self.weight_norm_()
+
+    def forward(
+        self,
+        input: torch.Tensor,
+        local_conditioning: Optional[torch.Tensor] = None,
+        global_conditioning: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """Forward pass of gated convolution.
+
+        Args:
+            input (torch.Tensor): Input tensor of shape
+                (batch_size, in_channels, num_frames).
+            local_conditioning (torch.Tensor, optional): Local conditioning of shape
+                (batch_size, local_dim, num_frames).
+            global_conditioning (torch.Tensor, optional): Global conditioning of shape
+                (batch_size, global_dim) or (batch_size, global_dim, 1).
+
+        Returns:
+            torch.Tensor: Output of shape (batch_size, in_channels, num_frames).
+
+        """
+        kernel_size, stride, dilation = self.kernel_size, self.stride, self.dilation
+        causal = self.causal
+
+        padding = (kernel_size - 1) * dilation
+
+        if causal:
+            padding_left = padding
+            padding_right = 0
+        else:
+            padding_left = padding // 2
+            padding_right = padding - padding_left
+
+        x = F.pad(input, (padding_left, padding_right))
+
+        x_tanh, x_sigmoid = self._fused_conv1d(
+            x,
+            conv1d_tanh=self.conv1d_tanh,
+            conv1d_sigmoid=self.conv1d_sigmoid,
+            stride=stride,
+            dilation=dilation,
+        )
+
+        if local_conditioning is not None:
+            assert (self.local_conv1d_sigmoid is not None) and (self.local_conv1d_tanh is not None)
+
+            y_tanh, y_sigmoid = self._fused_conv1d(
+                local_conditioning,
+                conv1d_tanh=self.local_conv1d_tanh,
+                conv1d_sigmoid=self.local_conv1d_sigmoid,
+                stride=1,
+            )
+
+            x_tanh = x_tanh + y_tanh
+            x_sigmoid = x_sigmoid + y_sigmoid
+
+        if global_conditioning is not None:
+            assert (self.global_conv1d_sigmoid is not None) and (
+                self.global_conv1d_tanh is not None
+            )
+
+            if global_conditioning.dim() == 2:
+                global_conditioning = global_conditioning.unsqueeze(dim=-1)
+
+            y_tanh, y_sigmoid = self._fused_conv1d(
+                global_conditioning,
+                conv1d_tanh=self.global_conv1d_tanh,
+                conv1d_sigmoid=self.global_conv1d_sigmoid,
+                stride=1,
+            )
+
+            x_tanh = x_tanh + y_tanh
+            x_sigmoid = x_sigmoid + y_sigmoid
+
+        x_tanh = torch.tanh(x_tanh)
+        x_sigmoid = torch.sigmoid(x_sigmoid)
+
+        output = x_tanh * x_sigmoid
+
+        return output
+
+    def incremental_forward(
+        self,
+        input: torch.Tensor,
+        local_conditioning: Optional[torch.Tensor] = None,
+        global_conditioning: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """Forward pass of gated convolution.
+
+        Args:
+            input (torch.Tensor): Input tensor of shape
+                (batch_size, in_channels, 1).
+            local_conditioning (torch.Tensor, optional): Local conditioning of shape
+                (batch_size, local_dim, 1).
+            global_conditioning (torch.Tensor, optional): Global conditioning of shape
+                (batch_size, global_dim) or (batch_size, global_dim, 1).
+
+        Returns:
+            torch.Tensor: Output of shape (batch_size, in_channels, 1).
+
+        .. note:
+
+            In this method, ``self._forward_pre_hooks`` is called only if ``self.buffer``
+            is ``None``, i.e. first call of ``incremental_forward``.
+
+        """
+        kernel_size, stride, dilation = self.kernel_size, self.stride, self.dilation
+        causal = self.causal
+
+        if not causal:
+            raise NotImplementedError("Only causal forward is supported.")
+
+        assert input.size(-1) == 1
+
+        if local_conditioning is not None:
+            assert local_conditioning.size(-1) == 1
+
+        padding = (kernel_size - 1) * dilation
+
+        if not hasattr(self, "buffer"):
+            self.buffer = None
+
+        if self.buffer is None:
+            batch_size, in_channels, _ = input.size()
+            buffer = torch.zeros(
+                (batch_size, in_channels, padding), dtype=input.dtype, device=input.device
+            )
+            for hook in self._forward_pre_hooks.values():
+                hook(self, input)
+        else:
+            buffer = self.buffer
+            _, buffer = torch.split(buffer, [1, padding], dim=-1)
+
+        buffer = torch.cat([buffer, input], dim=-1)
+        self.buffer = buffer
+
+        x_tanh, x_sigmoid = self._fused_conv1d(
+            buffer,
+            conv1d_tanh=self.conv1d_tanh,
+            conv1d_sigmoid=self.conv1d_sigmoid,
+            stride=stride,
+            dilation=dilation,
+        )
+
+        if local_conditioning is not None:
+            assert (self.local_conv1d_sigmoid is not None) and (self.local_conv1d_tanh is not None)
+
+            if not hasattr(self, "local_buffer"):
+                self.local_buffer = None
+
+            if self.local_buffer is None:
+                batch_size, local_dim, _ = local_conditioning.size()
+                local_buffer = torch.zeros(
+                    (batch_size, local_dim, 0),
+                    dtype=local_conditioning.dtype,
+                    device=local_conditioning.device,
+                )
+            else:
+                local_buffer = self.local_buffer
+
+            local_buffer = torch.cat([local_buffer, local_conditioning], dim=-1)
+            self.local_buffer = local_buffer
+
+            y_tanh, y_sigmoid = self._fused_conv1d(
+                local_conditioning,
+                conv1d_tanh=self.local_conv1d_tanh,
+                conv1d_sigmoid=self.local_conv1d_sigmoid,
+                stride=1,
+            )
+
+            x_tanh = x_tanh + y_tanh
+            x_sigmoid = x_sigmoid + y_sigmoid
+
+        if global_conditioning is not None:
+            assert (self.global_conv1d_sigmoid is not None) and (
+                self.global_conv1d_tanh is not None
+            )
+
+            if global_conditioning.dim() == 2:
+                global_conditioning = global_conditioning.unsqueeze(dim=-1)
+
+            y_tanh, y_sigmoid = self._fused_conv1d(
+                global_conditioning,
+                conv1d_tanh=self.global_conv1d_tanh,
+                conv1d_sigmoid=self.global_conv1d_sigmoid,
+                stride=1,
+            )
+
+            x_tanh = x_tanh + y_tanh
+            x_sigmoid = x_sigmoid + y_sigmoid
+
+        x_tanh = torch.tanh(x_tanh)
+        x_sigmoid = torch.sigmoid(x_sigmoid)
+
+        output = x_tanh * x_sigmoid
+
+        return output
+
+    def clear_buffer(self):
+        if hasattr(self, "buffer"):
+            self.buffer = None
+
+        if hasattr(self, "local_buffer"):
+            self.local_buffer = None
+
+    def weight_norm_(self) -> None:
+        """Apply weight normalization to weights of convolution modules."""
+        if self.weight_norm_registered:
+            raise ValueError(
+                "Weight normalization is already applied."
+                "Call remove_weight_norm_() before this method."
+            )
+
+        GatedConv1dWeightNorm.apply(self, conv_name="conv1d_tanh")
+        GatedConv1dWeightNorm.apply(self, conv_name="conv1d_sigmoid")
+        self.weight_norm_conv_names.add("conv1d_tanh")
+        self.weight_norm_conv_names.add("conv1d_sigmoid")
+
+        if self.local_conv1d_tanh is not None:
+            GatedConv1dWeightNorm.apply(self, conv_name="local_conv1d_tanh")
+            GatedConv1dWeightNorm.apply(self, conv_name="local_conv1d_sigmoid")
+            self.weight_norm_conv_names.add("local_conv1d_tanh")
+            self.weight_norm_conv_names.add("local_conv1d_sigmoid")
+
+        if self.global_conv1d_tanh is not None:
+            GatedConv1dWeightNorm.apply(self, conv_name="global_conv1d_tanh")
+            GatedConv1dWeightNorm.apply(self, conv_name="global_conv1d_sigmoid")
+            self.weight_norm_conv_names.add("global_conv1d_tanh")
+            self.weight_norm_conv_names.add("global_conv1d_sigmoid")
+
+    def remove_weight_norm_(self) -> None:
+        """Remove weight normalization from weights of convolution modules."""
+        if len(self.weight_norm_conv_names) == 0:
+            raise ValueError("weight_norm of is not found.")
+
+        pre_hook_keys = list(self._forward_pre_hooks.keys())
+
+        for k in pre_hook_keys:
+            hook = self._forward_pre_hooks[k]
+            if (
+                isinstance(hook, GatedConv1dWeightNorm)
+                and hook.conv_name in self.weight_norm_conv_names
+            ):
+                hook.remove(self)
+                del self._forward_pre_hooks[k]
+                self.weight_norm_conv_names.remove(hook.conv_name)
+
+        if len(self.weight_norm_conv_names) > 0:
+            raise ValueError(f"weight_norms of {self.weight_norm_conv_names} cannot be removed.")
+
+    @staticmethod
+    def _fused_conv1d(
+        input: torch.Tensor,
+        conv1d_tanh: nn.Conv1d,
+        conv1d_sigmoid: nn.Conv1d,
+        stride: int = 1,
+        padding: int = 0,
+        dilation: int = 1,
+        groups: int = 1,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        weight_tanh = conv1d_tanh.weight
+        weight_sigmoid = conv1d_sigmoid.weight
+        weight = torch.cat([weight_tanh, weight_sigmoid], dim=0)
+        out_channels_tanh = weight_tanh.size(0)
+        out_channels_sigmoid = weight_sigmoid.size(0)
+
+        assert (conv1d_tanh.bias is None) == (conv1d_sigmoid.bias is None)
+
+        if conv1d_tanh.bias is None:
+            bias = None
+        else:
+            bias = torch.cat([conv1d_tanh.bias, conv1d_sigmoid.bias], dim=0)
+
+        output = F.conv1d(
+            input,
+            weight,
+            bias=bias,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+        )
+        output_tanh, output_sigmoid = torch.split(
+            output, [out_channels_tanh, out_channels_sigmoid], dim=1
+        )
+
+        return output_tanh, output_sigmoid
+
+    @property
+    def weight_norm_registered(self) -> bool:
+        return len(self.weight_norm_conv_names) > 0
+
+
+class PostNet(nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        num_layers: int,
+        weight_norm: bool = True,
+    ) -> None:
+        super().__init__()
+
+        self.num_layers = num_layers
+
+        net = []
+
+        for layer_idx in range(num_layers):
+            if layer_idx == num_layers - 1:
+                _out_channels = out_channels
+            else:
+                _out_channels = in_channels
+
+            net.append(
+                PostBlock(
+                    in_channels,
+                    _out_channels,
+                    weight_norm=weight_norm,
+                )
+            )
+
+        self.net = nn.ModuleList(net)
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        x = input
+
+        for layer_idx in range(self.num_layers):
+            x = self.net[layer_idx](x)
+
+        output = x
+
+        return output
+
+    def weight_norm_(self) -> None:
+        for module in self.net:
+            module.weight_norm_()
+
+    def remove_weight_norm_(self) -> None:
+        for module in self.net:
+            module.remove_weight_norm_()
+
+
+class PostBlock(nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        weight_norm: bool = True,
+    ) -> None:
+        super().__init__()
+
+        self.nonlinear1d = nn.ReLU()
+        self.conv1d = nn.Conv1d(in_channels, out_channels, kernel_size=1)
+
+        if weight_norm:
+            self.weight_norm_()
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        x = self.nonlinear1d(input)
+        output = self.conv1d(x)
+
+        return output
+
+    def weight_norm_(self) -> None:
+        self.conv1d = nn.utils.weight_norm(self.conv1d)
+
+    def remove_weight_norm_(self) -> None:
+        self.conv1d = nn.utils.remove_weight_norm(self.conv1d)
+
+
+class Upsample(nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: _size_1_t,
+        stride: _size_1_t = 1,
+        groups: int = 1,
+        bias: bool = True,
+        device: torch.device = None,
+        dtype: torch.dtype = None,
+    ) -> None:
+        super().__init__()
+
+        factory_kwargs = {"device": device, "dtype": dtype}
+
+        self.stride = stride
+
+        self.conv_transpose1d = nn.ConvTranspose1d(
+            in_channels,
+            out_channels,
+            kernel_size=kernel_size,
+            stride=stride,
+            groups=groups,
+            bias=bias,
+            **factory_kwargs,
+        )
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of upsample network.
+
+        Args:
+            input (torch.Tensor): 3D tensor of shape (batch_size, in_channels, length).
+
+        Returns:
+            output (torch.Tensor): 3D tensor of shape (batch_size, out_channels, length // stride).
+
+        """
+        stride = self.stride
+        length = input.size(-1)
+
+        x = self.conv_transpose1d(input)
+        padding = x.size(-1) - length * stride
+        padding_left = padding // 2
+        padding_right = padding - padding_left
+        output = F.pad(x, (-padding_left, -padding_right))
+
+        return output
+
+
+class GatedConv1dWeightNorm:
+    """Weight normalization for module containing GatedConv1d.
+
+    This implementation is based on torch.nn.utils.weight_norm.WeightNorm.
+
+    Args:
+        conv_name (str): Name of gated convolution.
+        dim (int): Normalization is applied along ``dim``.
+
+    """
+
+    def __init__(self, conv_name: str) -> None:
+        self.conv_name = conv_name
+        self.name = "weight"
+        self.dim = 0
+
+    def __call__(self, module: nn.Module, inputs: Any) -> None:
+        conv_module = getattr(module, self.conv_name)
+        setattr(conv_module, self.name, self.compute_weight(conv_module))
+
+    @staticmethod
+    def apply(module: nn.Module, conv_name: str) -> None:
+        """Apply weight normalization to convolution in module.
+
+        Reference of implementation:
+        https://github.com/pytorch/pytorch/blob/31f311a816c026bbfca622d6121d6a7fab44260d/torch/nn/utils/weight_norm.py
+
+        Args:
+            module (nn.Module): Module instance to which normalization is applied.
+            conv_name (str): Name of gated convolution.
+
+        """
+        conv_module: GatedConv1d = getattr(module, conv_name)
+
+        fn = GatedConv1dWeightNorm(conv_name)
+        name = fn.name
+        dim = fn.dim
+
+        weight = getattr(conv_module, name)
+        weight_g = torch.norm_except_dim(weight, pow=2, dim=dim).data
+        weight_v = weight.data
+
+        del conv_module._parameters[name]
+
+        conv_module.register_parameter(f"{name}_g", nn.Parameter(weight_g))
+        conv_module.register_parameter(f"{name}_v", nn.Parameter(weight_v))
+        weight = fn.compute_weight(conv_module)
+
+        setattr(conv_module, name, weight)
+
+        module.register_forward_pre_hook(fn)
+
+        return fn
+
+    def remove(self, module: nn.Module) -> None:
+        name = self.name
+        conv_module = getattr(module, self.conv_name)
+        weight = self.compute_weight(conv_module)
+
+        delattr(conv_module, name)
+        del conv_module._parameters[f"{name}_g"]
+        del conv_module._parameters[f"{name}_v"]
+
+        setattr(conv_module, self.name, nn.Parameter(weight.data))
+
+    def compute_weight(self, conv_module: GatedConv1d) -> Any:
+        name = self.name
+        dim = self.dim
+
+        weight_g = getattr(conv_module, f"{name}_g")
+        weight_v = getattr(conv_module, f"{name}_v")
+        weight = torch._weight_norm(weight_v, weight_g, dim=dim)
+
+        return weight
