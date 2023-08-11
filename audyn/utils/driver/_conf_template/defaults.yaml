@@ -1,0 +1,13 @@
+defaults:
+  - system: defaults
+  - data: defaults
+  - train: defaults
+  - model:
+  - optimizer:
+  - lr_scheduler:
+  - criterion:
+  - _self_
+
+hydra:
+  job:
+    chdir: false
