@@ -36,8 +36,6 @@ key_mapping:
     output: estimated_waveform
 
 clip_gradient:
-  _target_: torch.nn.utils.clip_grad_norm_
-  max_norm: 10
 
 resume:
   continue_from:
@@ -60,4 +58,4 @@ output:
 steps:
   epochs:
   iterations: 100000
-  lr_scheduler: iteration
+  lr_scheduler:
