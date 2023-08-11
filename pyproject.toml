@@ -28,6 +28,10 @@ dev = [
     "black",
     "isort"
 ]
+tests = [
+    "pytest",
+    "pytest-cov",
+]
 
 [tool.setuptools.dynamic]
 version = {attr = "audyn.__version__"}
