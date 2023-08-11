@@ -434,6 +434,7 @@ class BaseTrainer(BaseDriver):
 
     def train_one_epoch(self) -> Dict[str, float]:
         """Train model for one epoch."""
+        record_config = self.config.train.record
         criterion_names = {
             key
             for key in self.config.criterion.keys()
@@ -493,8 +494,8 @@ class BaseTrainer(BaseDriver):
                 global_step=self.iteration_idx + 1,
             )
 
-            if hasattr(self.config.train.output, "spectrogram"):
-                spectrogram_config = self.config.train.output.spectrogram.iteration
+            if hasattr(record_config, "spectrogram"):
+                spectrogram_config = record_config.spectrogram.iteration
                 global_step = self.iteration_idx + 1
 
                 if spectrogram_config is not None and global_step % spectrogram_config.every == 0:
@@ -507,8 +508,8 @@ class BaseTrainer(BaseDriver):
                         global_step=global_step,
                     )
 
-            if hasattr(self.config.train.output, "waveform"):
-                waveform_config = self.config.train.output.waveform.iteration
+            if hasattr(record_config, "waveform"):
+                waveform_config = record_config.waveform.iteration
                 global_step = self.iteration_idx + 1
 
                 if waveform_config is not None and global_step % waveform_config.every == 0:
@@ -521,8 +522,8 @@ class BaseTrainer(BaseDriver):
                         global_step=global_step,
                     )
 
-            if hasattr(self.config.train.output, "audio"):
-                audio_config = self.config.train.output.audio.iteration
+            if hasattr(record_config, "audio"):
+                audio_config = record_config.audio.iteration
                 global_step = self.iteration_idx + 1
 
                 if audio_config is not None and global_step % audio_config.every == 0:
@@ -536,8 +537,8 @@ class BaseTrainer(BaseDriver):
                         sample_rate=audio_config.sample_rate,
                     )
 
-            if hasattr(self.config.train.output, "image"):
-                image_config = self.config.train.output.image.iteration
+            if hasattr(record_config, "image"):
+                image_config = record_config.image.iteration
                 global_step = self.iteration_idx + 1
 
                 if image_config is not None and global_step % image_config.every == 0:
@@ -597,6 +598,7 @@ class BaseTrainer(BaseDriver):
     @torch.no_grad()
     def validate_one_epoch(self) -> Dict[str, float]:
         """Validate model for one epoch."""
+        record_config = self.config.train.record
         criterion_names = {
             key
             for key in self.config.criterion.keys()
@@ -629,8 +631,8 @@ class BaseTrainer(BaseDriver):
                     validation_loss[criterion_name] + loss[criterion_name].item()
                 )
 
-            if hasattr(self.config.train.output, "spectrogram") and n_batch < 1:
-                spectrogram_config = self.config.train.output.spectrogram.epoch
+            if hasattr(record_config, "spectrogram") and n_batch < 1:
+                spectrogram_config = record_config.spectrogram.epoch
                 global_step = self.epoch_idx + 1
 
                 if spectrogram_config is not None and global_step % spectrogram_config.every == 0:
@@ -653,8 +655,8 @@ class BaseTrainer(BaseDriver):
                         global_step=global_step,
                     )
 
-            if hasattr(self.config.train.output, "waveform") and n_batch < 1:
-                waveform_config = self.config.train.output.waveform.epoch
+            if hasattr(record_config, "waveform") and n_batch < 1:
+                waveform_config = record_config.waveform.epoch
                 global_step = self.epoch_idx + 1
 
                 if waveform_config is not None and global_step % waveform_config.every == 0:
@@ -677,8 +679,8 @@ class BaseTrainer(BaseDriver):
                         global_step=global_step,
                     )
 
-            if hasattr(self.config.train.output, "audio") and n_batch < 1:
-                audio_config = self.config.train.output.audio.epoch
+            if hasattr(record_config, "audio") and n_batch < 1:
+                audio_config = record_config.audio.epoch
                 global_step = self.epoch_idx + 1
 
                 if audio_config is not None and global_step % audio_config.every == 0:
@@ -702,8 +704,8 @@ class BaseTrainer(BaseDriver):
                         sample_rate=audio_config.sample_rate,
                     )
 
-            if hasattr(self.config.train.output, "image") and n_batch < 1:
-                image_config = self.config.train.output.image.epoch
+            if hasattr(record_config, "image") and n_batch < 1:
+                image_config = record_config.image.epoch
                 global_step = self.epoch_idx + 1
 
                 if hasattr(image_config.key_mapping, "validation"):
@@ -736,6 +738,8 @@ class BaseTrainer(BaseDriver):
     @torch.no_grad()
     def infer_one_batch(self) -> Dict[str, float]:
         """Inference using one batch."""
+        record_config = self.config.train.record
+
         if hasattr(self.config.train.key_mapping, "inference"):
             inference_key_mapping = self.config.train.key_mapping.inference
         elif hasattr(self.config.train.key_mapping, "validation"):
@@ -758,8 +762,8 @@ class BaseTrainer(BaseDriver):
 
             named_output = self.map_to_named_output(output, key_mapping=inference_key_mapping)
 
-            if hasattr(self.config.train.output, "spectrogram") and n_batch < 1:
-                spectrogram_config = self.config.train.output.spectrogram.epoch
+            if hasattr(record_config, "spectrogram") and n_batch < 1:
+                spectrogram_config = record_config.spectrogram.epoch
                 global_step = self.epoch_idx + 1
 
                 if spectrogram_config is not None and global_step % spectrogram_config.every == 0:
@@ -786,8 +790,8 @@ class BaseTrainer(BaseDriver):
                         global_step=global_step,
                     )
 
-            if hasattr(self.config.train.output, "waveform") and n_batch < 1:
-                waveform_config = self.config.train.output.waveform.epoch
+            if hasattr(record_config, "waveform") and n_batch < 1:
+                waveform_config = record_config.waveform.epoch
                 global_step = self.epoch_idx + 1
 
                 if waveform_config is not None and global_step % waveform_config.every == 0:
@@ -814,8 +818,8 @@ class BaseTrainer(BaseDriver):
                         global_step=global_step,
                     )
 
-            if hasattr(self.config.train.output, "audio") and n_batch < 1:
-                audio_config = self.config.train.output.audio.epoch
+            if hasattr(record_config, "audio") and n_batch < 1:
+                audio_config = record_config.audio.epoch
                 global_step = self.epoch_idx + 1
 
                 if audio_config is not None and global_step % audio_config.every == 0:
@@ -843,8 +847,8 @@ class BaseTrainer(BaseDriver):
                         sample_rate=audio_config.sample_rate,
                     )
 
-            if hasattr(self.config.train.output, "image") and n_batch < 1:
-                image_config = self.config.train.output.image.epoch
+            if hasattr(record_config, "image") and n_batch < 1:
+                image_config = record_config.image.epoch
                 global_step = self.epoch_idx + 1
 
                 if hasattr(image_config.key_mapping, "inference"):
