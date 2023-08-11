@@ -1,9 +1,10 @@
-import hydra
 import torch
 from omegaconf import DictConfig
 
+import audyn
 
-@hydra.main(version_base="1.2", config_path=None, config_name="config")
+
+@audyn.main()
 def main(config: DictConfig) -> None:
     if torch.cuda.is_available():
         num_gpus = torch.cuda.device_count()
