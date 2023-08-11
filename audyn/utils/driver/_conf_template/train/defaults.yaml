@@ -1,0 +1,63 @@
+defaults:
+  - record: defaults
+  - _self_
+
+dataset:
+  train:
+    _target_: torch.utils.data.Dataset
+    dataset:
+  validation:
+    _target_: torch.utils.data.Dataset
+    dataset:
+
+dataloader:
+  train:
+    _target_: torch.utils.data.DataLoader
+    batch_size:
+    shuffle: true
+    seed: ${system.seed}
+  validation:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 1
+    shuffle: false
+
+key_mapping:
+  train:
+    input:
+      input: waveform
+      local_conditioning: log_melspectrogram
+    output: estimated_waveform
+  validation: ${.train}
+  inference:
+    input:
+      initial_state: initial_waveform
+      local_conditioning: ${...train.input.local_conditioning}
+      max_length: max_waveform_length
+    output: estimated_waveform
+
+clip_gradient:
+  _target_: torch.nn.utils.clip_grad_norm_
+  max_norm: 10
+
+resume:
+  continue_from:
+
+output:
+  exp_dir: "./exp"
+  tensorboard_dir: "./tensorboard"
+  save_checkpoint:
+    iteration:
+      every: 20000
+      path: ${...exp_dir}/model/iteration{iteration}.pth
+    epoch:
+      every: 100
+      path: ${...exp_dir}/model/epoch{epoch}.pth
+    last:
+      path: ${...exp_dir}/model/last.pth
+    best_epoch:
+      path: ${...exp_dir}/model/best_epoch.pth
+
+steps:
+  epochs:
+  iterations: 100000
+  lr_scheduler: iteration

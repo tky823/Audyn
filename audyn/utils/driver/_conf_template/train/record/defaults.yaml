@@ -1,0 +1,58 @@
+waveform:
+  iteration:
+    every: 100
+    sample_size: 1
+    key_mapping:
+      output:
+        estimated_waveform: "Estimated waveform (iteration)"
+      reference:
+        waveform: "Waveform (iteration)"
+    transforms:
+      output:
+      reference:
+  epoch:
+    every: 1
+    sample_size: 1
+    key_mapping:
+      validation:
+        output:
+          estimated_waveform: "Estimated waveform (epoch)"
+        reference:
+          waveform: "Waveform (epoch)"
+      inference:
+        output:
+          estimated_waveform: "Estimated waveform of inference (epoch)"
+        reference:
+          waveform: "Waveform of inference (epoch)"
+    transforms:
+      validation: ${...iteration.transforms}
+      inference:
+        output:
+        reference:
+audio:
+  iteration:
+    every: 100
+    sample_size: 1
+    sample_rate: ${data.audio.sample_rate}
+    key_mapping:
+      output:
+        estimated_waveform: "Estimated audio (iteration)"
+      reference:
+        waveform: "Audio (iteration)"
+    transforms: ${...waveform.iteration.transforms}
+  epoch:
+    every: 1
+    sample_size: 1
+    sample_rate: ${data.audio.sample_rate}
+    key_mapping:
+      validation:
+        output:
+          estimated_waveform: "Estimated audio (epoch)"
+        reference:
+          waveform: "Audio (epoch)"
+      inference:
+        output:
+          estimated_waveform: "Estimated audio of inference (epoch)"
+        reference:
+          waveform: "Audio of inference (epoch)"
+    transforms: ${...waveform.epoch.transforms}
