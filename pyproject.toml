@@ -9,7 +9,7 @@ name = "Audyn"
 authors = [
     {name = "Takuya Hasumi"},
 ]
-description = "A PyTorch toolkit for neural speech synthesis."
+description = "A PyTorch toolkit for audio synthesis."
 readme = "README.md"
 license = {file = "LICENSE"}
 urls = {url = "https://github.com/tky823/Audyn"}
