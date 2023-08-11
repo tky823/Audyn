@@ -14,7 +14,10 @@ readme = "README.md"
 license = {file = "LICENSE"}
 urls = {url = "https://github.com/tky823/Audyn"}
 requires-python = ">=3.8, <4"
-dependencies = []
+dependencies = [
+    "torch",
+    "torchaudio",
+]
 dynamic = [
     "version",
 ]
