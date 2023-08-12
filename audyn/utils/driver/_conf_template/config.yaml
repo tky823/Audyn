@@ -1,5 +1,6 @@
 defaults:
   - system: defaults
+  - preprocess: defaults
   - data: defaults
   - train: defaults
   - test: defaults
