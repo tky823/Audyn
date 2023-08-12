@@ -1,0 +1,66 @@
+defaults:
+  - record: wavenet
+  - _self_
+
+dataset:
+  train:
+    _target_: audyn.utils.data.dataset.SortableTorchObjectDataset
+    list_path:
+    feature_dir:
+    sort_key: waveform
+  validation:
+    _target_: audyn.utils.data.dataset.TorchObjectDataset
+    list_path:
+    feature_dir:
+
+dataloader:
+  train:
+    _target_: audyn.utils.data.SequentialBatchDataLoader
+    batch_size: 16
+    shuffle: true
+    seed: ${system.seed}
+  validation:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 1
+    shuffle: false
+
+key_mapping:
+  train:
+    input:
+      input: waveform_slice_mulaw
+      local_conditioning: log_melspectrogram_slice
+    output: estimated_waveform_slice_mulaw
+  validation: ${.train}
+  inference:
+    input:
+      initial_state: initial_waveform_mulaw
+      local_conditioning: ${...train.input.local_conditioning}
+      max_length: max_waveform_slice_length
+    output: estimated_waveform_slice_mulaw
+
+clip_gradient:
+  _target_: torch.nn.utils.clip_grad_norm_
+  max_norm: 1
+
+resume:
+  continue_from:
+
+output:
+  exp_dir: "./exp"
+  tensorboard_dir: "./tensorboard"
+  save_checkpoint:
+    iteration:
+      every: 20000
+      path: ${...exp_dir}/model/iteration{iteration}.pth
+    epoch:
+      every: 100
+      path: ${...exp_dir}/model/epoch{epoch}.pth
+    last:
+      path: ${...exp_dir}/model/last.pth
+    best_epoch:
+      path: ${...exp_dir}/model/best_epoch.pth
+
+steps:
+  epochs:
+  iterations: 80000
+  lr_scheduler: iteration
