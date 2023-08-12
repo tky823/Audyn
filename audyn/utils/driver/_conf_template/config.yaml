@@ -6,7 +6,7 @@ defaults:
   - test: defaults
   - model:
   - optimizer:
-  - lr_scheduler:
+  - lr_scheduler: defaults
   - criterion:
   - _self_
 
