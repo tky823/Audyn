@@ -137,7 +137,7 @@ class BaseDriver:
 
     def map_to_named_input(
         self,
-        named_batch: Dict[str, torch.Tensor],
+        named_data: Dict[str, torch.Tensor],
         key_mapping: Optional[DictConfig] = None,
     ) -> Dict[str, torch.Tensor]:
         if key_mapping is None:
@@ -147,19 +147,19 @@ class BaseDriver:
 
         for model_key in key_mapping.input.keys():
             data_key = key_mapping.input[model_key]
-            named_input[model_key] = named_batch[data_key]
+            named_input[model_key] = named_data[data_key]
 
         return named_input
 
     def map_to_named_target(
         self,
-        named_batch: Dict[str, torch.Tensor],
+        named_data: Dict[str, torch.Tensor],
         config: Optional[DictConfig] = None,
     ) -> Dict[str, Dict[str, torch.Tensor]]:
         """Map named batch to named target.
 
         Args:
-            named_batch (dict): Dict-type batch.
+            named_data (dict): Dict-type batch.
             config (DictConfig, optional): Config to map batch to target for each criterion.
                 Default: ``self.config.criterion``.
 
@@ -182,7 +182,7 @@ class BaseDriver:
                 continue
 
             for criterion_key, data_key in key_mapping.items():
-                named_target[criterion_name][criterion_key] = named_batch[data_key]
+                named_target[criterion_name][criterion_key] = named_data[data_key]
 
         return named_target
 
@@ -266,13 +266,13 @@ class BaseDriver:
 
     def map_to_named_identifier(
         self,
-        named_batch: Dict[str, torch.Tensor],
+        named_data: Dict[str, torch.Tensor],
         key_mapping: Optional[DictConfig] = None,
     ) -> Dict[str, torch.Tensor]:
         """Map dict-type data to filename identifiers.
 
         Args:
-            named_batch (dict): Dict-type data given by data loader.
+            named_data (dict): Dict-type data given by data loader.
 
         Returns:
             dict: Filename identifier that maps model outputs to filename to identify data.
@@ -285,7 +285,7 @@ class BaseDriver:
 
         for identifier_key in key_mapping.identifier.keys():
             data_key = key_mapping.identifier[identifier_key]
-            identifier[identifier_key] = named_batch[data_key]
+            identifier[identifier_key] = named_data[data_key]
 
         return identifier
 
@@ -453,18 +453,18 @@ class BaseTrainer(BaseDriver):
         self.set_epoch_if_necessary(self.epoch_idx)
         self.model.train()
 
-        for named_batch in self.loaders.train:
+        for named_data in self.loaders.train:
             if n_remain > 0:
                 # When checkpoint is a specific iteration,
                 # we have to skip the batches we've already treated.
                 n_remain -= 1
                 continue
 
-            named_batch = self.move_data_to_device(named_batch, self.device)
+            named_data = self.move_data_to_device(named_data, self.device)
             named_input = self.map_to_named_input(
-                named_batch, key_mapping=self.config.train.key_mapping.train
+                named_data, key_mapping=self.config.train.key_mapping.train
             )
-            named_target = self.map_to_named_target(named_batch)
+            named_target = self.map_to_named_target(named_data)
 
             with autocast(enabled=self.enable_amp):
                 output = self.model(**named_input)
@@ -507,7 +507,7 @@ class BaseTrainer(BaseDriver):
                 if spectrogram_config is not None and global_step % spectrogram_config.every == 0:
                     self.write_spectrogram_if_necessary(
                         named_output,
-                        named_batch,
+                        named_data,
                         sample_size=spectrogram_config.sample_size,
                         key_mapping=spectrogram_config.key_mapping,
                         transforms=spectrogram_config.transforms,
@@ -521,7 +521,7 @@ class BaseTrainer(BaseDriver):
                 if waveform_config is not None and global_step % waveform_config.every == 0:
                     self.write_waveform_if_necessary(
                         named_output,
-                        named_batch,
+                        named_data,
                         sample_size=waveform_config.sample_size,
                         key_mapping=waveform_config.key_mapping,
                         transforms=waveform_config.transforms,
@@ -535,7 +535,7 @@ class BaseTrainer(BaseDriver):
                 if audio_config is not None and global_step % audio_config.every == 0:
                     self.write_audio_if_necessary(
                         named_output,
-                        named_batch,
+                        named_data,
                         sample_size=audio_config.sample_size,
                         key_mapping=audio_config.key_mapping,
                         transforms=audio_config.transforms,
@@ -550,7 +550,7 @@ class BaseTrainer(BaseDriver):
                 if image_config is not None and global_step % image_config.every == 0:
                     self.write_image_if_necessary(
                         named_output,
-                        named_batch,
+                        named_data,
                         sample_size=image_config.sample_size,
                         key_mapping=image_config.key_mapping,
                         transforms=image_config.transforms,
@@ -615,12 +615,12 @@ class BaseTrainer(BaseDriver):
 
         self.model.eval()
 
-        for named_batch in self.loaders.validation:
-            named_batch = self.move_data_to_device(named_batch, self.device)
+        for named_data in self.loaders.validation:
+            named_data = self.move_data_to_device(named_data, self.device)
             named_input = self.map_to_named_input(
-                named_batch, key_mapping=self.config.train.key_mapping.validation
+                named_data, key_mapping=self.config.train.key_mapping.validation
             )
-            named_target = self.map_to_named_target(named_batch)
+            named_target = self.map_to_named_target(named_data)
             output = self.model(**named_input)
             named_output = self.map_to_named_output(
                 output, key_mapping=self.config.train.key_mapping.validation
@@ -654,7 +654,7 @@ class BaseTrainer(BaseDriver):
 
                     self.write_spectrogram_if_necessary(
                         named_output,
-                        named_batch,
+                        named_data,
                         sample_size=spectrogram_config.sample_size,
                         key_mapping=key_mapping,
                         transforms=transforms,
@@ -678,7 +678,7 @@ class BaseTrainer(BaseDriver):
 
                     self.write_waveform_if_necessary(
                         named_output,
-                        named_batch,
+                        named_data,
                         sample_size=waveform_config.sample_size,
                         key_mapping=key_mapping,
                         transforms=transforms,
@@ -702,7 +702,7 @@ class BaseTrainer(BaseDriver):
 
                     self.write_audio_if_necessary(
                         named_output,
-                        named_batch,
+                        named_data,
                         sample_size=audio_config.sample_size,
                         key_mapping=key_mapping,
                         transforms=transforms,
@@ -727,7 +727,7 @@ class BaseTrainer(BaseDriver):
                 if image_config is not None and global_step % image_config.every == 0:
                     self.write_image_if_necessary(
                         named_output,
-                        named_batch,
+                        named_data,
                         sample_size=image_config.sample_size,
                         key_mapping=key_mapping,
                         transforms=transforms,
@@ -757,9 +757,9 @@ class BaseTrainer(BaseDriver):
 
         self.model.eval()
 
-        for named_batch in self.loaders.validation:
-            named_batch = self.move_data_to_device(named_batch, self.device)
-            named_input = self.map_to_named_input(named_batch, key_mapping=inference_key_mapping)
+        for named_data in self.loaders.validation:
+            named_data = self.move_data_to_device(named_data, self.device)
+            named_input = self.map_to_named_input(named_data, key_mapping=inference_key_mapping)
 
             if hasattr(self.unwrapped_model, "inference"):
                 output = self.unwrapped_model.inference(**named_input)
@@ -789,7 +789,7 @@ class BaseTrainer(BaseDriver):
 
                     self.write_spectrogram_if_necessary(
                         named_output,
-                        named_batch,
+                        named_data,
                         sample_size=spectrogram_config.sample_size,
                         key_mapping=key_mapping,
                         transforms=transforms,
@@ -817,7 +817,7 @@ class BaseTrainer(BaseDriver):
 
                     self.write_waveform_if_necessary(
                         named_output,
-                        named_batch,
+                        named_data,
                         sample_size=waveform_config.sample_size,
                         key_mapping=key_mapping,
                         transforms=transforms,
@@ -845,7 +845,7 @@ class BaseTrainer(BaseDriver):
 
                     self.write_audio_if_necessary(
                         named_output,
-                        named_batch,
+                        named_data,
                         sample_size=audio_config.sample_size,
                         key_mapping=key_mapping,
                         transforms=transforms,
@@ -874,7 +874,7 @@ class BaseTrainer(BaseDriver):
                 if image_config is not None and global_step % image_config.every == 0:
                     self.write_image_if_necessary(
                         named_output,
-                        named_batch,
+                        named_data,
                         sample_size=image_config.sample_size,
                         key_mapping=key_mapping,
                         transforms=transforms,
@@ -1361,13 +1361,13 @@ class BaseGenerator(BaseDriver):
     def run(self) -> None:
         self.model.eval()
 
-        for named_batch in self.loader:
-            named_batch = self.move_data_to_device(named_batch, self.device)
+        for named_data in self.loader:
+            named_data = self.move_data_to_device(named_data, self.device)
             named_input = self.map_to_named_input(
-                named_batch, key_mapping=self.config.test.key_mapping.inference
+                named_data, key_mapping=self.config.test.key_mapping.inference
             )
             named_identifier = self.map_to_named_identifier(
-                named_batch, key_mapping=self.config.test.key_mapping.inference
+                named_data, key_mapping=self.config.test.key_mapping.inference
             )
 
             if hasattr(self.unwrapped_model, "inference"):
@@ -1399,7 +1399,7 @@ class BaseGenerator(BaseDriver):
 
                     self.save_audio_if_necessary(
                         named_output,
-                        named_batch,
+                        named_data,
                         named_identifier,
                         key_mapping=key_mapping,
                         transforms=transforms,
