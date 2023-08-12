@@ -4,7 +4,7 @@ defaults:
   - data: defaults
   - train: defaults
   - test: defaults
-  - model:
+  - model: defaults
   - optimizer:
   - lr_scheduler: defaults
   - criterion:
