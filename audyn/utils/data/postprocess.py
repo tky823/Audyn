@@ -89,7 +89,7 @@ def slice_feautures(
         batch[slice_key].append(sliced_feature)
 
         for key in key_mapping.keys():
-            if key == slice_key:
+            if key == low_resolution_key:
                 continue
 
             feature = batch[key][sample_idx]
