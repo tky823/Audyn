@@ -13,10 +13,16 @@ cd Audyn
 pip install -e .
 ```
 
+If you need to run recipes, add `[recipes]` as follows:
+```shell
+# In Audyn/
+pip install -e ".[recipes]"
+```
+
 ## Development
 ```shell
 # In Audyn/
-pip install -e ".[dev,tests]"
+pip install -e ".[recipes,dev,tests]"
 ```
 
 ## Test
