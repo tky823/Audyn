@@ -68,7 +68,8 @@ def slice_feautures(
     for sample_idx in range(batch_size):
         key = low_resolution_key
         feature = batch[key][sample_idx]
-        length = feature.size(length_dims[key])
+        length_dim = length_dims[key]
+        length = feature.size(length_dim)
         hop_length = hop_lengths[key]
 
         if random_slice:
@@ -82,7 +83,7 @@ def slice_feautures(
         _, sliced_feature, _ = torch.split(
             feature,
             [start_idx, end_idx - start_idx, length - end_idx],
-            dim=-1,
+            dim=length_dim,
         )
 
         batch[slice_key].append(sliced_feature)
@@ -92,7 +93,8 @@ def slice_feautures(
                 continue
 
             feature = batch[key][sample_idx]
-            length = feature.size(length_dims[key])
+            length_dim = length_dims[key]
+            length = feature.size(length_dim)
             hop_length = hop_lengths[key]
 
             end_idx = start_idx + slice_length // hop_length
@@ -101,7 +103,7 @@ def slice_feautures(
             _, sliced_feature, _ = torch.split(
                 feature,
                 [start_idx, end_idx - start_idx, length - end_idx],
-                dim=-1,
+                dim=length_dim,
             )
 
             batch[slice_key].append(sliced_feature)
