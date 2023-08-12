@@ -1,8 +1,8 @@
-from typing import Any, Dict, Optional, Union
+from typing import Any, Callable, Dict, Optional, Union
 
 import torch
 
-__all__ = ["slice_feautures"]
+__all__ = ["slice_feautures", "take_log_features"]
 
 
 def slice_feautures(
@@ -110,5 +110,35 @@ def slice_feautures(
 
     for slice_key in key_mapping.values():
         batch[slice_key] = torch.stack(batch[slice_key], dim=0)
+
+    return batch
+
+
+def take_log_features(
+    batch: Dict[str, Any],
+    key_mapping: Optional[Dict[str, str]] = None,
+    flooring_fn: Optional[Callable[[torch.Tensor], torch.Tensor]] = None,
+) -> Dict[str, Any]:
+    """Add log-features from given batch.
+
+    Args:
+        batch (dict): Dict-type batch.
+        key_mapping (dict, optional): Mapping of keys to log-feature.
+
+    Returns:
+        dict: Dict-type batch including log-features.
+
+    """
+
+    if key_mapping is None:
+        key_mapping = {}
+
+    for key, log_key in key_mapping.items():
+        if flooring_fn is None:
+            feature = batch[key]
+        else:
+            feature = flooring_fn(batch[key])
+
+        batch[log_key] = torch.log(feature)
 
     return batch
