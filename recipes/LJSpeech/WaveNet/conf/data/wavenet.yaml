@@ -1,0 +1,12 @@
+audio:
+  sample_rate: 16000
+spectrogram:
+  n_fft: 1024
+  hop_length: 256
+melspectrogram:
+  f_min: 0
+  f_max:
+  n_mels: 80
+quantization_channels: 256
+
+slice_length: 16000
