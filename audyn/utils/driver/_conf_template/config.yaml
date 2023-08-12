@@ -2,6 +2,7 @@ defaults:
   - system: defaults
   - data: defaults
   - train: defaults
+  - test: defaults
   - model:
   - optimizer:
   - lr_scheduler:

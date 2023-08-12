@@ -1,0 +1,39 @@
+dataset:
+  test:
+    _target_: torch.utils.data.DataSet
+    list_path:
+    feature_dir:
+
+dataloader:
+  test:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 1
+    shuffle: false
+
+key_mapping:
+  inference:
+    input:
+      initial_state: initial_waveform
+      local_conditioning: log_melspectrogram
+      max_length: max_waveform_length
+    output: estimated_waveform
+    identifier:
+      filename: filename
+
+checkpoint:
+
+output:
+  exp_dir: "./exp"
+  inference_dir: ${.exp_dir}/inference
+  audio:
+    sample_rate: ${data.audio.sample_rate}
+    key_mapping:
+      inference:
+        output:
+          estimated_waveform: "{filename}_estimated.wav"
+        reference:
+          waveform: "{filename}.wav"
+    transforms:
+      inference:
+        output:
+        reference:
