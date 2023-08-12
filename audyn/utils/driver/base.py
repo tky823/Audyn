@@ -98,12 +98,17 @@ class BaseDriver:
         self.device = select_device(config.accelerator, is_distributed=config.distributed.enable)
 
         if hasattr(config, "amp"):
-            self.enable_amp = config.amp.enable
+            availability = config.amp.enable
 
-            if self.enable_amp and not torch.cuda.is_available():
+            if availability and not torch.cuda.is_available():
                 raise ValueError(
                     "You specied config.system.amp.enable=True, but CUDA is not available."
                 )
+
+            if availability is None:
+                availability = False
+
+            self.enable_amp = availability
         else:
             self.enable_amp = False
 
