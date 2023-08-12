@@ -3,7 +3,7 @@ from typing import Any, Callable, Dict, Optional, Union
 
 import torch
 
-__all__ = ["slice_feautures", "take_log_features"]
+__all__ = ["slice_feautures", "take_log_features", "make_noise"]
 
 
 def slice_feautures(
@@ -158,5 +158,33 @@ def take_log_features(
             feature = flooring_fn(batch[key])
 
         batch[log_key] = torch.log(feature)
+
+    return batch
+
+
+def make_noise(
+    batch: Dict[str, Any],
+    key_mapping: Optional[Dict[str, str]] = None,
+    std: float = 1,
+) -> Dict[str, Any]:
+    """Make noise from given batch.
+
+    Args:
+        batch (dict): Dict-type batch.
+        key_mapping (dict, optional): Mapping of keys to make noise.
+        std (float or dict): Noise scael. Default: ``1``.
+
+    Returns:
+        dict: Dict-type batch including noise.
+
+    """
+    if key_mapping is None:
+        key_mapping = {}
+
+    if not isinstance(std, dict):
+        std = {key: std for key in key_mapping.keys()}
+
+    for key, noise_key in key_mapping.items():
+        batch[noise_key] = std[key] * torch.randn_like(batch[key])
 
     return batch
