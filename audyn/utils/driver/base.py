@@ -302,6 +302,14 @@ class BaseTrainer(BaseDriver):
     ) -> None:
         super().__init__()
 
+        if isinstance(lr_scheduler, DictConfig):
+            lr_scheduler = None
+
+            if config.train.steps.lr_scheduler is not None:
+                raise ValueError(
+                    "Although learning rate scheduler is not found, its step is specified."
+                )
+
         self.loaders = loaders
         self.model = model
         self.optimizer = optimizer
