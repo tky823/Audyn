@@ -23,8 +23,8 @@ def main(config: DictConfig) -> None:
 
     melspectrogram_transform = aT.MelSpectrogram(
         sample_rate=config.data.audio.sample_rate,
-        n_fft=config.data.spectrogram.n_fft,
-        hop_length=config.data.spectrogram.hop_length,
+        n_fft=config.data.melspectrogram.n_fft,
+        hop_length=config.data.melspectrogram.hop_length,
         f_min=config.data.melspectrogram.f_min,
         f_max=config.data.melspectrogram.f_max,
         n_mels=config.data.melspectrogram.n_mels,
