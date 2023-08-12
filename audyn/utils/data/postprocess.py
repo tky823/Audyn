@@ -11,6 +11,7 @@ def slice_feautures(
     slice_length: int,
     key_mapping: Optional[Dict[str, str]] = None,
     hop_lengths: Optional[Dict[str, int]] = None,
+    length_mapping: Optional[Dict[str, str]] = None,
     length_dims: Optional[Union[int, Dict[str, int]]] = None,
     random_slice: bool = False,
 ) -> Dict[str, Any]:
@@ -21,6 +22,7 @@ def slice_feautures(
         slice_length (int): Length of sliced waveform.
         key_mapping (dict, optional): Mapping of keys to sliced feature.
         hop_lengths (dict, optional): Unit hop lengths of features.
+        length_mapping  (dict, optional): Length mapping of features.
         length_dims (int or dict, optional): Dimension to get length of features.
         random_slice (bool): If ``True``, slice section is selected at random.
 
@@ -48,6 +50,9 @@ def slice_feautures(
         elif hop_lengths[key] > hop_lengths[low_resolution_key]:
             low_resolution_key = key
 
+    if length_mapping is None:
+        length_mapping = {key: None for key in key_mapping.keys()}
+
     if length_dims is None:
         length_dims = {key: -1 for key in key_mapping.keys()}
     else:
@@ -69,10 +74,15 @@ def slice_feautures(
     for sample_idx in range(batch_size):
         key = low_resolution_key
         feature = batch[key][sample_idx]
+        length_key = length_mapping[key]
         length_dim = length_dims[key]
-        length = feature.size(length_dim)
         hop_length = hop_lengths[key]
         sliced_feature_length = math.ceil(slice_length / hop_length)
+
+        if length_key is None:
+            length = feature.size(length_dim)
+        else:
+            length = batch[length_key][sample_idx]
 
         if random_slice:
             start_idx = torch.randint(0, length - sliced_feature_length, (), dtype=torch.long)
@@ -84,7 +94,7 @@ def slice_feautures(
 
         _, sliced_feature, _ = torch.split(
             feature,
-            [start_idx, end_idx - start_idx, length - end_idx],
+            [start_idx, end_idx - start_idx, feature.size(length_dim) - end_idx],
             dim=length_dim,
         )
 
@@ -95,17 +105,22 @@ def slice_feautures(
                 continue
 
             feature = batch[key][sample_idx]
+            length_key = length_mapping[key]
             length_dim = length_dims[key]
-            length = feature.size(length_dim)
             hop_length = hop_lengths[key]
             sliced_feature_length = math.ceil(slice_length / hop_length)
+
+            if length_key is None:
+                length = feature.size(length_dim)
+            else:
+                length = batch[length_key][sample_idx]
 
             end_idx = start_idx + sliced_feature_length
             slice_key = key_mapping[key]
 
             _, sliced_feature, _ = torch.split(
                 feature,
-                [start_idx, end_idx - start_idx, length - end_idx],
+                [start_idx, end_idx - start_idx, feature.size(length_dim) - end_idx],
                 dim=length_dim,
             )
 
