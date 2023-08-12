@@ -10,14 +10,14 @@ waveform:
     transforms:
       output:
         estimated_waveform_slice_mulaw:
-          _target_: audyn.transforms.Compose
+          _target_: torchvision.transforms.Compose
           _args_:
-            - _target_: torch.argmax
-              _partial_: true
-              _convert_: partial
-              dim: 0
-            - _target_: torchaudio.transforms.MuLawDecoding
-              quantization_channels: ${data.quantization_channels}
+            - - _target_: torch.argmax
+                _partial_: true
+                _convert_: partial
+                dim: 0
+              - _target_: torchaudio.transforms.MuLawDecoding
+                quantization_channels: ${data.quantization_channels}
       reference:
         waveform_slice_mulaw:
           _target_: torchaudio.transforms.MuLawDecoding
