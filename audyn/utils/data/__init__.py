@@ -37,7 +37,14 @@ class BaseDataLoaders:
         self.validation = validation_loader
 
 
-def select_device(accelerator: str, is_distributed: bool = False) -> str:
+def select_device(accelerator: Optional[str], is_distributed: bool = False) -> str:
+    """Select device by accelerator."""
+    if accelerator is None:
+        if torch.cuda.is_available():
+            accelerator = "cuda"
+        else:
+            accelerator = "cpu"
+
     if accelerator in ["cuda", "gpu"] and is_distributed:
         device = int(os.environ["LOCAL_RANK"])
     elif accelerator in ["cpu", "cuda", "mps"]:
