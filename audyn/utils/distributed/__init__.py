@@ -85,7 +85,13 @@ def is_distributed(config: DictConfig) -> bool:
     return is_distributed
 
 
-def select_local_rank(accelerator: str, is_distributed: bool = False) -> Optional[int]:
+def select_local_rank(accelerator: Optional[str], is_distributed: bool = False) -> Optional[int]:
+    if accelerator is None:
+        if torch.cuda.is_available():
+            accelerator = "cuda"
+        else:
+            accelerator = "cpu"
+
     if accelerator in ["cuda", "gpu"] and is_distributed:
         local_rank = int(os.environ["LOCAL_RANK"])
     elif accelerator in ["cpu", "gpu", "cuda", "mps"]:
@@ -96,7 +102,13 @@ def select_local_rank(accelerator: str, is_distributed: bool = False) -> Optiona
     return local_rank
 
 
-def select_global_rank(accelerator: str, is_distributed: bool = False) -> Optional[int]:
+def select_global_rank(accelerator: Optional[str], is_distributed: bool = False) -> Optional[int]:
+    if accelerator is None:
+        if torch.cuda.is_available():
+            accelerator = "cuda"
+        else:
+            accelerator = "cpu"
+
     if accelerator in ["cuda", "gpu"] and is_distributed:
         global_rank = int(os.environ["RANK"])
     elif accelerator in ["cpu", "gpu", "cuda", "mps"]:
