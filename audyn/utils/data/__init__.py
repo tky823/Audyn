@@ -22,7 +22,7 @@ __all__ = [
     "DynamicBatchDataLoader",
     "DistributedDynamicBatchDataLoader",
     "slice_feautures",
-    "collate_fn",
+    "default_collate_fn",
 ]
 
 
@@ -49,7 +49,7 @@ def select_device(accelerator: str, is_distributed: bool = False) -> str:
     return device
 
 
-def collate_fn(
+def default_collate_fn(
     list_batch: List[Dict[str, torch.Tensor]], keys: Optional[Iterable[str]] = None
 ) -> Dict[str, torch.Tensor]:
     """Generate dict-based batch.
