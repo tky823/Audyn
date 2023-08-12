@@ -1,3 +1,4 @@
+import math
 from typing import Any, Callable, Dict, Optional, Union
 
 import torch
@@ -71,13 +72,14 @@ def slice_feautures(
         length_dim = length_dims[key]
         length = feature.size(length_dim)
         hop_length = hop_lengths[key]
+        sliced_feature_length = math.ceil(slice_length / hop_length)
 
         if random_slice:
-            start_idx = torch.randint(0, length - slice_length // hop_length, (), dtype=torch.long)
+            start_idx = torch.randint(0, length - sliced_feature_length, (), dtype=torch.long)
         else:
-            start_idx = length // 2 - (slice_length // hop_length) // 2
+            start_idx = length // 2 - sliced_feature_length // 2
 
-        end_idx = start_idx + slice_length // hop_length
+        end_idx = start_idx + sliced_feature_length
         slice_key = key_mapping[key]
 
         _, sliced_feature, _ = torch.split(
@@ -96,8 +98,9 @@ def slice_feautures(
             length_dim = length_dims[key]
             length = feature.size(length_dim)
             hop_length = hop_lengths[key]
+            sliced_feature_length = math.ceil(slice_length / hop_length)
 
-            end_idx = start_idx + slice_length // hop_length
+            end_idx = start_idx + sliced_feature_length
             slice_key = key_mapping[key]
 
             _, sliced_feature, _ = torch.split(
