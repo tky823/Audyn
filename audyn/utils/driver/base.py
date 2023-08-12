@@ -21,6 +21,7 @@ from ...utils.logging import get_logger
 from ...utils.parallel import is_dp_or_ddp
 from ...utils.tensorboard import get_summary_writer
 from ..data import BaseDataLoaders, select_device
+from ..distributed import select_global_rank, select_local_rank
 from ._decorator import run_only_master_rank
 
 
@@ -1526,25 +1527,3 @@ class BaseGenerator(BaseDriver):
             self.unwrapped_model.remove_weight_norm_
         ):
             self.unwrapped_model.remove_weight_norm_()
-
-
-def select_local_rank(accelerator: str, is_distributed: bool = False) -> Optional[int]:
-    if accelerator in ["cuda", "gpu"] and is_distributed:
-        local_rank = int(os.environ["LOCAL_RANK"])
-    elif accelerator in ["cpu", "gpu", "cuda", "mps"]:
-        local_rank = None
-    else:
-        raise ValueError(f"Accelerator {accelerator} is not supported.")
-
-    return local_rank
-
-
-def select_global_rank(accelerator: str, is_distributed: bool = False) -> Optional[int]:
-    if accelerator in ["cuda", "gpu"] and is_distributed:
-        global_rank = int(os.environ["RANK"])
-    elif accelerator in ["cpu", "gpu", "cuda", "mps"]:
-        global_rank = None
-    else:
-        raise ValueError(f"Accelerator {accelerator} is not supported.")
-
-    return global_rank
