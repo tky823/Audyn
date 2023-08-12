@@ -1,4 +1,4 @@
 list_path:
 wav_dir:
 feature_dir:
-max_workers:
+max_workers: 16
