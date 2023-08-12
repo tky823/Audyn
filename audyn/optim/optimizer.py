@@ -69,7 +69,7 @@ class MovingAverageWrapper(Optimizer):
             >>> import torch
             >>> import torch.nn as nn
             >>> from torch.optim import Adam
-            >>> from veuth.optim.optimizer import MovingAverageWrapper
+            >>> from audyn.optim.optimizer import MovingAverageWrapper
             >>> in_channels, out_channels = 3, 2
             >>> lr = 1e-3
             >>> smooth = 0.999
