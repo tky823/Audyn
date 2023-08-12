@@ -27,6 +27,9 @@ dynamic = [
 ]
 
 [project.optional-dependencies]
+recipes = [
+    "tqdm",
+]
 dev = [
     "flake8",
     "black",
