@@ -12,7 +12,7 @@ from .dataloader import (
     SequentialBatchDataLoader,
 )
 from .dataset import SortableTorchObjectDataset, TorchObjectDataset
-from .postprocess import slice_feautures
+from .postprocess import slice_feautures, take_log_features
 
 __all__ = [
     "TorchObjectDataset",
@@ -22,6 +22,7 @@ __all__ = [
     "DynamicBatchDataLoader",
     "DistributedDynamicBatchDataLoader",
     "slice_feautures",
+    "take_log_features",
     "default_collate_fn",
 ]
 
