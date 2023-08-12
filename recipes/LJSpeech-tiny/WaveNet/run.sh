@@ -19,7 +19,7 @@ data="wavenet"
 train="wavenet"
 model="wavenet"
 optimizer="adam"
-lr_scheduler="defaults"
+lr_scheduler="wavenet"
 criterion="cross_entropy"
 
 n_validation=5
