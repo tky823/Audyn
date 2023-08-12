@@ -1,0 +1,13 @@
+_target_: audyn.criterion.base.MultiCriteria
+nll:
+  _target_: audyn.criterion.base.BaseCriterionWrapper
+  criterion:
+    _target_: audyn.criterion.flow.GaussFlowLoss
+    std: ${data.noise_std.train}
+    reduction: mean
+  weight: 1
+  key_mapping:
+    estimated:
+      input: latent
+      logdet: logdet
+    target:

@@ -1,0 +1,21 @@
+_target_: audyn.models.waveglow.WaveGlow
+in_channels: 1
+hidden_channels: 256
+skip_channels: 256
+num_flows: 3
+num_stacks: 4
+num_layers: 8
+num_groups: 8
+early_size: 2
+kernel_size: 3
+bias: true
+causal: false
+conv: gated
+upsample:
+  _target_: audyn.models.wavenet.Upsample
+  in_channels: ${data.melspectrogram.n_mels}
+  out_channels: ${.in_channels}
+  kernel_size: ${data.melspectrogram.n_fft}
+  stride: ${data.melspectrogram.hop_length}
+local_dim: ${data.melspectrogram.n_mels}
+weight_norm: true

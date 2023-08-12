@@ -1,0 +1,17 @@
+audio:
+  sample_rate: 16000
+spectrogram:
+  n_fft: 1024
+  hop_length: 256
+melspectrogram:
+  n_fft: ${..spectrogram.n_fft}
+  hop_length: ${..spectrogram.hop_length}
+  f_min: 0
+  f_max:
+  n_mels: 80
+
+slice_length: 16000
+noise_std:
+  train: 0.7071067811865476  # sqrt(0.5)
+  validation: 0.6
+  test: ${.validation}
