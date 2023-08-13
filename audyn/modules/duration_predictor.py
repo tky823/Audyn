@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-__all__ = ["FastSpeechDurationPredictor"]
+__all__ = ["FastSpeechDurationPredictor", "DurationPredictor"]
 
 
 class FastSpeechDurationPredictor(nn.Module):
@@ -74,6 +74,14 @@ class FastSpeechDurationPredictor(nn.Module):
             log_duration = log_duration.masked_fill(padding_mask, -float("inf"))
 
         return log_duration
+
+
+class DurationPredictor(FastSpeechDurationPredictor):
+    """
+    Wrapper class of FastSpeechDurationPredictor.
+    """
+
+    pass
 
 
 class ConvBlock(nn.Module):
