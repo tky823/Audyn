@@ -13,7 +13,12 @@ def setup_system(config: DictConfig) -> None:
         config (DictConfig): Config to set up.
 
     """
-    if is_distributed(config.system):
-        setup_distributed(config.system)
+    if hasattr(config, "system"):
+        system_config = config.system
+    else:
+        system_config = config
 
-    torch.manual_seed(config.system.seed)
+    if is_distributed(system_config):
+        setup_distributed(system_config)
+
+    torch.manual_seed(system_config.seed)
