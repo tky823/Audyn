@@ -51,7 +51,15 @@ def slice_feautures(
             low_resolution_key = key
 
     if length_mapping is None:
-        length_mapping = {key: None for key in key_mapping.keys()}
+        _length_mapping = {key: None for key in key_mapping.keys()}
+    else:
+        _length_mapping = {}
+
+        for key in key_mapping.keys():
+            if key in length_mapping.keys():
+                _length_mapping[key] = length_mapping[key]
+            else:
+                _length_mapping[key] = None
 
     if length_dims is None:
         length_dims = {key: -1 for key in key_mapping.keys()}
@@ -74,27 +82,32 @@ def slice_feautures(
     for sample_idx in range(batch_size):
         key = low_resolution_key
         feature = batch[key][sample_idx]
-        length_key = length_mapping[key]
+        length_key = _length_mapping[key]
         length_dim = length_dims[key]
         hop_length = hop_lengths[key]
         sliced_feature_length = math.ceil(slice_length / hop_length)
 
-        if length_key is None:
-            length = feature.size(length_dim)
-        else:
-            length = batch[length_key][sample_idx]
+        length = _compute_length(
+            batch,
+            key,
+            sample_idx,
+            length_key=length_key,
+            length_dim=length_dim,
+        )
 
         if random_slice:
-            start_idx = torch.randint(0, length - sliced_feature_length, (), dtype=torch.long)
+            low_start_idx = torch.randint(
+                0, length - sliced_feature_length, (), dtype=torch.long
+            ).item()
         else:
-            start_idx = length // 2 - sliced_feature_length // 2
+            low_start_idx = length // 2 - sliced_feature_length // 2
 
-        end_idx = start_idx + sliced_feature_length
+        low_end_idx = low_start_idx + sliced_feature_length
         slice_key = key_mapping[key]
 
         _, sliced_feature, _ = torch.split(
             feature,
-            [start_idx, end_idx - start_idx, feature.size(length_dim) - end_idx],
+            [low_start_idx, low_end_idx - low_start_idx, feature.size(length_dim) - low_end_idx],
             dim=length_dim,
         )
 
@@ -105,16 +118,20 @@ def slice_feautures(
                 continue
 
             feature = batch[key][sample_idx]
-            length_key = length_mapping[key]
+            length_key = _length_mapping[key]
             length_dim = length_dims[key]
             hop_length = hop_lengths[key]
             sliced_feature_length = math.ceil(slice_length / hop_length)
+            length = _compute_length(
+                batch,
+                key,
+                sample_idx,
+                length_key=length_key,
+                length_dim=length_dim,
+            )
 
-            if length_key is None:
-                length = feature.size(length_dim)
-            else:
-                length = batch[length_key][sample_idx]
-
+            start_idx = low_start_idx * hop_lengths[low_resolution_key]
+            start_idx = start_idx // hop_length
             end_idx = start_idx + sliced_feature_length
             slice_key = key_mapping[key]
 
@@ -188,3 +205,28 @@ def make_noise(
         batch[noise_key] = std[key] * torch.randn_like(batch[key])
 
     return batch
+
+
+def _compute_length(
+    batch: Dict[str, Any],
+    key: str,
+    sample_idx: int,
+    length_key: Optional[str] = None,
+    length_dim: Optional[int] = None,
+) -> int:
+    if length_dim is None:
+        length_dim = -1
+
+    feature: torch.Tensor = batch[key][sample_idx]
+
+    if length_key is None:
+        if length_dim > 0:
+            length = feature.size(length_dim - 1)
+        elif length_dim < 0:
+            length = feature.size(length_dim)
+        else:
+            raise ValueError("0 is batch dimension.")
+    else:
+        length = batch[length_key][sample_idx].item()
+
+    return length
