@@ -5,18 +5,15 @@ import torch
 from omegaconf import DictConfig
 
 import audyn
+from audyn.utils import setup_system
 from audyn.utils.data import BaseDataLoaders, default_collate_fn
-from audyn.utils.distributed import setup_distributed
 from audyn.utils.driver import TextToFeatTrainer
 from audyn.utils.model import set_device
 
 
 @audyn.main()
 def main(config: DictConfig) -> None:
-    if config.system.distributed.enable:
-        setup_distributed(config.system)
-
-    torch.manual_seed(config.system.seed)
+    setup_system(config)
 
     train_dataset = hydra.utils.instantiate(config.train.dataset.train)
     validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
