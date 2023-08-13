@@ -1,0 +1,5 @@
+_target_: audyn.optim.optimizer.ExponentialMovingAverageWrapper.build_from_optim_class
+optimizer_class:
+  _target_: torch.optim.Adam
+  _partial_: true
+smooth:

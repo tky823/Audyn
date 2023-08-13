@@ -15,14 +15,22 @@ license = {file = "LICENSE"}
 urls = {url = "https://github.com/tky823/Audyn"}
 requires-python = ">=3.8, <4"
 dependencies = [
+    "omegaconf",
+    "hydra-core",
+    "matplotlib",
     "torch",
     "torchaudio",
+    "torchvision",
+    "tensorboard",
 ]
 dynamic = [
     "version",
 ]
 
 [project.optional-dependencies]
+recipes = [
+    "tqdm",
+]
 dev = [
     "flake8",
     "black",

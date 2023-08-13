@@ -1,0 +1,1 @@
+../../LJSpeech/WaveGlow/train.sh

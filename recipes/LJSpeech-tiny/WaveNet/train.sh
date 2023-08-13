@@ -1,0 +1,1 @@
+../../LJSpeech/WaveNet/train.sh

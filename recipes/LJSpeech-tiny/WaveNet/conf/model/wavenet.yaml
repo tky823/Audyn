@@ -1,0 +1,21 @@
+_target_: audyn.models.wavenet.WaveNet
+in_channels: ${data.quantization_channels}
+out_channels: ${.in_channels}
+hidden_channels: 8
+skip_channels: 6
+num_layers: 3
+num_stacks: 2
+num_post_layers: 2
+kernel_size: 3
+dilated: true
+bias: true
+causal: true
+conv: gated
+upsample:
+  _target_: audyn.models.wavenet.Upsample
+  in_channels: ${data.melspectrogram.n_mels}
+  out_channels: ${.in_channels}
+  kernel_size: ${data.spectrogram.n_fft}
+  stride: ${data.spectrogram.hop_length}
+local_dim: ${.upsample.out_channels}
+weight_norm: true

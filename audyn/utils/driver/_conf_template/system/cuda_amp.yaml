@@ -1,0 +1,8 @@
+seed: 0
+distributed:
+  enable:
+  backend:
+  init_method:
+amp:
+  enable: true
+accelerator: cuda
