@@ -14,7 +14,7 @@ from audyn.utils.data import (
     take_log_features,
 )
 from audyn.utils.distributed import is_distributed, setup_distributed
-from audyn.utils.driver import BaseTrainer
+from audyn.utils.driver import FeatToWaveTrainer
 from audyn.utils.model import set_device
 
 
@@ -65,7 +65,7 @@ def main(config: DictConfig) -> None:
         is_distributed=config.system.distributed.enable,
     )
 
-    trainer = BaseTrainer(
+    trainer = FeatToWaveTrainer(
         loaders,
         model,
         optimizer,
