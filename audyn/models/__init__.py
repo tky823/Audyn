@@ -1,4 +1,12 @@
+from .fastspeech import FastSpeech, MultiSpeakerFastSpeech
 from .waveglow import MultiSpeakerWaveGlow, WaveGlow
 from .wavenet import MultiSpeakerWaveNet, WaveNet
 
-__all__ = ["WaveNet", "MultiSpeakerWaveNet", "WaveGlow", "MultiSpeakerWaveGlow"]
+__all__ = [
+    "WaveNet",
+    "MultiSpeakerWaveNet",
+    "WaveGlow",
+    "MultiSpeakerWaveGlow",
+    "FastSpeech",
+    "MultiSpeakerFastSpeech",
+]
