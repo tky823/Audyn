@@ -1,0 +1,13 @@
+audio:
+  sample_rate: 16000
+spectrogram:
+  n_fft: 1024
+  hop_length: 256
+melspectrogram:
+  n_fft: ${..spectrogram.n_fft}
+  hop_length: ${..spectrogram.hop_length}
+  f_min: 0
+  f_max:
+  n_mels: 80
+
+vocab_size: 87  # audyn.utils.data.cmudict.symbols + "sil" + "spn" + "<PAD>"
