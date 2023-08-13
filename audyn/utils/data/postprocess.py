@@ -127,7 +127,7 @@ def slice_feautures(
 
             feature = batch[key][sample_idx]
             length_key = _length_mapping[key]
-            length_dim = length_dims[key]
+            length_dim = _length_dims[key]
             hop_length = hop_lengths[key]
             sliced_feature_length = math.ceil(slice_length / hop_length)
             length = _compute_length(
