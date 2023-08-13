@@ -1,4 +1,4 @@
-__all__ = "symbols"
+__all__ = ["symbols", "BREAK_SYMBOLS", "SPECIALS"]
 
 
 symbols = [
@@ -87,3 +87,5 @@ symbols = [
     "Z",
     "ZH",
 ]
+BREAK_SYMBOLS = ["sil", "spn"]
+SPECIALS = ["<PAD>"]
