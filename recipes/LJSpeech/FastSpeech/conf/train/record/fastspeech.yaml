@@ -1,0 +1,35 @@
+spectrogram:
+  iteration:
+    every: 100
+    sample_size: 1
+    key_mapping:
+      output:
+        estimated_melspectrogram: "Estimated melspectrogram (iteration)"
+      reference:
+        melspectrogram: "Melspectrogram (iteration)"
+    transforms:
+      output:
+        estimated_melspectrogram:
+          _target_: torch.permute
+          _partial_: true
+          _convert_: partial
+          dims: [1, 0]
+      reference:
+        melspectrogram:
+          _target_: torchvision.transforms.Compose
+          _args_:
+            - - _target_: torch.permute
+                _partial_: true
+                _convert_: partial
+                dims: [1, 0]
+              - _target_: torch.log
+                _partial_: true
+  epoch:
+    every: 1
+    sample_size: 1
+    key_mapping:
+      output:
+        estimated_melspectrogram: "Estimated melspectrogram (epoch)"
+      reference:
+        melspectrogram: "Melspectrogram (epoch)"
+    transforms: ${..iteration.transforms}
