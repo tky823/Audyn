@@ -92,12 +92,14 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
     echo "Preprocess stage 4: Save features"
 
     python ./local/save_symbols.py \
+    --config-dir "./conf" \
     hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
     preprocess="${preprocess}" \
     preprocess.symbols_path="${symbols_path}"
 
     for subset in train validation test; do
         python ./local/save_features.py \
+        --config-dir "./conf" \
         hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
         preprocess="${preprocess}" \
         data="${data}" \
