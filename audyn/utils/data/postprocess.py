@@ -62,10 +62,18 @@ def slice_feautures(
                 _length_mapping[key] = None
 
     if length_dims is None:
-        length_dims = {key: -1 for key in key_mapping.keys()}
+        _length_dims = {key: -1 for key in key_mapping.keys()}
     else:
         if isinstance(length_dims, int):
-            length_dims = {key: length_dims for key in key_mapping.keys()}
+            _length_dims = {key: length_dims for key in key_mapping.keys()}
+        else:
+            _length_dims = {}
+
+            for key in key_mapping.keys():
+                if key in length_mapping.keys():
+                    _length_dims[key] = length_dims[key]
+                else:
+                    _length_dims[key] = -1
 
     # obtain batch size
     if len(key_mapping) > 0:
@@ -83,7 +91,7 @@ def slice_feautures(
         key = low_resolution_key
         feature = batch[key][sample_idx]
         length_key = _length_mapping[key]
-        length_dim = length_dims[key]
+        length_dim = _length_dims[key]
         hop_length = hop_lengths[key]
         sliced_feature_length = math.ceil(slice_length / hop_length)
 
