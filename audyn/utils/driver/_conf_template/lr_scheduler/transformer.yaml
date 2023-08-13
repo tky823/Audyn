@@ -1,0 +1,3 @@
+_target_: audyn.optim.lr_scheduler.TransformerLRScheduler
+d_model:
+warmup_steps: 4000
