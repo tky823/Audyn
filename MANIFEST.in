@@ -1,0 +1,6 @@
+exclude .gitignore
+exclude *.yaml
+recursive-include audyn *.py
+prune .github
+prune tests
+prune recipes
