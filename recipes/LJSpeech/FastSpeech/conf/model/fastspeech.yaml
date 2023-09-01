@@ -1,0 +1,56 @@
+_target_: audyn.models.fastspeech.FastSpeech
+encoder:
+  _target_: audyn.models.fastspeech.Encoder
+  word_embedding:
+    _target_: torch.nn.Embedding
+    num_embeddings: ${data.vocab_size}
+    embedding_dim: 384
+    padding_idx: 0
+  positional_encoding:
+    _target_: audyn.modules.positional_encoding.AbsolutePositionalEncoding
+    batch_first: ${...batch_first}
+  encoder_layer:
+    _target_: audyn.modules.fastspeech.FFTrBlock
+    d_model: ${..word_embedding.embedding_dim}
+    hidden_channels: 1536
+    num_heads: 2
+    kernel_size:
+      - 3
+      - 3
+    dropout: 1.0e-1
+    batch_first: ${...batch_first}
+  num_layers: 4
+  batch_first: ${..batch_first}
+decoder:
+  _target_: audyn.models.fastspeech.Decoder
+  positional_encoding:
+    _target_: audyn.modules.positional_encoding.AbsolutePositionalEncoding
+    batch_first: ${...batch_first}
+  decoder_layer:
+    _target_: audyn.modules.fastspeech.FFTrBlock
+    d_model: ${...encoder.word_embedding.embedding_dim}
+    hidden_channels: ${...encoder.encoder_layer.hidden_channels}
+    num_heads: ${...encoder.encoder_layer.num_heads}
+    kernel_size: ${...encoder.encoder_layer.kernel_size}
+    dropout: ${...encoder.encoder_layer.dropout}
+    batch_first: ${...batch_first}
+  fc_layer:
+    _target_: torch.nn.Linear
+    in_features: ${...encoder.word_embedding.embedding_dim}
+    out_features: ${data.melspectrogram.n_mels}
+  num_layers: ${..encoder.num_layers}
+  batch_first: ${..batch_first}
+length_regulator:
+  _target_: audyn.models.fastspeech.LengthRegulator
+  duration_predictor:
+    _target_: audyn.modules.duration_predictor.FastSpeechDurationPredictor
+    num_features:
+      - ${....encoder.word_embedding.embedding_dim}
+      - 256
+      - 256
+    kernel_size: 3
+    dropout: 1.0e-1
+    stop_gradient: false
+    batch_first: ${...batch_first}
+  batch_first: ${..batch_first}
+batch_first: true

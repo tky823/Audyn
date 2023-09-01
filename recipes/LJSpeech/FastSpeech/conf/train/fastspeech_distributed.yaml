@@ -1,0 +1,68 @@
+defaults:
+  - record: fastspeech
+  - _self_
+
+dataset:
+  train:
+    _target_: audyn.utils.data.dataset.SortableTorchObjectDataset
+    list_path:
+    feature_dir:
+    sort_key: waveform
+  validation:
+    _target_: audyn.utils.data.dataset.TorchObjectDataset
+    list_path:
+    feature_dir:
+
+dataloader:
+  train:
+    _target_: audyn.utils.data.DistributedSequentialBatchDataLoader
+    batch_size: 64
+    num_replicas:
+      _target_: builtins.int
+      _args_: ${oc.env:WORLD_SIZE}
+    rank:
+      _target_: builtins.int
+      _args_: ${oc.env:RANK}
+    shuffle: true
+    seed: ${system.seed}
+  validation:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 1
+    shuffle: false
+
+key_mapping:
+  train:
+    input:
+      src: phones
+      duration: duration
+    output:
+      - estimated_melspectrogram
+      - estimated_duration
+  validation: ${.train}
+
+clip_gradient:
+  _target_: torch.nn.utils.clip_grad_norm_
+  max_norm: 1
+
+resume:
+  continue_from:
+
+output:
+  exp_dir: "./exp"
+  tensorboard_dir: "./tensorboard"
+  save_checkpoint:
+    iteration:
+      every: 10000
+      path: ${...exp_dir}/model/iteration{iteration}.pth
+    epoch:
+      every: 100
+      path: ${...exp_dir}/model/epoch{epoch}.pth
+    last:
+      path: ${...exp_dir}/model/last.pth
+    best_epoch:
+      path: ${...exp_dir}/model/best_epoch.pth
+
+steps:
+  epochs:
+  iterations: 80000
+  lr_scheduler: iteration

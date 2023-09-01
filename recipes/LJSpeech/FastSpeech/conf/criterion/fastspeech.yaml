@@ -1,0 +1,34 @@
+_target_: audyn.criterion.base.MultiCriteria
+melspectrogram_loss:
+  _target_: audyn.criterion.base.BaseCriterionWrapper
+  criterion:
+    _target_: audyn.criterion.fastspeech.FastSpeechMSELoss
+    take_log:
+      input: false
+      target: true
+    reduction: mean
+    batch_first: ${model.encoder.positional_encoding.batch_first}
+  weight: 1
+  key_mapping:
+    estimated:
+      input: estimated_melspectrogram
+    target:
+      target: melspectrogram
+      length: melspectrogram_length
+duration_loss:
+  _target_: audyn.criterion.base.BaseCriterionWrapper
+  criterion:
+    _target_: audyn.criterion.fastspeech.FastSpeechMSELoss
+    take_log:
+      input: false
+      target: true
+    reduction: mean
+    batch_first: ${model.encoder.positional_encoding.batch_first}
+    min: 1
+  weight: 1
+  key_mapping:
+    estimated:
+      input: estimated_duration
+    target:
+      target: duration
+      length: phones_length

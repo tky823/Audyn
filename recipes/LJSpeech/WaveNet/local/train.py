@@ -7,23 +7,20 @@ import torchaudio.functional as aF
 from omegaconf import DictConfig
 
 import audyn
+from audyn.utils import setup_system
 from audyn.utils.data import (
     BaseDataLoaders,
     default_collate_fn,
     slice_feautures,
     take_log_features,
 )
-from audyn.utils.distributed import is_distributed, setup_distributed
 from audyn.utils.driver import FeatToWaveTrainer
 from audyn.utils.model import set_device
 
 
 @audyn.main()
 def main(config: DictConfig) -> None:
-    if is_distributed(config.system):
-        setup_distributed(config.system)
-
-    torch.manual_seed(config.system.seed)
+    setup_system(config)
 
     train_dataset = hydra.utils.instantiate(config.train.dataset.train)
     validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
