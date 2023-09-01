@@ -54,7 +54,10 @@ fi
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     echo "Preprocess stage 2: Create textGrid files by MFA."
 
-    mfa align "${pair_root}" english_us_arpa english_us_arpa "${textgrid_dir}" --clean
+    corpus="english_us_arpa"
+
+    mfa align "${pair_root}" "${corpus}" "${corpus}" "${textgrid_dir}" \
+    --clean
 fi
 
 if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
