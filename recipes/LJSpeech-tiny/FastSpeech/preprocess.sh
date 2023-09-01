@@ -98,6 +98,7 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
     --config-dir "./conf" \
     hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
     preprocess="${preprocess}" \
+    data="${data}" \
     preprocess.symbols_path="${symbols_path}"
 
     for subset in train validation test; do
