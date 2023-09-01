@@ -31,4 +31,4 @@ jobs:
           pip install soundfile
       - name: Pytest
         run: |
-          pytest -vvv --cov=audyn/ --cov-report=xml tests/audyn/
+          pytest -vvv --cov=audyn/ --cov-report=xml tests/package/
