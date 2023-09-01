@@ -74,7 +74,7 @@ def collate_fn(
     """
     dict_batch = default_collate_fn(batch, keys=keys)
 
-    if "melspectrogram" in batch.keys():
+    if "melspectrogram" in dict_batch.keys():
         dict_batch["melspectrogram"] = dict_batch["melspectrogram"].permute(0, 2, 1)
 
     return dict_batch
