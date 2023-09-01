@@ -27,5 +27,5 @@ pip install -e ".[recipes,dev,tests]"
 
 ## Test
 ```shell
-pytest tests/audyn
+pytest tests/package
 ```
