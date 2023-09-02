@@ -1,4 +1,4 @@
-__all__ = ["symbols", "BREAK_SYMBOLS", "SPECIALS"]
+__all__ = ["symbols", "BREAK_SYMBOLS", "SPECIALS", "vocab_size"]
 
 
 symbols = [
@@ -89,3 +89,4 @@ symbols = [
 ]
 BREAK_SYMBOLS = ["sil", "spn"]
 SPECIALS = ["<PAD>"]
+vocab_size = len(symbols + BREAK_SYMBOLS + SPECIALS)
