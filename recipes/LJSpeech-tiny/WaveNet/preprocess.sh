@@ -22,8 +22,9 @@ ljspeech_root="${data_root}/LJSpeech-1.1"
 csv_path="${ljspeech_root}/metadata.csv"
 wav_dir="${ljspeech_root}/wavs"
 
-list_dir="${dump_root}/list"
-feature_dir="${dump_root}/feature"
+dump_dir="${dump_root}/${data}"
+list_dir="${dump_dir}/list"
+feature_dir="${dump_dir}/feature"
 
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     echo "Preprocess stage 1: Split data into training/validation/test"
