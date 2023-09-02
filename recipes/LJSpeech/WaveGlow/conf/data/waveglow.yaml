@@ -1,5 +1,5 @@
 audio:
-  sample_rate: 16000
+  sample_rate: 22050
 spectrogram:
   n_fft: 1024
   hop_length: 256
