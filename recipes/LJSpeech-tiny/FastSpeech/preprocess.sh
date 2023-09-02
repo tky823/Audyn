@@ -24,9 +24,10 @@ wav_dir="${ljspeech_root}/wavs"
 
 pair_root="${data_root}/pair"
 textgrid_dir="${data_root}/textgrid"
-list_dir="${dump_root}/list"
-feature_dir="${dump_root}/feature"
-symbols_path="${dump_root}/symbols.pth"
+dump_dir="${dump_root}/${data}"
+list_dir="${dump_dir}/list"
+feature_dir="${dump_dir}/feature"
+symbols_path="${dump_dir}/symbols.pth"
 
 if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
     echo "Preprocess stage 0: Prepare for MFA."

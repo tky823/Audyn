@@ -16,8 +16,9 @@ criterion="fastspeech"
 
 . ../../_common/parse_options.sh || exit 1;
 
-list_dir="${dump_root}/list"
-feature_dir="${dump_root}/feature"
+dump_dir="${dump_root}/${data}"
+list_dir="${dump_dir}/list"
+feature_dir="${dump_dir}/feature"
 
 if [ -z "${tag}" ]; then
     tag=$(date +"%Y%m%d-%H%M%S")
