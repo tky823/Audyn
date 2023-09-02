@@ -1,5 +1,5 @@
 import copy
-from typing import Optional
+from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -31,7 +31,7 @@ class FastSpeech(nn.Module):
         src: torch.Tensor,
         duration: Optional[torch.LongTensor] = None,
         max_length: Optional[int] = None,
-    ):
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         if duration is None:
             src_key_padding_mask = None
         else:
@@ -73,6 +73,19 @@ class FastSpeech(nn.Module):
         output = self.decoder(h_tgt, tgt_key_padding_mask=tgt_key_padding_mask)
 
         return output, log_est_duration
+
+    @torch.no_grad()
+    def inference(
+        self,
+        src: torch.Tensor,
+        duration: Optional[torch.LongTensor] = None,
+        max_length: Optional[int] = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        return self.forward(
+            src,
+            duration=duration,
+            max_length=max_length,
+        )
 
     @staticmethod
     def create_duration_padding_mask(
@@ -124,7 +137,7 @@ class MultiSpeakerFastSpeech(FastSpeech):
         speaker: torch.Tensor,
         duration: Optional[torch.LongTensor] = None,
         max_length: Optional[int] = None,
-    ):
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         if duration is None:
             src_key_padding_mask = None
         else:
@@ -169,6 +182,21 @@ class MultiSpeakerFastSpeech(FastSpeech):
         output = self.decoder(h_tgt, tgt_key_padding_mask=tgt_key_padding_mask)
 
         return output, log_est_duration
+
+    @torch.no_grad()
+    def inference(
+        self,
+        src: torch.Tensor,
+        speaker: torch.Tensor,
+        duration: Optional[torch.LongTensor] = None,
+        max_length: Optional[int] = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        return self.forward(
+            src,
+            speaker,
+            duration=duration,
+            max_length=max_length,
+        )
 
     def blend_embeddings(self, latent: torch.Tensor, spk_emb: torch.Tensor) -> torch.Tensor:
         """Blend latent and speaker embeddings.
