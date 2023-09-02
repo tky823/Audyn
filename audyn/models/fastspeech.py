@@ -1,5 +1,5 @@
 import copy
-from typing import Optional
+from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -31,7 +31,7 @@ class FastSpeech(nn.Module):
         src: torch.Tensor,
         duration: Optional[torch.LongTensor] = None,
         max_length: Optional[int] = None,
-    ):
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         if duration is None:
             src_key_padding_mask = None
         else:
@@ -73,6 +73,19 @@ class FastSpeech(nn.Module):
         output = self.decoder(h_tgt, tgt_key_padding_mask=tgt_key_padding_mask)
 
         return output, log_est_duration
+
+    @torch.no_grad()
+    def inference(
+        self,
+        src: torch.Tensor,
+        duration: Optional[torch.LongTensor] = None,
+        max_length: Optional[int] = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        return self.forward(
+            src,
+            duration=duration,
+            max_length=max_length,
+        )
 
     @staticmethod
     def create_duration_padding_mask(
