@@ -9,6 +9,8 @@ stop_stage=-1
 tag=""
 continue_from=""
 
+exp_dir="./exp"
+
 ljspeech_url="https://data.keithito.com/data/speech/LJSpeech-1.1.tar.bz2"
 data_root="../data"
 dump_root="dump"
@@ -62,6 +64,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         . ./train.sh \
         --tag "${tag}" \
         --continue-from "${continue_from}" \
+        --exp-dir "${exp_dir}" \
         --dump-root "${dump_root}" \
         --system "${system}" \
         --preprocess "${preprocess}" \
@@ -81,6 +84,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         . ./test.sh \
         --tag "${tag}" \
         --checkpoint "${checkpoint}" \
+        --exp-dir "${exp_dir}" \
         --dump-root "${dump_root}" \
         --system "${system}" \
         --data "${data}" \
