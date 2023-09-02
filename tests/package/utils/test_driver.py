@@ -147,5 +147,4 @@ def create_dummy_override(
         f"train.output.exp_dir={exp_dir}",
         f"train.resume.continue_from={continue_from}",
         f"train.steps.iterations={iterations}",
-        "train.record=",
     ]
