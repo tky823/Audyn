@@ -77,7 +77,7 @@ class FastSpeechWaveNet(CascadeTextToWave):
             transform_middle=transform_middle,
         )
 
-    def forward(self, *args, **kwargs) -> torch.Tensor:
+    def forward(self, *args, **kwargs) -> None:
         raise NotImplementedError("forward pass is not supported.")
 
     @torch.no_grad()
@@ -87,7 +87,7 @@ class FastSpeechWaveNet(CascadeTextToWave):
         initial_state: torch.Tensor,
         global_conditioning: Optional[torch.Tensor] = None,
         max_length: Optional[int] = None,
-    ) -> Tuple[torch.Tensor]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Inference of FastSpeech + WaveNet.
 
         Args:
@@ -165,7 +165,7 @@ class FastSpeechWaveGlow(CascadeTextToWave):
             transform_middle=transform_middle,
         )
 
-    def forward(self, *args, **kwargs) -> torch.Tensor:
+    def forward(self, *args, **kwargs) -> None:
         raise NotImplementedError("forward pass is not supported.")
 
     @torch.no_grad()
@@ -176,7 +176,7 @@ class FastSpeechWaveGlow(CascadeTextToWave):
         global_conditioning: Optional[torch.Tensor] = None,
         std: float = 1,
         max_length: Optional[int] = None,
-    ) -> Tuple[torch.Tensor]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Inference of FastSpeech + WaveGlow.
 
         Args:
