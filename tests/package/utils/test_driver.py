@@ -6,6 +6,7 @@ from os.path import dirname, join, realpath, relpath
 from typing import List
 
 import hydra
+import pytest
 import torch
 from pytest import MonkeyPatch
 
@@ -20,7 +21,8 @@ config_template_path = join(dirname(realpath(audyn.__file__)), "utils", "driver"
 config_name = "config"
 
 
-def test_base_trainer(monkeypatch: MonkeyPatch) -> None:
+@pytest.mark.parametrize("use_ema", [True, False])
+def test_base_trainer(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
     DATA_SIZE = 20
     BATCH_SIZE = 2
     INITIAL_ITERATION = 3
@@ -31,6 +33,11 @@ def test_base_trainer(monkeypatch: MonkeyPatch) -> None:
 
     overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
     exp_dir = "./exp"
+
+    if use_ema:
+        optimizer_name = "dummy"
+    else:
+        optimizer_name = "dummy_ema"
 
     with hydra.initialize(
         version_base="1.2",
@@ -45,6 +52,7 @@ def test_base_trainer(monkeypatch: MonkeyPatch) -> None:
                 data_size=DATA_SIZE,
                 batch_size=BATCH_SIZE,
                 iterations=INITIAL_ITERATION,
+                optimizer=optimizer_name,
             ),
             return_hydra_config=True,
         )
@@ -98,6 +106,7 @@ def test_base_trainer(monkeypatch: MonkeyPatch) -> None:
                 data_size=DATA_SIZE,
                 batch_size=BATCH_SIZE,
                 iterations=len(train_loader),
+                optimizer=optimizer_name,
                 continue_from=f"{exp_dir}/model/iteration{INITIAL_ITERATION}.pth",
             ),
             return_hydra_config=True,
@@ -129,12 +138,13 @@ def create_dummy_override(
     data_size: int,
     batch_size: int = 1,
     iterations: int = 1,
+    optimizer: str = "dummy",
     continue_from: str = "",
 ) -> List[str]:
     return [
         "train=dummy",
         "model=dummy",
-        "optimizer=dummy",
+        f"optimizer={optimizer}",
         "lr_scheduler=dummy",
         "criterion=dummy",
         f"hydra.searchpath=[{overrides_conf_dir}]",
