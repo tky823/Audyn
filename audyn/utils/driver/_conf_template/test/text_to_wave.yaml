@@ -1,0 +1,41 @@
+dataset:
+  test:
+    _target_: torch.utils.data.DataSet
+    list_path:
+    feature_dir:
+
+dataloader:
+  test:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 1
+    shuffle: false
+
+key_mapping:
+  inference:
+    input:
+      text: phones
+    output:
+      - estimated_waveform
+    identifier:
+      filename: filename
+
+checkpoint:
+  text_to_feat:
+  feat_to_wave:
+  text_to_wave:
+
+output:
+  exp_dir: "./exp"
+  inference_dir: ${.exp_dir}/inference
+  audio:
+    sample_rate: ${data.audio.sample_rate}
+    key_mapping:
+      inference:
+        output:
+          estimated_waveform: "{filename}_estimated.wav"
+        reference:
+          waveform: "{filename}.wav"
+    transforms:
+      inference:
+        output:
+        reference:
