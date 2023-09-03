@@ -1,0 +1,34 @@
+dataset:
+  test:
+    _target_: dummy.utils.data.DummyDataset
+    size:
+
+dataloader:
+  test:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 1
+    shuffle: false
+
+key_mapping:
+  inference:
+    input:
+      input: input
+    output: estimated_waveform
+    identifier:
+      filename: filename
+      speaker: subset
+
+checkpoint:
+
+output:
+  exp_dir: "./exp"
+  tensorboard_dir: "./tensorboard"
+  inference_dir: "./inference"
+  audio:
+    key_mapping:
+      inference:
+        output:
+          estimated_waveform: "{speaker}/{filename}_estimated.wav"
+    transforms:
+      inference:
+    sample_rate: ${data.audio.sample_rate}
