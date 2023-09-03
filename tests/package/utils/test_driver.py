@@ -11,8 +11,9 @@ import torch
 from pytest import MonkeyPatch
 
 import audyn
+from audyn.utils import instantiate_model
 from audyn.utils.data import BaseDataLoaders
-from audyn.utils.driver import BaseTrainer
+from audyn.utils.driver import BaseGenerator, BaseTrainer
 
 sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
 
@@ -22,7 +23,8 @@ config_name = "config"
 
 
 @pytest.mark.parametrize("use_ema", [True, False])
-def test_base_trainer(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
+def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
+    """Test BaseTrainer and BaseGenerator."""
     DATA_SIZE = 20
     BATCH_SIZE = 2
     INITIAL_ITERATION = 3
@@ -59,6 +61,7 @@ def test_base_trainer(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
 
     train_dataset = hydra.utils.instantiate(config.train.dataset.train)
     validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+    test_dataset = hydra.utils.instantiate(config.test.dataset.test)
 
     train_loader = hydra.utils.instantiate(
         config.train.dataloader.train,
@@ -68,9 +71,13 @@ def test_base_trainer(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
         config.train.dataloader.validation,
         validation_dataset,
     )
+    test_loader = hydra.utils.instantiate(
+        config.test.dataloader.test,
+        test_dataset,
+    )
     loaders = BaseDataLoaders(train_loader, validation_loader)
 
-    model = hydra.utils.instantiate(config.model)
+    model = instantiate_model(config.model)
     optimizer = hydra.utils.instantiate(config.optimizer, model.parameters())
     lr_scheduler = hydra.utils.instantiate(config.lr_scheduler, optimizer)
     criterion = hydra.utils.instantiate(config.criterion)
@@ -127,6 +134,31 @@ def test_base_trainer(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
 
     assert torch.allclose(model.linear.weight.grad.data, target_grad)
 
+    with hydra.initialize(
+        version_base="1.2",
+        config_path=relpath(config_template_path, dirname(realpath(__file__))),
+        job_name="test_driver",
+    ):
+        config = hydra.compose(
+            config_name="config",
+            overrides=create_dummy_override(
+                overrides_conf_dir=overrides_conf_dir,
+                exp_dir=exp_dir,
+                data_size=DATA_SIZE,
+                checkpoint=f"{exp_dir}/model/last.pth",
+            ),
+            return_hydra_config=True,
+        )
+
+    model = instantiate_model(config.test.checkpoint)
+
+    generator = BaseGenerator(
+        test_loader,
+        model,
+        config=config,
+    )
+    generator.run()
+
     monkeypatch.undo()
 
     shutil.rmtree(temp_dir)
@@ -140,9 +172,13 @@ def create_dummy_override(
     iterations: int = 1,
     optimizer: str = "dummy",
     continue_from: str = "",
+    checkpoint: str = "",
 ) -> List[str]:
+    sample_rate = 16000
+
     return [
         "train=dummy",
+        "test=dummy",
         "model=dummy",
         f"optimizer={optimizer}",
         "lr_scheduler=dummy",
@@ -150,6 +186,7 @@ def create_dummy_override(
         f"hydra.searchpath=[{overrides_conf_dir}]",
         "hydra.job.num=1",
         f"hydra.runtime.output_dir={exp_dir}/log",
+        f"data.audio.sample_rate={sample_rate}",
         f"train.dataset.train.size={data_size}",
         f"train.dataset.validation.size={data_size}",
         f"train.dataloader.train.batch_size={batch_size}",
@@ -157,4 +194,6 @@ def create_dummy_override(
         f"train.output.exp_dir={exp_dir}",
         f"train.resume.continue_from={continue_from}",
         f"train.steps.iterations={iterations}",
+        f"test.dataset.test.size={data_size}",
+        f"test.checkpoint={checkpoint}",
     ]
