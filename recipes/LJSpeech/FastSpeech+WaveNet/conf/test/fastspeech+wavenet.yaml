@@ -1,0 +1,49 @@
+dataset:
+  test:
+    _target_: audyn.utils.data.dataset.TorchObjectDataset
+    list_path:
+    feature_dir:
+
+dataloader:
+  test:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 1
+    shuffle: False
+
+key_mapping:
+  inference:
+    input:
+      text: phones
+      initial_state: initial_waveform_mulaw
+    output:
+      - estimated_waveform_mulaw
+      - estimated_melspectrogram
+      - estimated_duration
+    identifier:
+      filename: filename
+
+checkpoint:
+  text_to_feat:
+  feat_to_wave:
+  text_to_wave:
+
+remove_weight_norm: true
+
+output:
+  exp_dir: "./exp"
+  inference_dir: ${.exp_dir}/inference
+  audio:
+    sample_rate: ${data.audio.sample_rate}
+    key_mapping:
+      inference:
+        output:
+          estimated_waveform_mulaw: "{filename}_estimated.wav"
+        reference:
+          waveform: "{filename}.wav"
+    transforms:
+      inference:
+        output:
+          estimated_waveform_mulaw:
+            _target_: torchaudio.transforms.MuLawDecoding
+            quantization_channels: ${data.quantization_channels}
+        reference:

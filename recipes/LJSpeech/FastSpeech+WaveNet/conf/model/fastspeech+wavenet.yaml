@@ -1,0 +1,6 @@
+_target_: audyn.models.text_to_wave.FastSpeechWaveNet
+text_to_feat:
+feat_to_wave:
+transform_middle:
+  _target_: audyn.models.text_to_wave.FastSpeechWaveNetBridge
+  take_exp: false  # NOTE: this value depends on train.key_mapping
