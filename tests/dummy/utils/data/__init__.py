@@ -10,7 +10,12 @@ class DummyDataset(Dataset):
 
     def __getitem__(self, idx) -> torch.Tensor:
         value = torch.tensor([idx], dtype=torch.float)
-        output = {"input": value, "target": value}
+        output = {
+            "input": value,
+            "target": value,
+            "filename": f"utterance-{idx}",
+            "subset": f"subset-{idx}",
+        }
 
         return output
 
