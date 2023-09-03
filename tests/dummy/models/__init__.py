@@ -13,3 +13,9 @@ class DummyModel(nn.Module):
         output = self.linear(input)
 
         return output
+
+    @torch.no_grad()
+    def inference(self, input: torch.Tensor) -> torch.Tensor:
+        output = self.linear(input)
+
+        return output
