@@ -34,7 +34,6 @@ def instantiate_model(
         resolved_config: Dict[str, Any] = state_dict["resolved_config"]
         model_config: Dict[str, Any] = resolved_config["model"]
         model_config = OmegaConf.create(model_config)
-
         model: nn.Module = hydra.utils.instantiate(model_config)
 
         if load_weights:
@@ -47,6 +46,7 @@ def instantiate_model(
             )
 
         model_config = config_or_path
+        model: nn.Module = hydra.utils.instantiate(model_config)
     else:
         raise NotImplementedError(f"{type(config_or_path)} is not supported.")
 
