@@ -1,0 +1,1 @@
+../../LJSpeech/FastSpeech+WaveNet/test.sh
