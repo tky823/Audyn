@@ -7,7 +7,7 @@ from typing import Any, Dict, Type
 import torch
 from torch.optim import Optimizer
 
-__all__ = ["ExponentialMovingAverageWrapper"]
+__all__ = ["ExponentialMovingAverageWrapper", "GANOptimizer"]
 
 
 class MovingAverageWrapper(Optimizer):
@@ -279,3 +279,17 @@ class ExponentialMovingAverageWrapper(MovingAverageWrapper):
                 p_moving_average.data = torch.lerp(
                     p.data, p_moving_average.data, weight=self.smooth
                 )
+
+
+class GANOptimizer:
+    def __init__(self, generator: Optimizer, discriminator: Optimizer) -> None:
+        self.generator = generator
+        self.discriminator = discriminator
+
+    def zero_grad(self, *args, **kwargs) -> None:
+        self.generator.zero_grad(*args, **kwargs)
+        self.discriminator.zero_grad(*args, **kwargs)
+
+    def step(self, *args, **kwargs) -> None:
+        self.generator.step(*args, **kwargs)
+        self.discriminator.step(*args, **kwargs)
