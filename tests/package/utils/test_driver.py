@@ -8,13 +8,16 @@ from typing import Any, Dict, List
 import hydra
 import pytest
 import torch
-import torch.nn as nn
 from pytest import MonkeyPatch
 
 import audyn
+from audyn.criterion.gan import GANCriterion
+from audyn.models.gan import BaseGAN
+from audyn.optim.lr_scheduler import GANLRScheduler
+from audyn.optim.optimizer import GANOptimizer
 from audyn.utils import instantiate_model
-from audyn.utils.data import BaseDataLoaders
-from audyn.utils.driver import BaseGenerator, BaseTrainer, FeatToWaveTrainer
+from audyn.utils.data import BaseDataLoaders, default_collate_fn, make_noise
+from audyn.utils.driver import BaseGenerator, BaseTrainer, FeatToWaveTrainer, GANTrainer
 
 sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
 
@@ -254,6 +257,107 @@ def test_feat_to_wave_trainer(monkeypatch: MonkeyPatch, use_ema: bool):
     shutil.rmtree(temp_dir)
 
 
+@pytest.mark.parametrize("use_ema_generator", [True, False])
+@pytest.mark.parametrize("use_ema_discriminator", [True, False])
+def test_gan_trainer(
+    monkeypatch: MonkeyPatch,
+    use_ema_generator: bool,
+    use_ema_discriminator: bool,
+):
+    DATA_SIZE = 20
+    BATCH_SIZE = 2
+    INITIAL_ITERATION = 3
+
+    temp_dir = str(uuid.uuid4())
+    os.makedirs(temp_dir, exist_ok=False)
+    monkeypatch.chdir(temp_dir)
+
+    overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
+    exp_dir = "./exp"
+
+    train_name = "dummy_gan"
+    model_name = "dummy_gan"
+    criterion_name = "dummy_gan"
+
+    with hydra.initialize(
+        version_base="1.2",
+        config_path=relpath(config_template_path, dirname(realpath(__file__))),
+        job_name="test_driver",
+    ):
+        config = hydra.compose(
+            config_name="config",
+            overrides=create_dummy_gan_override(
+                overrides_conf_dir=overrides_conf_dir,
+                exp_dir=exp_dir,
+                data_size=DATA_SIZE,
+                batch_size=BATCH_SIZE,
+                iterations=INITIAL_ITERATION,
+                train=train_name,
+                model=model_name,
+                criterion=criterion_name,
+                use_ema_generator=use_ema_generator,
+                use_ema_discriminator=use_ema_discriminator,
+            ),
+            return_hydra_config=True,
+        )
+
+    train_dataset = hydra.utils.instantiate(
+        config.train.dataset.train,
+    )
+    validation_dataset = hydra.utils.instantiate(
+        config.train.dataset.validation,
+    )
+
+    train_loader = hydra.utils.instantiate(
+        config.train.dataloader.train,
+        train_dataset,
+        collate_fn=gan_collate_fn,
+    )
+    validation_loader = hydra.utils.instantiate(
+        config.train.dataloader.validation,
+        validation_dataset,
+        collate_fn=gan_collate_fn,
+    )
+    loaders = BaseDataLoaders(train_loader, validation_loader)
+
+    generator = instantiate_model(config.model.generator)
+    discriminator = instantiate_model(config.model.discriminator)
+
+    generator_optimizer = hydra.utils.instantiate(
+        config.optimizer.generator, generator.parameters()
+    )
+    discriminator_optimizer = hydra.utils.instantiate(
+        config.optimizer.discriminator, discriminator.parameters()
+    )
+    generator_lr_scheduler = hydra.utils.instantiate(
+        config.lr_scheduler.generator, generator_optimizer
+    )
+    discriminator_lr_scheduler = hydra.utils.instantiate(
+        config.lr_scheduler.discriminator, discriminator_optimizer
+    )
+    generator_criterion = hydra.utils.instantiate(config.criterion.generator)
+    discriminator_criterion = hydra.utils.instantiate(config.criterion.discriminator)
+
+    model = BaseGAN(generator, discriminator)
+    optimizer = GANOptimizer(generator_optimizer, discriminator_optimizer)
+    lr_scheduler = GANLRScheduler(generator_lr_scheduler, discriminator_lr_scheduler)
+    criterion = GANCriterion(generator_criterion, discriminator_criterion)
+
+    trainer = GANTrainer(
+        loaders,
+        model,
+        optimizer,
+        lr_scheduler=lr_scheduler,
+        criterion=criterion,
+        config=config,
+    )
+    trainer.run()
+
+    monkeypatch.undo()
+
+    shutil.rmtree(temp_dir)
+
+
 def create_dummy_override(
     overrides_conf_dir: str,
     exp_dir: str,
@@ -292,21 +396,84 @@ def create_dummy_override(
     ]
 
 
+def create_dummy_gan_override(
+    overrides_conf_dir: str,
+    exp_dir: str,
+    data_size: int,
+    batch_size: int = 1,
+    iterations: int = 1,
+    train: str = "dummy_gan",
+    model: str = "dummy_gan",
+    criterion: str = "dummy_gan",
+    use_ema_generator: bool = False,
+    use_ema_discriminator: bool = False,
+    continue_from: str = "",
+) -> List[str]:
+    sample_rate = 16000
+    ema_target = "audyn.optim.optimizer.ExponentialMovingAverageWrapper.build_from_optim_class"
+
+    if use_ema_generator:
+        generator_optimizer_config = [
+            f"+optimizer.generator._target_={ema_target}",
+            "+optimizer.generator.optimizer_class={_target_:torch.optim.Adam,_partial_:true}",
+        ]
+    else:
+        generator_optimizer_config = [
+            "+optimizer.generator._target_=torch.optim.Adam",
+        ]
+
+    if use_ema_discriminator:
+        generator_discriminator_config = [
+            f"+optimizer.discriminator._target_={ema_target}",
+            "+optimizer.discriminator.optimizer_class={_target_:torch.optim.Adam,_partial_:true}",
+        ]
+    else:
+        generator_discriminator_config = [
+            "+optimizer.discriminator._target_=torch.optim.Adam",
+        ]
+
+    overridden_config = [
+        f"train={train}",
+        "test=dummy",
+        f"model={model}",
+        "optimizer=gan",
+        "lr_scheduler=dummy_gan",
+        f"criterion={criterion}",
+        f"hydra.searchpath=[{overrides_conf_dir}]",
+        "hydra.job.num=1",
+        f"hydra.runtime.output_dir={exp_dir}/log",
+        f"data.audio.sample_rate={sample_rate}",
+        f"train.dataset.train.size={data_size}",
+        f"train.dataset.validation.size={data_size}",
+        f"train.dataloader.train.batch_size={batch_size}",
+        f"train.dataloader.validation.batch_size={batch_size}",
+        f"train.output.exp_dir={exp_dir}",
+        f"train.resume.continue_from={continue_from}",
+        f"train.steps.iterations={iterations}",
+    ]
+    overridden_config = (
+        overridden_config + generator_optimizer_config + generator_discriminator_config
+    )
+
+    return overridden_config
+
+
 def pad_collate_fn(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
-    padding_keys = {"input", "target"}
-    dict_batch = {key: [] for key in padding_keys}
-    max_lengths = {key: 0 for key in padding_keys}
-
-    for sample in batch:
-        for key in padding_keys:
-            dict_batch[key].append(sample[key].swapaxes(-2, -1))
-            max_lengths[key] = max(max_lengths[key], sample[key].size(-1))
-
-    for key in padding_keys:
-        dict_batch[key] = nn.utils.rnn.pad_sequence(dict_batch[key], batch_first=True)
-        dict_batch[key] = dict_batch[key].swapaxes(-2, -1)
-
+    dict_batch = default_collate_fn(batch)
     dict_batch["initial_state"] = torch.zeros((dict_batch["input"].size(0), 1), dtype=torch.float)
-    dict_batch["max_length"] = max_lengths["target"]
+
+    if "target" in dict_batch:
+        max_length = dict_batch["target"].size(-1)
+    else:
+        max_length = dict_batch["input"].size(-1)
+
+    dict_batch["max_length"] = max_length
+
+    return dict_batch
+
+
+def gan_collate_fn(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
+    dict_batch = pad_collate_fn(batch)
+    dict_batch = make_noise(dict_batch, key_mapping={"input": "noise"})
 
     return dict_batch
