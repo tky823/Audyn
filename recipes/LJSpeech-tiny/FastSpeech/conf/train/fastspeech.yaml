@@ -23,7 +23,6 @@ dataloader:
     _target_: torch.utils.data.DataLoader
     batch_size: 1
     shuffle: false
-    seed: ${system.seed}
 
 key_mapping:
   train:

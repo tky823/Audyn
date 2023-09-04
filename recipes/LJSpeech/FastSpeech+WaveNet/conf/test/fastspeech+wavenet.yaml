@@ -8,7 +8,7 @@ dataloader:
   test:
     _target_: torch.utils.data.DataLoader
     batch_size: 1
-    shuffle: False
+    shuffle: false
 
 key_mapping:
   inference:
