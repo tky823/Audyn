@@ -63,7 +63,7 @@ def collate_fn(
         Dict of batch.
 
     """
-    quantization_channels = data_config.quantization_channels
+    quantization_channels = data_config.audio.quantization_channels
 
     dict_batch = default_collate_fn(batch, keys=keys)
     batch_size = dict_batch["phones"].size(0)

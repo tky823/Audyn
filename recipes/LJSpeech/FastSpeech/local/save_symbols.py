@@ -20,8 +20,8 @@ def main(config: DictConfig) -> None:
     vocab = build_vocab_from_iterator([symbols + BREAK_SYMBOLS], specials=SPECIALS)
 
     assert (
-        len(vocab) == config.data.vocab_size
-    ), f"Size of vocabulary is expected {config.data.vocab_size}, but given {len(vocab)}."
+        len(vocab) == config.data.text.vocab_size
+    ), f"Size of vocabulary is expected {config.data.text.vocab_size}, but given {len(vocab)}."
 
     torch.save(vocab, symbols_path)
 

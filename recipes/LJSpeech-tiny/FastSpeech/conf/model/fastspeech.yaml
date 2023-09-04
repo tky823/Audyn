@@ -3,7 +3,7 @@ encoder:
   _target_: audyn.models.fastspeech.Encoder
   word_embedding:
     _target_: torch.nn.Embedding
-    num_embeddings: ${data.vocab_size}
+    num_embeddings: ${data.text.vocab_size}
     embedding_dim: 16
     padding_idx: 0
   positional_encoding:

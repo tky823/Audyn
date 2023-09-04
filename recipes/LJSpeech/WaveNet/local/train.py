@@ -64,7 +64,7 @@ def main(config: DictConfig) -> None:
 
 
 def collate_fn(batch: List[Any], data_config: DictConfig, random_slice: bool) -> Dict[str, Any]:
-    quantization_channels = data_config.quantization_channels
+    quantization_channels = data_config.audio.quantization_channels
 
     dict_batch = default_collate_fn(batch)
 

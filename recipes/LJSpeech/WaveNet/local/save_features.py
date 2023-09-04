@@ -22,7 +22,9 @@ def main(config: DictConfig) -> None:
     assert feature_dir is not None, "Specify preprocess.feature_dir."
 
     melspectrogram_transform = aT.MelSpectrogram(**config.data.melspectrogram)
-    mulaw_encoding = aT.MuLawEncoding(quantization_channels=config.data.quantization_channels)
+    mulaw_encoding = aT.MuLawEncoding(
+        quantization_channels=config.data.audio.quantization_channels
+    )
 
     os.makedirs(feature_dir, exist_ok=True)
 
