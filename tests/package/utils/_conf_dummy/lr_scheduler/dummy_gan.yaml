@@ -1,0 +1,4 @@
+generator:
+  _target_: dummy.utils.optim.lr_scheduler.DummyLRScheduler
+discriminator:
+  _target_: dummy.utils.optim.lr_scheduler.DummyLRScheduler
