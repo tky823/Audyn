@@ -1,0 +1,1 @@
+../../LJSpeech/HiFiGAN/train.sh
