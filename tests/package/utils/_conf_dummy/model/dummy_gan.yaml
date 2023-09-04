@@ -1,0 +1,5 @@
+_target_: audyn.models.gan.BaseGAN
+generator:
+  _target_: dummy.models.DummyGenerator
+discriminator:
+  _target_: dummy.models.DummyDiscriminator
