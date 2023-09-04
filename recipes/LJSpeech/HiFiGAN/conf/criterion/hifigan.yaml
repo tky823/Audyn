@@ -52,7 +52,7 @@ generator:
       f_min: ${data.melspectrogram.f_min}
       f_max: ${data.melspectrogram.f_max}
       n_mels: ${data.melspectrogram.n_mels}
-      take_log: True
+      take_log: true
       reduction: mean
     weight: 45
     key_mapping:

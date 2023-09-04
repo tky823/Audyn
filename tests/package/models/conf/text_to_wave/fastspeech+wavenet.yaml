@@ -10,7 +10,7 @@ text_to_feat:
       padding_idx: 0
     positional_encoding:
       _target_: audyn.modules.positional_encoding.AbsolutePositionalEncoding
-      batch_first: True
+      batch_first: true
     encoder_layer:
       _target_: audyn.modules.fastspeech.FFTrBlock
       d_model: ${..word_embedding.embedding_dim}
@@ -65,9 +65,9 @@ feat_to_wave:
   num_stacks: 2
   num_post_layers: 2
   kernel_size: 3
-  dilated: True
-  bias: True
-  causal: True
+  dilated: true
+  bias: true
+  causal: true
   conv: "gated"
   upsample:
     _target_: audyn.models.wavenet.Upsample

@@ -20,7 +20,7 @@ def setup_distributed(config: DictConfig) -> None:
 
         ```
         distributed:
-            enable: True  # should be True.
+            enable: true  # should be True.
             backend:  # If None, nccl is used by default.
             init_method:  # optional
 
