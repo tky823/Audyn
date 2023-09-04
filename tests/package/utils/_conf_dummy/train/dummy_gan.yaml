@@ -1,0 +1,69 @@
+defaults:
+  - record: defaults
+  - _self_
+
+dataset:
+  train:
+    _target_: dummy.utils.data.DummyGANDataset
+    size:
+    min_length: 5
+    max_length: 10
+  validation:
+    _target_: dummy.utils.data.DummyGANDataset
+    size:
+    min_length: 5
+    max_length: 10
+
+dataloader:
+  train:
+    _target_: torch.utils.data.DataLoader
+    batch_size:
+    shuffle: true
+  validation:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 1
+    shuffle: false
+
+key_mapping:
+  train:
+    generator:
+      input:
+        noise: noise
+      output: fake
+    discriminator:
+      fake:
+        input:
+          waveform: ${....generator.output}
+        output: fake_prob
+      real:
+        input:
+          waveform: input
+        output: real_prob
+  validation: ${.train}
+
+clip_gradient:
+
+resume:
+  continue_from:
+
+output:
+  exp_dir: "./exp"
+  tensorboard_dir: "./tensorboard"
+  save_checkpoint:
+    iteration:
+      every: 1
+      path: ${...exp_dir}/model/iteration{iteration}.pth
+    epoch:
+      every: 1
+      path: ${...exp_dir}/model/epoch{epoch}.pth
+    last:
+      path: ${...exp_dir}/model/last.pth
+    best_epoch:
+      path: ${...exp_dir}/model/best_epoch.pth
+
+steps:
+  epochs:
+  iterations:
+  lr_scheduler:
+    generator: iteration
+    discriminator: iteration
