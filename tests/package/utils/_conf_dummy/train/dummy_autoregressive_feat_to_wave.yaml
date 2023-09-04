@@ -1,0 +1,58 @@
+dataset:
+  train:
+    _target_: dummy.utils.data.DummyWaveformDataset
+    size:
+    min_length: 5
+    max_length: 10
+  validation:
+    _target_: dummy.utils.data.DummyWaveformDataset
+    size:
+    min_length: ${..train.min_length}
+    max_length: ${..train.max_length}
+
+dataloader:
+  train:
+    _target_: torch.utils.data.DataLoader
+    batch_size:
+    shuffle: false
+  validation:
+    _target_: torch.utils.data.DataLoader
+    batch_size:
+    shuffle: false
+
+key_mapping:
+  train:
+    input:
+      waveform: input
+    output: criterion_input
+  validation: ${.train}
+  inference:
+    input:
+      initial_state: initial_state
+      max_length: max_length
+    output: criterion_input
+
+resume:
+  continue_from:
+
+output:
+  exp_dir: "./exp"
+  tensorboard_dir: "./tensorboard"
+  save_checkpoint:
+    iteration:
+      every: 1
+      path: ${...exp_dir}/model/iteration{iteration}.pth
+    epoch:
+      every: 1
+      path: ${...exp_dir}/model/epoch{epoch}.pth
+    last:
+      path: ${...exp_dir}/model/last.pth
+    best_epoch:
+      path: ${...exp_dir}/model/best_epoch.pth
+
+record:
+
+steps:
+  epochs:
+  iterations:
+  lr_scheduler: iteration
