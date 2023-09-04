@@ -102,7 +102,7 @@ def collate_fn(
     dict_batch["waveform"] = dict_batch["waveform"].unsqueeze(dim=1)
     dict_batch = slice_feautures(
         dict_batch,
-        slice_length=data_config.slice_length,
+        slice_length=data_config.audio.slice_length,
         key_mapping={
             "waveform": "waveform_slice",
             "melspectrogram": "melspectrogram_slice",

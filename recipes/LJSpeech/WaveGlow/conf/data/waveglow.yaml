@@ -1,5 +1,6 @@
 audio:
   sample_rate: 22050
+  slice_length: 16000
 spectrogram:
   sample_rate: ${..audio.sample_rate}
   n_fft: 1024
@@ -12,7 +13,6 @@ melspectrogram:
   f_max:
   n_mels: 80
 
-slice_length: 16000
 noise_std:
   train: 0.7071067811865476  # sqrt(0.5)
   validation: 0.6
