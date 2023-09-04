@@ -17,11 +17,11 @@ waveform:
                 _convert_: partial
                 dim: 0
               - _target_: torchaudio.transforms.MuLawDecoding
-                quantization_channels: ${data.quantization_channels}
+                quantization_channels: ${data.audio.quantization_channels}
       reference:
         waveform_slice_mulaw:
           _target_: torchaudio.transforms.MuLawDecoding
-          quantization_channels: ${data.quantization_channels}
+          quantization_channels: ${data.audio.quantization_channels}
   epoch:
     every: 1
     sample_size: 1
@@ -42,11 +42,11 @@ waveform:
         output:
           estimated_waveform_slice_mulaw:
             _target_: torchaudio.transforms.MuLawDecoding
-            quantization_channels: ${data.quantization_channels}
+            quantization_channels: ${data.audio.quantization_channels}
         reference:
           waveform_slice_mulaw:
             _target_: torchaudio.transforms.MuLawDecoding
-            quantization_channels: ${data.quantization_channels}
+            quantization_channels: ${data.audio.quantization_channels}
 audio:
   iteration:
     every: 1

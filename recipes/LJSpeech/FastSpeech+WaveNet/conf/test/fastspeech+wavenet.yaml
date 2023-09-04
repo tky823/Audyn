@@ -45,5 +45,5 @@ output:
         output:
           estimated_waveform_mulaw:
             _target_: torchaudio.transforms.MuLawDecoding
-            quantization_channels: ${data.quantization_channels}
+            quantization_channels: ${data.audio.quantization_channels}
         reference:

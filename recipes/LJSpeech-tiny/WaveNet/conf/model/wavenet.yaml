@@ -1,5 +1,5 @@
 _target_: audyn.models.wavenet.WaveNet
-in_channels: ${data.quantization_channels}
+in_channels: ${data.audio.quantization_channels}
 out_channels: ${.in_channels}
 hidden_channels: 8
 skip_channels: 6
