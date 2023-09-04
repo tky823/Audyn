@@ -83,3 +83,6 @@ class DummyGANDataset(Dataset):
         }
 
         return output
+
+    def __len__(self) -> int:
+        return self.size
