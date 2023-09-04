@@ -10,6 +10,8 @@ tag=""
 text_to_feat_checkpoint=""
 feat_to_wave_checkpoint=""
 
+exp_dir="./exp"
+
 dump_root="dump"
 
 system="defaults"
@@ -37,6 +39,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         --tag "${tag}" \
         --text-to-feat-checkpoint "${text_to_feat_checkpoint}" \
         --feat-to-wave-checkpoint "${feat_to_wave_checkpoint}" \
+        --exp-dir "${exp_dir}" \
         --dump-root "${dump_root}" \
         --system "${system}" \
         --data "${data}" \
