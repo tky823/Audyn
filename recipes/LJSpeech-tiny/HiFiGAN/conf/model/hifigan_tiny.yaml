@@ -1,0 +1,37 @@
+generator:
+  _target_: audyn.models.hifigan.Generator
+  _convert_: all
+  in_channels: ${data.melspectrogram.n_mels}
+  out_channels: 1
+  hidden_channels: 64
+  kernel_size: [3, 5]
+  dilation: [1, 2, 4]
+  up_kernel_size: [4, 4, 4, 4, 4]
+  up_stride: [4, 4, 4, 2, 2]
+  pre_kernel_size: 3
+  post_kernel_size: 3
+  stacked: true
+  num_layers: 3
+  num_blocks: 2
+  num_stacks: 5
+  weight_regularization: weight_norm
+discriminator:
+  _target_: audyn.models.hifigan.Discriminator
+  period_discriminator:
+    _target_: audyn.models.hifigan.MultiPeriodDiscriminator
+    _convert_: all
+    period: [2, 3, 5]
+    num_features: [1, 2, 2, 4]
+    kernel_size: [3, 3, 5, 5]
+    stride: [1, 2, 2, 4]
+    weight_regularization: ["weight_norm", "weight_norm", "weight_norm"]
+  scale_discriminator:
+    _target_: audyn.models.hifigan.MultiScaleDiscriminator
+    _convert_: all
+    num_features: [1, 2, 2, 4]
+    kernel_size: [3, 3, 5, 5]
+    stride: [1, 2, 2, 4]
+    dilation: [1, 1, 1, 1]
+    pool_kernel_size: 4
+    pool_stride: 2
+    weight_regularization: ["spectral_norm", "weight_norm", "weight_norm"]
