@@ -1,3 +1,2 @@
-_target_: audyn.models.gan.BaseGAN
 generator:
 discriminator:
