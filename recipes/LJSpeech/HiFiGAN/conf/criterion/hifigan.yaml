@@ -1,0 +1,108 @@
+generator:
+  _target_: audyn.criterion.base.MultiCriteria
+  mse_period_generator:
+    _target_: audyn.criterion.base.BaseCriterionWrapper
+    criterion:
+      _target_: audyn.criterion.hifigan.MSELoss
+      target: 1
+      reduction: mean
+    weight: 1
+    key_mapping:
+      estimated:
+        input: period_fake_prob
+      target:
+  mse_scale_generator:
+    _target_: audyn.criterion.base.BaseCriterionWrapper
+    criterion:
+      _target_: audyn.criterion.hifigan.MSELoss
+      target: 1
+      reduction: mean
+    weight: 1
+    key_mapping:
+      estimated:
+        input: scale_fake_prob
+      target:
+  period_feature_matching:
+    _target_: audyn.criterion.base.BaseCriterionWrapper
+    criterion:
+      _target_: audyn.criterion.hifigan.FeatureMatchingLoss
+    weight: 2
+    key_mapping:
+      estimated:
+        input: period_fake_feature_map
+        target: period_real_feature_map
+      target:
+  scale_feature_matching:
+    _target_: audyn.criterion.base.BaseCriterionWrapper
+    criterion:
+      _target_: audyn.criterion.hifigan.FeatureMatchingLoss
+    weight: 2
+    key_mapping:
+      estimated:
+        input: scale_fake_feature_map
+        target: scale_real_feature_map
+      target:
+  melspectrogram:
+    _target_: audyn.criterion.base.BaseCriterionWrapper
+    criterion:
+      _target_: audyn.criterion.melspectrogram.MelSpectrogramL1Loss
+      sample_rate: ${data.audio.sample_rate}
+      n_fft: ${data.spectrogram.n_fft}
+      hop_length: ${data.spectrogram.hop_length}
+      f_min: ${data.melspectrogram.f_min}
+      f_max: ${data.melspectrogram.f_max}
+      n_mels: ${data.melspectrogram.n_mels}
+      take_log: True
+      reduction: mean
+    weight: 45
+    key_mapping:
+      estimated:
+        input: estimated_waveform_slice
+      target:
+        target: waveform_slice
+discriminator:
+  _target_: audyn.criterion.base.MultiCriteria
+  mse_period_discriminator_fake:
+    _target_: audyn.criterion.base.BaseCriterionWrapper
+    criterion:
+      _target_: audyn.criterion.hifigan.MSELoss
+      target: 0
+      reduction: mean
+    weight: 1
+    key_mapping:
+      estimated:
+        input: period_fake_prob
+      target:
+  mse_scale_discriminator_fake:
+    _target_: audyn.criterion.base.BaseCriterionWrapper
+    criterion:
+      _target_: audyn.criterion.hifigan.MSELoss
+      target: 0
+      reduction: mean
+    weight: 1
+    key_mapping:
+      estimated:
+        input: scale_fake_prob
+      target:
+  mse_period_discriminator_real:
+    _target_: audyn.criterion.base.BaseCriterionWrapper
+    criterion:
+      _target_: audyn.criterion.hifigan.MSELoss
+      target: 0
+      reduction: mean
+    weight: ${..mse_period_discriminator_fake.weight}
+    key_mapping:
+      estimated:
+        input: period_real_prob
+      target:
+  mse_scale_discriminator_real:
+    _target_: audyn.criterion.base.BaseCriterionWrapper
+    criterion:
+      _target_: audyn.criterion.hifigan.MSELoss
+      target: 0
+      reduction: mean
+    weight: ${..mse_scale_discriminator_fake.weight}
+    key_mapping:
+      estimated:
+        input: scale_real_prob
+      target:

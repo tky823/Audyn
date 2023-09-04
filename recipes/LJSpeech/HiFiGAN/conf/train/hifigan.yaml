@@ -1,0 +1,136 @@
+dataset:
+  train:
+    _target_: audyn.utils.data.dataset.SortableTorchObjectDataset
+    list_path:
+    feature_dir:
+    sort_key: waveform
+  validation:
+    _target_: audyn.utils.data.dataset.TorchObjectDataset
+    list_path:
+    feature_dir:
+
+dataloader:
+  train:
+    _target_: audyn.utils.data.SequentialBatchDataLoader
+    batch_size: 16
+    shuffle: True
+    seed: ${system.seed}
+  validation:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 1
+    shuffle: False
+
+key_mapping:
+  train:
+    generator:
+      input:
+        input: log_melspectrogram_slice
+      output: estimated_waveform_slice
+    discriminator:
+      real:
+        input:
+          input: waveform_slice
+        output:
+          - - period_real_prob
+            - scale_real_prob
+          - - period_real_feature_map
+            - scale_real_feature_map
+      fake:
+        input:
+          input: ${....generator.output}
+        output:
+          - - period_fake_prob
+            - scale_fake_prob
+          - - period_fake_feature_map
+            - scale_fake_feature_map
+  validation: ${.train}
+  inference:
+    generator:
+      input:
+        input: log_melspectrogram
+      output: estimated_waveform
+
+clip_gradient:
+  _target_: torch.nn.utils.clip_grad_norm_
+  max_norm: 10
+
+resume:
+  continue_from:
+
+output:
+  exp_dir: "./exp"
+  tensorboard_dir: "./tensorboard"
+  save_checkpoint:
+    iteration:
+      every: 200000
+      path: ${...exp_dir}/model/iteration{iteration}.pth
+    epoch:
+      every: 1000
+      path: ${...exp_dir}/model/epoch{epoch}.pth
+    last:
+      path: ${...exp_dir}/model/last.pth
+    best_epoch:
+      path: ${...exp_dir}/model/best.pth
+  waveform:
+    iteration:
+      every: 1000
+      sample_size: 1
+      key_mapping:
+        output:
+          estimated_waveform_slice: "Estimated waveform (iteration)"
+        reference:
+          waveform_slice: "Waveform (iteration)"
+      transforms:
+        output:
+        reference:
+    epoch:
+      every: 1
+      sample_size: 1
+      key_mapping:
+        validation:
+          output:
+            estimated_waveform_slice: "Estimated waveform (epoch)"
+          reference:
+            waveform_slice: "Waveform (epoch)"
+        inference:
+          output:
+            estimated_waveform: "Estimated waveform of inference (epoch)"
+          reference:
+            waveform: "Waveform of inference (epoch)"
+      transforms:
+        validation: ${...iteration.transforms}
+        inference: ${...iteration.transforms}
+  audio:
+    iteration:
+      every: 1000
+      sample_size: 1
+      sample_rate: ${data.audio.sample_rate}
+      key_mapping:
+        output:
+          estimated_waveform_slice: "Estimated audio (iteration)"
+        reference:
+          waveform_slice: "Audio (iteration)"
+      transforms: ${...waveform.iteration.transforms}
+    epoch:
+      every: 1
+      sample_size: 1
+      sample_rate: ${data.audio.sample_rate}
+      key_mapping:
+        validation:
+          output:
+            estimated_waveform_slice: "Estimated audio (epoch)"
+          reference:
+            waveform_slice: "Audio (epoch)"
+        inference:
+          output:
+            estimated_waveform: "Estimated audio of inference (epoch)"
+          reference:
+            waveform: "Audio of inference (epoch)"
+      transforms: ${...waveform.epoch.transforms}
+
+steps:
+  epochs: 3100
+  iterations:
+  lr_scheduler:
+    generator: epoch
+    discriminator: epoch
