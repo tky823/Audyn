@@ -13,3 +13,37 @@ class DummyModel(nn.Module):
         output = self.linear(input)
 
         return output
+
+    @torch.no_grad()
+    def inference(self, input: torch.Tensor) -> torch.Tensor:
+        output = self.linear(input)
+
+        return output
+
+
+class DummyAutoregressiveFeatToWave(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.conv1d = nn.Conv1d(1, 1, kernel_size=1)
+
+    def forward(self, waveform: torch.Tensor) -> torch.Tensor:
+        output = self.conv1d(waveform)
+
+        return output
+
+    @torch.no_grad()
+    def inference(self, initial_state: torch.Tensor, max_length: int) -> torch.Tensor:
+        if initial_state.dim() == 2:
+            initial_state = initial_state.unsqueeze(dim=-1)
+
+        state = initial_state
+        output = []
+
+        for _ in range(max_length):
+            state = self.conv1d(state)
+            output.append(state)
+
+        output = torch.stack(output, dim=0)
+
+        return output
