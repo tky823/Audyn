@@ -11,5 +11,5 @@ melspectrogram:
   f_min: 0
   f_max:
   n_mels: 80
-
-vocab_size: ${const:audyn.utils.data.cmudict.vocab_size}
+text:
+  vocab_size: ${const:audyn.utils.data.cmudict.vocab_size}
