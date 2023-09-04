@@ -249,6 +249,10 @@ def test_feat_to_wave_trainer(monkeypatch: MonkeyPatch, use_ema: bool):
     )
     trainer.run()
 
+    monkeypatch.undo()
+
+    shutil.rmtree(temp_dir)
+
 
 def create_dummy_override(
     overrides_conf_dir: str,
