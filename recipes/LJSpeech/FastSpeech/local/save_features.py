@@ -29,16 +29,7 @@ def main(config: DictConfig) -> None:
     assert feature_dir is not None, "Specify preprocess.feature_dir."
     assert symbols_path is not None, "Specify preprocess.symbols_path."
 
-    melspectrogram_transform = aT.MelSpectrogram(
-        sample_rate=config.data.audio.sample_rate,
-        n_fft=config.data.melspectrogram.n_fft,
-        hop_length=config.data.melspectrogram.hop_length,
-        f_min=config.data.melspectrogram.f_min,
-        f_max=config.data.melspectrogram.f_max,
-        n_mels=config.data.melspectrogram.n_mels,
-        center=True,
-        onesided=True,
-    )
+    melspectrogram_transform = aT.MelSpectrogram(**config.data.melspectrogram)
     vocab = torch.load(symbols_path, map_location=lambda storage, loc: storage)
 
     os.makedirs(feature_dir, exist_ok=True)

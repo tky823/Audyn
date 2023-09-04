@@ -21,16 +21,7 @@ def main(config: DictConfig) -> None:
     assert wav_dir is not None, "Specify preprocess.wav_dir."
     assert feature_dir is not None, "Specify preprocess.feature_dir."
 
-    melspectrogram_transform = aT.MelSpectrogram(
-        sample_rate=config.data.audio.sample_rate,
-        n_fft=config.data.melspectrogram.n_fft,
-        hop_length=config.data.melspectrogram.hop_length,
-        f_min=config.data.melspectrogram.f_min,
-        f_max=config.data.melspectrogram.f_max,
-        n_mels=config.data.melspectrogram.n_mels,
-        center=True,
-        onesided=True,
-    )
+    melspectrogram_transform = aT.MelSpectrogram(**config.data.melspectrogram)
     mulaw_encoding = aT.MuLawEncoding(quantization_channels=config.data.quantization_channels)
 
     os.makedirs(feature_dir, exist_ok=True)
