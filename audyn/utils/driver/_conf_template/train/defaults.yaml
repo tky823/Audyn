@@ -15,12 +15,10 @@ dataloader:
     _target_: torch.utils.data.DataLoader
     batch_size:
     shuffle: true
-    seed: ${system.seed}
   validation:
     _target_: torch.utils.data.DataLoader
     batch_size: 1
     shuffle: false
-    seed: ${system.seed}
   
 key_mapping:
   train:
