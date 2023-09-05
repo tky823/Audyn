@@ -164,7 +164,6 @@ def take_log_features(
         dict: Dict-type batch including log-features.
 
     """
-
     if key_mapping is None:
         key_mapping = {}
 
