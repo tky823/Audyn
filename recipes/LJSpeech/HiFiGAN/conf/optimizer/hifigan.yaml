@@ -1,0 +1,12 @@
+generator:
+  _target_: torch.optim.AdamW
+  lr: 2.0e-4
+  betas:
+    - 0.8
+    - 0.99
+discriminator:
+  _target_: torch.optim.AdamW
+  lr: 2.0e-4
+  betas:
+    - 0.8
+    - 0.99

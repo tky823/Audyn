@@ -47,3 +47,30 @@ class DummyAutoregressiveFeatToWave(nn.Module):
         output = torch.stack(output, dim=0)
 
         return output
+
+
+class DummyGenerator(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.conv1d = nn.Conv1d(1, 1, kernel_size=1)
+
+    def forward(self, noise: torch.Tensor) -> torch.Tensor:
+        output = self.conv1d(noise)
+
+        return output
+
+
+class DummyDiscriminator(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.conv1d = nn.Conv1d(1, 1, kernel_size=1)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, waveform: torch.Tensor) -> torch.Tensor:
+        x = self.conv1d(waveform)
+        x = x.mean(dim=(1, 2))
+        output = self.sigmoid(x)
+
+        return output

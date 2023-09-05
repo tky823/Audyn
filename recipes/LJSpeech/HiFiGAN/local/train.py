@@ -1,20 +1,23 @@
 import functools
-from typing import Any, Dict, List
+from typing import Dict, Iterable, List, Optional
 
 import hydra
 import torch
 from omegaconf import DictConfig
 
 import audyn
-from audyn.utils import setup_system
+from audyn.criterion.gan import GANCriterion
+from audyn.models.gan import BaseGAN
+from audyn.optim.lr_scheduler import GANLRScheduler
+from audyn.optim.optimizer import GANOptimizer
+from audyn.utils import instantiate_model, setup_system
 from audyn.utils.data import (
     BaseDataLoaders,
     default_collate_fn,
-    make_noise,
     slice_feautures,
     take_log_features,
 )
-from audyn.utils.driver import FeatToWaveTrainer
+from audyn.utils.driver import GANTrainer
 from audyn.utils.model import set_device
 
 
@@ -32,7 +35,6 @@ def main(config: DictConfig) -> None:
             collate_fn,
             data_config=config.data,
             random_slice=True,
-            std=config.data.noise_std.train,
         ),
     )
     validation_loader = hydra.utils.instantiate(
@@ -42,27 +44,54 @@ def main(config: DictConfig) -> None:
             collate_fn,
             data_config=config.data,
             random_slice=False,
-            std=config.data.noise_std.validation,
         ),
     )
     loaders = BaseDataLoaders(train_loader, validation_loader)
 
-    model = hydra.utils.instantiate(config.model)
-    model = set_device(
-        model,
+    generator = instantiate_model(config.model.generator)
+    generator = set_device(
+        generator,
         accelerator=config.system.accelerator,
         is_distributed=config.system.distributed.enable,
     )
-    optimizer = hydra.utils.instantiate(config.optimizer, model.parameters())
-    lr_scheduler = hydra.utils.instantiate(config.lr_scheduler, optimizer)
-    criterion = hydra.utils.instantiate(config.criterion)
-    criterion = set_device(
-        criterion,
+    generator_optimizer = hydra.utils.instantiate(
+        config.optimizer.generator, generator.parameters()
+    )
+    generator_lr_scheduler = hydra.utils.instantiate(
+        config.lr_scheduler.generator, generator_optimizer
+    )
+    generator_criterion = hydra.utils.instantiate(config.criterion.generator)
+    generator_criterion = set_device(
+        generator_criterion,
         accelerator=config.system.accelerator,
         is_distributed=config.system.distributed.enable,
     )
 
-    trainer = FeatToWaveTrainer(
+    discriminator = instantiate_model(config.model.discriminator)
+    discriminator = set_device(
+        discriminator,
+        accelerator=config.system.accelerator,
+        is_distributed=config.system.distributed.enable,
+    )
+    discriminator_optimizer = hydra.utils.instantiate(
+        config.optimizer.discriminator, discriminator.parameters()
+    )
+    discriminator_lr_scheduler = hydra.utils.instantiate(
+        config.lr_scheduler.discriminator, discriminator_optimizer
+    )
+    discriminator_criterion = hydra.utils.instantiate(config.criterion.discriminator)
+    discriminator_criterion = set_device(
+        discriminator_criterion,
+        accelerator=config.system.accelerator,
+        is_distributed=config.system.distributed.enable,
+    )
+
+    model = BaseGAN(generator, discriminator)
+    optimizer = GANOptimizer(generator_optimizer, discriminator_optimizer)
+    lr_scheduler = GANLRScheduler(generator_lr_scheduler, discriminator_lr_scheduler)
+    criterion = GANCriterion(generator_criterion, discriminator_criterion)
+
+    trainer = GANTrainer(
         loaders,
         model,
         optimizer,
@@ -74,42 +103,44 @@ def main(config: DictConfig) -> None:
 
 
 def collate_fn(
-    batch: List[Any],
+    batch: List[Dict[str, torch.Tensor]],
     data_config: DictConfig,
-    random_slice: bool,
-    std: float = 1,
-) -> Dict[str, Any]:
+    keys: Optional[Iterable[str]] = None,
+    random_slice: bool = True,
+) -> Dict[str, torch.Tensor]:
     """Generate dict-based batch.
 
     Args:
         batch (list): Single batch to be collated.
             Type of each data is expected ``Dict[str, torch.Tensor]``.
         data_config (DictConfig): Config of data.
+        keys (iterable, optional): Keys to generate batch.
+            If ``None`` is given, all keys detected in ``batch`` are used.
+            Default: ``None``.
         random_slice (bool): If ``random_slice=True``, waveform and
             melspectrogram slices are selected at random. Default: ``True``.
-        std (float): Standard deviation of noise.
 
     Returns:
         Dict of batch.
 
     """
-    dict_batch = default_collate_fn(batch)
+    hop_length = data_config.melspectrogram.hop_length
+    slice_length = data_config.audio.slice_length
 
-    batch_size_keys = sorted(list(dict_batch.keys()))
-    batch_size_key = batch_size_keys[0]
-    batch_size = len(dict_batch[batch_size_key])
+    dict_batch = default_collate_fn(batch, keys=keys)
 
     dict_batch["waveform"] = dict_batch["waveform"].unsqueeze(dim=1)
+
     dict_batch = slice_feautures(
         dict_batch,
-        slice_length=data_config.audio.slice_length,
+        slice_length=slice_length,
         key_mapping={
             "waveform": "waveform_slice",
             "melspectrogram": "melspectrogram_slice",
         },
         hop_lengths={
             "waveform": 1,
-            "melspectrogram": data_config.melspectrogram.hop_length,
+            "melspectrogram": hop_length,
         },
         length_mapping={
             "waveform": "waveform_length",
@@ -124,15 +155,6 @@ def collate_fn(
             "melspectrogram_slice": "log_melspectrogram_slice",
         },
     )
-    dict_batch = make_noise(
-        dict_batch,
-        key_mapping={
-            "waveform": "noise",
-        },
-        std=std,
-    )
-
-    dict_batch["zeros"] = torch.zeros((batch_size,), dtype=torch.float)
     dict_batch["max_waveform_slice_length"] = dict_batch["waveform_slice"].size(-1)
 
     return dict_batch

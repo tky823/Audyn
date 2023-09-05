@@ -1,7 +1,6 @@
 audio:
   sample_rate: 22050
-  quantization_channels: 256
-  slice_length: 16000
+  slice_length: 8192
 spectrogram:
   sample_rate: ${..audio.sample_rate}
   n_fft: 1024

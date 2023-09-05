@@ -74,7 +74,7 @@ def collate_fn(batch: List[Any], data_config: DictConfig, random_slice: bool) ->
 
     dict_batch = slice_feautures(
         dict_batch,
-        slice_length=data_config.slice_length,
+        slice_length=data_config.audio.slice_length,
         key_mapping={
             "waveform": "waveform_slice",
             "waveform_mulaw": "waveform_slice_mulaw",

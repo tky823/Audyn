@@ -1,5 +1,5 @@
 _target_: audyn.optim.optimizer.ExponentialMovingAverageWrapper.build_from_optim_class
 optimizer_class:
   _target_: dummy.utils.optim.optimizer.DummyOptimizer
-  _partial_: True
+  _partial_: true
 smooth: 0.999
