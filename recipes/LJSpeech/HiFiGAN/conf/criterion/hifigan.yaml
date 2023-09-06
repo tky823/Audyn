@@ -88,7 +88,7 @@ discriminator:
     _target_: audyn.criterion.base.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.hifigan.MSELoss
-      target: 0
+      target: 1
       reduction: mean
     weight: ${..mse_period_discriminator_fake.weight}
     key_mapping:
@@ -99,7 +99,7 @@ discriminator:
     _target_: audyn.criterion.base.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.hifigan.MSELoss
-      target: 0
+      target: 1
       reduction: mean
     weight: ${..mse_scale_discriminator_fake.weight}
     key_mapping:
