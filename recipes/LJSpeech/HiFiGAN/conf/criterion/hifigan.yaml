@@ -22,7 +22,7 @@ generator:
       estimated:
         input: scale_fake_prob
       target:
-  period_feature_matching:
+  fm_period:
     _target_: audyn.criterion.base.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.hifigan.FeatureMatchingLoss
@@ -32,7 +32,7 @@ generator:
         input: period_fake_feature_map
         target: period_real_feature_map
       target:
-  scale_feature_matching:
+  fm_scale:
     _target_: audyn.criterion.base.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.hifigan.FeatureMatchingLoss
