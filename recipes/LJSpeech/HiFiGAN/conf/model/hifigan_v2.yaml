@@ -1,0 +1,9 @@
+generator:
+  _target_: audyn.models.hifigan.Generator.build_from_default_config
+  variation: v2
+discriminator:
+  _target_: audyn.models.hifigan.Discriminator
+  period_discriminator:
+    _target_: audyn.models.hifigan.MultiPeriodDiscriminator.build_from_default_config
+  scale_discriminator:
+    _target_: audyn.models.hifigan.MultiScaleDiscriminator.build_from_default_config
