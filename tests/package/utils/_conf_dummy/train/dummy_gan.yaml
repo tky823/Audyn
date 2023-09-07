@@ -1,5 +1,5 @@
 defaults:
-  - record: defaults
+  - record: dummy_gan
   - _self_
 
 dataset:
