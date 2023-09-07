@@ -4,6 +4,8 @@ from audyn.modules.duration_predictor import FastSpeechDurationPredictor
 
 
 def test_duration_predictor():
+    torch.manual_seed(0)
+
     batch_size, max_length = 2, 8
     num_features = [4, 2]
     kernel_size = 3
