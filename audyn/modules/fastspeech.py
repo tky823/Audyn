@@ -95,7 +95,9 @@ class FFTrBlock(nn.Module):
 
         if src_key_padding_mask is not None:
             # Since transformation of self.ffn is not position-wise operation,
-            # padding mask is applied to attn_output here.
+            # padding mask might be required to attn_output here.
+            # However, MultiheadAttentionBlock already applies masking,
+            # so you can skip this block.
             if src_key_padding_mask.dim() == 1:
                 padding_mask = src_key_padding_mask.unsqueeze(dim=0)
             elif src_key_padding_mask.dim() == 2:
