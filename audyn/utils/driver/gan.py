@@ -333,8 +333,8 @@ class GANTrainer(BaseTrainer):
                 global_step=self.iteration_idx + 1,
             )
 
-            if hasattr(self.config.train.output, "waveform"):
-                waveform_config = self.config.train.output.waveform.iteration
+            if hasattr(self.config.train.record, "waveform"):
+                waveform_config = self.config.train.record.waveform.iteration
                 global_step = self.iteration_idx + 1
 
                 if waveform_config is not None and global_step % waveform_config.every == 0:
@@ -347,8 +347,8 @@ class GANTrainer(BaseTrainer):
                         global_step=global_step,
                     )
 
-            if hasattr(self.config.train.output, "audio"):
-                audio_config = self.config.train.output.audio.iteration
+            if hasattr(self.config.train.record, "audio"):
+                audio_config = self.config.train.record.audio.iteration
                 global_step = self.iteration_idx + 1
 
                 if audio_config is not None and global_step % audio_config.every == 0:
@@ -362,8 +362,8 @@ class GANTrainer(BaseTrainer):
                         sample_rate=audio_config.sample_rate,
                     )
 
-            if hasattr(self.config.train.output, "image"):
-                image_config = self.config.train.output.image.iteration
+            if hasattr(self.config.train.record, "image"):
+                image_config = self.config.train.record.image.iteration
                 global_step = self.iteration_idx + 1
 
                 if image_config is not None and global_step % image_config.every == 0:
@@ -561,8 +561,8 @@ class GANTrainer(BaseTrainer):
                     + generator_loss[criterion_name].item()
                 )
 
-            if hasattr(self.config.train.output, "waveform") and n_batch < 1:
-                waveform_config = self.config.train.output.waveform.epoch
+            if hasattr(self.config.train.record, "waveform") and n_batch < 1:
+                waveform_config = self.config.train.record.waveform.epoch
                 global_step = self.epoch_idx + 1
 
                 if waveform_config is not None and global_step % waveform_config.every == 0:
@@ -585,8 +585,8 @@ class GANTrainer(BaseTrainer):
                         global_step=global_step,
                     )
 
-            if hasattr(self.config.train.output, "audio") and n_batch < 1:
-                audio_config = self.config.train.output.audio.epoch
+            if hasattr(self.config.train.record, "audio") and n_batch < 1:
+                audio_config = self.config.train.record.audio.epoch
                 global_step = self.epoch_idx + 1
 
                 if audio_config is not None and global_step % audio_config.every == 0:
@@ -610,8 +610,8 @@ class GANTrainer(BaseTrainer):
                         sample_rate=audio_config.sample_rate,
                     )
 
-            if hasattr(self.config.train.output, "image") and n_batch < 1:
-                image_config = self.config.train.output.image.epoch
+            if hasattr(self.config.train.record, "image") and n_batch < 1:
+                image_config = self.config.train.record.image.epoch
                 global_step = self.epoch_idx + 1
 
                 if hasattr(image_config.key_mapping, "validation"):
@@ -679,8 +679,8 @@ class GANTrainer(BaseTrainer):
                 key_mapping=inference_key_mapping,
             )
 
-            if hasattr(self.config.train.output, "waveform") and n_batch < 1:
-                waveform_config = self.config.train.output.waveform.epoch
+            if hasattr(self.config.train.record, "waveform") and n_batch < 1:
+                waveform_config = self.config.train.record.waveform.epoch
                 global_step = self.epoch_idx + 1
 
                 if waveform_config is not None and global_step % waveform_config.every == 0:
@@ -707,8 +707,8 @@ class GANTrainer(BaseTrainer):
                         global_step=global_step,
                     )
 
-            if hasattr(self.config.train.output, "audio") and n_batch < 1:
-                audio_config = self.config.train.output.audio.epoch
+            if hasattr(self.config.train.record, "audio") and n_batch < 1:
+                audio_config = self.config.train.record.audio.epoch
                 global_step = self.epoch_idx + 1
 
                 if audio_config is not None and global_step % audio_config.every == 0:
@@ -736,8 +736,8 @@ class GANTrainer(BaseTrainer):
                         sample_rate=audio_config.sample_rate,
                     )
 
-            if hasattr(self.config.train.output, "image") and n_batch < 1:
-                image_config = self.config.train.output.image.epoch
+            if hasattr(self.config.train.record, "image") and n_batch < 1:
+                image_config = self.config.train.record.image.epoch
                 global_step = self.epoch_idx + 1
 
                 if hasattr(image_config.key_mapping, "inference"):

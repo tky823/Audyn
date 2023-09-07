@@ -17,6 +17,6 @@ class MSELoss(nn.Module):
         elif self.reduction == "sum":
             loss = loss.sum()
         elif self.reduction != "none":
-            raise ValueError("Invalid redution.")
+            raise ValueError("Invalid reduction.")
 
         return loss
