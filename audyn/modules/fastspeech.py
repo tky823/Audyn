@@ -188,7 +188,7 @@ class ConvBlock(nn.Module):
                     f"padding_mask is expected to be 1 or 2D, but {padding_mask.dim()}D is given."
                 )
 
-        x = self._masked_fill(input, padding_mask=padding_mask)
+        x = self._apply_mask(input, padding_mask=padding_mask)
         residual = x
 
         padding_left = (k1 - 1) // 2
@@ -196,7 +196,7 @@ class ConvBlock(nn.Module):
         x = F.pad(x, (padding_left, padding_right))
 
         x = self.conv1d_1(x)
-        x = self._masked_fill(x, padding_mask=padding_mask)
+        x = self._apply_mask(x, padding_mask=padding_mask)
         x = self.activation(x)
 
         padding_left = (k2 - 1) // 2
@@ -204,18 +204,18 @@ class ConvBlock(nn.Module):
         x = F.pad(x, (padding_left, padding_right))
 
         x = self.conv1d_2(x)
-        x = self._masked_fill(x, padding_mask=padding_mask)
+        x = self._apply_mask(x, padding_mask=padding_mask)
         x = self.dropout(x)
         x = x + residual
         x = x.permute(0, 2, 1)
         x = self.layer_norm(x)
         x = x.permute(0, 2, 1)
-        output = self._masked_fill(x, padding_mask=padding_mask)
+        output = self._apply_mask(x, padding_mask=padding_mask)
 
         return output
 
     @staticmethod
-    def _masked_fill(
+    def _apply_mask(
         input: torch.Tensor, padding_mask: Optional[torch.BoolTensor] = None
     ) -> torch.Tensor:
         if padding_mask is None:
