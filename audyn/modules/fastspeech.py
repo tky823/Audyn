@@ -188,17 +188,15 @@ class ConvBlock(nn.Module):
                     f"padding_mask is expected to be 1 or 2D, but {padding_mask.dim()}D is given."
                 )
 
-        residual = input
+        x = self._masked_fill(input, padding_mask=padding_mask)
+        residual = x
 
         padding_left = (k1 - 1) // 2
         padding_right = k1 - 1 - padding_left
-        x = F.pad(input, (padding_left, padding_right))
+        x = F.pad(x, (padding_left, padding_right))
 
         x = self.conv1d_1(x)
-
-        if padding_mask is not None:
-            x = x.masked_fill(padding_mask, 0)
-
+        x = self._masked_fill(x, padding_mask=padding_mask)
         x = self.activation(x)
 
         padding_left = (k2 - 1) // 2
@@ -206,15 +204,24 @@ class ConvBlock(nn.Module):
         x = F.pad(x, (padding_left, padding_right))
 
         x = self.conv1d_2(x)
-
-        if padding_mask is not None:
-            x = x.masked_fill(padding_mask, 0)
-
+        x = self._masked_fill(x, padding_mask=padding_mask)
         x = self.dropout(x)
         x = x + residual
         x = x.permute(0, 2, 1)
         x = self.layer_norm(x)
-        output = x.permute(0, 2, 1)
+        x = x.permute(0, 2, 1)
+        output = self._masked_fill(x, padding_mask=padding_mask)
+
+        return output
+
+    @staticmethod
+    def _masked_fill(
+        input: torch.Tensor, padding_mask: Optional[torch.BoolTensor] = None
+    ) -> torch.Tensor:
+        if padding_mask is None:
+            output = input
+        else:
+            output = input.masked_fill(padding_mask, 0)
 
         return output
 
@@ -257,6 +264,8 @@ class MultiheadAttentionBlock(nn.Module):
         self.layer_norm = nn.LayerNorm(embed_dim)
         self.dropout = nn.Dropout(dropout)
 
+        self.batch_first = batch_first
+
     def forward(
         self,
         src: torch.Tensor,
@@ -288,12 +297,33 @@ class MultiheadAttentionBlock(nn.Module):
                 (batch_size, num_heads, src_length, src_length).
 
         """
-        residual = src
+        batch_first = self.batch_first
+
+        if key_padding_mask is None:
+            x = src
+            padding_mask = None
+        else:
+            if key_padding_mask.dim() == 1:
+                padding_mask = key_padding_mask.unsqueeze(dim=0)
+            elif key_padding_mask.dim() == 2:
+                padding_mask = key_padding_mask
+            else:
+                raise ValueError(
+                    "Only 1D or 2D key_padding_mask is supported, "
+                    f"but given {key_padding_mask.dim()}D mask."
+                )
+
+            if not batch_first:
+                padding_mask = padding_mask.permute(1, 0)
+
+            x = src.masked_fill(padding_mask.unsqueeze(dim=-1), 0)
+
+        residual = x
 
         attn_output, attn_weights = self.mha(
-            src,
-            src,
-            src,
+            x,
+            x,
+            x,
             key_padding_mask=key_padding_mask,
             need_weights=True,
             attn_mask=attn_mask,
@@ -301,7 +331,12 @@ class MultiheadAttentionBlock(nn.Module):
         )
 
         x = self.dropout(attn_output)
-        output = self.layer_norm(x + residual)
+        x = self.layer_norm(x + residual)
+
+        if padding_mask is None:
+            output = x
+        else:
+            output = x.masked_fill(padding_mask.unsqueeze(dim=-1), 0)
 
         if need_weights:
             return output, attn_weights
