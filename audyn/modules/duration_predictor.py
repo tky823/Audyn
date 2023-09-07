@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 import torch
 import torch.nn as nn
@@ -99,8 +99,8 @@ class ConvBlock(nn.Module):
         self.conv1d = nn.Conv1d(
             in_channels, out_channels, kernel_size=kernel_size, stride=1, bias=False
         )
-        self.norm1d = nn.LayerNorm(out_channels)
         self.activation1d = nn.ReLU()
+        self.norm1d = nn.LayerNorm(out_channels)
         self.dropout1d = nn.Dropout(p=dropout)
 
         self.kernel_size = kernel_size
@@ -121,20 +121,38 @@ class ConvBlock(nn.Module):
 
         padding_left = (kernel_size - 1) // 2
         padding_right = kernel_size - 1 - padding_left
-        x = F.pad(input, (padding_left, padding_right))
+
+        x = self._masked_fill(input, padding_mask=padding_mask)
+        x = F.pad(x, (padding_left, padding_right))
         x = self.conv1d(x)
-
-        if padding_mask is not None:
-            x = x.masked_fill(padding_mask.unsqueeze(dim=-2), 0)
-
+        x = self._masked_fill(x, padding_mask=padding_mask)
+        x = self.activation1d(x)
+        x = self._masked_fill(x, padding_mask=padding_mask)
         x = x.permute(0, 2, 1)
         x = self.norm1d(x)
+        x = x.permute(0, 2, 1)
+        x = self._masked_fill(x, padding_mask=padding_mask)
+        output = self.dropout1d(x)
 
-        if padding_mask is not None:
-            x = x.masked_fill(padding_mask.unsqueeze(dim=-1), 0)
+        return output
 
-        x = self.activation1d(x)
-        x = self.dropout1d(x)
-        output = x.permute(0, 2, 1)
+    @staticmethod
+    def _masked_fill(
+        input: torch.Tensor, padding_mask: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
+        """Apply padding mask if given.
+
+        Args:
+            input (torch.Tensor): Tensor of shape (batch_size, num_features, length).
+            padding_mask (torch.BoolTensor): Padding mask of shape (batch_size, length).
+
+        Returns:
+            torch.Tensor: Output tensor of same shape as input.
+
+        """
+        if padding_mask is None:
+            output = input
+        else:
+            output = input.masked_fill(padding_mask.unsqueeze(dim=-2), 0)
 
         return output
