@@ -318,7 +318,7 @@ class MultiheadAttentionBlock(nn.Module):
             if not batch_first:
                 padding_mask = padding_mask.permute(1, 0)
 
-            x = src.masked_fill(padding_mask.unsqueeze(dim=-1), 0)
+        x = self._apply_mask(src, padding_mask=padding_mask)
 
         residual = x
 
@@ -331,16 +331,23 @@ class MultiheadAttentionBlock(nn.Module):
             attn_mask=attn_mask,
             average_attn_weights=average_attn_weights,
         )
-
+        attn_output = self._apply_mask(attn_output, padding_mask=padding_mask)
         x = self.dropout(attn_output)
         x = self.layer_norm(x + residual)
-
-        if padding_mask is None:
-            output = x
-        else:
-            output = x.masked_fill(padding_mask.unsqueeze(dim=-1), 0)
+        output = self._apply_mask(x, padding_mask=padding_mask)
 
         if need_weights:
             return output, attn_weights
+
+        return output
+
+    @staticmethod
+    def _apply_mask(
+        input: torch.Tensor, padding_mask: Optional[torch.BoolTensor] = None
+    ) -> torch.Tensor:
+        if padding_mask is None:
+            output = input
+        else:
+            output = input.masked_fill(padding_mask.unsqueeze(dim=-1), 0)
 
         return output
