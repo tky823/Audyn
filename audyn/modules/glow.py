@@ -181,33 +181,55 @@ class ActNorm1d(BaseFlow):
 
         self.is_initialized = True
 
+    def _forward(
+        self,
+        input: torch.Tensor,
+        logdet: Optional[torch.Tensor] = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        length = input.size(-1)
+
+        std = torch.exp(self.log_std)
+        std = std.unsqueeze(dim=-1)
+        mean = self.mean.unsqueeze(dim=-1)
+        output = (input - mean) / std
+
+        if logdet is not None:
+            logdet = logdet - length * self.log_std.sum()
+
+        return output, logdet
+
+    def _reverse(
+        self,
+        input: torch.Tensor,
+        logdet: Optional[torch.Tensor] = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        length = input.size(-1)
+
+        std = torch.exp(self.log_std)
+        std = std.unsqueeze(dim=-1)
+        mean = self.mean.unsqueeze(dim=-1)
+        output = input * std + mean
+
+        if logdet is not None:
+            logdet = logdet + length * self.log_std.sum()
+
+        return output, logdet
+
     def forward(
         self,
         input: torch.Tensor,
         logdet: Optional[torch.Tensor] = None,
         reverse: bool = False,
     ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
-        length = input.size(-1)
-
         if self.training and not self.is_initialized:
             self._initialize_parameters(input)
 
         logdet = self.initialize_logdet_if_necessary(logdet, device=input.device)
 
-        std = torch.exp(self.log_std)
-        std = std.unsqueeze(dim=-1)
-        mean = self.mean.unsqueeze(dim=-1)
-
         if reverse:
-            output = input * std + mean
+            output, logdet = self._reverse(input, logdet=logdet)
         else:
-            output = (input - mean) / std
-
-        if logdet is not None:
-            if reverse:
-                logdet = logdet + length * self.log_std.sum()
-            else:
-                logdet = logdet - length * self.log_std.sum()
+            output, logdet = self._forward(input, logdet=logdet)
 
         if logdet is None:
             return output
