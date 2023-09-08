@@ -127,7 +127,6 @@ class ConvBlock(nn.Module):
         x = self.conv1d(x)
         x = self._masked_fill(x, padding_mask=padding_mask)
         x = self.activation1d(x)
-        x = self._masked_fill(x, padding_mask=padding_mask)
         x = x.permute(0, 2, 1)
         x = self.norm1d(x)
         x = x.permute(0, 2, 1)
