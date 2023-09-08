@@ -166,31 +166,27 @@ class ActNorm1d(BaseFlow):
 
         self._reset_parameters()
 
-    def state_dict(self, *args, **kwargs) -> Dict[str, Any]:
-        state_dict: OrderedDict = super().state_dict()
-        state_dict["is_initialized"] = self.is_initialized
-
-        return state_dict
-
-    def load_state_dict(self, state_dict: Mapping[str, Any], strict: bool = True):
-        is_initialized = state_dict["is_initialized"]
-        self.is_initialized = is_initialized
-
-        del state_dict["is_initialized"]
-
-        return super().load_state_dict(state_dict, strict)
-
     def _reset_parameters(self) -> None:
         nn.init.zeros_(self.log_std.data)
         nn.init.zeros_(self.mean.data)
         self.is_initialized = False
+
+    def _initialize_parameters(self, input: torch.Tensor) -> None:
+        std, mean = torch.std_mean(input, dim=(0, 2), unbiased=False)
+        mean = mean.detach()
+        log_std = 1 / std.detach()
+
+        self.log_std.data.copy_(log_std)
+        self.mean.data.copy_(mean)
+
+        self.is_initialized = True
 
     def forward(
         self,
         input: torch.Tensor,
         logdet: Optional[torch.Tensor] = None,
         reverse: bool = False,
-    ) -> Union[torch.Tensor, Tuple[torch.Tensor], torch.Tensor]:
+    ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         length = input.size(-1)
 
         if self.training and not self.is_initialized:
@@ -218,12 +214,16 @@ class ActNorm1d(BaseFlow):
         else:
             return output, logdet
 
-    def _initialize_parameters(self, input: torch.Tensor) -> torch.Tensor:
-        std, mean = torch.std_mean(input, dim=(0, 2), unbiased=False)
-        mean = mean.detach()
-        log_std = 1 / std.detach()
+    def state_dict(self, *args, **kwargs) -> Dict[str, Any]:
+        state_dict: OrderedDict = super().state_dict()
+        state_dict["is_initialized"] = self.is_initialized
 
-        self.log_std.data.copy_(log_std)
-        self.mean.data.copy_(mean)
+        return state_dict
 
-        self.is_initialized = True
+    def load_state_dict(self, state_dict: Mapping[str, Any], strict: bool = True):
+        is_initialized = state_dict["is_initialized"]
+        self.is_initialized = is_initialized
+
+        del state_dict["is_initialized"]
+
+        return super().load_state_dict(state_dict, strict)
