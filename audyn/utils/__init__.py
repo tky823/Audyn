@@ -29,8 +29,8 @@ def setup_system(config: DictConfig) -> None:
     if accelerator == "gpu":
         from torch.backends import cudnn
 
-        cudnn.benchmark = True
-        cudnn.deterministic = False
+        cudnn.benchmark = system_config.cudnn.benchmark
+        cudnn.deterministic = system_config.cudnn.deterministic
 
     if is_distributed(system_config):
         setup_distributed(system_config)
