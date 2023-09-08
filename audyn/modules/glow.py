@@ -1,4 +1,5 @@
-from typing import Optional, Tuple, Union
+from collections import OrderedDict
+from typing import Any, Dict, Mapping, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -6,7 +7,11 @@ import torch.nn.functional as F
 
 from .flow import BaseFlow
 
-__all__ = ["InvertiblePointwiseConv1d", "InvertiblePointwiseConv2d"]
+__all__ = [
+    "InvertiblePointwiseConv1d",
+    "InvertiblePointwiseConv2d",
+    "ActNorm1d",
+]
 
 
 class InvertiblePointwiseConv1d(BaseFlow):
@@ -140,3 +145,85 @@ class InvertiblePointwiseConv2d(BaseFlow):
             return output
         else:
             return output, logdet
+
+
+class ActNorm1d(BaseFlow):
+    def __init__(
+        self,
+        num_features: int,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
+    ) -> None:
+        factory_kwargs = {
+            "device": device,
+            "dtype": dtype,
+        }
+
+        super().__init__()
+
+        self.log_std = nn.Parameter(torch.empty((num_features,), **factory_kwargs))
+        self.mean = nn.Parameter(torch.empty((num_features,), **factory_kwargs))
+
+        self._reset_parameters()
+
+    def state_dict(self, *args, **kwargs) -> Dict[str, Any]:
+        state_dict: OrderedDict = super().state_dict()
+        state_dict["is_initialized"] = self.is_initialized
+
+        return state_dict
+
+    def load_state_dict(self, state_dict: Mapping[str, Any], strict: bool = True):
+        is_initialized = state_dict["is_initialized"]
+        self.is_initialized = is_initialized
+
+        del state_dict["is_initialized"]
+
+        return super().load_state_dict(state_dict, strict)
+
+    def _reset_parameters(self) -> None:
+        nn.init.zeros_(self.log_std.data)
+        nn.init.zeros_(self.mean.data)
+        self.is_initialized = False
+
+    def forward(
+        self,
+        input: torch.Tensor,
+        logdet: Optional[torch.Tensor] = None,
+        reverse: bool = False,
+    ) -> Union[torch.Tensor, Tuple[torch.Tensor], torch.Tensor]:
+        length = input.size(-1)
+
+        if self.training and not self.is_initialized:
+            self._initialize_parameters(input)
+
+        logdet = self.initialize_logdet_if_necessary(logdet, device=input.device)
+
+        std = torch.exp(self.log_std)
+        std = std.unsqueeze(dim=-1)
+        mean = self.mean.unsqueeze(dim=-1)
+
+        if reverse:
+            output = input * std + mean
+        else:
+            output = (input - mean) / std
+
+        if logdet is not None:
+            if reverse:
+                logdet = logdet + length * self.log_std.sum()
+            else:
+                logdet = logdet - length * self.log_std.sum()
+
+        if logdet is None:
+            return output
+        else:
+            return output, logdet
+
+    def _initialize_parameters(self, input: torch.Tensor) -> torch.Tensor:
+        std, mean = torch.std_mean(input, dim=(0, 2), unbiased=False)
+        mean = mean.detach()
+        log_std = 1 / std.detach()
+
+        self.log_std.data.copy_(log_std)
+        self.mean.data.copy_(mean)
+
+        self.is_initialized = True
