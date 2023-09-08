@@ -174,7 +174,7 @@ class ActNorm1d(BaseFlow):
     def _initialize_parameters(self, input: torch.Tensor) -> None:
         std, mean = torch.std_mean(input, dim=(0, 2), unbiased=False)
         mean = mean.detach()
-        log_std = 1 / std.detach()
+        log_std = torch.log(std.detach())
 
         self.log_std.data.copy_(log_std)
         self.mean.data.copy_(mean)
