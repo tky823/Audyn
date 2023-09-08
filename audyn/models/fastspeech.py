@@ -278,15 +278,16 @@ class Encoder(nn.Module):
                 **self.required_kwargs,
             )
 
+        if src_key_padding_mask is not None:
+            x = self.apply_mask(x, src_key_padding_mask=src_key_padding_mask)
+
         if self.norm is not None:
             x = self.norm(x)
 
-            if src_key_padding_mask is not None:
-                output = x
-            else:
-                output = self.apply_mask(x, src_key_padding_mask=src_key_padding_mask)
-        else:
+        if src_key_padding_mask is None:
             output = x
+        else:
+            output = self.apply_mask(x, src_key_padding_mask=src_key_padding_mask)
 
         return output
 
@@ -377,11 +378,14 @@ class Decoder(nn.Module):
                 **self.required_kwargs,
             )
 
+        if tgt_key_padding_mask is not None:
+            x = self.apply_mask(x, tgt_key_padding_mask=tgt_key_padding_mask)
+
         if self.norm is not None:
             x = self.norm(x)
 
-            if tgt_key_padding_mask is not None:
-                x = self.apply_mask(x, tgt_key_padding_mask=tgt_key_padding_mask)
+        if tgt_key_padding_mask is not None:
+            x = self.apply_mask(x, tgt_key_padding_mask=tgt_key_padding_mask)
 
         x = self.fc_layer(x)
 
