@@ -1,8 +1,9 @@
 import os
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Union
 
 import torch
 import torch.nn as nn
+from omegaconf import DictConfig
 from torch.utils.data import DataLoader
 
 from .dataloader import (
@@ -38,13 +39,36 @@ class BaseDataLoaders:
         self.validation = validation_loader
 
 
-def select_device(accelerator: Optional[str], is_distributed: bool = False) -> str:
-    """Select device by accelerator."""
+def select_accelerator(config_or_accelerator: Union[DictConfig, Optional[str]]) -> str:
+    """Select accelerator from system config or accelerator string.
+
+    Args:
+        config_or_accelerator (DictConfig or str): If ``DictConfig`` is given,
+            check ``accelerator`` attribute. If ``None`` is given,
+            select ``cuda`` or ``cpu`` automatically dependeing on environment.
+
+    Returns:
+        str: String representing accelerator.
+
+    """
+    if isinstance(config_or_accelerator, DictConfig):
+        system_config = config_or_accelerator
+        accelerator = system_config.accelerator
+    else:
+        accelerator = config_or_accelerator
+
     if accelerator is None:
         if torch.cuda.is_available():
             accelerator = "cuda"
         else:
             accelerator = "cpu"
+
+    return accelerator
+
+
+def select_device(accelerator: Optional[str], is_distributed: bool = False) -> str:
+    """Select device by accelerator."""
+    accelerator = select_accelerator(accelerator)
 
     if accelerator in ["cuda", "gpu"] and is_distributed:
         device = int(os.environ["LOCAL_RANK"])
