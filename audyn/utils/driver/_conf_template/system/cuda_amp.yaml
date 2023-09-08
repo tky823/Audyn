@@ -3,6 +3,9 @@ distributed:
   enable:
   backend:
   init_method:
+cudnn:
+  benchmark: true
+  deterministic: false
 amp:
   enable: true
 accelerator: cuda
