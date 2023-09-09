@@ -1,7 +1,14 @@
 import torch
+import torch.nn as nn
 
 from audyn.modules.glow import ActNorm1d, InvertiblePointwiseConv1d
-from audyn.modules.glowtts import MaskedActNorm1d, MaskedInvertiblePointwiseConv1d
+from audyn.modules.glowtts import (
+    MaskedActNorm1d,
+    MaskedInvertiblePointwiseConv1d,
+    MaskedStackedResidualConvBlock1d,
+    MaskedWaveNetAffineCoupling,
+)
+from audyn.modules.waveglow import WaveNetAffineCoupling
 
 
 def test_masked_act_norm1d() -> None:
@@ -240,3 +247,135 @@ def test_masked_invertible_pointwise_conv1d() -> None:
     assert torch.allclose(masked_z, non_masked_z)
     assert torch.allclose(masked_output, non_masked_output)
     assert torch.allclose(masked_logdet, non_masked_logdet)
+
+
+def test_masked_wavenet_affine_coupling() -> None:
+    torch.manual_seed(0)
+
+    batch_size, max_length = 2, 16
+    coupling_channels, hidden_channels = 4, 6
+    num_layers = 3
+
+    # w/ 2D padding mask
+    model = MaskedWaveNetAffineCoupling(
+        coupling_channels,
+        hidden_channels,
+        num_layers=num_layers,
+    )
+
+    nn.init.normal_(model.coupling.bottleneck_conv1d_out.weight.data)
+    nn.init.normal_(model.coupling.bottleneck_conv1d_out.bias.data)
+
+    length = torch.randint(1, max_length + 1, (batch_size,), dtype=torch.long)
+    max_length = torch.max(length)
+    input = torch.randn((batch_size, 2 * coupling_channels, max_length))
+    padding_mask = torch.arange(max_length) >= length.unsqueeze(dim=-1)
+
+    input = input.masked_fill(padding_mask.unsqueeze(dim=1), 0)
+    z = model(input, padding_mask=padding_mask)
+    output = model(z, padding_mask=padding_mask, reverse=True)
+
+    assert output.size() == input.size()
+    assert z.size() == input.size()
+    assert torch.allclose(output, input, atol=1e-6)
+
+    zeros = torch.zeros((batch_size,))
+
+    z, z_logdet = model(
+        input,
+        padding_mask=padding_mask,
+        logdet=zeros,
+    )
+    output, logdet = model(
+        z,
+        padding_mask=padding_mask,
+        logdet=z_logdet,
+        reverse=True,
+    )
+
+    assert output.size() == input.size()
+    assert logdet.size() == (batch_size,)
+    assert z.size() == input.size()
+    assert z_logdet.size() == (batch_size,)
+    assert torch.allclose(output, input, atol=1e-6)
+    assert torch.allclose(logdet, zeros)
+
+    # w/o padding mask
+    masked_model = MaskedWaveNetAffineCoupling(
+        coupling_channels,
+        hidden_channels,
+        num_layers=num_layers,
+    )
+    non_masked_model = WaveNetAffineCoupling(
+        coupling_channels,
+        hidden_channels,
+        num_layers=num_layers,
+    )
+
+    nn.init.normal_(masked_model.coupling.bottleneck_conv1d_out.weight.data)
+    nn.init.normal_(masked_model.coupling.bottleneck_conv1d_out.bias.data)
+
+    for p_masked, p_non_mased in zip(masked_model.parameters(), non_masked_model.parameters()):
+        p_non_mased.data.copy_(p_masked.data.detach())
+
+    input = torch.randn(batch_size, 2 * coupling_channels, max_length)
+
+    masked_z = masked_model(input)
+    masked_output = masked_model(masked_z, reverse=True)
+    non_masked_z = non_masked_model(input)
+    non_masked_output = non_masked_model(non_masked_z, reverse=True)
+
+    assert torch.allclose(masked_z, non_masked_z)
+    assert torch.allclose(masked_output, non_masked_output)
+
+    zeros = torch.zeros((batch_size,))
+
+    masked_z, masked_z_logdet = masked_model(
+        input,
+        logdet=zeros,
+    )
+    masked_output, masked_logdet = masked_model(
+        masked_z,
+        logdet=masked_z_logdet,
+        reverse=True,
+    )
+    non_masked_z, non_masked_z_logdet = non_masked_model(
+        input,
+        logdet=zeros,
+    )
+    non_masked_output, non_masked_logdet = non_masked_model(
+        non_masked_z,
+        logdet=non_masked_z_logdet,
+        reverse=True,
+    )
+
+    assert torch.allclose(masked_z, non_masked_z)
+    assert torch.allclose(masked_output, non_masked_output)
+    assert torch.allclose(masked_logdet, non_masked_logdet)
+
+
+def test_stacked_residual_conv_block():
+    torch.manual_seed(0)
+
+    batch_size, max_length = 2, 16
+    in_channels, hidden_channels = 4, 6
+    num_layers = 3
+
+    length = torch.randint(1, max_length + 1, (batch_size,), dtype=torch.long)
+    max_length = torch.max(length).item()
+    input = torch.randn((batch_size, in_channels, max_length))
+    padding_mask = torch.arange(max_length) >= length.unsqueeze(dim=-1)
+
+    model = MaskedStackedResidualConvBlock1d(
+        in_channels,
+        hidden_channels,
+        num_layers=num_layers,
+    )
+    nn.init.normal_(model.bottleneck_conv1d_out.weight.data)
+    nn.init.normal_(model.bottleneck_conv1d_out.bias.data)
+
+    input = input.masked_fill(padding_mask.unsqueeze(dim=1), 0)
+    log_s, t = model(input, padding_mask=padding_mask)
+
+    assert log_s.size() == (batch_size, in_channels, max_length)
+    assert t.size() == (batch_size, in_channels, max_length)
