@@ -200,7 +200,9 @@ class MaskedInvertiblePointwiseConv1d(InvertiblePointwiseConv1d):
             num_frames = input.size(-1)
         else:
             if padding_mask.dim() != 2:
-                raise ValueError
+                raise ValueError(
+                    f"Only 2D mask is supported, but {padding_mask.dim()}D mask is given."
+                )
 
             non_padding_mask = torch.logical_not(padding_mask)
             num_frames = non_padding_mask.sum(dim=-1)
