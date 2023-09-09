@@ -237,7 +237,7 @@ class ActNorm1d(BaseFlow):
             return output, logdet
 
     def state_dict(self, *args, **kwargs) -> Dict[str, Any]:
-        state_dict: OrderedDict = super().state_dict()
+        state_dict: OrderedDict = super().state_dict(*args, **kwargs)
         state_dict["is_initialized"] = self.is_initialized
 
         return state_dict
@@ -248,4 +248,4 @@ class ActNorm1d(BaseFlow):
 
         del state_dict["is_initialized"]
 
-        return super().load_state_dict(state_dict, strict)
+        return super().load_state_dict(state_dict, strict=strict)
