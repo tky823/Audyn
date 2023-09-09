@@ -90,10 +90,13 @@ def test_act_norm1d() -> None:
 
     z = model(input)
     output = model(z, reverse=True)
+    std, mean = torch.std_mean(z, dim=(0, 2), unbiased=False)
 
     assert output.size() == input.size()
     assert z.size() == input.size()
     assert torch.allclose(output, input)
+    assert torch.allclose(mean, torch.zeros(()), atol=1e-7)
+    assert torch.allclose(std, torch.ones(()), atol=1e-7)
 
     zeros = torch.zeros((batch_size,))
 
