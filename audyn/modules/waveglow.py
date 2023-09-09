@@ -4,8 +4,8 @@ from typing import Optional, Tuple, Union
 import torch
 import torch.nn as nn
 
-from ..models.wavenet import ResidualConvBlock1d
 from .flow import AffineCoupling
+from .wavenet import ResidualConvBlock1d
 
 
 class WaveNetAffineCoupling(AffineCoupling):
