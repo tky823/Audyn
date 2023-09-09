@@ -1,10 +1,11 @@
 from typing import Optional, Tuple, Union
 
 import torch
+import torch.nn.functional as F
 
-from .glow import ActNorm1d
+from .glow import ActNorm1d, InvertiblePointwiseConv1d
 
-__all__ = ["MaskedActNorm1d"]
+__all__ = ["MaskedActNorm1d", "MaskedInvertiblePointwiseConv1d"]
 
 
 class MaskedActNorm1d(ActNorm1d):
@@ -150,6 +151,72 @@ class MaskedActNorm1d(ActNorm1d):
                 padding_mask=padding_mask,
                 logdet=logdet,
             )
+
+        if logdet is None:
+            return output
+        else:
+            return output, logdet
+
+
+class MaskedInvertiblePointwiseConv1d(InvertiblePointwiseConv1d):
+    """InvertiblePointwiseConv1d with padding mask.
+
+    This module takes variable-length input.
+    """
+
+    def forward(
+        self,
+        input: torch.Tensor,
+        padding_mask: Optional[torch.BoolTensor] = None,
+        logdet: Optional[torch.Tensor] = None,
+        reverse: bool = False,
+    ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+        """Forward pass of MaskedInvertiblePointwiseConv1d.
+
+        Args:
+            input (torch.Tensor): Tensor of shape (batch_size, num_features, length).
+            padding_mask (torch.BoolTensor): Padding mask of shape (batch_size, length).
+                3D mask is not supported.
+
+        Returns:
+            torch.Tensor: Transformed tensor of same shape as input.
+
+        .. note::
+
+            To handle 3D padding mask properly, we need to refine formulation.
+
+        """
+        weight = self.weight
+
+        logdet = self.initialize_logdet_if_necessary(logdet, device=input.device)
+
+        if logdet is None:
+            logabsdet = None
+        else:
+            _, logabsdet = torch.linalg.slogdet(weight.squeeze(dim=-1))
+
+        # num_frames: () or (batch_size,)
+        if padding_mask is None:
+            num_frames = input.size(-1)
+        else:
+            if padding_mask.dim() != 2:
+                raise ValueError
+
+            non_padding_mask = torch.logical_not(padding_mask)
+            num_frames = non_padding_mask.sum(dim=-1)
+
+        if reverse:
+            # use Gaussian elimination for numerical stability
+            w = weight.squeeze(dim=-1)
+            output = torch.linalg.solve(w, input)
+
+            if logdet is not None:
+                logdet = logdet - num_frames * logabsdet
+        else:
+            output = F.conv1d(input, weight, stride=1, dilation=1, groups=1)
+
+            if logdet is not None:
+                logdet = logdet + num_frames * logabsdet
 
         if logdet is None:
             return output
