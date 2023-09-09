@@ -127,7 +127,6 @@ class WaveGlow(BaseFlow):
             )
 
         h_global = global_conditioning
-        output = []
 
         if reverse:
             output = self._inference(
@@ -282,8 +281,6 @@ class WaveGlow(BaseFlow):
         x_input = input
         h_local = local_conditioning
         h_global = global_conditioning
-
-        output = []
 
         for flow_idx in range(num_flows - 1, -1, -1):
             if flow_idx == num_flows - 1:
