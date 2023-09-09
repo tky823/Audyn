@@ -21,7 +21,7 @@ class MaskedActNorm1d(ActNorm1d):
         if padding_mask is None:
             super()._initialize_parameters(input)
         else:
-            expanded_padding_mask = self._expand_padding_mask(input, padding_mask)
+            expanded_padding_mask = self._expand_padding_mask(padding_mask, input)
             expanded_non_padding_mask = torch.logical_not(expanded_padding_mask)
             num_elements = expanded_non_padding_mask.sum(dim=(0, 2))
             masked_input = input.masked_fill(expanded_padding_mask, 0)
@@ -45,7 +45,7 @@ class MaskedActNorm1d(ActNorm1d):
         if padding_mask is None:
             output, logdet = super()._forward(input, logdet=logdet)
         else:
-            expanded_padding_mask = self._expand_padding_mask(input, padding_mask)
+            expanded_padding_mask = self._expand_padding_mask(padding_mask, input)
             expanded_non_padding_mask = torch.logical_not(expanded_padding_mask)
             # count elements per batch dimension
             num_elements = expanded_non_padding_mask.sum(dim=(1, 2))
@@ -72,7 +72,7 @@ class MaskedActNorm1d(ActNorm1d):
         if padding_mask is None:
             output, logdet = super()._reverse(input, logdet=logdet)
         else:
-            expanded_padding_mask = self._expand_padding_mask(input, padding_mask)
+            expanded_padding_mask = self._expand_padding_mask(padding_mask, input)
             expanded_non_padding_mask = torch.logical_not(expanded_padding_mask)
             # count elements per batch dimension
             num_elements = expanded_non_padding_mask.sum(dim=(1, 2))
@@ -92,15 +92,15 @@ class MaskedActNorm1d(ActNorm1d):
 
     @staticmethod
     def _expand_padding_mask(
-        input: torch.Tensor,
         padding_mask: torch.BoolTensor,
+        other: torch.Tensor,
     ) -> torch.BoolTensor:
         """Expand padding mask.
 
         Args:
-            input (torch.Tensor): Tensor of shape (batch_size, num_features, length).
             padding_mask (torch.BoolTensor): Padding mask of shape
                 (batch_size, length) or (batch_size, num_features, length).
+            other (torch.Tensor): Tensor of shape (batch_size, num_features, length).
 
         Returns:
             torch.BoolTensor: Expanded padding mask of shape (batch_size, num_features, length).
@@ -111,7 +111,7 @@ class MaskedActNorm1d(ActNorm1d):
         elif padding_mask.dim() != 3:
             raise ValueError(f"{padding_mask.dim()}D mask is not supported.")
 
-        expanded_padding_mask = padding_mask.expand(input.size())
+        expanded_padding_mask = padding_mask.expand(other.size())
 
         return expanded_padding_mask
 
