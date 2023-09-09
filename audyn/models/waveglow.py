@@ -149,6 +149,7 @@ class WaveGlow(BaseFlow):
         output = output.view(batch_size, in_channels, num_groups, (length + padding) // num_groups)
         output = output.permute(0, 1, 3, 2).contiguous()
         output = output.view(batch_size, in_channels, length + padding)
+        output = F.pad(output, (0, -padding))
 
         if return_logdet:
             return output, logdet
