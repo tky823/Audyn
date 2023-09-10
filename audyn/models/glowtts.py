@@ -17,6 +17,7 @@ from ..utils.alignment.monotonic_align import viterbi_monotonic_alignment
 __all__ = [
     "GlowTTS",
     "TextEncoder",
+    "Encoder",
     "Decoder",
 ]
 
@@ -232,6 +233,10 @@ class TextEncoder(nn.Module):
             output = input
 
         return output
+
+
+class Encoder(TextEncoder):
+    """Wrapper class of TextEncoder."""
 
 
 class Decoder(BaseFlow):
