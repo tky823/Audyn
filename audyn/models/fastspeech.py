@@ -32,6 +32,21 @@ class FastSpeech(nn.Module):
         duration: Optional[torch.LongTensor] = None,
         max_length: Optional[int] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Forward pass of FastSpeech.
+
+        Args:
+            src (torch.Tensor): Text input of shape (batch_size, src_length).
+            duration (torch.LongTensor): Duration of source of shape (batch_size, src_length).
+            max_length (int, optional): Maximum length of source duration.
+                The output length is up to max_length * src_length.
+
+        Returns:
+            tuple: Tuple of tensors containing:
+
+                - torch.Tensor: Estimated feature of shape (batch_size, out_channels, tgt_length).
+                - torch.Tensor: Estimated duration in log-domain of shape (batch_size, src_length).
+
+        """
         if duration is None:
             src_key_padding_mask = None
         else:
@@ -138,6 +153,22 @@ class MultiSpeakerFastSpeech(FastSpeech):
         duration: Optional[torch.LongTensor] = None,
         max_length: Optional[int] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Forward pass of FastSpeech.
+
+        Args:
+            src (torch.Tensor): Text input of shape (batch_size, src_length).
+            speaker (torch.Tensor): Speaker-like feature of shape (batch_size, *).
+            duration (torch.LongTensor): Duration of source of shape (batch_size, src_length).
+            max_length (int, optional): Maximum length of source duration.
+                The output length is up to max_length * src_length.
+
+        Returns:
+            tuple: Tuple of tensors containing:
+
+                - torch.Tensor: Estimated feature of shape (batch_size, out_channels, tgt_length).
+                - torch.Tensor: Estimated duration in log-domain of shape (batch_size, src_length).
+
+        """
         if duration is None:
             src_key_padding_mask = None
         else:

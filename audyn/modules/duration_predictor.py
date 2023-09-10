@@ -81,8 +81,6 @@ class DurationPredictor(FastSpeechDurationPredictor):
     Wrapper class of FastSpeechDurationPredictor.
     """
 
-    pass
-
 
 class ConvBlock(nn.Module):
     def __init__(
