@@ -12,8 +12,160 @@ from ..modules.glowtts import (
     MaskedInvertiblePointwiseConv1d,
     MaskedWaveNetAffineCoupling,
 )
+from ..utils.alignment.monotonic_align import viterbi_monotonic_alignment
 
-__all__ = ["TextEncoder", "Decoder"]
+__all__ = [
+    "GlowTTS",
+    "TextEncoder",
+    "Decoder",
+]
+
+
+class GlowTTS(nn.Module):
+    def __init__(
+        self,
+        encoder: nn.Module,
+        decoder: nn.Module,
+        length_regulator: nn.Module,
+    ) -> None:
+        super().__init__()
+
+        self.encoder = encoder
+        self.decoder = decoder
+        self.length_regulator = length_regulator
+
+    def forward(
+        self,
+        src: torch.Tensor,
+        tgt: torch.Tensor,
+        src_length: Optional[torch.LongTensor] = None,
+        tgt_length: Optional[torch.LongTensor] = None,
+        max_length: Optional[int] = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Forward pass of GlowTTS.
+
+        Args:
+            src (torch.Tensor): Source feature of shape (batch_size, src_length).
+            tgt (torch.Tensor): Target feature of shape (batch_size, in_channels, src_length).
+            src_length (torch.LongTensor): Source feature lengths of shape (batch_size,).
+            tgt_length (torch.LongTensor): Target feature lengths of shape (batch_size,).
+            max_length (int, optional): Maximum length of source duration.
+                The output length is up to max_length * src_length.
+
+        Returns:
+            tuple: Tuple of tensors containing:
+
+                - torch.Tensor: Log-likelihood of target feature of shape (batch_size,).
+                - torch.Tensor: Estimated duration in log-domain of shape (batch_size, src_length).
+                - torch.Tensor: Extracted duration by monotonic alignment search
+                    in log-domain of shape (batch_size, src_length).
+
+        """
+        # Log-determinant is required for forward pass.
+        logdet = 0
+
+        if src_length is None:
+            src_padding_mask = None
+        else:
+            max_src_length = torch.max(src_length).item()
+            src_padding_mask = torch.arange(
+                max_src_length, device=src.device
+            ) >= src_length.unsqueeze(dim=-1)
+
+        if tgt_length is None:
+            tgt_padding_mask = None
+        else:
+            max_tgt_length = torch.max(tgt_length).item()
+            tgt_padding_mask = torch.arange(
+                max_tgt_length, device=tgt.device
+            ) >= tgt_length.unsqueeze(dim=-1)
+
+        src_latent, normal = self.encoder(src, padding_mask=src_padding_mask)
+
+        if isinstance(normal, tuple):
+            mean, log_std = normal
+            normal = Normal(loc=mean, scale=torch.exp(log_std))
+            normal = Independent(normal, reinterpreted_batch_ndims=1)
+        elif isinstance(normal, Normal):
+            normal = Independent(normal, reinterpreted_batch_ndims=1)
+        elif not isinstance(normal, Independent):
+            raise ValueError(f"{type(normal)} is not supported.")
+
+        # NOTE: "est_duration" might be taken log.
+        _, log_est_duration = self.length_regulator(
+            src_latent,
+            padding_mask=src_padding_mask,
+            max_length=max_length,
+        )
+
+        tgt_latent = self.decoder(
+            tgt,
+            padding_mask=tgt_padding_mask,
+            logdet=logdet,
+            reverse=False,
+        )
+        if tgt_padding_mask is None:
+            tgt_latent, z_logdet = tgt_latent
+        else:
+            tgt_latent, tgt_padding_mask, z_logdet = tgt_latent
+
+            if tgt_padding_mask.dim() == 3:
+                tgt_padding_mask = torch.sum(tgt_padding_mask, dim=1)
+                tgt_padding_mask = tgt_padding_mask.bool()
+            elif tgt_padding_mask.dim() != 2:
+                raise ValueError(
+                    "tgt_padding_mask should be 2 or 3D, ",
+                    f"but {tgt_padding_mask.dim()}D is found.",
+                )
+
+        # TODO: explicit permutation
+        tgt_latent = tgt_latent.permute(0, 2, 1).contiguous()
+        log_prob_z, log_ml_duration = self.search_gaussian_monotonic_alignment(tgt_latent, normal)
+        logdet = log_prob_z.sum(dim=-1) + z_logdet
+
+        latent = src_latent, tgt_latent
+        log_duration = log_est_duration, log_ml_duration
+        padding_mask = src_padding_mask, tgt_padding_mask
+
+        return latent, log_duration, padding_mask, logdet
+
+    @staticmethod
+    def search_gaussian_monotonic_alignment(
+        input: torch.Tensor, normal: Independent
+    ) -> Tuple[torch.LongTensor, torch.LongTensor]:
+        """Search monotonic alignment assuming Gaussian distributions.
+
+        Args:
+            input (torch.Tensor): Probablistic variable
+                of shape (batch_size, tgt_length, num_features).
+            normal (torch.distributions.Independent): Gaussian distribution parametrized by
+                mean (batch_size, src_length, num_features) and
+                stddev (batch_size, src_length, num_features),
+
+        Returns:
+            tuple: Tuple of tensors containing
+
+                - torch.LongTensor: Maximum log-likelihood of p(z) of
+                    shape (batch_size, tgt_length, src_length).
+                - torch.LongTensor: Duration in linear-domain of
+                    shape (batch_size, src_length).
+
+        """
+        mean = normal.mean
+        log_std = torch.log(normal.stddev)
+
+        input = input.unsqueeze(dim=-2)
+        mean = mean.unsqueeze(dim=-3)
+        log_std = log_std.unsqueeze(dim=-3)
+        std = torch.exp(log_std)
+        normalized_input = (input - mean) / std
+
+        log_prob = -torch.sum(log_std + 0.5 * (normalized_input**2), dim=-1)
+        hard_alignment = viterbi_monotonic_alignment(log_prob, take_log=False)
+        log_prob = torch.sum(log_prob * hard_alignment, dim=1)
+        duration = hard_alignment.sum(dim=1)
+
+        return log_prob, duration
 
 
 class TextEncoder(nn.Module):
