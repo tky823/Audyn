@@ -145,6 +145,25 @@ class MaskedInvertiblePointwiseConv1d(InvertiblePointwiseConv1d):
     This module takes variable-length input.
     """
 
+    def __init__(
+        self,
+        num_splits: int,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
+    ) -> None:
+        factory_kwargs = {"device": device, "dtype": dtype}
+
+        super(InvertiblePointwiseConv1d, self).__init__()
+
+        assert num_splits % 2 == 0, "num_splits ({}) should be divisible by 2.".format(num_splits)
+
+        self.num_splits = num_splits
+
+        weight = torch.empty((num_splits, num_splits, 1), **factory_kwargs)
+        self.weight = nn.Parameter(weight)
+
+        self._reset_patameters()
+
     def forward(
         self,
         input: torch.Tensor,
@@ -167,7 +186,16 @@ class MaskedInvertiblePointwiseConv1d(InvertiblePointwiseConv1d):
             To handle 3D padding mask properly, we need to refine formulation.
 
         """
+        num_splits = self.num_splits
         weight = self.weight
+
+        batch_size, num_features, num_frames = input.size()
+
+        assert (
+            num_features % num_splits == 0
+        ), "num_features ({}) should be divisible by num_splits {}.".format(
+            num_features, num_splits
+        )
 
         logdet = self.initialize_logdet_if_necessary(logdet, device=input.device)
 
@@ -176,9 +204,13 @@ class MaskedInvertiblePointwiseConv1d(InvertiblePointwiseConv1d):
         else:
             _, logabsdet = torch.linalg.slogdet(weight.squeeze(dim=-1))
 
-        # num_frames: () or (batch_size,)
+        x = input.view(batch_size * 2, num_features // num_splits, num_splits // 2, num_frames)
+        x = x.permute(0, 2, 1, 3).contiguous()
+        x = x.view(batch_size, num_splits, (num_features // num_splits) * num_frames)
+
+        # num_elements: () or (batch_size,)
         if padding_mask is None:
-            num_frames = input.size(-1)
+            num_elements = num_frames
         else:
             if padding_mask.dim() != 2:
                 raise ValueError(
@@ -186,20 +218,24 @@ class MaskedInvertiblePointwiseConv1d(InvertiblePointwiseConv1d):
                 )
 
             non_padding_mask = torch.logical_not(padding_mask)
-            num_frames = non_padding_mask.sum(dim=-1)
+            num_elements = non_padding_mask.sum(dim=-1)
 
         if reverse:
             # use Gaussian elimination for numerical stability
             w = weight.squeeze(dim=-1)
-            output = torch.linalg.solve(w, input)
+            x = torch.linalg.solve(w, x)
 
             if logdet is not None:
-                logdet = logdet - num_frames * logabsdet
+                logdet = logdet - num_elements * logabsdet
         else:
-            output = F.conv1d(input, weight, stride=1, dilation=1, groups=1)
+            x = F.conv1d(x, weight, stride=1, dilation=1, groups=1)
 
             if logdet is not None:
-                logdet = logdet + num_frames * logabsdet
+                logdet = logdet + num_elements * logabsdet
+
+        x = x.view(batch_size, 2, num_splits // 2, num_features // num_splits, num_frames)
+        x = x.permute(0, 1, 3, 2, 4).contiguous()
+        output = x.view(batch_size, num_features, num_frames)
 
         if logdet is None:
             return output
@@ -218,8 +254,8 @@ class MaskedWaveNetAffineCoupling(WaveNetAffineCoupling):
         coupling_channels: int,
         hidden_channels: int,
         skip_channels: Optional[int] = None,
-        num_layers: int = 8,
-        kernel_size: int = 3,
+        num_layers: int = 4,
+        kernel_size: int = 5,
         bias: bool = True,
         causal: bool = False,
         conv: str = "gated",
@@ -258,7 +294,7 @@ class MaskedWaveNetAffineCoupling(WaveNetAffineCoupling):
         logdet: Optional[torch.Tensor] = None,
         reverse: bool = False,
     ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
-        """Forward pass of MaskedInvertiblePointwiseConv1d.
+        """Forward pass of MaskedWaveNetAffineCoupling.
 
         Args:
             input (torch.Tensor): Tensor of shape (batch_size, num_features, length).
@@ -352,8 +388,8 @@ class MaskedStackedResidualConvBlock1d(StackedResidualConvBlock1d):
         in_channels: int,
         hidden_channels: int,
         skip_channels: Optional[int] = None,
-        num_layers: int = 8,
-        kernel_size: int = 3,
+        num_layers: int = 4,
+        kernel_size: int = 5,
         stride: int = 1,
         dilated: bool = True,
         bias: bool = True,
