@@ -3,6 +3,8 @@ from typing import Any, List, Optional, Tuple, Union
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.distributions import Independent
+from torch.distributions.normal import Normal
 
 from ..modules.flow import BaseFlow
 from ..modules.glowtts import (
@@ -11,7 +13,71 @@ from ..modules.glowtts import (
     MaskedWaveNetAffineCoupling,
 )
 
-__all__ = ["Decoder"]
+__all__ = ["TextEncoder", "Decoder"]
+
+
+class TextEncoder(nn.Module):
+    def __init__(
+        self,
+        word_embedding: nn.Module,
+        backbone: nn.Module,
+        proj_mean: nn.Module,
+        proj_std: nn.Module,
+    ) -> None:
+        super().__init__()
+
+        self.word_embedding = word_embedding
+        self.backbone = backbone
+        self.proj_mean = proj_mean
+        self.proj_std = proj_std
+
+    def forward(
+        self,
+        input: torch.LongTensor,
+        padding_mask: Optional[torch.BoolTensor] = None,
+    ) -> Tuple[torch.Tensor, Independent]:
+        """Forward pass of TextEncoder.
+
+        Args:
+            input (torch.LongTensor): Text input of shape (batch_size, length).
+            padding_mask (torch.Tensor): Padding mask of shape (batch_size, length).
+
+        Returns:
+
+            tuple: Tuple of tensors containing
+
+                - torch.Tensor: Latent feature of shape (batch_size, length, out_channels),
+                    where ``out_channels`` is determined by ``self.backbone``.
+                - torch.distributions.Independent: Multivariate Gaussian distribution
+                    composed by ``mean`` and ``stddev``.
+
+        """
+        x = self.word_embedding(input)
+        x = self._apply_mask(x, padding_mask=padding_mask)
+        output = self.backbone(x)
+        output = self._apply_mask(output, padding_mask=padding_mask)
+
+        mean = self.proj_mean(output)
+        log_std = self.proj_std(output)
+        mean = self._apply_mask(mean, padding_mask=padding_mask)
+        log_std = self._apply_mask(log_std, padding_mask=padding_mask)
+
+        normal = Normal(loc=mean, scale=torch.exp(log_std))
+        normal = Independent(normal, reinterpreted_batch_ndims=1)
+
+        return output, normal
+
+    @staticmethod
+    def _apply_mask(
+        input: torch.Tensor,
+        padding_mask: Optional[torch.BoolTensor] = None,
+    ) -> torch.Tensor:
+        if padding_mask is not None:
+            output = input.masked_fill(padding_mask.unsqueeze(dim=-1))
+        else:
+            output = input
+
+        return output
 
 
 class Decoder(BaseFlow):
