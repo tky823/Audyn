@@ -17,6 +17,8 @@ __all__ = ["TextEncoder", "Decoder"]
 
 
 class TextEncoder(nn.Module):
+    """Text Encoder of GlowTTS."""
+
     def __init__(
         self,
         word_embedding: nn.Module,
