@@ -11,6 +11,8 @@ from ..modules.glowtts import (
     MaskedWaveNetAffineCoupling,
 )
 
+__all__ = ["Decoder"]
+
 
 class Decoder(BaseFlow):
     """Decoder of GlowTTS."""
