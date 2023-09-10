@@ -596,6 +596,7 @@ class WaveGlowBlock(BaseFlow):
     ) -> None:
         super().__init__()
 
+        # TODO: support list type input properly
         if type(in_channels) is list:
             num_features = sum(in_channels)
             coupling_channels = in_channels[0]
