@@ -75,7 +75,7 @@ class TextEncoder(nn.Module):
         padding_mask: Optional[torch.BoolTensor] = None,
     ) -> torch.Tensor:
         if padding_mask is not None:
-            output = input.masked_fill(padding_mask.unsqueeze(dim=-1))
+            output = input.masked_fill(padding_mask.unsqueeze(dim=-1), 0)
         else:
             output = input
 
@@ -251,6 +251,7 @@ class Decoder(BaseFlow):
             input (torch.Tensor): Acoustic feature or latent variable of shape
                 (batch_size, in_channels, length).
             padding_mask (torch.Tensor, optional): Padding mask of shape (batch_size, length).
+                or (batch_size, in_channels, length).
             logdet (torch.Tensor, optional): Log-determinant of shape (batch_size,).
 
         Returns:
@@ -265,8 +266,10 @@ class Decoder(BaseFlow):
         x = self.squeeze(x)
 
         if padding_mask is None:
+            padding_mask_dim = None
             expanded_padding_mask = None
         else:
+            padding_mask_dim = padding_mask.dim()
             expanded_padding_mask = self._expand_padding_mask(padding_mask, input)
             expanded_padding_mask = F.pad(expanded_padding_mask, (0, padding), value=True)
             expanded_padding_mask = self.squeeze(expanded_padding_mask)
@@ -303,6 +306,11 @@ class Decoder(BaseFlow):
             # i.e. expanded_padding_mask is not None
             padding_mask = self.unsqueeze(expanded_padding_mask)
             padding_mask = F.pad(padding_mask, (0, -padding))
+
+            if padding_mask_dim == 2:
+                # 3D to 2D
+                padding_mask = torch.sum(padding_mask, dim=1)
+                padding_mask = padding_mask.bool()
 
         if return_logdet:
             if padding_mask is None:
