@@ -8,7 +8,6 @@ from audyn.modules.glowtts import (
     MaskedStackedResidualConvBlock1d,
     MaskedWaveNetAffineCoupling,
 )
-from audyn.modules.waveglow import WaveNetAffineCoupling
 
 
 def test_masked_act_norm1d() -> None:
@@ -164,11 +163,11 @@ def test_masked_invertible_pointwise_conv1d() -> None:
     torch.manual_seed(0)
 
     batch_size = 2
-    num_features = 6
+    num_features, num_splits = 8, 4
     max_length = 16
 
     # w/ 2D padding mask
-    model = MaskedInvertiblePointwiseConv1d(num_features)
+    model = MaskedInvertiblePointwiseConv1d(num_splits)
 
     length = torch.randint(1, max_length + 1, (batch_size,), dtype=torch.long)
     max_length = torch.max(length)
@@ -206,10 +205,10 @@ def test_masked_invertible_pointwise_conv1d() -> None:
 
     # w/o padding mask
     batch_size = 2
-    num_features = 6
+    num_features = num_splits = 6
     max_length = 16
 
-    masked_model = MaskedInvertiblePointwiseConv1d(num_features)
+    masked_model = MaskedInvertiblePointwiseConv1d(num_splits)
     non_masked_model = InvertiblePointwiseConv1d(num_features)
     non_masked_model.weight.data.copy_(masked_model.weight.data.detach())
 
@@ -277,7 +276,7 @@ def test_masked_wavenet_affine_coupling() -> None:
 
     assert output.size() == input.size()
     assert z.size() == input.size()
-    assert torch.allclose(output, input, atol=1e-6)
+    assert torch.allclose(output, input)
 
     zeros = torch.zeros((batch_size,))
 
@@ -297,7 +296,7 @@ def test_masked_wavenet_affine_coupling() -> None:
     assert logdet.size() == (batch_size,)
     assert z.size() == input.size()
     assert z_logdet.size() == (batch_size,)
-    assert torch.allclose(output, input, atol=1e-6)
+    assert torch.allclose(output, input)
     assert torch.allclose(logdet, zeros)
 
     # w/o padding mask
@@ -306,52 +305,36 @@ def test_masked_wavenet_affine_coupling() -> None:
         hidden_channels,
         num_layers=num_layers,
     )
-    non_masked_model = WaveNetAffineCoupling(
-        coupling_channels,
-        hidden_channels,
-        num_layers=num_layers,
-    )
 
     nn.init.normal_(masked_model.coupling.bottleneck_conv1d_out.weight.data)
     nn.init.normal_(masked_model.coupling.bottleneck_conv1d_out.bias.data)
 
-    for p_masked, p_non_mased in zip(masked_model.parameters(), non_masked_model.parameters()):
-        p_non_mased.data.copy_(p_masked.data.detach())
-
     input = torch.randn(batch_size, 2 * coupling_channels, max_length)
+    z = masked_model(input)
+    output = masked_model(z, reverse=True)
 
-    masked_z = masked_model(input)
-    masked_output = masked_model(masked_z, reverse=True)
-    non_masked_z = non_masked_model(input)
-    non_masked_output = non_masked_model(non_masked_z, reverse=True)
-
-    assert torch.allclose(masked_z, non_masked_z)
-    assert torch.allclose(masked_output, non_masked_output)
+    assert output.size() == input.size()
+    assert z.size() == input.size()
+    assert torch.allclose(output, input)
 
     zeros = torch.zeros((batch_size,))
 
-    masked_z, masked_z_logdet = masked_model(
+    z, z_logdet = masked_model(
         input,
         logdet=zeros,
     )
-    masked_output, masked_logdet = masked_model(
-        masked_z,
-        logdet=masked_z_logdet,
-        reverse=True,
-    )
-    non_masked_z, non_masked_z_logdet = non_masked_model(
-        input,
-        logdet=zeros,
-    )
-    non_masked_output, non_masked_logdet = non_masked_model(
-        non_masked_z,
-        logdet=non_masked_z_logdet,
+    output, logdet = masked_model(
+        z,
+        logdet=z_logdet,
         reverse=True,
     )
 
-    assert torch.allclose(masked_z, non_masked_z)
-    assert torch.allclose(masked_output, non_masked_output)
-    assert torch.allclose(masked_logdet, non_masked_logdet)
+    assert output.size() == input.size()
+    assert logdet.size() == (batch_size,)
+    assert z.size() == input.size()
+    assert z_logdet.size() == (batch_size,)
+    assert torch.allclose(output, input)
+    assert torch.allclose(logdet, zeros)
 
 
 def test_stacked_residual_conv_block():
