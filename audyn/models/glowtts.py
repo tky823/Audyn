@@ -133,7 +133,7 @@ class GlowTTS(nn.Module):
     @staticmethod
     def search_gaussian_monotonic_alignment(
         input: torch.Tensor, normal: Independent
-    ) -> Tuple[torch.LongTensor, torch.LongTensor]:
+    ) -> Tuple[torch.Tensor, torch.LongTensor]:
         """Search monotonic alignment assuming Gaussian distributions.
 
         Args:
@@ -146,22 +146,22 @@ class GlowTTS(nn.Module):
         Returns:
             tuple: Tuple of tensors containing
 
-                - torch.LongTensor: Maximum log-likelihood of p(z) of
+                - torch.Tensor: Maximum log-likelihood of p(z) of
                     shape (batch_size, tgt_length, src_length).
                 - torch.LongTensor: Duration in linear-domain of
                     shape (batch_size, src_length).
 
         """
-        mean = normal.mean
-        log_std = torch.log(normal.stddev)
+        batch_size, tgt_length, _ = input.size()
+        _, src_length, _ = normal.mean.size()
 
-        input = input.unsqueeze(dim=-2)
-        mean = mean.unsqueeze(dim=-3)
-        log_std = log_std.unsqueeze(dim=-3)
-        std = torch.exp(log_std)
-        normalized_input = (input - mean) / std
+        x = input.permute(1, 0, 2).contiguous()
+        x = x.unsqueeze(dim=2)
+        log_prob = normal.log_prob(x)
+        log_prob = log_prob.permute(1, 0, 2).contiguous()
 
-        log_prob = -torch.sum(log_std + 0.5 * (normalized_input**2), dim=-1)
+        assert log_prob.size() == (batch_size, tgt_length, src_length)
+
         hard_alignment = viterbi_monotonic_alignment(log_prob, take_log=False)
         log_prob = torch.sum(log_prob * hard_alignment, dim=1)
         duration = hard_alignment.sum(dim=1)
