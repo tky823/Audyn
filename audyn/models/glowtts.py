@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from torch.distributions import Independent
 from torch.distributions.normal import Normal
 
+from ..modules.fastspeech import FFTrBlock
 from ..modules.flow import BaseFlow
 from ..modules.glowtts import (
     MaskedActNorm1d,
@@ -13,12 +14,15 @@ from ..modules.glowtts import (
     MaskedWaveNetAffineCoupling,
 )
 from ..utils.alignment.monotonic_align import viterbi_monotonic_alignment
+from .fastspeech import _get_clones
 
 __all__ = [
     "GlowTTS",
     "TextEncoder",
     "Encoder",
     "Decoder",
+    "GlowTTSTransformerEncoder",
+    "TransformerEncoder",
 ]
 
 
@@ -553,6 +557,97 @@ class Decoder(BaseFlow):
         output = output.view(batch_size, in_channels // down_scale, length * down_scale)
 
         return output
+
+
+class GlowTTSTransformerEncoder(nn.Module):
+    def __init__(
+        self,
+        encoder_layer: nn.Module,
+        num_layers: int,
+        batch_first: bool = False,
+        norm: Optional[nn.Module] = None,
+    ) -> None:
+        super().__init__()
+
+        self.layers = _get_clones(encoder_layer, num_layers)
+        self.norm = norm
+
+        if isinstance(encoder_layer, FFTrBlock):
+            self.required_kwargs = {"need_weights": False}
+        else:
+            self.required_kwargs = {}
+
+        self.num_layers = num_layers
+        self.batch_first = batch_first
+
+    def forward(
+        self,
+        src: torch.Tensor,
+        mask: Optional[torch.BoolTensor] = None,
+        src_key_padding_mask: Optional[torch.BoolTensor] = None,
+    ) -> torch.Tensor:
+        r"""Forward pass of feed-forward transformer block for GlowTTS.
+
+        Args:
+            src (torch.LongTensor): Source feature of shape (batch_size, src_length, embed_dim)
+                or (src_length, batch_size, embed_dim).
+            mask (torch.Tensor): Attention mask for source of shape
+                (src_length, src_length) or (batch_size * num_heads, src_length, src_length).
+            src_key_padding_mask (torch.Tensor): Padding mask of shape (src_length,)
+                or (batch_size, src_length).
+
+        Returns:
+            torch.Tensor: Encoded feature of shape (batch_size, src_length, embed_dim)
+                if ``batch_first=True``. Otherwise, (src_length, batch_size, embed_dim).
+
+        """
+        x = src
+
+        for module in self.layers:
+            x = module(
+                x,
+                src_mask=mask,
+                src_key_padding_mask=src_key_padding_mask,
+                **self.required_kwargs,
+            )
+
+        if src_key_padding_mask is not None:
+            x = self.apply_mask(x, src_key_padding_mask=src_key_padding_mask)
+
+        if self.norm is not None:
+            x = self.norm(x)
+
+        if src_key_padding_mask is None:
+            output = x
+        else:
+            output = self.apply_mask(x, src_key_padding_mask=src_key_padding_mask)
+
+        return output
+
+    def apply_mask(
+        self, input: torch.Tensor, src_key_padding_mask: torch.BoolTensor
+    ) -> torch.Tensor:
+        padding_mask = src_key_padding_mask.unsqueeze(dim=-1)
+
+        if self.batch_first:
+            output = input.masked_fill(padding_mask, 0)
+        else:
+            if src_key_padding_mask.dim() == 1:
+                padding_mask = padding_mask.unsqueeze(dim=-1)
+                output = input.masked_fill(padding_mask, 0)
+            elif src_key_padding_mask.dim() == 2:
+                output = input.masked_fill(padding_mask.swapaxes(0, 1), 0)
+            else:
+                raise ValueError(
+                    "src_key_padding_mask is expected to be 1 or 2D tensor,"
+                    f"but given {src_key_padding_mask.dim()}."
+                )
+
+        return output
+
+
+class TransformerEncoder(GlowTTSTransformerEncoder):
+    """Wrapper class of GlowTTSTransformerEncoder."""
 
 
 class GlowBlock(BaseFlow):
