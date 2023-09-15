@@ -6,9 +6,16 @@ from omegaconf import DictConfig, OmegaConf
 from torch.utils.data.dataloader import DataLoader
 
 from ...utils.logging import get_logger
-from .base import BaseGenerator
+from .base import BaseGenerator, BaseTrainer
 
-__all__ = ["CascadeTextToWaveGenerator"]
+__all__ = [
+    "TextToWaveTrainer",
+    "CascadeTextToWaveGenerator",
+]
+
+
+class TextToWaveTrainer(BaseTrainer):
+    """Trainer for text-to-wave model."""
 
 
 class CascadeTextToWaveGenerator(BaseGenerator):
