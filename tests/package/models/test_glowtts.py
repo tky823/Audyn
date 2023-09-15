@@ -1,12 +1,22 @@
 from typing import List
 
+import pytest
 import torch
 import torch.nn as nn
 from dummy import allclose
 
 from audyn.models.fastspeech import LengthRegulator
-from audyn.models.glowtts import Decoder, GlowBlock, GlowTTS, TextEncoder
+from audyn.models.glowtts import (
+    Decoder,
+    GlowBlock,
+    GlowTTS,
+    GlowTTSTransformerEncoder,
+    TextEncoder,
+)
 from audyn.modules.duration_predictor import FastSpeechDurationPredictor
+from audyn.modules.fastspeech import FFTrBlock
+
+parameters_batch_first = [True, False]
 
 
 def test_glowtts() -> None:
@@ -110,6 +120,53 @@ def test_glowtts_encoder() -> None:
     assert normal.stddev.size() == (batch_size, max_length, latent_channels)
     assert log_prob.size() == (batch_size, max_length)
 
+    # FFTrBlock
+    d_model = 16
+    hidden_channels = 2
+    num_heads = 4
+    kernel_size = 3
+    num_layers = 3
+
+    input = torch.randint(1, num_embeddings, (batch_size, max_length))
+    input = input.masked_fill(padding_mask, 0)
+
+    embedding = nn.Embedding(
+        num_embeddings,
+        d_model,
+        padding_idx=padding_idx,
+    )
+    layer = FFTrBlock(
+        d_model,
+        hidden_channels,
+        num_heads=num_heads,
+        kernel_size=kernel_size,
+        batch_first=True,
+    )
+    backbone = GlowTTSTransformerEncoder(
+        layer,
+        num_layers=num_layers,
+        batch_first=True,
+    )
+    proj_mean = nn.Linear(d_model, latent_channels)
+    proj_std = nn.Linear(d_model, latent_channels)
+
+    model = TextEncoder(
+        embedding,
+        backbone,
+        proj_mean=proj_mean,
+        proj_std=proj_std,
+    )
+
+    output, normal = model(input)
+
+    z = torch.randn((batch_size, max_length, latent_channels))
+    log_prob = normal.log_prob(z)
+
+    assert output.size() == (batch_size, max_length, d_model)
+    assert normal.mean.size() == (batch_size, max_length, latent_channels)
+    assert normal.stddev.size() == (batch_size, max_length, latent_channels)
+    assert log_prob.size() == (batch_size, max_length)
+
 
 def test_glowtts_decoder() -> None:
     torch.manual_seed(0)
@@ -168,6 +225,46 @@ def test_glowtts_decoder() -> None:
     assert z_logdet.size() == (batch_size,)
     allclose(output, masked_input, atol=1e-6)
     allclose(logdet, zeros, atol=1e-4)
+
+
+@pytest.mark.parametrize("batch_first", parameters_batch_first)
+def test_glowtts_transformer_encoder(batch_first: bool) -> None:
+    torch.manual_seed(0)
+
+    batch_size, max_length = 4, 8
+
+    # FFTrBlock
+    d_model = 16
+    hidden_channels = 2
+    num_heads = 2
+    kernel_size = 3
+    num_layers = 3
+
+    length = torch.randint(1, max_length, (batch_size,), dtype=torch.long)
+    max_length = torch.max(length).item()
+    src_key_padding_mask = torch.arange(max_length) >= length.unsqueeze(dim=-1)
+
+    input = torch.randn((batch_size, max_length, d_model))
+    input = input.masked_fill(src_key_padding_mask.unsqueeze(dim=-1), 0)
+
+    if not batch_first:
+        input = input.swapaxes(1, 0)
+
+    layer = FFTrBlock(
+        d_model,
+        hidden_channels,
+        num_heads=num_heads,
+        kernel_size=kernel_size,
+        batch_first=batch_first,
+    )
+    model = GlowTTSTransformerEncoder(
+        layer,
+        num_layers=num_layers,
+        batch_first=batch_first,
+    )
+    output = model(input, src_key_padding_mask=src_key_padding_mask)
+
+    assert output.size() == input.size()
 
 
 def test_glowtts_glow_block() -> None:
