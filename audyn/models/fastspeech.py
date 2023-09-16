@@ -534,6 +534,10 @@ class LengthRegulator(nn.Module):
         scaled_duration = torch.round(scaled_duration)
         scaled_duration = scaled_duration.long()
 
+        # set 0 to cancel out self.min_duration
+        zero_padding_mask = duration == 0
+        scaled_duration = scaled_duration.masked_fill(zero_padding_mask, 0)
+
         if padding_mask is not None:
             # Unsqueeze padding mask
             padding_mask_shape = sequence.size()[:2]
