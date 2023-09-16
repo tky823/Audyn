@@ -3,7 +3,40 @@ import math
 import torch
 import torch.nn as nn
 
-__all__ = ["GaussFlowLoss"]
+__all__ = ["NLLLoss", "GaussFlowLoss"]
+
+
+class NLLLoss(nn.Module):
+    def __init__(self, std: float = 1, reduction: str = "mean") -> None:
+        super().__init__()
+
+        self.std = std
+        self.reduction = reduction
+
+    def forward(self, logdet: torch.Tensor) -> torch.Tensor:
+        """Forward pass of general flow loss.
+
+        This loss just reverse the sign of input log-determinant.
+
+        Args:
+            logdet (torch.Tensor): Log-determinant of shape (batch_size,).
+
+        Returns:
+            torch.Tensor: Negative log-likelihood.
+
+        """
+        reduction = self.reduction
+
+        loss = -logdet
+
+        if reduction == "mean":
+            loss = loss.mean(dim=0)
+        elif reduction == "sum":
+            loss = loss.sum(dim=0)
+        else:
+            raise ValueError("reduction = {} is not supported.".format(reduction))
+
+        return loss
 
 
 class GaussFlowLoss(nn.Module):
