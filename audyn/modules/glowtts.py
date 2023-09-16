@@ -164,6 +164,11 @@ class MaskedInvertiblePointwiseConv1d(InvertiblePointwiseConv1d):
 
         self._reset_patameters()
 
+    def extra_repr(self) -> str:
+        s = "{num_splits}"
+
+        return s.format(**self.__dict__)
+
     def forward(
         self,
         input: torch.Tensor,
