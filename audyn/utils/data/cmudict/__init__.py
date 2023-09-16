@@ -1,5 +1,6 @@
 __all__ = [
     "symbols",
+    "full_symbols",
     "BREAK_SYMBOLS",
     "BOS_SYMBOL",
     "EOS_SYMBOL",
@@ -98,5 +99,6 @@ BREAK_SYMBOLS = ["sil", "spn"]
 BOS_SYMBOL = "<BOS>"
 EOS_SYMBOL = "<EOS>"
 SPECIALS = ["<PAD>"]
+full_symbols = symbols + BREAK_SYMBOLS + [BOS_SYMBOL] + [EOS_SYMBOL] + SPECIALS
 
-vocab_size = len(symbols + BREAK_SYMBOLS + BOS_SYMBOL + EOS_SYMBOL + SPECIALS)
+vocab_size = len(full_symbols)
