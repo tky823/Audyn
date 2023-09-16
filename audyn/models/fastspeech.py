@@ -500,7 +500,7 @@ class LengthRegulator(nn.Module):
         expand_scale: float = 1,
         padding_mask: Optional[torch.BoolTensor] = None,
         max_length: Optional[int] = None,
-    ):
+    ) -> Tuple[torch.Tensor, torch.LongTensor]:
         """Forward pass of length regulator.
 
         Args:
@@ -518,15 +518,21 @@ class LengthRegulator(nn.Module):
             tuple: Tuple of tensors containing
 
                 - torch.Tensor: Expanded sequence.
-                - torch.Tensor: Expanded duration.
+                - torch.Tensor: Scaled duration.
 
         """
         pad_value = self.pad_value
         batch_first = self.batch_first
 
-        expanded_duration = expand_scale * duration
-        expanded_duration = torch.round(expanded_duration.float())
-        expanded_duration = expanded_duration.long()
+        scaled_duration = expand_scale * duration
+        scaled_duration = scaled_duration.float()
+        scaled_duration = torch.clip(
+            scaled_duration,
+            min=self.min_duration,
+            max=self.max_duration,
+        )
+        scaled_duration = torch.round(scaled_duration)
+        scaled_duration = scaled_duration.long()
 
         if padding_mask is not None:
             # Unsqueeze padding mask
@@ -538,13 +544,13 @@ class LengthRegulator(nn.Module):
 
         expanded_sequence = expand_by_duration(
             sequence,
-            expanded_duration,
+            scaled_duration,
             pad_value=pad_value,
             batch_first=batch_first,
             max_length=max_length,
         )
 
-        return expanded_sequence, expanded_duration
+        return expanded_sequence, scaled_duration
 
 
 def _get_clones(module, N) -> nn.ModuleList:
