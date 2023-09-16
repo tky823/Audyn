@@ -6,6 +6,7 @@ import torch.nn as nn
 
 from ..modules.fastspeech import FFTrBlock
 from ..utils.alignment import expand_by_duration
+from ..utils.duration import transform_log_duration
 
 __all__ = ["FastSpeech", "MultiSpeakerFastSpeech", "LengthRegulator"]
 
@@ -70,7 +71,7 @@ class FastSpeech(nn.Module):
             else:
                 max_duration = None
 
-            linear_est_duration = _transform_log_duration(
+            linear_est_duration = transform_log_duration(
                 log_est_duration, min_duration=min_duration, max_duration=max_duration
             )
 
@@ -194,7 +195,7 @@ class MultiSpeakerFastSpeech(FastSpeech):
             else:
                 max_duration = None
 
-            linear_est_duration = _transform_log_duration(
+            linear_est_duration = transform_log_duration(
                 log_est_duration, min_duration=min_duration, max_duration=max_duration
             )
 
@@ -481,7 +482,7 @@ class LengthRegulator(nn.Module):
         log_est_duration = self.duration_predictor(sequence, padding_mask=padding_mask)
 
         if duration is None:
-            linear_est_duration = _transform_log_duration(
+            linear_est_duration = transform_log_duration(
                 log_est_duration, min_duration=self.min_duration, max_duration=self.max_duration
             )
 
@@ -510,24 +511,3 @@ class LengthRegulator(nn.Module):
 
 def _get_clones(module, N) -> nn.ModuleList:
     return nn.ModuleList([copy.deepcopy(module) for _ in range(N)])
-
-
-def _transform_log_duration(
-    log_duration: torch.Tensor, min_duration: int = 1, max_duration: Optional[int] = None
-) -> torch.Tensor:
-    """Transform log-duration to linear-duration.
-
-    Args:
-        log_duration (torch.Tensor): Duration in log-domain.
-        min_duration (int): Min duration in linear domain. Default: ``1``.
-        max_duration (int, optional): Max duration in linear domain. Default: ``None``.
-
-    Returns:
-        torch.Tensor: Duration in linear-domain.
-
-    """
-    linear_duration = torch.exp(log_duration)
-    linear_duration = torch.round(linear_duration.detach())
-    linear_duration = torch.clip(linear_duration, min=min_duration, max=max_duration)
-
-    return linear_duration
