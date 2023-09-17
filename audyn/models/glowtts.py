@@ -14,6 +14,7 @@ from ..modules.glowtts import (
     MaskedWaveNetAffineCoupling,
 )
 from ..utils.alignment.monotonic_align import viterbi_monotonic_alignment
+from ..utils.duration import transform_log_duration
 from .fastspeech import _get_clones
 
 __all__ = [
@@ -30,14 +31,16 @@ class GlowTTS(nn.Module):
     def __init__(
         self,
         encoder: nn.Module,
-        decoder: nn.Module,
+        decoder: BaseFlow,
+        duration_predictor: nn.Module,
         length_regulator: nn.Module,
     ) -> None:
         super().__init__()
 
         self.encoder = encoder
-        self.decoder = decoder
+        self.duration_predictor = duration_predictor
         self.length_regulator = length_regulator
+        self.decoder = decoder
 
     def forward(
         self,
@@ -60,10 +63,14 @@ class GlowTTS(nn.Module):
         Returns:
             tuple: Tuple of tensors containing:
 
-                - torch.Tensor: Log-likelihood of target feature of shape (batch_size,).
-                - torch.Tensor: Estimated duration in log-domain of shape (batch_size, src_length).
-                - torch.Tensor: Extracted duration by monotonic alignment search
-                    in log-domain of shape (batch_size, src_length).
+                - tuple: Source latent variables (batch_size, src_length, num_features)
+                    and target latent variables (batch_size, tgt_length, num_features).
+                - tuple: Durations estimated by duration predictor in log-domain
+                    and extracted by monotonic alignment search in linear-domain.
+                    The shape is (batch_size, src_length).
+                - tuple: Padding masks for source (batch_size, src_length)
+                    and target (batch_size, tgt_length).
+                - torch.Tensor: Log-determinant.
 
         """
         # Log-determinant is required for forward pass.
@@ -97,12 +104,7 @@ class GlowTTS(nn.Module):
             raise ValueError(f"{type(normal)} is not supported.")
 
         # NOTE: "est_duration" might be taken log.
-        _, log_est_duration = self.length_regulator(
-            src_latent,
-            padding_mask=src_padding_mask,
-            max_length=max_length,
-        )
-
+        log_est_duration = self.duration_predictor(src_latent)
         tgt_latent = self.decoder(
             tgt,
             padding_mask=tgt_padding_mask,
@@ -125,14 +127,115 @@ class GlowTTS(nn.Module):
 
         # TODO: explicit permutation
         tgt_latent = tgt_latent.permute(0, 2, 1).contiguous()
-        log_prob_z, log_ml_duration = self.search_gaussian_monotonic_alignment(tgt_latent, normal)
+        log_prob_z, ml_duration = self.search_gaussian_monotonic_alignment(tgt_latent, normal)
         logdet = log_prob_z.sum(dim=-1) + z_logdet
 
         latent = src_latent, tgt_latent
-        log_duration = log_est_duration, log_ml_duration
+        duration = log_est_duration, ml_duration
         padding_mask = src_padding_mask, tgt_padding_mask
 
-        return latent, log_duration, padding_mask, logdet
+        return latent, duration, padding_mask, logdet
+
+    @torch.no_grad()
+    def inference(
+        self,
+        src: torch.Tensor,
+        src_length: Optional[torch.LongTensor] = None,
+        max_length: Optional[int] = None,
+        noise_scale: float = 1,
+    ) -> Tuple[torch.Tensor, torch.LongTensor]:
+        """Inference of GlowTTS.
+
+        Args:
+            src (torch.Tensor): Source feature of shape (batch_size, src_length).
+            src_length (torch.LongTensor): Source feature lengths of shape (batch_size,).
+            max_length (int, optional): Maximum length of source duration.
+                The output length is up to max_length * src_length.
+            noise_scale (float): Parameter to scale noise. Default: ``1``.
+
+        Returns:
+            tuple: Tuple of tensors containing:
+
+                - torch.Tensor: Log-likelihood of target feature of shape (batch_size,).
+                - torch.LongTensor: Estimated duration in linear-domain
+                    of shape (batch_size, src_length).
+
+        .. note::
+
+            Sampling is performed by ``torch.distributions.distribution.Distribution.sample``.
+
+        """
+        if src_length is None:
+            src_padding_mask = None
+        else:
+            max_src_length = torch.max(src_length).item()
+            src_padding_mask = torch.arange(
+                max_src_length, device=src.device
+            ) >= src_length.unsqueeze(dim=-1)
+
+        src_latent, normal = self.encoder(src, padding_mask=src_padding_mask)
+
+        # NOTE: "est_duration" might be taken log.
+        log_est_duration = self.duration_predictor(src_latent)
+        linear_est_duration = transform_log_duration(log_est_duration)
+
+        if src_padding_mask is not None:
+            linear_est_duration = linear_est_duration.masked_fill(src_padding_mask, 0)
+
+        if isinstance(normal, tuple):
+            mean, log_std = normal
+            stddev = torch.exp(log_std)
+        elif isinstance(normal, (Normal, Independent)):
+            mean, stddev = normal.mean, normal.stddev
+        else:
+            raise ValueError(f"{type(normal)} is not supported.")
+
+        stddev = noise_scale * stddev
+        expanded_mean, scaled_linear_est_duration = self.length_regulator(
+            mean,
+            linear_est_duration,
+            padding_mask=src_padding_mask,
+            max_length=max_length,
+        )
+        expanded_stddev, _ = self.length_regulator(
+            stddev,
+            linear_est_duration,
+            padding_mask=src_padding_mask,
+            max_length=max_length,
+        )
+
+        tgt_length = scaled_linear_est_duration.sum(dim=1)
+
+        # To avoid error of stddev=0 in Normal class,
+        # we use standard Gaussian distribution here.
+        zeros = torch.zeros_like(expanded_mean)
+        ones = torch.ones_like(expanded_stddev)
+        normal = Normal(loc=zeros, scale=ones)
+        normal = Independent(normal, reinterpreted_batch_ndims=1)
+        tgt_latent = expanded_mean + expanded_stddev * normal.sample()
+
+        tgt_length = scaled_linear_est_duration.sum(dim=1)
+        max_tgt_length = torch.max(tgt_length).item()
+        tgt_padding_mask = self.create_length_padding_mask(tgt_length, max_length=max_tgt_length)
+
+        # TODO: explicit permutation
+        tgt_latent = tgt_latent.permute(0, 2, 1).contiguous()
+
+        # tgt_latent: Latent variables of (batch_size, max_length, num_features),
+        #    where num_features is typically number of bins in MelSpectrogram.
+        if hasattr(self.decoder, "inference") and callable(self.decoder.inference):
+            output, tgt_padding_mask = self.decoder.inference(
+                tgt_latent,
+                padding_mask=tgt_padding_mask,
+            )
+        else:
+            output, tgt_padding_mask = self.decoder(
+                tgt_latent,
+                padding_mask=tgt_padding_mask,
+                reverse=True,
+            )
+
+        return output, linear_est_duration
 
     @staticmethod
     def search_gaussian_monotonic_alignment(
@@ -171,6 +274,30 @@ class GlowTTS(nn.Module):
         duration = hard_alignment.sum(dim=1)
 
         return log_prob, duration
+
+    @staticmethod
+    def create_length_padding_mask(
+        length: torch.Tensor, max_length: Optional[int] = None
+    ) -> torch.BoolTensor:
+        """Create padding mask for length tensors.
+
+        Args:
+            length (torch.Tensor): Lengths of shape (batch_size,)
+            max_length (int, optional): Max value of lengths.
+
+        Returns:
+            torch.BoolTensor of padding mask.
+            The shape is (batch_size, max_length)
+
+        """
+        if max_length is None:
+            max_length = torch.max(length).item()
+
+        # Allocation is required for mps
+        indices = torch.arange(max_length).to(length.device)
+        padding_mask = indices >= length.unsqueeze(dim=-1)
+
+        return padding_mask
 
 
 class TextEncoder(nn.Module):
