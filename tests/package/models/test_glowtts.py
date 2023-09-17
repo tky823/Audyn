@@ -22,6 +22,7 @@ parameters_batch_first = [True, False]
 def test_glowtts() -> None:
     torch.manual_seed(0)
 
+    batch_first = True
     batch_size = 4
     num_embeddings = 5
     padding_idx = 0
@@ -35,6 +36,9 @@ def test_glowtts() -> None:
     hidden_channels = 3
     num_flows, num_layers, num_splits = 3, 2, 2
     down_scale = 2
+
+    # Duration Predictor
+    kernel_size = 3
 
     max_src_length = 20
     max_tgt_length = 2 * max_src_length
@@ -65,9 +69,14 @@ def test_glowtts() -> None:
         num_splits=num_splits,
         down_scale=down_scale,
     )
-    length_regulator = build_length_regulator([out_channels, 2])
+    duration_predictor = FastSpeechDurationPredictor(
+        [out_channels, 2],
+        kernel_size=kernel_size,
+        batch_first=batch_first,
+    )
+    length_regulator = LengthRegulator(batch_first=batch_first)
 
-    model = GlowTTS(encoder, decoder, length_regulator)
+    model = GlowTTS(encoder, decoder, duration_predictor, length_regulator)
     latent, log_duration, padding_mask, logdet = model(
         src,
         tgt,
@@ -85,6 +94,14 @@ def test_glowtts() -> None:
     assert src_padding_mask.size() == (batch_size, max_src_length)
     assert tgt_padding_mask.size() == (batch_size, max_tgt_length)
     assert logdet.size() == (batch_size,)
+
+    output, est_duration = model.inference(
+        src,
+        src_length=src_length,
+    )
+
+    assert output.size() == (batch_size, max_tgt_length, out_channels)
+    assert est_duration.size() == (batch_size, max_src_length)
 
 
 def test_glowtts_encoder() -> None:
