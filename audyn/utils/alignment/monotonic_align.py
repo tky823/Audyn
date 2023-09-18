@@ -2,11 +2,11 @@ import torch
 
 from ..._cpp_extensions import monotonic_align as monotonic_align_cpp
 
-__all__ = ["viterbi_monotonic_alignment"]
+__all__ = ["search_monotonic_alignment_by_viterbi"]
 
 
 @torch.no_grad()
-def viterbi_monotonic_alignment(
+def search_monotonic_alignment_by_viterbi(
     probs: torch.Tensor,
     take_log: bool = False,
 ) -> torch.LongTensor:
@@ -21,6 +21,6 @@ def viterbi_monotonic_alignment(
         torch.LongTensor: Hard alignment matrix of shape (batch_size, tgt_length, src_length).
 
     """
-    hard_alignment = monotonic_align_cpp.viterbi_monotonic_alignment(probs, take_log)
+    hard_alignment = monotonic_align_cpp.search_monotonic_alignment_by_viterbi(probs, take_log)
 
     return hard_alignment

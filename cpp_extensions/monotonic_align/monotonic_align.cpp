@@ -2,8 +2,8 @@
 
 #include <torch/extension.h>
 
-torch::Tensor viterbi_monotonic_alignment(torch::Tensor probs,
-                                          bool take_log = false)
+torch::Tensor search_monotonic_alignment_by_viterbi(torch::Tensor probs,
+                                                    bool take_log = false)
 {
     int64_t batch_size = probs.size(0);
     int64_t max_tgt_length = probs.size(1);
@@ -103,6 +103,6 @@ torch::Tensor viterbi_monotonic_alignment(torch::Tensor probs,
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
 {
-    m.def("viterbi_monotonic_alignment", &viterbi_monotonic_alignment,
+    m.def("search_monotonic_alignment_by_viterbi", &search_monotonic_alignment_by_viterbi,
           "Search monotonic alignment by Viterbi algorithm");
 }
