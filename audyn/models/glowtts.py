@@ -13,7 +13,7 @@ from ..modules.glowtts import (
     MaskedInvertiblePointwiseConv1d,
     MaskedWaveNetAffineCoupling,
 )
-from ..utils.alignment.monotonic_align import viterbi_monotonic_alignment
+from ..utils.alignment.monotonic_align import search_monotonic_alignment_by_viterbi
 from ..utils.duration import transform_log_duration
 from .fastspeech import _get_clones
 
@@ -269,7 +269,7 @@ class GlowTTS(nn.Module):
 
         assert log_prob.size() == (batch_size, tgt_length, src_length)
 
-        hard_alignment = viterbi_monotonic_alignment(log_prob, take_log=False)
+        hard_alignment = search_monotonic_alignment_by_viterbi(log_prob, take_log=False)
         log_prob = torch.sum(log_prob * hard_alignment, dim=1)
         duration = hard_alignment.sum(dim=1)
 
