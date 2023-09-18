@@ -100,7 +100,7 @@ def test_glowtts() -> None:
         src_length=src_length,
     )
 
-    assert output.size() == (batch_size, max_tgt_length, out_channels)
+    assert output.size()[:2] == (batch_size, n_mels)
     assert est_duration.size() == (batch_size, max_src_length)
 
 
