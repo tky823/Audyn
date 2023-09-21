@@ -167,7 +167,6 @@ class ConvBlock(nn.Module):
             num_features,
             kernel_size=k2,
             stride=1,
-            bias=False,
             **factory_kwargs,
         )
         self.layer_norm = nn.LayerNorm(num_features, **factory_kwargs)
