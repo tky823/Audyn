@@ -383,9 +383,11 @@ class Decoder(BaseFlow):
         num_splits: int = 4,
         down_scale: int = 2,
         kernel_size: int = 5,
+        dilation_rate: int = 5,
         bias: bool = True,
         causal: bool = False,
         conv: str = "gated",
+        dropout: float = 0,
         weight_norm: bool = True,
         split: Optional[nn.Module] = None,
         concat: Optional[nn.Module] = None,
@@ -408,9 +410,11 @@ class Decoder(BaseFlow):
                     num_layers=num_layers,
                     num_splits=num_splits,
                     kernel_size=kernel_size,
+                    dilation_rate=dilation_rate,
                     bias=bias,
                     causal=causal,
                     conv=conv,
+                    dropout=dropout,
                     weight_norm=weight_norm,
                     split=split,
                     concat=concat,
@@ -789,9 +793,11 @@ class GlowBlock(BaseFlow):
         num_layers: int = 4,
         num_splits: int = 4,
         kernel_size: int = 5,
+        dilation_rate: int = 1,
         bias: bool = True,
         causal: bool = False,
         conv: str = "gated",
+        dropout: float = 0,
         weight_norm: bool = True,
         split: Optional[nn.Module] = None,
         concat: Optional[nn.Module] = None,
@@ -815,9 +821,11 @@ class GlowBlock(BaseFlow):
             skip_channels=skip_channels,
             num_layers=num_layers,
             kernel_size=kernel_size,
+            dilation_rate=dilation_rate,
             bias=bias,
             causal=causal,
             conv=conv,
+            dropout=dropout,
             weight_norm=weight_norm,
             split=split,
             concat=concat,
@@ -840,7 +848,33 @@ class GlowBlock(BaseFlow):
         return_logdet = logdet is not None
 
         if reverse:
+            x = self.affine_coupling(
+                input,
+                logdet=logdet,
+                reverse=reverse,
+            )
+
+            if return_logdet:
+                x, logdet = x
+
             x = self.conv1d(
+                x,
+                padding_mask=padding_mask,
+                logdet=logdet,
+                reverse=reverse,
+            )
+
+            if return_logdet:
+                x, logdet = x
+
+            output = self.norm1d(
+                x,
+                padding_mask=padding_mask,
+                logdet=logdet,
+                reverse=reverse,
+            )
+        else:
+            x = self.norm1d(
                 input,
                 padding_mask=padding_mask,
                 logdet=logdet,
@@ -850,7 +884,7 @@ class GlowBlock(BaseFlow):
             if return_logdet:
                 x, logdet = x
 
-            x = self.norm1d(
+            x = self.conv1d(
                 x,
                 padding_mask=padding_mask,
                 logdet=logdet,
@@ -862,32 +896,6 @@ class GlowBlock(BaseFlow):
 
             output = self.affine_coupling(
                 x,
-                logdet=logdet,
-                reverse=reverse,
-            )
-        else:
-            x = self.affine_coupling(
-                input,
-                logdet=logdet,
-                reverse=reverse,
-            )
-
-            if return_logdet:
-                x, logdet = x
-
-            x = self.norm1d(
-                x,
-                padding_mask=padding_mask,
-                logdet=logdet,
-                reverse=reverse,
-            )
-
-            if return_logdet:
-                x, logdet = x
-
-            output = self.conv1d(
-                x,
-                padding_mask=padding_mask,
                 logdet=logdet,
                 reverse=reverse,
             )
