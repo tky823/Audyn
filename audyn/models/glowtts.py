@@ -551,7 +551,7 @@ class Decoder(BaseFlow):
         length = input.size(-1)
         padding = (down_scale - length % down_scale) % down_scale
         x = F.pad(input, (0, padding))
-        x = self.squeeze(x)
+        x = self.squeeze(x, down_scale=down_scale)
 
         if padding_mask is None:
             padding_mask_dim = None
@@ -560,7 +560,7 @@ class Decoder(BaseFlow):
             padding_mask_dim = padding_mask.dim()
             expanded_padding_mask = self._expand_padding_mask(padding_mask, input)
             expanded_padding_mask = F.pad(expanded_padding_mask, (0, padding), value=True)
-            expanded_padding_mask = self.squeeze(expanded_padding_mask)
+            expanded_padding_mask = self.squeeze(expanded_padding_mask, down_scale=down_scale)
 
             # overwrite padding mask to round down sequence length
             padding_mask = torch.sum(expanded_padding_mask, dim=1)
@@ -587,12 +587,12 @@ class Decoder(BaseFlow):
         if return_logdet:
             x, logdet = x
 
-        x = self.unsqueeze(x)
+        x = self.unsqueeze(x, up_scale=down_scale)
         output = F.pad(x, (0, -padding))
 
         if padding_mask is not None:
             # i.e. expanded_padding_mask is not None
-            padding_mask = self.unsqueeze(expanded_padding_mask)
+            padding_mask = self.unsqueeze(expanded_padding_mask, up_scale=down_scale)
             padding_mask = F.pad(padding_mask, (0, -padding))
 
             if padding_mask_dim == 2:
@@ -636,23 +636,24 @@ class Decoder(BaseFlow):
             reverse=True,
         )
 
+    @staticmethod
     def squeeze(
-        self,
         input: Union[torch.Tensor, torch.BoolTensor],
+        down_scale: int,
     ) -> Union[torch.Tensor, torch.BoolTensor]:
         """Squeeze tensor.
 
         Args:
             input (torch.Tensor or torch.BoolTensor): 3D tensor of shape
                 (batch_size, num_features, length). ``length`` should be divisible
-                by ``self.down_scale``.
+                by ``down_scale``.
+            down_scale (int): Down scale of time axis.
 
         Returns:
             torch.Tensor: Reshaped tensor of shape
                 (batch_size, down_scale * in_channels, length // down_scale).
 
         """
-        down_scale = self.down_scale
         batch_size, in_channels, length = input.size()
 
         x = input.view(batch_size, in_channels, length // down_scale, down_scale)
@@ -661,27 +662,29 @@ class Decoder(BaseFlow):
 
         return output
 
+    @staticmethod
     def unsqueeze(
-        self, input: Union[torch.Tensor, torch.BoolTensor]
+        input: Union[torch.Tensor, torch.BoolTensor],
+        up_scale: int,
     ) -> Union[torch.Tensor, torch.BoolTensor]:
         """Unsqueeze tensor.
 
         Args:
             input (torch.Tensor or torch.BoolTensor): 3D tensor of shape
                 (batch_size, num_features, length). ``length`` should be divisible
-                by ``self.down_scale``.
+                by ``up_scale``.
+            up_scale (int): Up scale of time axis.
 
         Returns:
             torch.Tensor: Reshaped tensor of shape
-                (batch_size, in_channels // down_scale, length * down_scale).
+                (batch_size, in_channels // up_scale, length * up_scale).
 
         """
-        down_scale = self.down_scale
         batch_size, in_channels, length = input.size()
 
-        output = input.view(batch_size, down_scale, in_channels // down_scale, length)
+        output = input.view(batch_size, up_scale, in_channels // up_scale, length)
         output = output.permute(0, 2, 3, 1).contiguous()
-        output = output.view(batch_size, in_channels // down_scale, length * down_scale)
+        output = output.view(batch_size, in_channels // up_scale, length * up_scale)
 
         return output
 
