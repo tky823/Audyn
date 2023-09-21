@@ -125,9 +125,15 @@ class GlowTTS(nn.Module):
                     f"but {tgt_padding_mask.dim()}D is found.",
                 )
 
+        mas_padding_mask = src_padding_mask.unsqueeze(dim=-2) | tgt_padding_mask.unsqueeze(dim=-1)
+
         # TODO: explicit permutation
         tgt_latent = tgt_latent.permute(0, 2, 1).contiguous()
-        log_prob_z, ml_duration = self.search_gaussian_monotonic_alignment(tgt_latent, normal)
+        log_prob_z, ml_duration = self.search_gaussian_monotonic_alignment(
+            tgt_latent,
+            normal,
+            padding_mask=mas_padding_mask,
+        )
         logdet = log_prob_z.sum(dim=-1) + z_logdet
 
         latent = src_latent, tgt_latent
@@ -239,7 +245,9 @@ class GlowTTS(nn.Module):
 
     @staticmethod
     def search_gaussian_monotonic_alignment(
-        input: torch.Tensor, normal: Independent
+        input: torch.Tensor,
+        normal: Independent,
+        padding_mask: Optional[torch.BoolTensor] = None,
     ) -> Tuple[torch.Tensor, torch.LongTensor]:
         """Search monotonic alignment assuming Gaussian distributions.
 
@@ -248,7 +256,8 @@ class GlowTTS(nn.Module):
                 of shape (batch_size, tgt_length, num_features).
             normal (torch.distributions.Independent): Gaussian distribution parametrized by
                 mean (batch_size, src_length, num_features) and
-                stddev (batch_size, src_length, num_features),
+                stddev (batch_size, src_length, num_features).
+            padding_mask (torch.BoolTensor, optional): Padding mask for monotonic alignment.
 
         Returns:
             tuple: Tuple of tensors containing
@@ -269,7 +278,11 @@ class GlowTTS(nn.Module):
 
         assert log_prob.size() == (batch_size, tgt_length, src_length)
 
-        hard_alignment = search_monotonic_alignment_by_viterbi(log_prob, take_log=False)
+        hard_alignment = search_monotonic_alignment_by_viterbi(
+            log_prob,
+            padding_mask=padding_mask,
+            take_log=False,
+        )
         log_prob = torch.sum(log_prob * hard_alignment, dim=1)
         duration = hard_alignment.sum(dim=1)
 
