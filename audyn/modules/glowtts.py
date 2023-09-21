@@ -6,6 +6,8 @@ import torch.nn.functional as F
 
 from .glow import ActNorm1d, InvertiblePointwiseConv1d
 from .waveglow import StackedResidualConvBlock1d, WaveNetAffineCoupling
+from .wavenet import GatedConv1d
+from .wavenet import ResidualConvBlock1d as BaseResidualConvBlock1d
 
 __all__ = [
     "MaskedActNorm1d",
@@ -261,9 +263,11 @@ class MaskedWaveNetAffineCoupling(WaveNetAffineCoupling):
         skip_channels: Optional[int] = None,
         num_layers: int = 4,
         kernel_size: int = 5,
+        dilation_rate: int = 1,
         bias: bool = True,
         causal: bool = False,
         conv: str = "gated",
+        dropout: float = 0,
         weight_norm: bool = True,
         split: Optional[nn.Module] = None,
         concat: Optional[nn.Module] = None,
@@ -277,10 +281,11 @@ class MaskedWaveNetAffineCoupling(WaveNetAffineCoupling):
             num_layers=num_layers,
             kernel_size=kernel_size,
             stride=1,
-            dilated=True,
+            dilation_rate=dilation_rate,
             bias=bias,
             causal=causal,
             conv=conv,
+            dropout=dropout,
             weight_norm=weight_norm,
         )
 
@@ -396,27 +401,82 @@ class MaskedStackedResidualConvBlock1d(StackedResidualConvBlock1d):
         num_layers: int = 4,
         kernel_size: int = 5,
         stride: int = 1,
-        dilated: bool = True,
+        dilation_rate: int = 1,
         bias: bool = True,
         causal: bool = False,
         conv: str = "gated",
+        dropout: float = 0,
         weight_norm: bool = True,
     ) -> None:
-        super().__init__(
+        # call nn.Module.__init__()
+        super(StackedResidualConvBlock1d, self).__init__()
+
+        if skip_channels is None:
+            skip_channels = hidden_channels
+
+        self.in_channels = in_channels
+        self.num_layers = num_layers
+
+        self.bottleneck_conv1d_in = nn.Conv1d(
             in_channels,
             hidden_channels,
-            skip_channels,
-            num_layers=num_layers,
-            kernel_size=kernel_size,
-            stride=stride,
-            dilated=dilated,
-            bias=bias,
-            causal=causal,
-            conv=conv,
-            local_dim=None,
-            global_dim=None,
-            weight_norm=weight_norm,
+            kernel_size=1,
+            stride=1,
         )
+
+        backbone = []
+
+        for layer_idx in range(num_layers):
+            if dilation_rate > 1:
+                dilation = dilation_rate**layer_idx
+            else:
+                dilation = 1
+                assert (
+                    stride == 1
+                ), "When dilated convolution, stride is expected to be 1, but {} is given.".format(
+                    stride
+                )
+
+            if layer_idx < num_layers - 1:
+                dual_head = True
+            else:
+                dual_head = False
+
+            backbone.append(
+                ResidualConvBlock1d(
+                    hidden_channels,
+                    hidden_channels,
+                    skip_channels=skip_channels,
+                    kernel_size=kernel_size,
+                    stride=stride,
+                    dilation=dilation,
+                    bias=bias,
+                    causal=causal,
+                    dual_head=dual_head,
+                    conv=conv,
+                    dropout=dropout,
+                    local_dim=None,
+                    global_dim=None,
+                    weight_norm=weight_norm,
+                )
+            )
+
+        self.backbone = nn.ModuleList(backbone)
+        self.bottleneck_conv1d_out = nn.Conv1d(
+            skip_channels,
+            2 * in_channels,
+            kernel_size=1,
+            stride=1,
+        )
+
+        # registered_weight_norms manages normalization status of backbone
+        self.registered_weight_norms = set()
+
+        if weight_norm:
+            self.registered_weight_norms.add("backbone")
+            self.weight_norm_()
+
+        self._reset_parameters()
 
     def forward(
         self,
@@ -455,6 +515,121 @@ class MaskedStackedResidualConvBlock1d(StackedResidualConvBlock1d):
         log_s, t = torch.split(output, [in_channels, in_channels], dim=1)
 
         return log_s, t
+
+
+class ResidualConvBlock1d(BaseResidualConvBlock1d):
+    def __init__(
+        self,
+        in_channels: int,
+        hidden_channels: int,
+        skip_channels: Optional[int] = None,
+        kernel_size: int = 3,
+        stride: int = 1,
+        dilation: int = 1,
+        bias: bool = True,
+        causal: bool = True,
+        dual_head: bool = True,
+        conv: str = "gated",
+        dropout: float = 0,
+        local_dim: Optional[int] = None,
+        global_dim: Optional[int] = None,
+        weight_norm: bool = True,
+    ) -> None:
+        # call nn.Module.__init__()
+        super(BaseResidualConvBlock1d, self).__init__()
+
+        if skip_channels is None:
+            skip_channels = hidden_channels
+
+        self.in_channels = in_channels
+        self.skip_channels = skip_channels
+        self.kernel_size, self.dilation = kernel_size, dilation
+        self.causal = causal
+        self.dual_head = dual_head
+
+        if conv == "gated":
+            assert stride == 1, f"stride is expected to 1, but given {stride}."
+
+            self.conv1d = GatedConv1d(
+                in_channels,
+                hidden_channels,
+                kernel_size=kernel_size,
+                stride=1,
+                dilation=dilation,
+                bias=bias,
+                causal=causal,
+                local_dim=local_dim,
+                global_dim=global_dim,
+                weight_norm=weight_norm,
+            )
+        else:
+            raise ValueError("{} is not supported for conv.".format(conv))
+
+        if dropout > 0:
+            self.dropout = nn.Dropout(dropout)
+        else:
+            self.dropout = None
+
+        if dual_head:
+            self.output_conv1d = nn.Conv1d(
+                hidden_channels, in_channels, kernel_size=1, stride=1, bias=bias
+            )
+        else:
+            self.output_conv1d = None
+
+        self.skip_conv1d = nn.Conv1d(
+            hidden_channels, skip_channels, kernel_size=1, stride=1, bias=bias
+        )
+
+        # registered_weight_norms manages normalization status of conv1d
+        self.registered_weight_norms = set()
+
+        if weight_norm:
+            self.registered_weight_norms.add("conv1d")
+            self.weight_norm_()
+
+    def forward(
+        self,
+        input: torch.Tensor,
+        local_conditioning: Optional[torch.Tensor] = None,
+        global_conditioning: Optional[torch.Tensor] = None,
+    ) -> Tuple[Optional[torch.Tensor], torch.Tensor]:
+        """Forward pass of residual convolution block.
+
+        Args:
+            input (torch.Tensor): Input tensor of shape
+                (batch_size, in_channels, num_frames).
+            local_conditioning (torch.Tensor, optional): Local conditioning of shape
+                (batch_size, local_dim, num_frames).
+            global_conditioning (torch.Tensor, optional): Global conditioning of shape
+                (batch_size, global_dim) or (batch_size, global_dim, 1).
+
+        Returns:
+            Tuple of torch.Tensor containing:
+            - torch.Tensor: Output of shape (batch_size, in_channels, num_frames).
+            - torch.Tensor: Output of shape (batch_size, in_channels, num_frames).
+
+        """
+        residual = input
+
+        x = self.conv1d(
+            input,
+            local_conditioning=local_conditioning,
+            global_conditioning=global_conditioning,
+        )
+
+        if self.dropout is not None:
+            x = self.dropout(x)
+
+        skip = self.skip_conv1d(x)
+
+        if self.dual_head:
+            output = self.output_conv1d(x)
+            output = residual + output
+        else:
+            output = None
+
+        return output, skip
 
 
 def _expand_padding_mask(
