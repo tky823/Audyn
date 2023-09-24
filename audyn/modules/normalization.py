@@ -9,11 +9,24 @@ __all__ = ["MaskedLayerNorm", "ActNorm1d"]
 
 
 class MaskedLayerNorm(nn.LayerNorm):
+    """Layer normalization with masking."""
+
     def forward(
         self,
         input: torch.Tensor,
         padding_mask: Optional[torch.BoolTensor] = None,
     ) -> torch.Tensor:
+        """Forward pass of MaskedLayerNorm.
+
+        Args:
+            input (torch.Tensor): Input feature of shape (batch_size, *).
+            padding_mask (torch.BoolTensor, optional): Padding mask.
+                Shape should be broadcastable to shape of input.
+
+        Returns:
+            torch.Tensor: Output feature of same shape as input.
+
+        """
         if padding_mask is None:
             return super().forward(input)
         else:
