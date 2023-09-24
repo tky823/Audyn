@@ -21,8 +21,6 @@ class FFTrBlock(nn.Module):
         bias: bool = True,
         add_bias_kv: bool = False,
         add_zero_attn: bool = False,
-        kdim: Optional[int] = None,
-        vdim: Optional[int] = None,
         batch_first: bool = False,
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
@@ -34,15 +32,13 @@ class FFTrBlock(nn.Module):
             "dtype": dtype,
         }
 
-        self.mha = MultiheadAttentionBlock(
+        self.mha = MultiheadSelfAttentionBlock(
             d_model,
             num_heads,
             dropout=dropout,
             bias=bias,
             add_bias_kv=add_bias_kv,
             add_zero_attn=add_zero_attn,
-            kdim=kdim,
-            vdim=vdim,
             batch_first=batch_first,
             **factory_kwargs,
         )
@@ -240,7 +236,7 @@ class ConvBlock(nn.Module):
         return output
 
 
-class MultiheadAttentionBlock(nn.Module):
+class MultiheadSelfAttentionBlock(nn.Module):
     def __init__(
         self,
         embed_dim: int,
@@ -249,8 +245,6 @@ class MultiheadAttentionBlock(nn.Module):
         bias: bool = True,
         add_bias_kv: bool = False,
         add_zero_attn: bool = False,
-        kdim: Optional[int] = None,
-        vdim: Optional[int] = None,
         batch_first: bool = False,
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
@@ -269,8 +263,6 @@ class MultiheadAttentionBlock(nn.Module):
             bias=bias,
             add_bias_kv=add_bias_kv,
             add_zero_attn=add_zero_attn,
-            kdim=kdim,
-            vdim=vdim,
             batch_first=batch_first,
             **factory_kwargs,
         )
