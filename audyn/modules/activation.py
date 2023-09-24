@@ -8,6 +8,7 @@ from packaging import version
 
 __all__ = [
     "MultiheadSelfAttention",
+    "RelativePositionalMultiheadSelfAttention",
 ]
 
 
