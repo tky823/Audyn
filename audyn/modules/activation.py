@@ -55,7 +55,7 @@ class MultiheadSelfAttention(nn.MultiheadAttention):
     def forward(
         self,
         input: torch.Tensor,
-        key_padding_mask: Optional[torch.Tensor] = None,
+        padding_mask: Optional[torch.Tensor] = None,
         need_weights: bool = True,
         attn_mask: Optional[torch.Tensor] = None,
         average_attn_weights: bool = True,
@@ -74,7 +74,7 @@ class MultiheadSelfAttention(nn.MultiheadAttention):
             input,
             input,
             input,
-            key_padding_mask=key_padding_mask,
+            key_padding_mask=padding_mask,
             need_weights=need_weights,
             attn_mask=attn_mask,
             average_attn_weights=average_attn_weights,
@@ -94,6 +94,7 @@ class RelativePositionalMultiheadSelfAttention(MultiheadSelfAttention):
         add_bias_kv: bool = False,
         add_zero_attn: bool = False,
         window_size: int = None,
+        share_heads: bool = True,
         batch_first: bool = False,
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
@@ -122,7 +123,11 @@ class RelativePositionalMultiheadSelfAttention(MultiheadSelfAttention):
         if add_zero_attn:
             raise NotImplementedError("add_zero_attn is not supported.")
 
-        embedding_shape = (2 * window_size + 1, embed_dim)
+        if share_heads:
+            embedding_shape = (2 * window_size + 1, embed_dim // num_heads)
+        else:
+            embedding_shape = (2 * window_size + 1, embed_dim)
+
         self.k_pos_emb = nn.Parameter(
             torch.empty(
                 *embedding_shape,
@@ -135,7 +140,9 @@ class RelativePositionalMultiheadSelfAttention(MultiheadSelfAttention):
                 **factory_kwargs,
             )
         )
+
         self.window_size = window_size
+        self.share_heads = share_heads
 
         self._reset_embeddings()
 
@@ -152,11 +159,11 @@ class RelativePositionalMultiheadSelfAttention(MultiheadSelfAttention):
             self._reset_embeddings()
 
     def _reset_embeddings(self) -> None:
-        embed_dim = self.embed_dim
+        head_dim = self.embed_dim // self.num_heads
 
-        std = embed_dim**-0.5
-        self.k_pos_emb.data.normal_(std=std)
-        self.v_pos_emb.data.normal_(std=std)
+        std = math.sqrt(head_dim)
+        self.k_pos_emb.data.normal_(std=1 / std)
+        self.v_pos_emb.data.normal_(std=1 / std)
 
     def forward(
         self,
