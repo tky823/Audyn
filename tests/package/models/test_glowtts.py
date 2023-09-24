@@ -16,6 +16,7 @@ from audyn.models.glowtts import (
 )
 from audyn.modules.duration_predictor import FastSpeechDurationPredictor
 from audyn.modules.fastspeech import FFTrBlock
+from audyn.modules.glowtts import GlowTTSFFTrBlock
 
 parameters_batch_first = [True, False]
 
@@ -105,7 +106,8 @@ def test_glowtts() -> None:
     assert est_duration.size() == (batch_size, max_src_length)
 
 
-def test_official_glowtts() -> None:
+@pytest.mark.parametrize("use_relative_position", [True, False])
+def test_official_glowtts(use_relative_position: bool) -> None:
     num_embeddings = 148  # or 149
     n_mels = 80
     batch_size = 4
@@ -115,6 +117,8 @@ def test_official_glowtts() -> None:
     d_model = 192
     pre_kernel_size = 5
     num_pre_layers = 3
+    window_size = 4
+    share_heads = True
     enc_hidden_channels = 768
     num_heads = 2
     enc_kernel_size = 3
@@ -164,14 +168,28 @@ def test_official_glowtts() -> None:
         batch_first=batch_first,
         num_layers=num_pre_layers,
     )
-    encoder_layer = FFTrBlock(
-        d_model,
-        enc_hidden_channels,
-        num_heads=num_heads,
-        kernel_size=[enc_kernel_size, enc_kernel_size],
-        dropout=enc_dropout,
-        batch_first=batch_first,
-    )
+
+    if use_relative_position:
+        encoder_layer = GlowTTSFFTrBlock(
+            d_model,
+            enc_hidden_channels,
+            num_heads=num_heads,
+            kernel_size=[enc_kernel_size, enc_kernel_size],
+            dropout=enc_dropout,
+            batch_first=batch_first,
+            window_size=window_size,
+            share_heads=share_heads,
+        )
+    else:
+        encoder_layer = FFTrBlock(
+            d_model,
+            enc_hidden_channels,
+            num_heads=num_heads,
+            kernel_size=[enc_kernel_size, enc_kernel_size],
+            dropout=enc_dropout,
+            batch_first=batch_first,
+        )
+
     backbone = GlowTTSTransformerEncoder(
         encoder_layer,
         num_layers=num_enc_layers,
@@ -215,8 +233,11 @@ def test_official_glowtts() -> None:
         if p.requires_grad:
             num_parameters += p.numel()
 
-    # According to paper, number of parameters is 28.6M.
-    assert num_parameters == 28628961
+    if use_relative_position:
+        assert num_parameters == 28639329
+    else:
+        # According to paper, number of parameters is 28.6M.
+        assert num_parameters == 28628961
 
     latent, log_duration, padding_mask, logdet = model(
         src,
