@@ -337,7 +337,7 @@ class MultiheadSelfAttentionBlock(nn.Module):
         # TODO: version-dependent kwargs
         attn_output, attn_weights = self.mha(
             x,
-            key_padding_mask=key_padding_mask,
+            padding_mask=key_padding_mask,
             need_weights=True,
             attn_mask=attn_mask,
             **kwargs,
