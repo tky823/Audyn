@@ -233,10 +233,10 @@ def test_official_glowtts(use_relative_position: bool) -> None:
         if p.requires_grad:
             num_parameters += p.numel()
 
+    # According to paper, number of parameters is 28.6M.
     if use_relative_position:
         assert num_parameters == 28639329
     else:
-        # According to paper, number of parameters is 28.6M.
         assert num_parameters == 28628961
 
     latent, log_duration, padding_mask, logdet = model(
