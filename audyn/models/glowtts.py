@@ -13,6 +13,7 @@ from ..modules.glowtts import (
     MaskedInvertiblePointwiseConv1d,
     MaskedWaveNetAffineCoupling,
 )
+from ..modules.normalization import MaskedLayerNorm
 from ..utils.alignment.monotonic_align import search_monotonic_alignment_by_viterbi
 from ..utils.duration import transform_log_duration
 from .fastspeech import _get_clones
@@ -322,10 +323,12 @@ class TextEncoder(nn.Module):
         backbone: nn.Module,
         proj_mean: nn.Module,
         proj_std: nn.Module,
+        pre_net: Optional[nn.Module] = None,
     ) -> None:
         super().__init__()
 
         self.word_embedding = word_embedding
+        self.pre_net = pre_net
         self.backbone = backbone
         self.proj_mean = proj_mean
         self.proj_std = proj_std
@@ -353,7 +356,12 @@ class TextEncoder(nn.Module):
         """
         x = self.word_embedding(input)
         x = self._apply_mask(x, padding_mask=padding_mask)
-        output = self.backbone(x)
+
+        if self.pre_net is not None:
+            x = self.pre_net(x, padding_mask=padding_mask)
+            x = self._apply_mask(x, padding_mask=padding_mask)
+
+        output = self.backbone(x, src_key_padding_mask=padding_mask)
         output = self._apply_mask(output, padding_mask=padding_mask)
 
         mean = self.proj_mean(output)
@@ -702,6 +710,122 @@ class Decoder(BaseFlow):
         output = input.view(batch_size, up_scale, in_channels // up_scale, length)
         output = output.permute(0, 2, 3, 1).contiguous()
         output = output.view(batch_size, in_channels // up_scale, length * up_scale)
+
+        return output
+
+
+class PreNet(nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        hidden_channels: int,
+        kernel_size: int = 5,
+        dropout: float = 0.5,
+        batch_first: bool = True,
+        num_layers: int = 3,
+    ) -> None:
+        super().__init__()
+
+        self.num_layers = num_layers
+
+        backbone = []
+
+        for layer_idx in range(num_layers):
+            if layer_idx == 0:
+                _in_channels = in_channels
+            else:
+                _in_channels = hidden_channels
+
+            _out_channels = hidden_channels
+            conv1d = ConvBlock(
+                _in_channels,
+                _out_channels,
+                kernel_size=kernel_size,
+                dropout=dropout,
+                batch_first=batch_first,
+            )
+            backbone.append(conv1d)
+
+        self.backbone = nn.ModuleList(backbone)
+
+        _in_channels = hidden_channels
+        _out_channels = out_channels
+
+        self.proj = nn.Linear(_in_channels, _out_channels)
+
+    def forward(
+        self,
+        input: torch.Tensor,
+        padding_mask: Optional[torch.BoolTensor] = None,
+    ) -> torch.Tensor:
+        x = input
+
+        for layer in self.backbone:
+            if padding_mask is None:
+                x = layer(x)
+            else:
+                x = layer(x, padding_mask=padding_mask)
+
+        output = self.proj(x)
+
+        return output
+
+
+class ConvBlock(nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        dropout: float = 0.5,
+        batch_first: bool = True,
+    ) -> None:
+        super().__init__()
+
+        assert kernel_size % 2 == 1, "kernel_size should be odd."
+
+        self.kernel_size = kernel_size
+        self.batch_first = batch_first
+
+        self.conv1d = nn.Conv1d(in_channels, out_channels, kernel_size, stride=1)
+        self.norm1d = MaskedLayerNorm(out_channels)
+        self.nonlinear1d = nn.ReLU()
+        self.dropout1d = nn.Dropout(dropout)
+
+    def forward(
+        self,
+        input: torch.Tensor,
+        padding_mask: Optional[torch.BoolTensor] = None,
+    ) -> torch.Tensor:
+        kernel_size = self.kernel_size
+        batch_first = self.batch_first
+
+        if batch_first:
+            x = input.permute(0, 2, 1).contiguous()
+        else:
+            x = input.permute(1, 2, 0).contiguous()
+
+        if padding_mask is not None:
+            x = x.masked_fill(padding_mask.unsqueeze(dim=-2), 0)
+
+        x = F.pad(x, (kernel_size // 2, kernel_size // 2))
+        x = self.conv1d(x)
+        x = x.permute(0, 2, 1).contiguous()
+
+        if padding_mask is None:
+            x = self.norm1d(x)
+        else:
+            x = self.norm1d(x, padding_mask=padding_mask.unsqueeze(dim=-1))
+
+        if padding_mask is not None:
+            x = x.masked_fill(padding_mask.unsqueeze(dim=-1), 0)
+
+        if not batch_first:
+            x = x.permute(1, 0, 2).contiguous()
+
+        x = self.nonlinear1d(x)
+        output = self.dropout1d(x)
 
         return output
 
