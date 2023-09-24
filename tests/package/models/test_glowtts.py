@@ -11,6 +11,7 @@ from audyn.models.glowtts import (
     GlowBlock,
     GlowTTS,
     GlowTTSTransformerEncoder,
+    PreNet,
     TextEncoder,
 )
 from audyn.modules.duration_predictor import FastSpeechDurationPredictor
@@ -102,6 +103,138 @@ def test_glowtts() -> None:
 
     assert output.size()[:2] == (batch_size, n_mels)
     assert est_duration.size() == (batch_size, max_src_length)
+
+
+def test_official_glowtts() -> None:
+    num_embeddings = 148  # or 149
+    n_mels = 80
+    batch_size = 4
+
+    # Encoder
+    padding_idx = 0
+    d_model = 192
+    pre_kernel_size = 5
+    num_pre_layers = 3
+    enc_hidden_channels = 768
+    num_heads = 2
+    enc_kernel_size = 3
+    enc_dropout = 0.1
+    batch_first = True
+    num_enc_layers = 6
+
+    # Duration Predictor
+    dp_hidden_channels = 256
+    dp_kernel_size = 3
+    stop_gradient = True
+
+    # Decoder
+    dec_hidden_channels = 192
+    num_flows = 12
+    num_splits = 4
+    down_scale = 2
+    num_dec_layers = 4
+    dec_kernel_size = 5
+    dilation_rate = 5
+    dec_dropout = 0.05
+
+    max_src_length = 10
+    max_tgt_length = 2 * max_src_length
+
+    src_length = torch.randint(
+        max_src_length // 2, max_src_length + 1, (batch_size,), dtype=torch.long
+    )
+    tgt_length = torch.randint(
+        max_tgt_length // 2, max_tgt_length + 1, (batch_size,), dtype=torch.long
+    )
+    max_src_length = torch.max(src_length).item()
+    max_tgt_length = torch.max(tgt_length).item()
+    src = torch.randint(1, num_embeddings, (batch_size, max_src_length))
+    tgt = torch.randn((batch_size, n_mels, max_tgt_length))
+
+    embedding = nn.Embedding(
+        num_embeddings,
+        d_model,
+        padding_idx=padding_idx,
+    )
+    pre_net = PreNet(
+        d_model,
+        d_model,
+        d_model,
+        kernel_size=pre_kernel_size,
+        batch_first=batch_first,
+        num_layers=num_pre_layers,
+    )
+    encoder_layer = FFTrBlock(
+        d_model,
+        enc_hidden_channels,
+        num_heads=num_heads,
+        kernel_size=[enc_kernel_size, enc_kernel_size],
+        dropout=enc_dropout,
+        batch_first=batch_first,
+    )
+    backbone = GlowTTSTransformerEncoder(
+        encoder_layer,
+        num_layers=num_enc_layers,
+        batch_first=batch_first,
+    )
+    proj_mean = nn.Linear(d_model, n_mels)
+    proj_std = nn.Linear(d_model, n_mels)
+
+    encoder = TextEncoder(
+        embedding,
+        backbone,
+        proj_mean=proj_mean,
+        proj_std=proj_std,
+        pre_net=pre_net,
+    )
+    decoder = Decoder(
+        n_mels,
+        dec_hidden_channels,
+        num_flows=num_flows,
+        num_layers=num_dec_layers,
+        num_splits=num_splits,
+        down_scale=down_scale,
+        kernel_size=dec_kernel_size,
+        dilation_rate=dilation_rate,
+        dropout=dec_dropout,
+    )
+
+    duration_predictor = FastSpeechDurationPredictor(
+        [d_model, dp_hidden_channels, dp_hidden_channels],
+        kernel_size=dp_kernel_size,
+        stop_gradient=stop_gradient,
+        batch_first=batch_first,
+    )
+    length_regulator = LengthRegulator(batch_first=batch_first)
+
+    model = GlowTTS(encoder, decoder, duration_predictor, length_regulator)
+
+    num_parameters = 0
+
+    for p in model.parameters():
+        if p.requires_grad:
+            num_parameters += p.numel()
+
+    # According to paper, number of parameters is 28.6M.
+    assert num_parameters == 28628961
+
+    latent, log_duration, padding_mask, logdet = model(
+        src,
+        tgt,
+        src_length=src_length,
+        tgt_length=tgt_length,
+    )
+    src_latent, tgt_latent = latent
+    log_est_duration, log_ml_duration = log_duration
+    src_padding_mask, tgt_padding_mask = padding_mask
+
+    assert src_latent.size() == (batch_size, max_src_length, d_model)
+    assert tgt_latent.size() == (batch_size, max_tgt_length, n_mels)
+    assert log_est_duration.size() == (batch_size, max_src_length)
+    assert log_ml_duration.size() == (batch_size, max_src_length)
+    assert src_padding_mask.size() == (batch_size, max_src_length)
+    assert tgt_padding_mask.size() == (batch_size, max_tgt_length)
+    assert logdet.size() == (batch_size,)
 
 
 def test_glowtts_encoder() -> None:
@@ -388,7 +521,11 @@ def build_encoder(
         kernel_size=[3, 3],
         batch_first=True,
     )
-    backbone = GlowTTSTransformerEncoder(encoder_layer, num_layers=num_layers)
+    backbone = GlowTTSTransformerEncoder(
+        encoder_layer,
+        num_layers=num_layers,
+        batch_first=True,
+    )
     proj_mean = nn.Linear(d_model, latent_channels)
     proj_std = nn.Linear(d_model, latent_channels)
 
