@@ -196,6 +196,7 @@ class RelativePositionalMultiheadSelfAttention(MultiheadSelfAttention):
         num_heads = self.num_heads
         in_proj_weight = self.in_proj_weight
         in_proj_bias = self.in_proj_bias
+        share_heads = self.share_heads
         k_pos_emb = self.k_pos_emb
         v_pos_emb = self.v_pos_emb
 
@@ -238,7 +239,11 @@ class RelativePositionalMultiheadSelfAttention(MultiheadSelfAttention):
         qk = torch.matmul(q, k) / math.sqrt(head_dim)
 
         # offset for key
-        k_pos_emb = self.expand_embedding(k_pos_emb, length=length, num_heads=num_heads)
+        if share_heads:
+            k_pos_emb = self.expand_embedding(k_pos_emb, length=length, num_heads=1)
+        else:
+            k_pos_emb = self.expand_embedding(k_pos_emb, length=length, num_heads=num_heads)
+
         q = q.permute(1, 2, 0, 3)
         k_pos_emb = k_pos_emb.permute(0, 2, 1, 3)
         k_offset = torch.matmul(q, k_pos_emb) / math.sqrt(head_dim)
@@ -269,7 +274,11 @@ class RelativePositionalMultiheadSelfAttention(MultiheadSelfAttention):
         qkv = torch.matmul(attn_weights, v)
 
         # offset for value
-        v_pos_emb = self.expand_embedding(v_pos_emb, length=length, num_heads=num_heads)
+        if share_heads:
+            v_pos_emb = self.expand_embedding(v_pos_emb, length=length, num_heads=1)
+        else:
+            v_pos_emb = self.expand_embedding(v_pos_emb, length=length, num_heads=num_heads)
+
         _attn_weights = attn_weights.permute(1, 3, 0, 2)
         v_pos_emb = v_pos_emb.permute(0, 3, 2, 1)
         v_offset = torch.matmul(_attn_weights, v_pos_emb)
