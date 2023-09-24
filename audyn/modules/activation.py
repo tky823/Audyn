@@ -10,6 +10,8 @@ __all__ = [
 
 
 class MultiheadSelfAttention(nn.MultiheadAttention):
+    """Wrapper class of nn.MultiheadAttention for self-attention."""
+
     def __init__(
         self,
         embed_dim: int,
