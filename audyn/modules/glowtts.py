@@ -1,10 +1,15 @@
-from typing import Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .activation import RelativePositionalMultiheadSelfAttention
+from .fastspeech import ConvBlock
+from .fastspeech import FFTrBlock as BaseFFTrBlock
+from .fastspeech import MultiheadSelfAttentionBlock as BaseMultiheadSelfAttentionBlock
 from .glow import ActNorm1d, InvertiblePointwiseConv1d
+from .normalization import MaskedLayerNorm
 from .waveglow import StackedResidualConvBlock1d, WaveNetAffineCoupling
 from .wavenet import GatedConv1d
 from .wavenet import ResidualConvBlock1d as BaseResidualConvBlock1d
@@ -14,6 +19,95 @@ __all__ = [
     "MaskedInvertiblePointwiseConv1d",
     "MaskedWaveNetAffineCoupling",
 ]
+
+
+class GlowTTSFFTrBlock(BaseFFTrBlock):
+    def __init__(
+        self,
+        d_model: int,
+        hidden_channels: int,
+        num_heads: int = 2,
+        kernel_size: List[int] = [9, 1],
+        dropout: float = 0.1,
+        bias: bool = True,
+        add_bias_kv: bool = False,
+        add_zero_attn: bool = False,
+        window_size: int = None,
+        share_heads: bool = True,
+        batch_first: bool = False,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
+    ):
+        factory_kwargs = {
+            "device": device,
+            "dtype": dtype,
+        }
+
+        super(BaseFFTrBlock, self).__init__()
+
+        self.mha = MultiheadSelfAttentionBlock(
+            d_model,
+            num_heads,
+            dropout=dropout,
+            bias=bias,
+            add_bias_kv=add_bias_kv,
+            add_zero_attn=add_zero_attn,
+            window_size=window_size,
+            share_heads=share_heads,
+            batch_first=batch_first,
+            **factory_kwargs,
+        )
+        self.ffn = ConvBlock(
+            d_model, hidden_channels, kernel_size, dropout=dropout, **factory_kwargs
+        )
+
+        self.num_heads = num_heads
+        self.batch_first = batch_first
+
+
+class FFTrBlock(GlowTTSFFTrBlock):
+    """Wrapper class of GlowTTSFFTrBlock."""
+
+
+class MultiheadSelfAttentionBlock(BaseMultiheadSelfAttentionBlock):
+    def __init__(
+        self,
+        embed_dim: int,
+        num_heads: int,
+        dropout: float = 0.0,
+        bias: bool = True,
+        add_bias_kv: bool = False,
+        add_zero_attn: bool = False,
+        window_size: int = None,
+        share_heads: bool = True,
+        batch_first: bool = False,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
+    ) -> None:
+        super(BaseMultiheadSelfAttentionBlock, self).__init__()
+
+        factory_kwargs = {
+            "device": device,
+            "dtype": dtype,
+        }
+
+        self.mha = RelativePositionalMultiheadSelfAttention(
+            embed_dim,
+            num_heads,
+            dropout=dropout,
+            bias=bias,
+            add_bias_kv=add_bias_kv,
+            add_zero_attn=add_zero_attn,
+            window_size=window_size,
+            share_heads=share_heads,
+            batch_first=batch_first,
+            **factory_kwargs,
+        )
+
+        self.layer_norm = MaskedLayerNorm(embed_dim, **factory_kwargs)
+        self.dropout = nn.Dropout(dropout)
+
+        self.batch_first = batch_first
 
 
 class MaskedActNorm1d(ActNorm1d):
