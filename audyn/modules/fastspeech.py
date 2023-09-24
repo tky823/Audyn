@@ -7,6 +7,8 @@ from packaging import version
 
 IS_TORCH_LT_1_11 = version.parse(torch.__version__) < version.parse("1.11")
 
+from .activation import MultiheadSelfAttention
+
 
 class FFTrBlock(nn.Module):
     def __init__(
@@ -260,7 +262,7 @@ class MultiheadAttentionBlock(nn.Module):
             "dtype": dtype,
         }
 
-        self.mha = nn.MultiheadAttention(
+        self.mha = MultiheadSelfAttention(
             embed_dim,
             num_heads,
             dropout=dropout,
@@ -273,7 +275,7 @@ class MultiheadAttentionBlock(nn.Module):
             **factory_kwargs,
         )
 
-        self.layer_norm = nn.LayerNorm(embed_dim)
+        self.layer_norm = nn.LayerNorm(embed_dim, **factory_kwargs)
         self.dropout = nn.Dropout(dropout)
 
         self.batch_first = batch_first
@@ -340,9 +342,8 @@ class MultiheadAttentionBlock(nn.Module):
         else:
             kwargs = {"average_attn_weights": average_attn_weights}
 
+        # TODO: version-dependent kwargs
         attn_output, attn_weights = self.mha(
-            x,
-            x,
             x,
             key_padding_mask=key_padding_mask,
             need_weights=True,
