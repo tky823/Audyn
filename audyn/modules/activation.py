@@ -20,8 +20,6 @@ class MultiheadSelfAttention(nn.MultiheadAttention):
         bias: bool = True,
         add_bias_kv: bool = False,
         add_zero_attn: bool = False,
-        kdim: Optional[int] = None,
-        vdim: Optional[int] = None,
         batch_first: bool = False,
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
@@ -31,6 +29,7 @@ class MultiheadSelfAttention(nn.MultiheadAttention):
             "dtype": dtype,
         }
 
+        # Key and value are identical to query.
         super().__init__(
             embed_dim,
             num_heads,
@@ -38,11 +37,17 @@ class MultiheadSelfAttention(nn.MultiheadAttention):
             bias,
             add_bias_kv=add_bias_kv,
             add_zero_attn=add_zero_attn,
-            kdim=kdim,
-            vdim=vdim,
+            kdim=None,
+            vdim=None,
             batch_first=batch_first,
             **factory_kwargs,
         )
+
+        if not self._qkv_same_embed_dim:
+            raise ValueError(
+                "Embedding dimensions of key and value should be equal to "
+                "that of query in self-attention."
+            )
 
     def forward(
         self,
