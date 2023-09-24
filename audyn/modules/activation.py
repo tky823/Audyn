@@ -51,7 +51,7 @@ class MultiheadSelfAttention(nn.MultiheadAttention):
         average_attn_weights: bool = True,
         **kwargs,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
-        valid_keys = {}
+        valid_keys = set()
 
         if version.parse(torch.__version__) < version.parse("2.0"):
             valid_keys.add("is_causal")
