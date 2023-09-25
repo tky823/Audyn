@@ -1,0 +1,1 @@
+../../../LJSpeech/GlowTTS/local/train.py
