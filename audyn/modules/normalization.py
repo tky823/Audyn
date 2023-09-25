@@ -41,6 +41,9 @@ class MaskedLayerNorm(nn.LayerNorm):
             expanded_padding_mask = padding_mask.expand(x.size())
             expanded_non_padding_mask = torch.logical_not(expanded_padding_mask)
             num_elements = expanded_non_padding_mask.sum(dim=normalized_dim, keepdim=True)
+
+            # to avoid zero-division
+            num_elements = num_elements.masked_fill(padding_mask, 1)
             mean = torch.sum(x, dim=normalized_dim, keepdim=True) / num_elements
             squared_dev = torch.masked_fill((x - mean) ** 2, padding_mask, 0)
             var = squared_dev.sum(dim=normalized_dim, keepdim=True) / num_elements
