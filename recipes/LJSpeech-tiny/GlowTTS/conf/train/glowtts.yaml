@@ -35,7 +35,7 @@ key_mapping:
       - - src_latent
         - tgt_latent
       - - log_est_duration
-        - log_ml_duration
+        - ml_duration
       - - src_padding_mask
         - tgt_padding_mask
       - logdet
