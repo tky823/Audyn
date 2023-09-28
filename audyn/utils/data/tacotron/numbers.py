@@ -4,6 +4,8 @@ import re
 
 import inflect
 
+__all__ = ["normalize_numbers"]
+
 _inflect = inflect.engine()
 _comma_number_re = re.compile(r"([0-9][0-9\,]+[0-9])")
 _decimal_number_re = re.compile(r"([0-9]+\.[0-9]+)")
@@ -62,6 +64,15 @@ def _expand_number(m: re.Match) -> str:
 
 
 def normalize_numbers(text: str) -> str:
+    """Normalize numbers in text.
+
+    Args:
+        text (str): Input text.
+
+    Returns:
+        str: Normalized text.
+
+    """
     text = re.sub(_comma_number_re, _remove_commas, text)
     text = re.sub(_pounds_re, r"\1 pounds", text)
     text = re.sub(_dollars_re, _expand_dollars, text)
