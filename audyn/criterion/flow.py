@@ -1,5 +1,4 @@
 import math
-from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -16,7 +15,6 @@ class NLLLoss(nn.Module):
     def forward(
         self,
         logdet: torch.Tensor,
-        num_elements: Optional[torch.LongTensor] = None,
     ) -> torch.Tensor:
         """Forward pass of general flow loss.
 
@@ -24,8 +22,6 @@ class NLLLoss(nn.Module):
 
         Args:
             logdet (torch.Tensor): Log-determinant of shape (batch_size,).
-            num_elements (torch.LongTensor): Number of elements in each sample.
-                The shape is (batch_size,).
 
         Returns:
             torch.Tensor: Negative log-likelihood.
@@ -34,9 +30,6 @@ class NLLLoss(nn.Module):
         reduction = self.reduction
 
         loss = -logdet
-
-        if num_elements is not None:
-            loss = loss / num_elements
 
         if reduction == "mean":
             loss = loss.mean(dim=0)
