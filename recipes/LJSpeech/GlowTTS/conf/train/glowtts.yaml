@@ -39,7 +39,6 @@ key_mapping:
       - - src_padding_mask
         - tgt_padding_mask
       - logdet
-      - num_elements
   validation: ${.train}
   inference:
     input:
