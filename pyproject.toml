@@ -25,6 +25,8 @@ dependencies = [
     "torchvision",
     "tensorboard",
     "webdataset",
+    "Unidecode",
+    "inflect",
 ]
 dynamic = [
     "version",
