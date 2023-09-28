@@ -2,14 +2,15 @@ _target_: audyn.criterion.base.MultiCriteria
 nll:
   _target_: audyn.criterion.base.BaseCriterionWrapper
   criterion:
-    _target_: audyn.criterion.flow.NLLLoss
+    _target_: audyn.criterion.glowtts.GlowTTSNLLLoss
     reduction: mean
   weight: 1
   key_mapping:
     estimated:
       logdet: logdet
-      num_elements: num_elements
+      tgt_padding_mask: tgt_padding_mask
     target:
+      tgt: melspectrogram
 duration:
   _target_: audyn.criterion.base.BaseCriterionWrapper
   criterion:
