@@ -10,3 +10,19 @@ nll:
       logdet: logdet
       num_elements: num_elements
     target:
+duration:
+  _target_: audyn.criterion.base.BaseCriterionWrapper
+  criterion:
+    _target_: audyn.criterion.fastspeech.FastSpeechMSELoss
+    take_log:
+      input: false
+      target: true
+    reduction: mean
+    batch_first: ${model.encoder.backbone.batch_first}
+    min: 1
+  weight: 1
+  key_mapping:
+    estimated:
+      input: log_est_duration
+      target: ml_duration
+    target:
