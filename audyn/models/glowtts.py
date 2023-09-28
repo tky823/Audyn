@@ -144,14 +144,11 @@ class GlowTTS(nn.Module):
         )
         logdet = log_prob_z.sum(dim=-1) + z_logdet
 
-        mas_non_padding_mask = torch.logical_not(mas_padding_mask)
-        num_elements = mas_non_padding_mask.sum(dim=(-2, -1))
-
         latent = src_latent, tgt_latent
         duration = log_est_duration, ml_duration
         padding_mask = src_padding_mask, tgt_padding_mask
 
-        return latent, duration, padding_mask, logdet, num_elements
+        return latent, duration, padding_mask, logdet
 
     @torch.no_grad()
     def inference(
