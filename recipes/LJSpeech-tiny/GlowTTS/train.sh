@@ -1,0 +1,1 @@
+../../LJSpeech/GlowTTS/train.sh
