@@ -3,9 +3,12 @@ from typing import Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
+from packaging import version
 
 from .flow import AffineCoupling
 from .wavenet import ResidualConvBlock1d
+
+IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
 
 class WaveNetAffineCoupling(AffineCoupling):
@@ -251,7 +254,12 @@ class StackedResidualConvBlock1d(nn.Module):
         return log_s, t
 
     def weight_norm_(self) -> None:
-        self.bottleneck_conv1d_in = nn.utils.weight_norm(self.bottleneck_conv1d_in)
+        if IS_TORCH_LT_2_1:
+            weight_norm_fn = nn.utils.weight_norm
+        else:
+            weight_norm_fn = nn.utils.parametrizations.weight_norm
+
+        self.bottleneck_conv1d_in = weight_norm_fn(self.bottleneck_conv1d_in)
 
         if "backbone" not in self.registered_weight_norms:
             for layer in self.backbone:
@@ -260,7 +268,16 @@ class StackedResidualConvBlock1d(nn.Module):
             self.registered_weight_norms.add("backbone")
 
     def remove_weight_norm_(self) -> None:
-        self.bottleneck_conv1d_in = nn.utils.remove_weight_norm(self.bottleneck_conv1d_in)
+        if IS_TORCH_LT_2_1:
+            remove_weight_norm_fn = nn.utils.remove_weight_norm
+            remove_weight_norm_args = ()
+        else:
+            remove_weight_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_weight_norm_args = ("weight",)
+
+        self.bottleneck_conv1d_in = remove_weight_norm_fn(
+            self.bottleneck_conv1d_in, *remove_weight_norm_args
+        )
 
         for layer in self.backbone:
             layer.remove_weight_norm_()

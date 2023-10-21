@@ -3,6 +3,9 @@ from typing import Any, Optional, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from packaging import version
+
+IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
 
 class ResidualConvBlock1d(nn.Module):
@@ -148,24 +151,38 @@ class ResidualConvBlock1d(nn.Module):
             as well if necessary.
 
         """
+        if IS_TORCH_LT_2_1:
+            weight_norm_fn = nn.utils.weight_norm
+        else:
+            weight_norm_fn = nn.utils.parametrizations.weight_norm
+
         if "conv1d" not in self.registered_weight_norms:
             self.conv1d.weight_norm_()
             self.registered_weight_norms.add("conv1d")
 
         if self.output_conv1d is not None:
-            self.output_conv1d = nn.utils.weight_norm(self.output_conv1d)
+            self.output_conv1d = weight_norm_fn(self.output_conv1d)
 
-        self.skip_conv1d = nn.utils.weight_norm(self.skip_conv1d)
+        self.skip_conv1d = weight_norm_fn(self.skip_conv1d)
 
     def remove_weight_norm_(self) -> None:
         """Remove weight normalization from weights of convolution modules."""
+        if IS_TORCH_LT_2_1:
+            remove_weight_norm_fn = nn.utils.remove_weight_norm
+            remove_weight_norm_args = ()
+        else:
+            remove_weight_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_weight_norm_args = ("weight",)
+
         self.conv1d.remove_weight_norm_()
         self.registered_weight_norms.remove("conv1d")
 
         if self.output_conv1d is not None:
-            self.output_conv1d = nn.utils.remove_weight_norm(self.output_conv1d)
+            self.output_conv1d = remove_weight_norm_fn(
+                self.output_conv1d, *remove_weight_norm_args
+            )
 
-        self.skip_conv1d = nn.utils.remove_weight_norm(self.skip_conv1d)
+        self.skip_conv1d = remove_weight_norm_fn(self.skip_conv1d, *remove_weight_norm_args)
 
 
 class GatedConv1d(nn.Module):
