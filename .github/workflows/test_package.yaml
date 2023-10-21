@@ -34,29 +34,27 @@ jobs:
         run: |
           sudo apt update
           sudo apt install ffmpeg
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev,tests]"
-      - name: Install dependencies (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          pip install soundfile
       - name: Install specified version of PyTorch (Windows)
         id: windows_torch_installation
         if: matrix.os == 'windows-latest'
         env:
           TORCH_VERSION: ${{ matrix.torch-version }}
         run: |
-          python -m pip install --upgrade pip
-          pip install torch==${env:TORCH_VERSION} torchaudio torchtext torchvision
+          echo "torch==${env:TORCH_VERSION}" > requirements-additional.txt
       - name: Install specified version of PyTorch (Ubuntu & MacOS)
         if: steps.windows_torch_installation.conclusion == 'skipped'
         env:
           TORCH_VERSION: ${{ matrix.torch-version }}
         run: |
+          echo "torch==${TORCH_VERSION}" > requirements-additional.txt
+      - name: Install dependencies
+        run: |
           python -m pip install --upgrade pip
-          pip install torch==${TORCH_VERSION} torchaudio torchtext torchvision
+          pip install -e ".[dev,tests]" -r requirements-additional.txt
+      - name: Install dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          pip install soundfile
       - name: Show dependencies
         run: |
           pip list
