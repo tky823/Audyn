@@ -30,10 +30,15 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies (Ubuntu & MacOS)
-        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
+        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt update
           sudo apt install ffmpeg sox
+      - name: Install dependencies (Ubuntu & MacOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew update
+          brew install ffmpeg sox
       - name: Install specified version of PyTorch (Windows)
         id: windows_torch_installation
         if: matrix.os == 'windows-latest'
