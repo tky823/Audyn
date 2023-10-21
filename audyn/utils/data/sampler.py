@@ -1,9 +1,13 @@
 from typing import Dict, Iterable, Iterator, List
 
 import torch
+from packaging import version
 from torch.utils.data.sampler import Sampler
 
 __all__ = ["SequentialBatchSampler", "DynamicBatchSampler"]
+
+
+IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
 
 class SequentialBatchSampler(Sampler):
@@ -37,7 +41,10 @@ class SequentialBatchSampler(Sampler):
         seed: int = 0,
         drop_last: bool = False,
     ) -> None:
-        super().__init__(data_source)
+        if IS_TORCH_LT_2_1:
+            super().__init__(data_source)
+        else:
+            super().__init__()
 
         self.data_source = data_source
 
