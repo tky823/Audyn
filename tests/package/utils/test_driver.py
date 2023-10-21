@@ -102,6 +102,7 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
         config=config,
     )
     trainer.run()
+    trainer.writer.flush()
 
     target_grad = torch.tensor(
         list(range(BATCH_SIZE * INITIAL_ITERATION - BATCH_SIZE, BATCH_SIZE * INITIAL_ITERATION)),
@@ -142,6 +143,7 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
         config=config,
     )
     trainer.run()
+    trainer.writer.flush()
 
     target_grad = torch.tensor(list(range(DATA_SIZE - BATCH_SIZE, DATA_SIZE)), dtype=torch.float)
     target_grad = -torch.mean(target_grad)
@@ -251,6 +253,7 @@ def test_feat_to_wave_trainer(monkeypatch: MonkeyPatch, use_ema: bool):
         config=config,
     )
     trainer.run()
+    trainer.writer.flush()
 
     monkeypatch.undo()
 
@@ -352,6 +355,7 @@ def test_gan_trainer(
         config=config,
     )
     trainer.run()
+    trainer.writer.flush()
 
     monkeypatch.undo()
 
