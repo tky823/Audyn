@@ -1505,26 +1505,30 @@ class BaseGenerator(BaseDriver):
         else:
             audio_backends = torchaudio.list_audio_backends()
 
-            if "ffmpeg" in audio_backends:
-                # default audio backend in torchaudio
-                audio_backend = "ffmpeg"
-            elif "sox" in audio_backends:
-                audio_backend = "sox"
-            elif "soundfile" in audio_backends:
-                audio_backend = "soundfile"
+            if len(audio_backends) == 0:
+                # torchaudio.list_audio_backends sometimes returns [].
+                audio_backend = None
             else:
-                raise ValueError(
-                    "Available audio backends are not found from {}.".format(audio_backends)
-                )
+                if "ffmpeg" in audio_backends:
+                    # default audio backend in torchaudio
+                    audio_backend = "ffmpeg"
+                elif "sox" in audio_backends:
+                    audio_backend = "sox"
+                elif "soundfile" in audio_backends:
+                    audio_backend = "soundfile"
+                else:
+                    raise ValueError(
+                        "Available audio backends are not found from {}.".format(audio_backends)
+                    )
 
         if audio_backend in ["sox", "sox_io"]:
             valid_kwargs = {"bits_per_sample": 16}
-        elif audio_backend in ["soundfile", "ffmpeg"]:
+        elif audio_backend in [None, "soundfile", "ffmpeg"]:
             valid_kwargs = {}
         else:
             raise ValueError("Invalid audio backend {} is detected.".format(audio_backend))
 
-        if not is_torchaudio_lt_2_1:
+        if not is_torchaudio_lt_2_1 and audio_backend is not None:
             valid_kwargs["backend"] = audio_backend
 
         invalid_keys = set(kwargs) - set(valid_kwargs.keys())
