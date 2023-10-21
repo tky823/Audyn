@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from dummy import allclose
 
 from audyn.modules.glow import ActNorm1d, InvertiblePointwiseConv1d
 from audyn.modules.glowtts import (
@@ -35,9 +36,9 @@ def test_masked_act_norm1d() -> None:
 
     assert output.size() == input.size()
     assert z.size() == input.size()
-    assert torch.allclose(output, input)
-    assert torch.allclose(mean, torch.zeros(()), atol=1e-7)
-    assert torch.allclose(std, torch.ones(()), atol=1e-7)
+    allclose(output, input)
+    allclose(mean, torch.zeros(()), atol=1e-7)
+    allclose(std, torch.ones(()), atol=1e-7)
 
     zeros = torch.zeros((batch_size,))
 
@@ -57,8 +58,8 @@ def test_masked_act_norm1d() -> None:
     assert logdet.size() == (batch_size,)
     assert z.size() == input.size()
     assert z_logdet.size() == (batch_size,)
-    assert torch.allclose(output, input)
-    assert torch.allclose(logdet, zeros)
+    allclose(output, input)
+    allclose(logdet, zeros)
 
     # w/ 3D padding mask
     batch_size = 4
@@ -90,9 +91,9 @@ def test_masked_act_norm1d() -> None:
 
     assert output.size() == input.size()
     assert z.size() == input.size()
-    assert torch.allclose(output, input)
-    assert torch.allclose(mean, torch.zeros(()), atol=1e-7)
-    assert torch.allclose(std, torch.ones(()), atol=1e-7)
+    allclose(output, input)
+    allclose(mean, torch.zeros(()), atol=1e-7)
+    allclose(std, torch.ones(()), atol=1e-7)
 
     zeros = torch.zeros((batch_size,))
 
@@ -112,8 +113,8 @@ def test_masked_act_norm1d() -> None:
     assert logdet.size() == (batch_size,)
     assert z.size() == input.size()
     assert z_logdet.size() == (batch_size,)
-    assert torch.allclose(output, input)
-    assert torch.allclose(logdet, zeros)
+    allclose(output, input)
+    allclose(logdet, zeros)
 
     # w/o padding mask
     batch_size = 2
@@ -130,8 +131,8 @@ def test_masked_act_norm1d() -> None:
     non_masked_z = non_masked_model(input)
     non_masked_output = non_masked_model(non_masked_z, reverse=True)
 
-    assert torch.allclose(masked_z, non_masked_z)
-    assert torch.allclose(masked_output, non_masked_output)
+    allclose(masked_z, non_masked_z)
+    allclose(masked_output, non_masked_output)
 
     zeros = torch.zeros((batch_size,))
 
@@ -154,9 +155,9 @@ def test_masked_act_norm1d() -> None:
         reverse=True,
     )
 
-    assert torch.allclose(masked_z, non_masked_z)
-    assert torch.allclose(masked_output, non_masked_output)
-    assert torch.allclose(masked_logdet, non_masked_logdet)
+    allclose(masked_z, non_masked_z)
+    allclose(masked_output, non_masked_output)
+    allclose(masked_logdet, non_masked_logdet)
 
 
 def test_masked_invertible_pointwise_conv1d() -> None:
@@ -180,7 +181,7 @@ def test_masked_invertible_pointwise_conv1d() -> None:
 
     assert output.size() == input.size()
     assert z.size() == input.size()
-    assert torch.allclose(output, input, atol=1e-7)
+    allclose(output, input, atol=1e-7)
 
     zeros = torch.zeros((batch_size,))
 
@@ -200,8 +201,8 @@ def test_masked_invertible_pointwise_conv1d() -> None:
     assert logdet.size() == (batch_size,)
     assert z.size() == input.size()
     assert z_logdet.size() == (batch_size,)
-    assert torch.allclose(output, input, atol=1e-7)
-    assert torch.allclose(logdet, zeros)
+    allclose(output, input, atol=1e-7)
+    allclose(logdet, zeros)
 
     # w/o padding mask
     batch_size = 2
@@ -219,8 +220,8 @@ def test_masked_invertible_pointwise_conv1d() -> None:
     non_masked_z = non_masked_model(input)
     non_masked_output = non_masked_model(non_masked_z, reverse=True)
 
-    assert torch.allclose(masked_z, non_masked_z)
-    assert torch.allclose(masked_output, non_masked_output)
+    allclose(masked_z, non_masked_z)
+    allclose(masked_output, non_masked_output)
 
     zeros = torch.zeros((batch_size,))
 
@@ -243,9 +244,9 @@ def test_masked_invertible_pointwise_conv1d() -> None:
         reverse=True,
     )
 
-    assert torch.allclose(masked_z, non_masked_z)
-    assert torch.allclose(masked_output, non_masked_output)
-    assert torch.allclose(masked_logdet, non_masked_logdet)
+    allclose(masked_z, non_masked_z)
+    allclose(masked_output, non_masked_output)
+    allclose(masked_logdet, non_masked_logdet)
 
 
 def test_masked_wavenet_affine_coupling() -> None:
@@ -276,7 +277,7 @@ def test_masked_wavenet_affine_coupling() -> None:
 
     assert output.size() == input.size()
     assert z.size() == input.size()
-    assert torch.allclose(output, input)
+    allclose(output, input)
 
     zeros = torch.zeros((batch_size,))
 
@@ -296,8 +297,8 @@ def test_masked_wavenet_affine_coupling() -> None:
     assert logdet.size() == (batch_size,)
     assert z.size() == input.size()
     assert z_logdet.size() == (batch_size,)
-    assert torch.allclose(output, input)
-    assert torch.allclose(logdet, zeros)
+    allclose(output, input)
+    allclose(logdet, zeros)
 
     # w/o padding mask
     masked_model = MaskedWaveNetAffineCoupling(
@@ -315,7 +316,7 @@ def test_masked_wavenet_affine_coupling() -> None:
 
     assert output.size() == input.size()
     assert z.size() == input.size()
-    assert torch.allclose(output, input)
+    allclose(output, input)
 
     zeros = torch.zeros((batch_size,))
 
@@ -333,8 +334,8 @@ def test_masked_wavenet_affine_coupling() -> None:
     assert logdet.size() == (batch_size,)
     assert z.size() == input.size()
     assert z_logdet.size() == (batch_size,)
-    assert torch.allclose(output, input)
-    assert torch.allclose(logdet, zeros)
+    allclose(output, input)
+    allclose(logdet, zeros)
 
 
 def test_stacked_residual_conv_block():

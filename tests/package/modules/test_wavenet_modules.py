@@ -1,6 +1,7 @@
 import pytest
 import torch
 import torch.nn.functional as F
+from dummy import allclose
 
 from audyn.modules.wavenet import GatedConv1d, ResidualConvBlock1d
 
@@ -69,7 +70,7 @@ def test_residual_conv_block1d(dilation: int, causal: bool, dual_head: bool):
                 [incremental_buffered_output, last_output], dim=-1
             )
 
-        assert torch.allclose(buffered_output, incremental_buffered_output, atol=1e-7)
+        allclose(buffered_output, incremental_buffered_output, atol=1e-7)
 
     model.remove_weight_norm_()
 
@@ -138,7 +139,7 @@ def test_residual_conv_block1d_local(dilation: int, causal: bool, dual_head: boo
                 [incremental_buffered_output, last_output], dim=-1
             )
 
-        assert torch.allclose(buffered_output, incremental_buffered_output, atol=1e-6)
+        allclose(buffered_output, incremental_buffered_output, atol=1e-6)
 
     model.remove_weight_norm_()
 
@@ -207,7 +208,7 @@ def test_residual_conv_block1d_global(dilation: int, causal: bool, dual_head: bo
                 [incremental_buffered_output, last_output], dim=-1
             )
 
-        assert torch.allclose(buffered_output, incremental_buffered_output, atol=1e-7)
+        allclose(buffered_output, incremental_buffered_output, atol=1e-7)
 
     model.remove_weight_norm_()
 
@@ -246,8 +247,8 @@ def test_gated_conv1d(dilation: int, causal: bool):
         dilation=model.dilation,
     )
 
-    assert torch.allclose(x_tanh_output, x_tanh_target)
-    assert torch.allclose(x_sigmoid_output, x_sigmoid_target)
+    allclose(x_tanh_output, x_tanh_target)
+    allclose(x_sigmoid_output, x_sigmoid_target)
 
     if causal:
         # incremental forward
@@ -277,7 +278,7 @@ def test_gated_conv1d(dilation: int, causal: bool):
                 [incremental_buffered_output, last_output], dim=-1
             )
 
-        assert torch.allclose(buffered_output, incremental_buffered_output)
+        allclose(buffered_output, incremental_buffered_output)
 
 
 @pytest.mark.parametrize("dilation", parameters_dilation)
@@ -330,8 +331,8 @@ def test_gated_conv1d_local(dilation: int, causal: bool):
     x_tanh_output = x_tanh_output + y_tanh_output
     x_sigmoid_output = x_sigmoid_output + y_sigmoid_output
 
-    assert torch.allclose(x_tanh_output, x_tanh_target)
-    assert torch.allclose(x_sigmoid_output, x_sigmoid_target)
+    allclose(x_tanh_output, x_tanh_target)
+    allclose(x_sigmoid_output, x_sigmoid_target)
 
     if causal:
         # incremental forward
@@ -365,7 +366,7 @@ def test_gated_conv1d_local(dilation: int, causal: bool):
                 [incremental_buffered_output, last_output], dim=-1
             )
 
-        assert torch.allclose(buffered_output, incremental_buffered_output)
+        allclose(buffered_output, incremental_buffered_output)
 
 
 @pytest.mark.parametrize("dilation", parameters_dilation)
@@ -423,8 +424,8 @@ def test_gated_conv1d_global(dilation: int, causal: bool):
     x_tanh_output = x_tanh_output + y_tanh_output
     x_sigmoid_output = x_sigmoid_output + y_sigmoid_output
 
-    assert torch.allclose(x_tanh_output, x_tanh_target)
-    assert torch.allclose(x_sigmoid_output, x_sigmoid_target)
+    allclose(x_tanh_output, x_tanh_target)
+    allclose(x_sigmoid_output, x_sigmoid_target)
 
     if causal:
         # incremental forward
@@ -458,7 +459,7 @@ def test_gated_conv1d_global(dilation: int, causal: bool):
                 [incremental_buffered_output, last_output], dim=-1
             )
 
-        assert torch.allclose(buffered_output, incremental_buffered_output)
+        allclose(buffered_output, incremental_buffered_output)
 
 
 def _pad(

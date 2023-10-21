@@ -7,6 +7,7 @@ from typing import Any, Dict, List
 import hydra
 import pytest
 import torch
+from dummy import allclose
 from pytest import MonkeyPatch
 
 import audyn
@@ -110,7 +111,7 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
         )
         target_grad = -torch.mean(target_grad)
 
-        assert torch.allclose(model.linear.weight.grad.data, target_grad)
+        allclose(model.linear.weight.grad.data, target_grad)
 
         with hydra.initialize(
             version_base="1.2",
@@ -150,7 +151,7 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
         )
         target_grad = -torch.mean(target_grad)
 
-        assert torch.allclose(model.linear.weight.grad.data, target_grad)
+        allclose(model.linear.weight.grad.data, target_grad)
 
         with hydra.initialize(
             version_base="1.2",
