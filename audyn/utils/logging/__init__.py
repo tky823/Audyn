@@ -2,11 +2,6 @@ import os
 from logging import Logger, getLogger
 from typing import Optional
 
-import torch
-from packaging import version
-
-IS_TORCH_LT_1_9 = version.parse(torch.__version__) < version.parse("1.9")
-
 try:
     from torch.distributed.elastic.utils.logging import _derive_module_name
 except ImportError:
