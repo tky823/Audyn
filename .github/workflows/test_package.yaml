@@ -57,6 +57,9 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           pip install soundfile
+      - name: Show dependencies
+        run: |
+          pip list
       - name: Pytest
         run: |
           pytest -vvv --cov=audyn/ --cov-report=xml tests/package/
