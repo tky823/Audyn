@@ -156,7 +156,8 @@ def test_residual_block1d() -> None:
     assert output.size() == (batch_size, num_features, length)
 
 
-def test_stacked_conv_block1d() -> None:
+@pytest.mark.parametrize("weight_regularization", ["weight_norm", "spectral_norm", None])
+def test_stacked_conv_block1d(weight_regularization: str) -> None:
     batch_size = 4
     in_channels, out_channels, hidden_channels = 2, 3, 5
     kernel_size, dilation = 3, 1
@@ -169,9 +170,15 @@ def test_stacked_conv_block1d() -> None:
         hidden_channels,
         kernel_size=kernel_size,
         dilation=dilation,
+        weight_regularization=weight_regularization,
         nonlinear_first=nonlinear_first,
     )
     input = torch.randn((batch_size, in_channels, length))
     output = model(input)
 
     assert output.size() == (batch_size, out_channels, length)
+
+    if weight_regularization == "weight_norm":
+        model.remove_weight_norm_()
+    elif weight_regularization == "spectral_norm":
+        model.remove_spectral_norm_()
