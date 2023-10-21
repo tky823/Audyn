@@ -1,7 +1,6 @@
 import os
-import shutil
 import sys
-import uuid
+import tempfile
 from os.path import dirname, join, realpath, relpath
 from typing import Any, Dict, List
 
@@ -33,151 +32,152 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
     BATCH_SIZE = 2
     INITIAL_ITERATION = 3
 
-    temp_dir = str(uuid.uuid4())
-    os.makedirs(temp_dir, exist_ok=False)
-    monkeypatch.chdir(temp_dir)
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
+        monkeypatch.chdir(temp_dir)
 
-    overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
-    exp_dir = "./exp"
+        overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
+        exp_dir = "./exp"
 
-    train_name = "dummy"
-    model_name = "dummy"
-    criterion_name = "dummy"
+        train_name = "dummy"
+        model_name = "dummy"
+        criterion_name = "dummy"
 
-    if use_ema:
-        optimizer_name = "dummy"
-    else:
-        optimizer_name = "dummy_ema"
+        if use_ema:
+            optimizer_name = "dummy"
+        else:
+            optimizer_name = "dummy_ema"
 
-    with hydra.initialize(
-        version_base="1.2",
-        config_path=relpath(config_template_path, dirname(realpath(__file__))),
-        job_name="test_driver",
-    ):
-        config = hydra.compose(
-            config_name="config",
-            overrides=create_dummy_override(
-                overrides_conf_dir=overrides_conf_dir,
-                exp_dir=exp_dir,
-                data_size=DATA_SIZE,
-                batch_size=BATCH_SIZE,
-                iterations=INITIAL_ITERATION,
-                train=train_name,
-                model=model_name,
-                criterion=criterion_name,
-                optimizer=optimizer_name,
-            ),
-            return_hydra_config=True,
+        with hydra.initialize(
+            version_base="1.2",
+            config_path=relpath(config_template_path, dirname(realpath(__file__))),
+            job_name="test_driver",
+        ):
+            config = hydra.compose(
+                config_name="config",
+                overrides=create_dummy_override(
+                    overrides_conf_dir=overrides_conf_dir,
+                    exp_dir=exp_dir,
+                    data_size=DATA_SIZE,
+                    batch_size=BATCH_SIZE,
+                    iterations=INITIAL_ITERATION,
+                    train=train_name,
+                    model=model_name,
+                    criterion=criterion_name,
+                    optimizer=optimizer_name,
+                ),
+                return_hydra_config=True,
+            )
+
+        train_dataset = hydra.utils.instantiate(config.train.dataset.train)
+        validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+        test_dataset = hydra.utils.instantiate(config.test.dataset.test)
+
+        train_loader = hydra.utils.instantiate(
+            config.train.dataloader.train,
+            train_dataset,
         )
-
-    train_dataset = hydra.utils.instantiate(config.train.dataset.train)
-    validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
-    test_dataset = hydra.utils.instantiate(config.test.dataset.test)
-
-    train_loader = hydra.utils.instantiate(
-        config.train.dataloader.train,
-        train_dataset,
-    )
-    validation_loader = hydra.utils.instantiate(
-        config.train.dataloader.validation,
-        validation_dataset,
-    )
-    test_loader = hydra.utils.instantiate(
-        config.test.dataloader.test,
-        test_dataset,
-    )
-    loaders = BaseDataLoaders(train_loader, validation_loader)
-
-    model = instantiate_model(config.model)
-    optimizer = hydra.utils.instantiate(config.optimizer, model.parameters())
-    lr_scheduler = hydra.utils.instantiate(config.lr_scheduler, optimizer)
-    criterion = hydra.utils.instantiate(config.criterion)
-
-    trainer = BaseTrainer(
-        loaders,
-        model,
-        optimizer,
-        lr_scheduler=lr_scheduler,
-        criterion=criterion,
-        config=config,
-    )
-    trainer.run()
-    trainer.writer.flush()
-
-    target_grad = torch.tensor(
-        list(range(BATCH_SIZE * INITIAL_ITERATION - BATCH_SIZE, BATCH_SIZE * INITIAL_ITERATION)),
-        dtype=torch.float,
-    )
-    target_grad = -torch.mean(target_grad)
-
-    assert torch.allclose(model.linear.weight.grad.data, target_grad)
-
-    with hydra.initialize(
-        version_base="1.2",
-        config_path=relpath(config_template_path, dirname(realpath(__file__))),
-        job_name="test_driver",
-    ):
-        config = hydra.compose(
-            config_name="config",
-            overrides=create_dummy_override(
-                overrides_conf_dir=overrides_conf_dir,
-                exp_dir=exp_dir,
-                data_size=DATA_SIZE,
-                batch_size=BATCH_SIZE,
-                iterations=len(train_loader),
-                train=train_name,
-                model=model_name,
-                criterion=criterion_name,
-                optimizer=optimizer_name,
-                continue_from=f"{exp_dir}/model/iteration{INITIAL_ITERATION}.pth",
-            ),
-            return_hydra_config=True,
+        validation_loader = hydra.utils.instantiate(
+            config.train.dataloader.validation,
+            validation_dataset,
         )
-
-    trainer = BaseTrainer(
-        loaders,
-        model,
-        optimizer,
-        lr_scheduler=lr_scheduler,
-        criterion=criterion,
-        config=config,
-    )
-    trainer.run()
-    trainer.writer.flush()
-
-    target_grad = torch.tensor(list(range(DATA_SIZE - BATCH_SIZE, DATA_SIZE)), dtype=torch.float)
-    target_grad = -torch.mean(target_grad)
-
-    assert torch.allclose(model.linear.weight.grad.data, target_grad)
-
-    with hydra.initialize(
-        version_base="1.2",
-        config_path=relpath(config_template_path, dirname(realpath(__file__))),
-        job_name="test_driver",
-    ):
-        config = hydra.compose(
-            config_name="config",
-            overrides=create_dummy_override(
-                overrides_conf_dir=overrides_conf_dir,
-                exp_dir=exp_dir,
-                data_size=DATA_SIZE,
-                checkpoint=f"{exp_dir}/model/last.pth",
-            ),
-            return_hydra_config=True,
+        test_loader = hydra.utils.instantiate(
+            config.test.dataloader.test,
+            test_dataset,
         )
+        loaders = BaseDataLoaders(train_loader, validation_loader)
 
-    model = instantiate_model(config.test.checkpoint)
+        model = instantiate_model(config.model)
+        optimizer = hydra.utils.instantiate(config.optimizer, model.parameters())
+        lr_scheduler = hydra.utils.instantiate(config.lr_scheduler, optimizer)
+        criterion = hydra.utils.instantiate(config.criterion)
 
-    generator = BaseGenerator(
-        test_loader,
-        model,
-        config=config,
-    )
-    generator.run()
+        trainer = BaseTrainer(
+            loaders,
+            model,
+            optimizer,
+            lr_scheduler=lr_scheduler,
+            criterion=criterion,
+            config=config,
+        )
+        trainer.run()
+        trainer.writer.flush()
 
-    monkeypatch.undo()
+        target_grad = torch.tensor(
+            list(
+                range(BATCH_SIZE * INITIAL_ITERATION - BATCH_SIZE, BATCH_SIZE * INITIAL_ITERATION)
+            ),
+            dtype=torch.float,
+        )
+        target_grad = -torch.mean(target_grad)
 
-    shutil.rmtree(temp_dir)
+        assert torch.allclose(model.linear.weight.grad.data, target_grad)
+
+        with hydra.initialize(
+            version_base="1.2",
+            config_path=relpath(config_template_path, dirname(realpath(__file__))),
+            job_name="test_driver",
+        ):
+            config = hydra.compose(
+                config_name="config",
+                overrides=create_dummy_override(
+                    overrides_conf_dir=overrides_conf_dir,
+                    exp_dir=exp_dir,
+                    data_size=DATA_SIZE,
+                    batch_size=BATCH_SIZE,
+                    iterations=len(train_loader),
+                    train=train_name,
+                    model=model_name,
+                    criterion=criterion_name,
+                    optimizer=optimizer_name,
+                    continue_from=f"{exp_dir}/model/iteration{INITIAL_ITERATION}.pth",
+                ),
+                return_hydra_config=True,
+            )
+
+        trainer = BaseTrainer(
+            loaders,
+            model,
+            optimizer,
+            lr_scheduler=lr_scheduler,
+            criterion=criterion,
+            config=config,
+        )
+        trainer.run()
+        trainer.writer.flush()
+
+        target_grad = torch.tensor(
+            list(range(DATA_SIZE - BATCH_SIZE, DATA_SIZE)), dtype=torch.float
+        )
+        target_grad = -torch.mean(target_grad)
+
+        assert torch.allclose(model.linear.weight.grad.data, target_grad)
+
+        with hydra.initialize(
+            version_base="1.2",
+            config_path=relpath(config_template_path, dirname(realpath(__file__))),
+            job_name="test_driver",
+        ):
+            config = hydra.compose(
+                config_name="config",
+                overrides=create_dummy_override(
+                    overrides_conf_dir=overrides_conf_dir,
+                    exp_dir=exp_dir,
+                    data_size=DATA_SIZE,
+                    checkpoint=f"{exp_dir}/model/last.pth",
+                ),
+                return_hydra_config=True,
+            )
+
+        model = instantiate_model(config.test.checkpoint)
+
+        generator = BaseGenerator(
+            test_loader,
+            model,
+            config=config,
+        )
+        generator.run()
+
+        monkeypatch.undo()
 
 
 @pytest.mark.parametrize("use_ema", [True, False])
@@ -187,77 +187,74 @@ def test_feat_to_wave_trainer(monkeypatch: MonkeyPatch, use_ema: bool):
     BATCH_SIZE = 2
     INITIAL_ITERATION = 3
 
-    temp_dir = str(uuid.uuid4())
-    os.makedirs(temp_dir, exist_ok=False)
-    monkeypatch.chdir(temp_dir)
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
+        monkeypatch.chdir(temp_dir)
 
-    overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
-    exp_dir = "./exp"
+        overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
+        exp_dir = "./exp"
 
-    train_name = "dummy_autoregressive_feat_to_wave"
-    model_name = "dummy_autoregressive"
-    criterion_name = "dummy_autoregressive"
+        train_name = "dummy_autoregressive_feat_to_wave"
+        model_name = "dummy_autoregressive"
+        criterion_name = "dummy_autoregressive"
 
-    if use_ema:
-        optimizer_name = "dummy"
-    else:
-        optimizer_name = "dummy_ema"
+        if use_ema:
+            optimizer_name = "dummy"
+        else:
+            optimizer_name = "dummy_ema"
 
-    with hydra.initialize(
-        version_base="1.2",
-        config_path=relpath(config_template_path, dirname(realpath(__file__))),
-        job_name="test_driver",
-    ):
-        config = hydra.compose(
-            config_name="config",
-            overrides=create_dummy_override(
-                overrides_conf_dir=overrides_conf_dir,
-                exp_dir=exp_dir,
-                data_size=DATA_SIZE,
-                batch_size=BATCH_SIZE,
-                iterations=INITIAL_ITERATION,
-                train=train_name,
-                model=model_name,
-                criterion=criterion_name,
-                optimizer=optimizer_name,
-            ),
-            return_hydra_config=True,
+        with hydra.initialize(
+            version_base="1.2",
+            config_path=relpath(config_template_path, dirname(realpath(__file__))),
+            job_name="test_driver",
+        ):
+            config = hydra.compose(
+                config_name="config",
+                overrides=create_dummy_override(
+                    overrides_conf_dir=overrides_conf_dir,
+                    exp_dir=exp_dir,
+                    data_size=DATA_SIZE,
+                    batch_size=BATCH_SIZE,
+                    iterations=INITIAL_ITERATION,
+                    train=train_name,
+                    model=model_name,
+                    criterion=criterion_name,
+                    optimizer=optimizer_name,
+                ),
+                return_hydra_config=True,
+            )
+
+        train_dataset = hydra.utils.instantiate(config.train.dataset.train)
+        validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+
+        train_loader = hydra.utils.instantiate(
+            config.train.dataloader.train,
+            train_dataset,
+            collate_fn=pad_collate_fn,
         )
+        validation_loader = hydra.utils.instantiate(
+            config.train.dataloader.validation,
+            validation_dataset,
+            collate_fn=pad_collate_fn,
+        )
+        loaders = BaseDataLoaders(train_loader, validation_loader)
 
-    train_dataset = hydra.utils.instantiate(config.train.dataset.train)
-    validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+        model = instantiate_model(config.model)
+        optimizer = hydra.utils.instantiate(config.optimizer, model.parameters())
+        lr_scheduler = hydra.utils.instantiate(config.lr_scheduler, optimizer)
+        criterion = hydra.utils.instantiate(config.criterion)
 
-    train_loader = hydra.utils.instantiate(
-        config.train.dataloader.train,
-        train_dataset,
-        collate_fn=pad_collate_fn,
-    )
-    validation_loader = hydra.utils.instantiate(
-        config.train.dataloader.validation,
-        validation_dataset,
-        collate_fn=pad_collate_fn,
-    )
-    loaders = BaseDataLoaders(train_loader, validation_loader)
+        trainer = FeatToWaveTrainer(
+            loaders,
+            model,
+            optimizer,
+            lr_scheduler=lr_scheduler,
+            criterion=criterion,
+            config=config,
+        )
+        trainer.run()
+        trainer.writer.flush()
 
-    model = instantiate_model(config.model)
-    optimizer = hydra.utils.instantiate(config.optimizer, model.parameters())
-    lr_scheduler = hydra.utils.instantiate(config.lr_scheduler, optimizer)
-    criterion = hydra.utils.instantiate(config.criterion)
-
-    trainer = FeatToWaveTrainer(
-        loaders,
-        model,
-        optimizer,
-        lr_scheduler=lr_scheduler,
-        criterion=criterion,
-        config=config,
-    )
-    trainer.run()
-    trainer.writer.flush()
-
-    monkeypatch.undo()
-
-    shutil.rmtree(temp_dir)
+        monkeypatch.undo()
 
 
 @pytest.mark.parametrize("use_ema_generator", [True, False])
@@ -271,95 +268,92 @@ def test_gan_trainer(
     BATCH_SIZE = 2
     INITIAL_ITERATION = 3
 
-    temp_dir = str(uuid.uuid4())
-    os.makedirs(temp_dir, exist_ok=False)
-    monkeypatch.chdir(temp_dir)
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
+        monkeypatch.chdir(temp_dir)
 
-    overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
-    exp_dir = "./exp"
+        overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
+        exp_dir = "./exp"
 
-    train_name = "dummy_gan"
-    model_name = "dummy_gan"
-    criterion_name = "dummy_gan"
+        train_name = "dummy_gan"
+        model_name = "dummy_gan"
+        criterion_name = "dummy_gan"
 
-    with hydra.initialize(
-        version_base="1.2",
-        config_path=relpath(config_template_path, dirname(realpath(__file__))),
-        job_name="test_driver",
-    ):
-        config = hydra.compose(
-            config_name="config",
-            overrides=create_dummy_gan_override(
-                overrides_conf_dir=overrides_conf_dir,
-                exp_dir=exp_dir,
-                data_size=DATA_SIZE,
-                batch_size=BATCH_SIZE,
-                iterations=INITIAL_ITERATION,
-                train=train_name,
-                model=model_name,
-                criterion=criterion_name,
-                use_ema_generator=use_ema_generator,
-                use_ema_discriminator=use_ema_discriminator,
-            ),
-            return_hydra_config=True,
+        with hydra.initialize(
+            version_base="1.2",
+            config_path=relpath(config_template_path, dirname(realpath(__file__))),
+            job_name="test_driver",
+        ):
+            config = hydra.compose(
+                config_name="config",
+                overrides=create_dummy_gan_override(
+                    overrides_conf_dir=overrides_conf_dir,
+                    exp_dir=exp_dir,
+                    data_size=DATA_SIZE,
+                    batch_size=BATCH_SIZE,
+                    iterations=INITIAL_ITERATION,
+                    train=train_name,
+                    model=model_name,
+                    criterion=criterion_name,
+                    use_ema_generator=use_ema_generator,
+                    use_ema_discriminator=use_ema_discriminator,
+                ),
+                return_hydra_config=True,
+            )
+
+        train_dataset = hydra.utils.instantiate(
+            config.train.dataset.train,
+        )
+        validation_dataset = hydra.utils.instantiate(
+            config.train.dataset.validation,
         )
 
-    train_dataset = hydra.utils.instantiate(
-        config.train.dataset.train,
-    )
-    validation_dataset = hydra.utils.instantiate(
-        config.train.dataset.validation,
-    )
+        train_loader = hydra.utils.instantiate(
+            config.train.dataloader.train,
+            train_dataset,
+            collate_fn=gan_collate_fn,
+        )
+        validation_loader = hydra.utils.instantiate(
+            config.train.dataloader.validation,
+            validation_dataset,
+            collate_fn=gan_collate_fn,
+        )
+        loaders = BaseDataLoaders(train_loader, validation_loader)
 
-    train_loader = hydra.utils.instantiate(
-        config.train.dataloader.train,
-        train_dataset,
-        collate_fn=gan_collate_fn,
-    )
-    validation_loader = hydra.utils.instantiate(
-        config.train.dataloader.validation,
-        validation_dataset,
-        collate_fn=gan_collate_fn,
-    )
-    loaders = BaseDataLoaders(train_loader, validation_loader)
+        generator = instantiate_model(config.model.generator)
+        discriminator = instantiate_model(config.model.discriminator)
 
-    generator = instantiate_model(config.model.generator)
-    discriminator = instantiate_model(config.model.discriminator)
+        generator_optimizer = hydra.utils.instantiate(
+            config.optimizer.generator, generator.parameters()
+        )
+        discriminator_optimizer = hydra.utils.instantiate(
+            config.optimizer.discriminator, discriminator.parameters()
+        )
+        generator_lr_scheduler = hydra.utils.instantiate(
+            config.lr_scheduler.generator, generator_optimizer
+        )
+        discriminator_lr_scheduler = hydra.utils.instantiate(
+            config.lr_scheduler.discriminator, discriminator_optimizer
+        )
+        generator_criterion = hydra.utils.instantiate(config.criterion.generator)
+        discriminator_criterion = hydra.utils.instantiate(config.criterion.discriminator)
 
-    generator_optimizer = hydra.utils.instantiate(
-        config.optimizer.generator, generator.parameters()
-    )
-    discriminator_optimizer = hydra.utils.instantiate(
-        config.optimizer.discriminator, discriminator.parameters()
-    )
-    generator_lr_scheduler = hydra.utils.instantiate(
-        config.lr_scheduler.generator, generator_optimizer
-    )
-    discriminator_lr_scheduler = hydra.utils.instantiate(
-        config.lr_scheduler.discriminator, discriminator_optimizer
-    )
-    generator_criterion = hydra.utils.instantiate(config.criterion.generator)
-    discriminator_criterion = hydra.utils.instantiate(config.criterion.discriminator)
+        model = BaseGAN(generator, discriminator)
+        optimizer = GANOptimizer(generator_optimizer, discriminator_optimizer)
+        lr_scheduler = GANLRScheduler(generator_lr_scheduler, discriminator_lr_scheduler)
+        criterion = GANCriterion(generator_criterion, discriminator_criterion)
 
-    model = BaseGAN(generator, discriminator)
-    optimizer = GANOptimizer(generator_optimizer, discriminator_optimizer)
-    lr_scheduler = GANLRScheduler(generator_lr_scheduler, discriminator_lr_scheduler)
-    criterion = GANCriterion(generator_criterion, discriminator_criterion)
+        trainer = GANTrainer(
+            loaders,
+            model,
+            optimizer,
+            lr_scheduler=lr_scheduler,
+            criterion=criterion,
+            config=config,
+        )
+        trainer.run()
+        trainer.writer.flush()
 
-    trainer = GANTrainer(
-        loaders,
-        model,
-        optimizer,
-        lr_scheduler=lr_scheduler,
-        criterion=criterion,
-        config=config,
-    )
-    trainer.run()
-    trainer.writer.flush()
-
-    monkeypatch.undo()
-
-    shutil.rmtree(temp_dir)
+        monkeypatch.undo()
 
 
 def create_dummy_override(
