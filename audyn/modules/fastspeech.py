@@ -3,6 +3,9 @@ from typing import List, Optional, Tuple, Union
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from packaging import version
+
+IS_TORCH_LT_1_11 = version.parse(torch.__version__) < version.parse("1.11")
 
 
 class FFTrBlock(nn.Module):
@@ -80,12 +83,20 @@ class FFTrBlock(nn.Module):
         """
         batch_first = self.batch_first
 
+        if IS_TORCH_LT_1_11:
+            assert (
+                average_attn_weights
+            ), f"Only average_attn_weights=True is supported for torch={torch.__version__}."
+            kwargs = {}
+        else:
+            kwargs = {"average_attn_weights": average_attn_weights}
+
         attn_output, attn_weights = self.mha(
             src,
             key_padding_mask=src_key_padding_mask,
             need_weights=True,
             attn_mask=src_mask,
-            average_attn_weights=average_attn_weights,
+            **kwargs,
         )
 
         if batch_first:
@@ -322,6 +333,14 @@ class MultiheadAttentionBlock(nn.Module):
 
         residual = x
 
+        if IS_TORCH_LT_1_11:
+            assert (
+                average_attn_weights
+            ), f"Only average_attn_weights=True is supported for torch={torch.__version__}."
+            kwargs = {}
+        else:
+            kwargs = {"average_attn_weights": average_attn_weights}
+
         attn_output, attn_weights = self.mha(
             x,
             x,
@@ -329,7 +348,7 @@ class MultiheadAttentionBlock(nn.Module):
             key_padding_mask=key_padding_mask,
             need_weights=True,
             attn_mask=attn_mask,
-            average_attn_weights=average_attn_weights,
+            **kwargs,
         )
         attn_output = self._apply_mask(attn_output, padding_mask=padding_mask)
         x = self.dropout(attn_output)
