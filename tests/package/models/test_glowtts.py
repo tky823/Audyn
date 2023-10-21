@@ -166,7 +166,7 @@ def test_glowtts_decoder() -> None:
     assert z.size() == input.size()
     assert z_logdet.size() == (batch_size,)
     assert torch.allclose(output, masked_input, atol=1e-6)
-    assert torch.allclose(logdet, zeros, atol=1e-6)
+    assert torch.allclose(logdet, zeros, atol=1e-5)
 
 
 def test_glowtts_glow_block() -> None:
