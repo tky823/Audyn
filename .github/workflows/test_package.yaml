@@ -68,6 +68,7 @@ jobs:
           pip list
       - name: Verify version of torch (Windows)
         id: windows_torch_verification
+        if: matrix.os == 'windows-latest'
         env:
           TORCH_VERSION: ${{ matrix.torch-version }}
         run: |
