@@ -2,7 +2,13 @@ import os
 from logging import Logger, getLogger
 from typing import Optional
 
-from torch.distributed.elastic.utils.logging import _derive_module_name
+try:
+    from torch.distributed.elastic.utils.logging import _derive_module_name
+except ImportError:
+
+    def _derive_module_name(*args, **kwargs) -> str:
+        return "Logger"
+
 
 __all__ = ["get_logger"]
 

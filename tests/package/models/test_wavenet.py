@@ -1,6 +1,7 @@
 import pytest
 import torch
 import torch.nn as nn
+from dummy import allclose
 
 from audyn.models.wavenet import (
     MultiSpeakerWaveNet,
@@ -82,7 +83,7 @@ def test_wavenet(dilated: bool, causal: bool):
                 [incremental_buffered_output, last_output], dim=-1
             )
 
-        assert torch.allclose(buffered_output, incremental_buffered_output)
+        allclose(buffered_output, incremental_buffered_output)
 
         model.clear_buffer()
 
@@ -111,7 +112,7 @@ def test_wavenet(dilated: bool, causal: bool):
                 [incremental_buffered_output, last_output], dim=-1
             )
 
-        assert torch.allclose(buffered_output, incremental_buffered_output)
+        allclose(buffered_output, incremental_buffered_output)
 
         model.clear_buffer()
 
@@ -210,7 +211,7 @@ def test_wavenet_local(dilated: bool, causal: bool):
                 [incremental_buffered_output, last_output], dim=-1
             )
 
-        assert torch.allclose(buffered_output, incremental_buffered_output)
+        allclose(buffered_output, incremental_buffered_output)
 
         model.clear_buffer()
 
@@ -244,7 +245,7 @@ def test_wavenet_local(dilated: bool, causal: bool):
                 [incremental_buffered_output, last_output], dim=-1
             )
 
-        assert torch.allclose(buffered_output, incremental_buffered_output)
+        allclose(buffered_output, incremental_buffered_output)
 
         model.clear_buffer()
 
@@ -330,7 +331,7 @@ def test_wavenet_global(dilated: bool, causal: bool):
                 [incremental_buffered_output, last_output], dim=-1
             )
 
-        assert torch.allclose(buffered_output, incremental_buffered_output)
+        allclose(buffered_output, incremental_buffered_output)
 
         model.clear_buffer()
 
@@ -364,7 +365,7 @@ def test_wavenet_global(dilated: bool, causal: bool):
                 [incremental_buffered_output, last_output], dim=-1
             )
 
-        assert torch.allclose(buffered_output, incremental_buffered_output)
+        allclose(buffered_output, incremental_buffered_output)
 
         model.clear_buffer()
 
@@ -500,7 +501,7 @@ def test_multispk_wavenet(dilated: bool, causal: bool):
                 [incremental_buffered_output, last_output], dim=-1
             )
 
-        assert torch.allclose(buffered_output, incremental_buffered_output)
+        allclose(buffered_output, incremental_buffered_output)
 
         model.clear_buffer()
 
@@ -545,7 +546,7 @@ def test_multispk_wavenet(dilated: bool, causal: bool):
                 [incremental_buffered_output, last_output], dim=-1
             )
 
-        assert torch.allclose(buffered_output, incremental_buffered_output)
+        allclose(buffered_output, incremental_buffered_output)
 
         model.clear_buffer()
 
@@ -619,7 +620,7 @@ def test_stacked_residual_conv_block1d(dilated: bool, causal: bool, dual_head: b
             _, last_skip = model.incremental_forward(last_skip)
             incremental_buffered_skip = torch.cat([incremental_buffered_skip, last_skip], dim=-1)
 
-        assert torch.allclose(buffered_skip, incremental_buffered_skip, atol=1e-7)
+        allclose(buffered_skip, incremental_buffered_skip, atol=1e-7)
 
     model.remove_weight_norm_()
 
@@ -690,7 +691,7 @@ def test_stacked_residual_conv_block1d_local(dilated: bool, causal: bool, dual_h
             _, last_skip = model.incremental_forward(last_skip, local_conditioning=h_local)
             incremental_buffered_skip = torch.cat([incremental_buffered_skip, last_skip], dim=-1)
 
-        assert torch.allclose(buffered_skip, incremental_buffered_skip, atol=1e-7)
+        allclose(buffered_skip, incremental_buffered_skip, atol=1e-7)
 
     model.remove_weight_norm_()
 
@@ -761,7 +762,7 @@ def test_stacked_residual_conv_block1d_global(dilated: bool, causal: bool, dual_
             )
             incremental_buffered_skip = torch.cat([incremental_buffered_skip, last_skip], dim=-1)
 
-        assert torch.allclose(buffered_skip, incremental_buffered_skip, atol=1e-7)
+        allclose(buffered_skip, incremental_buffered_skip, atol=1e-7)
 
     model.remove_weight_norm_()
 

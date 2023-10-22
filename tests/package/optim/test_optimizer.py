@@ -3,6 +3,7 @@ import copy
 import pytest
 import torch
 import torch.nn as nn
+from dummy import allclose
 from torch.optim import Adam
 
 from audyn.optim.optimizer import ExponentialMovingAverageWrapper
@@ -59,8 +60,8 @@ def test_exponential_moving_average_wrapper(build_from_optim_class: bool):
     optimizer_wrapper.set_moving_average_model()
     state_dict["moving_average_model"] = copy.deepcopy(model.state_dict())
 
-    assert torch.allclose(model.linear.weight.data, linear_weight_moving_average)
-    assert torch.allclose(model.norm.weight.data, norm_weight_moving_average)
+    allclose(model.linear.weight.data, linear_weight_moving_average)
+    allclose(model.norm.weight.data, norm_weight_moving_average)
 
     optimizer_wrapper.remove_moving_average_model()
 

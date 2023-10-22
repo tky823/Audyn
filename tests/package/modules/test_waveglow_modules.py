@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from dummy import allclose
 
 from audyn.modules.waveglow import StackedResidualConvBlock1d, WaveNetAffineCoupling
 
@@ -31,7 +32,7 @@ def test_waveglow_affine_coupling():
     output = model(z, local_conditioning=local_conditioning, reverse=True)
 
     assert output.size() == input.size()
-    assert torch.allclose(output, input, atol=1e-6)
+    allclose(output, input, atol=1e-6)
 
     zeros = torch.zeros((batch_size,))
 
@@ -51,8 +52,8 @@ def test_waveglow_affine_coupling():
     assert logdet.size() == (batch_size,)
     assert z.size() == input.size()
     assert z_logdet.size() == (batch_size,)
-    assert torch.allclose(output, input, atol=1e-6)
-    assert torch.allclose(logdet, zeros)
+    allclose(output, input, atol=1e-6)
+    allclose(logdet, zeros)
 
 
 def test_stacked_residual_conv_block():

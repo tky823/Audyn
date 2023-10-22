@@ -60,3 +60,9 @@ max-line-length = 99
 [tool.isort]
 profile = "black"
 line_length = 99
+
+[tool.pytest.ini_options]
+# to import relative paths
+pythonpath = [
+    "tests",
+]

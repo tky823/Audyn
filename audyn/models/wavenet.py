@@ -3,11 +3,14 @@ from typing import Optional, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from packaging import version
 from torch.nn.common_types import _size_1_t
 
 from ..modules.wavenet import ResidualConvBlock1d
 
 __all__ = ["WaveNet", "MultiSpeakerWaveNet"]
+
+IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
 
 class WaveNet(nn.Module):
@@ -342,7 +345,12 @@ class WaveNet(nn.Module):
             and self.post_net as well if necessary.
 
         """
-        self.causal_conv1d = nn.utils.weight_norm(self.causal_conv1d)
+        if IS_TORCH_LT_2_1:
+            weight_norm_fn = nn.utils.weight_norm
+        else:
+            weight_norm_fn = nn.utils.parametrizations.weight_norm
+
+        self.causal_conv1d = weight_norm_fn(self.causal_conv1d)
 
         if "backbone" not in self.registered_weight_norms:
             for module in self.backbone:
@@ -355,7 +363,14 @@ class WaveNet(nn.Module):
             self.registered_weight_norms.add("post_net")
 
     def remove_weight_norm_(self) -> None:
-        self.causal_conv1d = nn.utils.remove_weight_norm(self.causal_conv1d)
+        if IS_TORCH_LT_2_1:
+            remove_weight_norm_fn = nn.utils.remove_weight_norm
+            remove_weight_norm_args = ()
+        else:
+            remove_weight_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_weight_norm_args = ("weight",)
+
+        self.causal_conv1d = remove_weight_norm_fn(self.causal_conv1d, *remove_weight_norm_args)
 
         for module in self.backbone:
             module.remove_weight_norm_()
@@ -771,10 +786,22 @@ class PostBlock(nn.Module):
         return output
 
     def weight_norm_(self) -> None:
-        self.conv1d = nn.utils.weight_norm(self.conv1d)
+        if IS_TORCH_LT_2_1:
+            weight_norm_fn = nn.utils.weight_norm
+        else:
+            weight_norm_fn = nn.utils.parametrizations.weight_norm
+
+        self.conv1d = weight_norm_fn(self.conv1d)
 
     def remove_weight_norm_(self) -> None:
-        self.conv1d = nn.utils.remove_weight_norm(self.conv1d)
+        if IS_TORCH_LT_2_1:
+            remove_weight_norm_fn = nn.utils.remove_weight_norm
+            remove_weight_norm_args = ()
+        else:
+            remove_weight_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_weight_norm_args = ("weight",)
+
+        self.conv1d = remove_weight_norm_fn(self.conv1d, *remove_weight_norm_args)
 
 
 class Upsample(nn.Module):

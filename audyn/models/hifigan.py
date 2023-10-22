@@ -3,6 +3,7 @@ from typing import Any, List, Optional, Tuple, Union
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from packaging import version
 from torch.nn.common_types import _size_1_t, _size_2_t
 from torch.nn.modules.utils import _pair, _single
 
@@ -13,6 +14,7 @@ __all__ = [
     "MultiPeriodDiscriminator",
 ]
 
+IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 available_weight_regularizations = {"weight_norm", "spectral_norm"}
 
 
@@ -115,7 +117,12 @@ class Generator(nn.Module):
                 )
 
     def weight_norm_(self) -> None:
-        self.pre_conv1d = nn.utils.weight_norm(self.pre_conv1d)
+        if IS_TORCH_LT_2_1:
+            weight_norm_fn = nn.utils.weight_norm
+        else:
+            weight_norm_fn = nn.utils.parametrizations.weight_norm
+
+        self.pre_conv1d = weight_norm_fn(self.pre_conv1d)
         self.registered_weight_norms.add("pre_conv1d")
 
         if "backbone" not in self.registered_weight_norms:
@@ -130,7 +137,14 @@ class Generator(nn.Module):
             self.registered_weight_norms.add("post_conv1d")
 
     def remove_weight_norm_(self) -> None:
-        self.pre_conv1d = nn.utils.remove_weight_norm(self.pre_conv1d)
+        if IS_TORCH_LT_2_1:
+            remove_weight_norm_fn = nn.utils.remove_weight_norm
+            remove_weight_norm_args = ()
+        else:
+            remove_weight_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_weight_norm_args = ("weight",)
+
+        self.pre_conv1d = remove_weight_norm_fn(self.pre_conv1d, *remove_weight_norm_args)
         self.registered_weight_norms.remove("pre_conv1d")
 
         for stack in self.backbone:
@@ -143,7 +157,12 @@ class Generator(nn.Module):
         self.registered_weight_norms.remove("post_conv1d")
 
     def spectral_norm_(self) -> None:
-        self.pre_conv1d = nn.utils.spectral_norm(self.pre_conv1d)
+        if IS_TORCH_LT_2_1:
+            spectral_norm_fn = nn.utils.spectral_norm
+        else:
+            spectral_norm_fn = nn.utils.parametrizations.spectral_norm
+
+        self.pre_conv1d = spectral_norm_fn(self.pre_conv1d)
         self.registered_spectral_norms.add("pre_conv1d")
 
         if "backbone" not in self.registered_spectral_norms:
@@ -158,7 +177,14 @@ class Generator(nn.Module):
             self.registered_spectral_norms.add("post_conv1d")
 
     def remove_spectral_norm_(self) -> None:
-        self.pre_conv1d = nn.utils.remove_spectral_norm(self.pre_conv1d)
+        if IS_TORCH_LT_2_1:
+            remove_spectral_norm_fn = nn.utils.remove_spectral_norm
+            remove_spectral_norm_args = ()
+        else:
+            remove_spectral_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_spectral_norm_args = ("weight",)
+
+        self.pre_conv1d = remove_spectral_norm_fn(self.pre_conv1d, *remove_spectral_norm_args)
         self.registered_spectral_norms.remove("pre_conv1d")
 
         for stack in self.backbone:
@@ -328,7 +354,12 @@ class MultiReceptiveFieldFusion(nn.Module):
                 )
 
     def weight_norm_(self) -> None:
-        self.upsample = nn.utils.weight_norm(self.upsample)
+        if IS_TORCH_LT_2_1:
+            weight_norm_fn = nn.utils.weight_norm
+        else:
+            weight_norm_fn = nn.utils.parametrizations.weight_norm
+
+        self.upsample = weight_norm_fn(self.upsample)
         self.registered_weight_norms.add("upsample")
 
         if "backbone" not in self.registered_weight_norms:
@@ -339,7 +370,14 @@ class MultiReceptiveFieldFusion(nn.Module):
             self.registered_weight_norms.add("backbone")
 
     def remove_weight_norm_(self) -> None:
-        self.upsample = nn.utils.remove_weight_norm(self.upsample)
+        if IS_TORCH_LT_2_1:
+            remove_weight_norm_fn = nn.utils.remove_weight_norm
+            remove_weight_norm_args = ()
+        else:
+            remove_weight_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_weight_norm_args = ("weight",)
+
+        self.upsample = remove_weight_norm_fn(self.upsample, *remove_weight_norm_args)
         self.registered_weight_norms.remove("upsample")
 
         for block in self.backbone:
@@ -349,7 +387,12 @@ class MultiReceptiveFieldFusion(nn.Module):
         self.registered_weight_norms.remove("backbone")
 
     def spectral_norm_(self) -> None:
-        self.upsample = nn.utils.spectral_norm(self.upsample)
+        if IS_TORCH_LT_2_1:
+            spectral_norm_fn = nn.utils.spectral_norm
+        else:
+            spectral_norm_fn = nn.utils.parametrizations.spectral_norm
+
+        self.upsample = spectral_norm_fn(self.upsample)
         self.registered_spectral_norms.add("upsample")
 
         if "backbone" not in self.registered_spectral_norms:
@@ -359,7 +402,14 @@ class MultiReceptiveFieldFusion(nn.Module):
             self.registered_spectral_norms.add("backbone")
 
     def remove_spectral_norm_(self) -> None:
-        self.upsample = nn.utils.remove_spectral_norm(self.upsample)
+        if IS_TORCH_LT_2_1:
+            remove_spectral_norm_fn = nn.utils.remove_spectral_norm
+            remove_spectral_norm_args = ()
+        else:
+            remove_spectral_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_spectral_norm_args = ("weight",)
+
+        self.upsample = remove_spectral_norm_fn(self.upsample, *remove_spectral_norm_args)
         self.registered_spectral_norms.remove("upsample")
 
         for block in self.backbone:
@@ -1281,16 +1331,40 @@ class ConvBlock1d(nn.Module):
         return output
 
     def weight_norm_(self) -> None:
-        self.conv1d = nn.utils.weight_norm(self.conv1d)
+        if IS_TORCH_LT_2_1:
+            weight_norm_fn = nn.utils.weight_norm
+        else:
+            weight_norm_fn = nn.utils.parametrizations.weight_norm
+
+        self.conv1d = weight_norm_fn(self.conv1d)
 
     def remove_weight_norm_(self) -> None:
-        self.conv1d = nn.utils.remove_weight_norm(self.conv1d)
+        if IS_TORCH_LT_2_1:
+            remove_weight_norm_fn = nn.utils.remove_weight_norm
+            remove_weight_norm_args = ()
+        else:
+            remove_weight_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_weight_norm_args = ("weight",)
+
+        self.conv1d = remove_weight_norm_fn(self.conv1d, *remove_weight_norm_args)
 
     def spectral_norm_(self) -> None:
-        self.conv1d = nn.utils.spectral_norm(self.conv1d)
+        if IS_TORCH_LT_2_1:
+            spectral_norm_fn = nn.utils.spectral_norm
+        else:
+            spectral_norm_fn = nn.utils.parametrizations.spectral_norm
+
+        self.conv1d = spectral_norm_fn(self.conv1d)
 
     def remove_spectral_norm_(self) -> None:
-        self.conv1d = nn.utils.remove_spectral_norm(self.conv1d)
+        if IS_TORCH_LT_2_1:
+            remove_spectral_norm_fn = nn.utils.remove_spectral_norm
+            remove_spectral_norm_args = ()
+        else:
+            remove_spectral_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_spectral_norm_args = ("weight",)
+
+        self.conv1d = remove_spectral_norm_fn(self.conv1d, *remove_spectral_norm_args)
 
 
 class ConvBlock2d(nn.Module):
@@ -1380,13 +1454,37 @@ class ConvBlock2d(nn.Module):
         return output
 
     def weight_norm_(self) -> None:
-        self.conv2d = nn.utils.weight_norm(self.conv2d)
+        if IS_TORCH_LT_2_1:
+            weight_norm_fn = nn.utils.weight_norm
+        else:
+            weight_norm_fn = nn.utils.parametrizations.weight_norm
+
+        self.conv2d = weight_norm_fn(self.conv2d)
 
     def remove_weight_norm_(self) -> None:
-        self.conv2d = nn.utils.remove_weight_norm(self.conv2d)
+        if IS_TORCH_LT_2_1:
+            remove_weight_norm_fn = nn.utils.remove_weight_norm
+            remove_weight_norm_args = ()
+        else:
+            remove_weight_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_weight_norm_args = ("weight",)
+
+        self.conv2d = remove_weight_norm_fn(self.conv2d, *remove_weight_norm_args)
 
     def spectral_norm_(self) -> None:
-        self.conv2d = nn.utils.spectral_norm(self.conv2d)
+        if IS_TORCH_LT_2_1:
+            spectral_norm_fn = nn.utils.spectral_norm
+        else:
+            spectral_norm_fn = nn.utils.parametrizations.spectral_norm
+
+        self.conv2d = spectral_norm_fn(self.conv2d)
 
     def remove_spectral_norm_(self) -> None:
-        self.conv2d = nn.utils.remove_spectral_norm(self.conv2d)
+        if IS_TORCH_LT_2_1:
+            remove_spectral_norm_fn = nn.utils.remove_spectral_norm
+            remove_spectral_norm_args = ()
+        else:
+            remove_spectral_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_spectral_norm_args = ("weight",)
+
+        self.conv2d = remove_spectral_norm_fn(self.conv2d, *remove_spectral_norm_args)

@@ -14,6 +14,17 @@ jobs:
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11"]
         os: [ubuntu-latest, macos-latest, windows-latest]
+        torch-version: ["1.9.0", "1.11.0", "2.0.0", "2.1.0"]
+        exclude:
+          # skip torch==1.9 and 1.11 for the time being
+          - torch-version: "1.9.0"
+          - torch-version: "1.11.0"
+          - python-version: "3.10"
+            torch-version: "1.9.0"
+          - python-version: "3.11"
+            torch-version: "1.9.0"
+          - python-version: "3.11"
+            torch-version: "1.11.0"
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -21,6 +32,29 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Install dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt update
+          sudo apt install ffmpeg sox
+      - name: Install dependencies (MacOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew update
+          brew install ffmpeg sox
+      - name: Overwrite torch version in pyproject.toml (Windows)
+        id: windows_torch_installation
+        if: matrix.os == 'windows-latest'
+        env:
+          TORCH_VERSION: ${{ matrix.torch-version }}
+        run: |
+          python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${env:TORCH_VERSION}
+      - name: Overwrite torch version in pyproject.toml (Ubuntu & MacOS)
+        if: steps.windows_torch_installation.conclusion == 'skipped'
+        env:
+          TORCH_VERSION: ${{ matrix.torch-version }}
+        run: |
+          python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -29,6 +63,44 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           pip install soundfile
+      - name: Show dependencies
+        run: |
+          pip list
+      - name: Verify version of torch (Windows)
+        id: windows_torch_verification
+        if: matrix.os == 'windows-latest'
+        env:
+          TORCH_VERSION: ${{ matrix.torch-version }}
+        run: |
+          python tests/scripts/verify_torch_version.py --torch-version ${env:TORCH_VERSION}
+      - name: Verify version of torch (Ubuntu & MacOS)
+        if: steps.windows_torch_verification.conclusion == 'skipped'
+        env:
+          TORCH_VERSION: ${{ matrix.torch-version }}
+        run: |
+          python tests/scripts/verify_torch_version.py --torch-version ${TORCH_VERSION}
       - name: Pytest
         run: |
           pytest -vvv --cov=audyn/ --cov-report=xml tests/package/
+  lint:
+    name: Run linters
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: Run linters
+        run: |
+          # See pyproject.toml
+          isort --line-length 99 audyn
+          flake8 --max-line-length=99 --ignore=E203,W503,W504 audyn
+      - name: Run formatters
+        run: |
+          python -m black --config pyproject.toml --check audyn tests

@@ -2,6 +2,7 @@ from typing import Tuple
 
 import torch
 import torch.nn as nn
+from dummy import allclose
 
 from audyn.modules.flow import AdditiveCoupling, AffineCoupling, ChannelSplitFlow
 
@@ -69,13 +70,13 @@ def test_additive_coupling():
     z = module(input)
     output = module(z, reverse=True)
 
-    assert torch.allclose(output, input)
+    allclose(output, input)
 
     z, z_logdet = module(input, logdet=zeros)
     output, logdet = module(z, logdet=z_logdet, reverse=True)
 
-    assert torch.allclose(output, input)
-    assert torch.allclose(logdet, zeros)
+    allclose(output, input)
+    allclose(logdet, zeros)
 
 
 def test_affine_coupling():
@@ -94,10 +95,10 @@ def test_affine_coupling():
     z = module(input)
     output = module(z, reverse=True)
 
-    assert torch.allclose(output, input)
+    allclose(output, input)
 
     z, z_logdet = module(input, logdet=zeros)
     output, logdet = module(z, logdet=z_logdet, reverse=True)
 
-    assert torch.allclose(output, input)
-    assert torch.allclose(logdet, zeros)
+    allclose(output, input)
+    allclose(logdet, zeros)

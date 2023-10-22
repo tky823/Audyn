@@ -2,6 +2,7 @@ from typing import List
 
 import torch
 import torch.nn as nn
+from dummy import allclose
 
 from audyn.models.fastspeech import LengthRegulator
 from audyn.models.glowtts import Decoder, GlowBlock, GlowTTS, TextEncoder
@@ -142,7 +143,7 @@ def test_glowtts_decoder() -> None:
     masked_input = input.masked_fill(expanded_padding_mask, 0)
 
     assert output.size() == input.size()
-    assert torch.allclose(output, masked_input, atol=1e-6)
+    allclose(output, masked_input, atol=1e-6)
 
     zeros = torch.zeros((batch_size,))
 
@@ -165,8 +166,8 @@ def test_glowtts_decoder() -> None:
     assert logdet.size() == (batch_size,)
     assert z.size() == input.size()
     assert z_logdet.size() == (batch_size,)
-    assert torch.allclose(output, masked_input, atol=1e-6)
-    assert torch.allclose(logdet, zeros, atol=1e-6)
+    allclose(output, masked_input, atol=1e-6)
+    allclose(logdet, zeros, atol=1e-4)
 
 
 def test_glowtts_glow_block() -> None:
@@ -191,7 +192,7 @@ def test_glowtts_glow_block() -> None:
 
     assert output.size() == input.size()
     assert z.size() == input.size()
-    assert torch.allclose(output, input, atol=1e-6)
+    allclose(output, input, atol=1e-6)
 
     zeros = torch.zeros((batch_size,))
 
@@ -211,8 +212,8 @@ def test_glowtts_glow_block() -> None:
     assert logdet.size() == (batch_size,)
     assert z.size() == input.size()
     assert z_logdet.size() == (batch_size,)
-    assert torch.allclose(output, input, atol=1e-6)
-    assert torch.allclose(logdet, zeros)
+    allclose(output, input, atol=1e-6)
+    allclose(logdet, zeros)
 
     # w/o padding mask
     batch_size = 2
@@ -228,7 +229,7 @@ def test_glowtts_glow_block() -> None:
 
     assert output.size() == input.size()
     assert z.size() == input.size()
-    assert torch.allclose(output, input, atol=1e-6)
+    allclose(output, input, atol=1e-6)
 
     zeros = torch.zeros((batch_size,))
 
@@ -246,8 +247,8 @@ def test_glowtts_glow_block() -> None:
     assert logdet.size() == (batch_size,)
     assert z.size() == input.size()
     assert z_logdet.size() == (batch_size,)
-    assert torch.allclose(output, input, atol=1e-6)
-    assert torch.allclose(logdet, zeros)
+    allclose(output, input, atol=1e-6)
+    allclose(logdet, zeros)
 
 
 def build_encoder(

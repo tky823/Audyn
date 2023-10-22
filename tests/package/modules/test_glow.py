@@ -1,4 +1,5 @@
 import torch
+from dummy import allclose
 
 from audyn.modules.glow import ActNorm1d, InvertiblePointwiseConv1d, InvertiblePointwiseConv2d
 
@@ -18,7 +19,7 @@ def test_invertible_pointwise_conv1d():
 
     assert output.size() == input.size()
     assert z.size() == input.size()
-    assert torch.allclose(output, input, atol=1e-6)
+    allclose(output, input, atol=1e-6)
 
     zeros = torch.zeros((batch_size,))
 
@@ -36,8 +37,8 @@ def test_invertible_pointwise_conv1d():
     assert logdet.size() == (batch_size,)
     assert z.size() == input.size()
     assert z_logdet.size() == (batch_size,)
-    assert torch.allclose(output, input, atol=1e-6)
-    assert torch.allclose(logdet, zeros, atol=1e-7)
+    allclose(output, input, atol=1e-6)
+    allclose(logdet, zeros, atol=1e-7)
 
 
 def test_invertible_pointwise_conv2d():
@@ -56,7 +57,7 @@ def test_invertible_pointwise_conv2d():
     assert output.size() == input.size()
     assert z.size() == input.size()
     e = torch.abs(output - input)
-    assert torch.allclose(output, input, atol=1e-7), torch.max(e)
+    allclose(output, input, atol=1e-7), torch.max(e)
 
     zeros = torch.zeros((batch_size,))
 
@@ -74,8 +75,8 @@ def test_invertible_pointwise_conv2d():
     assert logdet.size() == (batch_size,)
     assert z.size() == input.size()
     assert z_logdet.size() == (batch_size,)
-    assert torch.allclose(output, input, atol=1e-7)
-    assert torch.allclose(logdet, zeros, atol=1e-7)
+    allclose(output, input, atol=1e-7)
+    allclose(logdet, zeros, atol=1e-7)
 
 
 def test_act_norm1d() -> None:
@@ -94,9 +95,9 @@ def test_act_norm1d() -> None:
 
     assert output.size() == input.size()
     assert z.size() == input.size()
-    assert torch.allclose(output, input)
-    assert torch.allclose(mean, torch.zeros(()), atol=1e-7)
-    assert torch.allclose(std, torch.ones(()), atol=1e-7)
+    allclose(output, input)
+    allclose(mean, torch.zeros(()), atol=1e-7)
+    allclose(std, torch.ones(()), atol=1e-7)
 
     zeros = torch.zeros((batch_size,))
 
@@ -114,5 +115,5 @@ def test_act_norm1d() -> None:
     assert logdet.size() == (batch_size,)
     assert z.size() == input.size()
     assert z_logdet.size() == (batch_size,)
-    assert torch.allclose(output, input)
-    assert torch.allclose(logdet, zeros)
+    allclose(output, input)
+    allclose(logdet, zeros)
