@@ -16,9 +16,8 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         torch-version: ["1.9.0", "1.11.0", "2.0.0", "2.1.0"]
         exclude:
-          # skip torch==1.9 and 1.11 for the time being
+          # skip torch==1.11 for the time being
           - torch-version: "1.9.0"
-          - torch-version: "1.11.0"
           - python-version: "3.10"
             torch-version: "1.9.0"
           - python-version: "3.11"
