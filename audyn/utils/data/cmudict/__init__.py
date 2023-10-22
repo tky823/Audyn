@@ -11,6 +11,8 @@ __all__ = [
     "BREAK_SYMBOLS",
     "BOS_SYMBOL",
     "EOS_SYMBOL",
+    "UNK_SYMBOL",
+    "PAD_SYMBOL",
     "SPECIALS",
     "vocab_size",
     "CMUDict",
@@ -106,7 +108,9 @@ symbols = [
 BREAK_SYMBOLS = ["sil", "spn"]
 BOS_SYMBOL = "<BOS>"
 EOS_SYMBOL = "<EOS>"
-SPECIALS = ["<PAD>"]
+UNK_SYMBOL = "<UNK>"
+PAD_SYMBOL = "<PAD>"
+SPECIALS = [UNK_SYMBOL, PAD_SYMBOL]
 full_symbols = symbols + BREAK_SYMBOLS + [BOS_SYMBOL] + [EOS_SYMBOL] + SPECIALS
 
 vocab_size = len(full_symbols)
@@ -149,7 +153,7 @@ class CMUDict:
         phone_candidates = self.cmudict.get(word.upper())
 
         if phone_candidates is None:
-            phone = None
+            phone = UNK_SYMBOL
         else:
             phone = phone_candidates[0]
 
