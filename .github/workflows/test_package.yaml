@@ -66,6 +66,18 @@ jobs:
       - name: Show dependencies
         run: |
           pip list
+      - name: Verify version of torch (Windows)
+        id: windows_torch_verification
+        env:
+          TORCH_VERSION: ${{ matrix.torch-version }}
+        run: |
+          python tests/scripts/verify_torch_version.py --torch-version ${env:TORCH_VERSION}
+      - name: Verify version of torch (Ubuntu & MacOS)
+        if: steps.windows_torch_verification.conclusion == 'skipped'
+        env:
+          TORCH_VERSION: ${{ matrix.torch-version }}
+        run: |
+          python tests/scripts/verify_torch_version.py --torch-version ${TORCH_VERSION}
       - name: Pytest
         run: |
           pytest -vvv --cov=audyn/ --cov-report=xml tests/package/
