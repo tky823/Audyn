@@ -5,10 +5,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from packaging import version
 
-IS_TORCH_LT_1_11 = version.parse(torch.__version__) < version.parse("1.11")
-
 from .activation import MultiheadSelfAttention
 from .normalization import MaskedLayerNorm
+
+IS_TORCH_LT_1_11 = version.parse(torch.__version__) < version.parse("1.11")
 
 
 class FFTrBlock(nn.Module):
