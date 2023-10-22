@@ -42,14 +42,14 @@ jobs:
         run: |
           brew update
           brew install ffmpeg sox
-      - name: Install specified version of PyTorch (Windows)
+      - name: Overwrite torch version in pyproject.toml (Windows)
         id: windows_torch_installation
         if: matrix.os == 'windows-latest'
         env:
           TORCH_VERSION: ${{ matrix.torch-version }}
         run: |
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${env:TORCH_VERSION}
-      - name: Install specified version of PyTorch (Ubuntu & MacOS)
+      - name: Overwrite torch version in pyproject.toml (Ubuntu & MacOS)
         if: steps.windows_torch_installation.conclusion == 'skipped'
         env:
           TORCH_VERSION: ${{ matrix.torch-version }}
