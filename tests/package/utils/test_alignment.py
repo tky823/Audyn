@@ -2,7 +2,37 @@ import pytest
 import torch
 import torch.nn.functional as F
 
+from audyn.utils.alignment import expand_by_duration
 from audyn.utils.alignment.monotonic_align import viterbi_monotonic_alignment
+
+
+def test_expand_by_duration():
+    src = torch.tensor(
+        [
+            [[1, -1], [2, -2], [3, -3], [0, 0]],
+            [[4, -4], [5, -5], [0, 0], [0, 0]],
+            [[6, -6], [7, -7], [8, -8], [9, -9]],
+        ]
+    )
+    duration = torch.tensor([[3, 4, 2, 0], [2, 1, 0, 0], [1, 1, 3, 2]])
+
+    tgt = torch.tensor(
+        [
+            [[1, -1], [1, -1], [1, -1], [2, -2], [2, -2], [2, -2], [2, -2], [3, -3], [3, -3]],
+            [[4, -4], [4, -4], [5, -5], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+            [[6, -6], [7, -7], [8, -8], [8, -8], [8, -8], [9, -9], [9, -9], [0, 0], [0, 0]],
+        ]
+    )
+    est = expand_by_duration(src, duration, batch_first=True)
+
+    assert torch.all(est == tgt)
+
+    max_length = tgt.size(1) + 1
+    tgt = F.pad(tgt, (0, 0, 0, 1))
+
+    est = expand_by_duration(src, duration, batch_first=True, max_length=max_length)
+
+    assert torch.all(est == tgt)
 
 
 @pytest.mark.parametrize("take_log", [True, False])
