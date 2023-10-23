@@ -1,5 +1,4 @@
 import os
-import sys
 import tempfile
 from os.path import dirname, join, realpath, relpath
 from typing import Any, Dict, List
@@ -19,9 +18,6 @@ from audyn.utils import instantiate_model, setup_system
 from audyn.utils.data import BaseDataLoaders, default_collate_fn, make_noise
 from audyn.utils.driver import BaseGenerator, BaseTrainer, FeatToWaveTrainer, GANTrainer
 from audyn.utils.model import set_device
-
-sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
-
 
 config_template_path = join(dirname(realpath(audyn.__file__)), "utils", "driver", "_conf_template")
 config_name = "config"
