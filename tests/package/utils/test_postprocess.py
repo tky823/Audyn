@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from audyn.utils.data.postprocess import slice_feautures
+from audyn.utils.data.postprocess import slice_feautures, take_log_features
 
 
 @pytest.mark.parametrize("random_slice", [True, False])
@@ -54,6 +54,39 @@ def test_slice_features(random_slice: bool) -> None:
     )
 
     assert torch.equal(batch["fine_slice"][:, 0], 2 * batch["coarse_slice"][:, 0])
+
+
+def test_take_log_features() -> None:
+    torch.manual_seed(0)
+
+    batch_size = 4
+    length = 10
+    key_mapping = {
+        "input": "log_input",
+    }
+
+    def add_flooring(input: torch.Tensor, eps: float = 1e-10) -> torch.Tensor:
+        return input + eps
+
+    batch = {
+        "input": torch.abs(
+            torch.randint(
+                0,
+                2,
+                (batch_size, length),
+                dtype=torch.float,
+            )
+        ),
+    }
+
+    batch = take_log_features(
+        batch,
+        key_mapping=key_mapping,
+        flooring_fn=add_flooring,
+    )
+
+    for value in batch.values():
+        assert torch.isfinite(value).all()
 
 
 def create_arange_batch(end: int, batch_size: int = 4) -> torch.Tensor:
