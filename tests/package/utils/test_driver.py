@@ -18,6 +18,7 @@ from audyn.optim.optimizer import GANOptimizer
 from audyn.utils import instantiate_model, setup_system
 from audyn.utils.data import BaseDataLoaders, default_collate_fn, make_noise
 from audyn.utils.driver import BaseGenerator, BaseTrainer, FeatToWaveTrainer, GANTrainer
+from audyn.utils.model import set_device
 
 sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
 
@@ -90,9 +91,19 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
         loaders = BaseDataLoaders(train_loader, validation_loader)
 
         model = instantiate_model(config.model)
+        model = set_device(
+            model,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
         optimizer = hydra.utils.instantiate(config.optimizer, model.parameters())
         lr_scheduler = hydra.utils.instantiate(config.lr_scheduler, optimizer)
         criterion = hydra.utils.instantiate(config.criterion)
+        criterion = set_device(
+            criterion,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
 
         trainer = BaseTrainer(
             loaders,
@@ -172,6 +183,11 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
             )
 
         model = instantiate_model(config.test.checkpoint)
+        model = set_device(
+            model,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
 
         generator = BaseGenerator(
             test_loader,
@@ -244,9 +260,19 @@ def test_feat_to_wave_trainer(monkeypatch: MonkeyPatch, use_ema: bool):
         loaders = BaseDataLoaders(train_loader, validation_loader)
 
         model = instantiate_model(config.model)
+        model = set_device(
+            model,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
         optimizer = hydra.utils.instantiate(config.optimizer, model.parameters())
         lr_scheduler = hydra.utils.instantiate(config.lr_scheduler, optimizer)
         criterion = hydra.utils.instantiate(config.criterion)
+        criterion = set_device(
+            criterion,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
 
         trainer = FeatToWaveTrainer(
             loaders,
@@ -328,6 +354,16 @@ def test_gan_trainer(
 
         generator = instantiate_model(config.model.generator)
         discriminator = instantiate_model(config.model.discriminator)
+        generator = set_device(
+            generator,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
+        discriminator = set_device(
+            discriminator,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
 
         generator_optimizer = hydra.utils.instantiate(
             config.optimizer.generator, generator.parameters()
@@ -343,6 +379,16 @@ def test_gan_trainer(
         )
         generator_criterion = hydra.utils.instantiate(config.criterion.generator)
         discriminator_criterion = hydra.utils.instantiate(config.criterion.discriminator)
+        generator_criterion = set_device(
+            generator_criterion,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
+        discriminator_criterion = set_device(
+            discriminator_criterion,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
 
         model = BaseGAN(generator, discriminator)
         optimizer = GANOptimizer(generator_optimizer, discriminator_optimizer)
