@@ -82,6 +82,13 @@ jobs:
       - name: Pytest
         run: |
           pytest -vvv --cov=audyn/ --cov-report=xml tests/package/
+      - name: Upload coverage reports to Codecov
+        if: matrix.python-version == '3.8' && matrix.os == 'ubuntu-latest' && matrix.torch-version == '2.1.0'
+        uses: codecov/codecov-action@v3
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          fail_ci_if_error: true
   lint:
     name: Run linters
     runs-on: ubuntu-latest
