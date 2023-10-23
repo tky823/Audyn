@@ -15,7 +15,7 @@ from audyn.criterion.gan import GANCriterion
 from audyn.models.gan import BaseGAN
 from audyn.optim.lr_scheduler import GANLRScheduler
 from audyn.optim.optimizer import GANOptimizer
-from audyn.utils import instantiate_model
+from audyn.utils import instantiate_model, setup_system
 from audyn.utils.data import BaseDataLoaders, default_collate_fn, make_noise
 from audyn.utils.driver import BaseGenerator, BaseTrainer, FeatToWaveTrainer, GANTrainer
 
@@ -68,6 +68,8 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
                 ),
                 return_hydra_config=True,
             )
+
+        setup_system(config)
 
         train_dataset = hydra.utils.instantiate(config.train.dataset.train)
         validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
@@ -224,6 +226,8 @@ def test_feat_to_wave_trainer(monkeypatch: MonkeyPatch, use_ema: bool):
                 return_hydra_config=True,
             )
 
+        setup_system(config)
+
         train_dataset = hydra.utils.instantiate(config.train.dataset.train)
         validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
 
@@ -300,6 +304,8 @@ def test_gan_trainer(
                 ),
                 return_hydra_config=True,
             )
+
+        setup_system(config)
 
         train_dataset = hydra.utils.instantiate(
             config.train.dataset.train,
