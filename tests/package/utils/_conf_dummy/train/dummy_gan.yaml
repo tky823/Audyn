@@ -1,4 +1,5 @@
 defaults:
+  - output: dummy
   - record: dummy_gan
   - _self_
 
@@ -45,21 +46,6 @@ clip_gradient:
 
 resume:
   continue_from:
-
-output:
-  exp_dir: "./exp"
-  tensorboard_dir: "./tensorboard"
-  save_checkpoint:
-    iteration:
-      every: 1
-      path: ${...exp_dir}/model/iteration{iteration}.pth
-    epoch:
-      every: 1
-      path: ${...exp_dir}/model/epoch{epoch}.pth
-    last:
-      path: ${...exp_dir}/model/last.pth
-    best_epoch:
-      path: ${...exp_dir}/model/best_epoch.pth
 
 steps:
   epochs:

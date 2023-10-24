@@ -1,3 +1,7 @@
+defaults:
+  - output: dummy
+  - _self_
+
 dataset:
   train:
     _target_: dummy.utils.data.DummyDataset
@@ -25,21 +29,6 @@ key_mapping:
 
 resume:
   continue_from:
-
-output:
-  exp_dir: "./exp"
-  tensorboard_dir: "./tensorboard"
-  save_checkpoint:
-    iteration:
-      every: 1
-      path: ${...exp_dir}/model/iteration{iteration}.pth
-    epoch:
-      every: 1
-      path: ${...exp_dir}/model/epoch{epoch}.pth
-    last:
-      path: ${...exp_dir}/model/last.pth
-    best_epoch:
-      path: ${...exp_dir}/model/best_epoch.pth
 
 record:
 
