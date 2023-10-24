@@ -74,3 +74,16 @@ class DummyDiscriminator(nn.Module):
         output = self.sigmoid(x)
 
         return output
+
+
+class DummyCNN(nn.Module):
+    def __init__(self, in_channels: int, out_channels: int, kernel_size: int = 3) -> None:
+        super().__init__()
+
+        self.conv1d = nn.Conv1d(in_channels, out_channels, kernel_size=kernel_size)
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        x = self.conv1d(input)
+        output = x.mean(dim=(1, 2))
+
+        return output
