@@ -405,6 +405,89 @@ def test_gan_trainer(
         monkeypatch.undo()
 
 
+@pytest.mark.parametrize(
+    "dataloader",
+    [
+        "audyn.utils.data.SequentialBatchDataLoader",
+        "audyn.utils.data.DynamicBatchDataLoader",
+    ],
+)
+def test_trainer_for_dataloader(monkeypatch: MonkeyPatch, dataloader: str) -> None:
+    """Test BaseTrainer for dataloaders."""
+    DATA_SIZE = 20
+    BATCH_SIZE = 2
+    INITIAL_ITERATION = 3
+
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
+        monkeypatch.chdir(temp_dir)
+
+        overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
+        exp_dir = "./exp"
+
+        with hydra.initialize(
+            version_base="1.2",
+            config_path=relpath(config_template_path, dirname(realpath(__file__))),
+            job_name="test_driver",
+        ):
+            config = hydra.compose(
+                config_name="config",
+                overrides=create_dummy_for_dataloader_override(
+                    overrides_conf_dir=overrides_conf_dir,
+                    exp_dir=exp_dir,
+                    data_size=DATA_SIZE,
+                    batch_size=BATCH_SIZE,
+                    iterations=INITIAL_ITERATION,
+                    dataloader=dataloader,
+                ),
+                return_hydra_config=True,
+            )
+
+        setup_system(config)
+
+        train_dataset = hydra.utils.instantiate(config.train.dataset.train)
+        validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+
+        train_loader = hydra.utils.instantiate(
+            config.train.dataloader.train,
+            train_dataset,
+            collate_fn=default_collate_fn,
+        )
+        validation_loader = hydra.utils.instantiate(
+            config.train.dataloader.validation,
+            validation_dataset,
+            collate_fn=default_collate_fn,
+        )
+        loaders = BaseDataLoaders(train_loader, validation_loader)
+
+        model = instantiate_model(config.model)
+        model = set_device(
+            model,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
+        optimizer = hydra.utils.instantiate(config.optimizer, model.parameters())
+        lr_scheduler = hydra.utils.instantiate(config.lr_scheduler, optimizer)
+        criterion = hydra.utils.instantiate(config.criterion)
+        criterion = set_device(
+            criterion,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
+
+        trainer = BaseTrainer(
+            loaders,
+            model,
+            optimizer,
+            lr_scheduler=lr_scheduler,
+            criterion=criterion,
+            config=config,
+        )
+        trainer.run()
+        trainer.writer.flush()
+
+        monkeypatch.undo()
+
+
 def create_dummy_override(
     overrides_conf_dir: str,
     exp_dir: str,
@@ -503,6 +586,65 @@ def create_dummy_gan_override(
     )
 
     return overridden_config
+
+
+def create_dummy_for_dataloader_override(
+    overrides_conf_dir: str,
+    exp_dir: str,
+    data_size: int,
+    batch_size: int = 1,
+    iterations: int = 1,
+    dataloader: str = None,
+) -> List[str]:
+    sample_rate = 16000
+    in_channels, out_channels = 3, 2
+    kernel_size = 3
+
+    *_, dataloader_name = dataloader.split(".")
+
+    if dataloader_name == "SequentialBatchDataLoader":
+        train = "dummy_sequential_dataloader"
+        additional_override = [
+            f"train.dataloader.train.batch_size={batch_size}",
+            f"train.dataloader.validation.batch_size={batch_size}",
+        ]
+    elif dataloader_name == "DynamicBatchDataLoader":
+        train = "dummy_dynamic_dataloader"
+        batch_length = 3 * data_size // 4
+        additional_override = [
+            "train.dataloader.train.key=input",
+            "train.dataloader.validation.key=input",
+            f"train.dataloader.train.batch_length={batch_length}",
+            f"train.dataloader.validation.batch_length={batch_length}",
+        ]
+    else:
+        raise ValueError(f"Invalid dataloader {dataloader_name} is given.")
+
+    override_list = [
+        f"train={train}",
+        "test=dummy",
+        "model=dummy_cnn",
+        "optimizer=dummy",
+        "lr_scheduler=dummy",
+        "criterion=dummy",
+        f"hydra.searchpath=[{overrides_conf_dir}]",
+        "hydra.job.num=1",
+        f"hydra.runtime.output_dir={exp_dir}/log",
+        f"data.audio.sample_rate={sample_rate}",
+        f"train.dataset.train.size={data_size}",
+        f"train.dataset.validation.size={data_size}",
+        f"train.dataset.train.num_features={in_channels}",
+        f"train.dataset.train.min_length={kernel_size + 1}",
+        f"train.dataloader.train._target_={dataloader}",
+        f"train.dataloader.validation._target_={dataloader}",
+        f"train.output.exp_dir={exp_dir}",
+        f"train.steps.iterations={iterations}",
+        f"model.in_channels={in_channels}",
+        f"model.out_channels={out_channels}",
+        f"model.kernel_size={kernel_size}",
+    ]
+
+    return override_list + additional_override
 
 
 def pad_collate_fn(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
