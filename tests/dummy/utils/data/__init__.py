@@ -86,3 +86,29 @@ class DummyGANDataset(Dataset):
 
     def __len__(self) -> int:
         return self.size
+
+
+class DummySequentialDataset(Dataset):
+    def __init__(self, num_features: int, min_length: int, size: int = 20) -> None:
+        super().__init__()
+
+        self.num_features = num_features
+        self.min_length = min_length
+        self.size = size
+
+    def __getitem__(self, idx: int) -> torch.Tensor:
+        num_features = self.num_features
+        min_length = self.min_length
+
+        shape = (num_features, min_length + idx + 1)
+        input = torch.full(shape, fill_value=idx, dtype=torch.float)
+        target = torch.tensor(idx, dtype=torch.float)
+        output = {
+            "input": input,
+            "target": target,
+        }
+
+        return output
+
+    def __len__(self) -> int:
+        return self.size
