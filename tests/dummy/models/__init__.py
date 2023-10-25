@@ -1,5 +1,10 @@
+from typing import Optional
+
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+
+from audyn.utils.alignment import expand_by_duration
 
 
 class DummyModel(nn.Module):
@@ -72,6 +77,94 @@ class DummyDiscriminator(nn.Module):
         x = self.conv1d(waveform)
         x = x.mean(dim=(1, 2))
         output = self.sigmoid(x)
+
+        return output
+
+
+class DummyTextToFeat(nn.Module):
+    def __init__(self, vocab_size: int, num_features: int) -> None:
+        super().__init__()
+
+        self.embedding = nn.Embedding(vocab_size, num_features)
+
+    def forward(
+        self,
+        input: torch.LongTensor,
+        duration: Optional[torch.LongTensor] = None,
+        max_length: Optional[int] = None,
+    ) -> torch.Tensor:
+        """Forward pass of DummyTextToFeat.
+
+        Args:
+            input (torch.LongTensor): Text tokens of shape (batch_size, src_length).
+            duration (torch.LongTensor, optional): Text durations of shape
+                (batch_size, src_length).
+            max_length (int, optional): Max length of output.
+
+        Returns:
+            torch.Tensor: Estimated feature of shape (batch_size, tgt_length, num_features).
+
+        """
+        if duration is None:
+            duration = 2 * torch.ones_like(input, dtype=torch.long)
+
+        x = self.embedding(input)
+        x = expand_by_duration(x, duration)
+
+        _, tgt_length, _ = x.size()
+
+        if max_length is not None and tgt_length > max_length:
+            output = F.pad(x, (0, 0, 0, max_length - tgt_length))
+        else:
+            output = x
+
+        return output
+
+    def inference(self, input: torch.LongTensor, max_length: Optional[int] = None) -> torch.Tensor:
+        """Forward pass of DummyTextToFeat.
+
+        Args:
+            input (torch.LongTensor): Text tokens of shape (batch_size, src_length).
+            max_length (int, optional): Max length of output.
+
+        Returns:
+            torch.Tensor: Estimated feature of shape (batch_size, tgt_length, num_features).
+
+        """
+        output = self(input, max_length=max_length)
+
+        return output
+
+
+class DummyFeatToWave(nn.Module):
+    def __init__(self, num_features: int, up_scale: int = 2) -> None:
+        super().__init__()
+
+        self.kernel_size = 4
+        self.up_scale = up_scale
+
+        self.upsample = nn.ConvTranspose1d(
+            num_features, 1, kernel_size=self.kernel_size, stride=up_scale
+        )
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of DummyFeatToWave.
+
+        Args:
+            input (torch.Tensor): Acoustic features of shape
+                (batch_size, num_features, length).
+
+        Returns:
+            torch.Tensor: Estimated feature of shape (batch_size, 1, up_scale * length).
+
+        """
+        kernel_size, up_scale = self.kernel_size, self.up_scale
+        padding = kernel_size - up_scale
+        padding_left = padding // 2
+        padding_right = padding - padding_left
+
+        x = self.upsample(input)
+        output = F.pad(x, (-padding_left, -padding_right))
 
         return output
 
