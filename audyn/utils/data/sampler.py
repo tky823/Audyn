@@ -113,7 +113,10 @@ class DynamicBatchSampler(Sampler):
         seed: int = 0,
         drop_last: bool = False,
     ) -> None:
-        super().__init__(data_source)
+        if IS_TORCH_LT_2_1:
+            super().__init__(data_source)
+        else:
+            super().__init__()
 
         self.batched_indices = []
         self.epoch = 0

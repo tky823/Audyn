@@ -56,3 +56,34 @@ def test_fastspeech_wavenet():
         n_mels,
     )
     assert log_duration.size() == (batch_size, max_length)
+
+
+def test_fastspeech_waveglow():
+    torch.manual_seed(0)
+
+    config_path = os.path.join(conf_dir, "fastspeech+waveglow.yaml")
+    config = OmegaConf.load(config_path)
+
+    batch_size, max_length = 2, 8
+
+    # word embedding
+    vocab_size = config.text_to_feat.encoder.word_embedding.num_embeddings
+    n_mels = config.text_to_feat.decoder.fc_layer.out_features
+
+    length = torch.randint(1, max_length, (batch_size,), dtype=torch.long)
+    max_length = torch.max(length)
+    src_key_padding_mask = torch.arange(max_length) >= length.unsqueeze(dim=-1)
+
+    input = torch.randint(0, vocab_size, (batch_size, max_length))
+    input = input.masked_fill(src_key_padding_mask, 0)
+
+    model = hydra.utils.instantiate(config)
+
+    output, melspectrogram, log_duration = model.inference(input)
+
+    assert output.size(0) == batch_size
+    assert melspectrogram.size()[:2] == (
+        batch_size,
+        n_mels,
+    )
+    assert log_duration.size() == (batch_size, max_length)

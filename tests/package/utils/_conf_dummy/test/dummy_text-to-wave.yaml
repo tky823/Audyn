@@ -1,6 +1,9 @@
 dataset:
   test:
-    _target_: dummy.utils.data.DummyDataset
+    _target_: dummy.utils.data.DummyTextToWaveDataset
+    vocab_size:
+    up_scale:
+    length:
     size:
 
 dataloader:
@@ -12,13 +15,14 @@ dataloader:
 key_mapping:
   inference:
     input:
-      input: input
+      text: text
     output: estimated_waveform
     identifier:
       filename: filename
-      speaker: subset
 
 checkpoint:
+  text_to_feat:
+  feat_to_wave:
 
 output:
   exp_dir: "./exp"
@@ -27,7 +31,7 @@ output:
     key_mapping:
       inference:
         output:
-          estimated_waveform: "{speaker}/{filename}_estimated.wav"
+          estimated_waveform: "{filename}_estimated.wav"
     transforms:
       inference:
     sample_rate: ${data.audio.sample_rate}

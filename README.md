@@ -1,4 +1,6 @@
 # Audyn
+[![codecov](https://codecov.io/gh/tky823/Audyn/graph/badge.svg?token=7R29QDGXLQ)](https://codecov.io/gh/tky823/Audyn)
+
 Audyn is PyTorch toolkit for audio synthesis.
 
 ## Installation

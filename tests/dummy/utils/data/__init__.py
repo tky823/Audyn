@@ -1,3 +1,5 @@
+from typing import Dict
+
 import torch
 from torch.utils.data import Dataset
 
@@ -8,7 +10,7 @@ class DummyDataset(Dataset):
 
         self.size = size
 
-    def __getitem__(self, idx) -> torch.Tensor:
+    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         value = torch.tensor([idx], dtype=torch.float)
         output = {
             "input": value,
@@ -37,7 +39,7 @@ class DummyWaveformDataset(Dataset):
         self.min_length = min_length
         self.max_length = max_length
 
-    def __getitem__(self, idx: int) -> torch.Tensor:
+    def __getitem__(self, _: int) -> Dict[str, torch.Tensor]:
         min_length = self.min_length
         max_length = self.max_length
 
@@ -65,7 +67,7 @@ class DummyGANDataset(Dataset):
         self.min_length = min_length
         self.max_length = max_length
 
-    def __getitem__(self, idx) -> torch.Tensor:
+    def __getitem__(self, _: int) -> Dict[str, torch.Tensor]:
         min_length = self.min_length
         max_length = self.max_length
 
@@ -80,6 +82,140 @@ class DummyGANDataset(Dataset):
             "fake_label": fake_label,
             "real_label": real_label,
             "fake_target": fake_target,
+        }
+
+        return output
+
+    def __len__(self) -> int:
+        return self.size
+
+
+class DummyTextToFeatDataset(Dataset):
+    def __init__(
+        self,
+        vocab_size: int,
+        n_mels: int,
+        length: int,
+        up_scale: int = 2,
+        size: int = 20,
+    ) -> None:
+        super().__init__()
+
+        self.vocab_size = vocab_size
+        self.n_mels = n_mels
+        self.length = length
+        self.up_scale = up_scale
+        self.size = size
+
+    def __getitem__(self, _: int) -> Dict[str, torch.Tensor]:
+        vocab_size = self.vocab_size
+        n_mels = self.n_mels
+        length = self.length
+        up_scale = self.up_scale
+
+        text = torch.randint(0, vocab_size, (length,))
+        text_duration = torch.full((length,), fill_value=up_scale, dtype=torch.long)
+        melspectrogram = torch.rand((up_scale * length, n_mels))
+
+        output = {
+            "text": text,
+            "text_duration": text_duration,
+            "melspectrogram": melspectrogram,
+        }
+
+        return output
+
+    def __len__(self) -> int:
+        return self.size
+
+
+class DummyFeatToWaveDataset(Dataset):
+    def __init__(
+        self,
+        n_mels: int,
+        length: int,
+        up_scale: int = 2,
+        size: int = 20,
+    ) -> None:
+        super().__init__()
+
+        self.n_mels = n_mels
+        self.length = length
+        self.up_scale = up_scale
+        self.size = size
+
+    def __getitem__(self, _: int) -> Dict[str, torch.Tensor]:
+        n_mels = self.n_mels
+        length = self.length
+        up_scale = self.up_scale
+
+        melspectrogram = torch.randn((n_mels, length))
+        waveform = torch.randn((1, up_scale * length))
+
+        output = {
+            "melspectrogram": melspectrogram,
+            "waveform": waveform,
+        }
+
+        return output
+
+    def __len__(self) -> int:
+        return self.size
+
+
+class DummyTextToWaveDataset(Dataset):
+    def __init__(
+        self,
+        vocab_size: int,
+        length: int,
+        up_scale: int = 2,
+        size: int = 20,
+    ) -> None:
+        super().__init__()
+
+        self.vocab_size = vocab_size
+        self.length = length
+        self.up_scale = up_scale
+        self.size = size
+
+    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
+        vocab_size = self.vocab_size
+        length = self.length
+        up_scale = self.up_scale
+
+        text = torch.randint(0, vocab_size, (length,))
+        waveform = torch.randn((1, up_scale * length))
+
+        output = {
+            "text": text,
+            "waveform": waveform,
+            "filename": f"utterance-{idx}",
+        }
+
+        return output
+
+    def __len__(self) -> int:
+        return self.size
+
+
+class DummySequentialDataset(Dataset):
+    def __init__(self, num_features: int, min_length: int, size: int = 20) -> None:
+        super().__init__()
+
+        self.num_features = num_features
+        self.min_length = min_length
+        self.size = size
+
+    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
+        num_features = self.num_features
+        min_length = self.min_length
+
+        shape = (num_features, min_length + idx + 1)
+        input = torch.full(shape, fill_value=idx, dtype=torch.float)
+        target = torch.tensor(idx, dtype=torch.float)
+        output = {
+            "input": input,
+            "target": target,
         }
 
         return output

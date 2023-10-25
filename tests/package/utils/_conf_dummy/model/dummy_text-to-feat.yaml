@@ -1,0 +1,3 @@
+_target_: dummy.models.DummyTextToFeat
+vocab_size:
+num_features:

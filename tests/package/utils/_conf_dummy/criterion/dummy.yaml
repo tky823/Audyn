@@ -5,7 +5,7 @@ criterion_name:
     _target_: dummy.criterion.CustomCriterion
   weight: 1
   key_mapping:
-      estimated:
-        input: criterion_input
-      target:
-        target: target
+    estimated:
+      input: criterion_input
+    target:
+      target: target

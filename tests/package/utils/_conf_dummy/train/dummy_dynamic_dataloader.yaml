@@ -4,20 +4,26 @@ defaults:
 
 dataset:
   train:
-    _target_: dummy.utils.data.DummyDataset
+    _target_: dummy.utils.data.DummySequentialDataset
+    num_features:
+    min_length:
     size:
   validation:
-    _target_: dummy.utils.data.DummyDataset
+    _target_: dummy.utils.data.DummySequentialDataset
+    num_features: ${..train.num_features}
+    min_length: ${..train.min_length}
     size:
 
 dataloader:
   train:
-    _target_: torch.utils.data.DataLoader
-    batch_size:
+    _target_:
+    key:
+    batch_length:
     shuffle: false
   validation:
-    _target_: torch.utils.data.DataLoader
-    batch_size:
+    _target_:
+    key:
+    batch_length:
     shuffle: false
 
 key_mapping:

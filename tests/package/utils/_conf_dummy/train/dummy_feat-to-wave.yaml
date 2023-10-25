@@ -4,10 +4,16 @@ defaults:
 
 dataset:
   train:
-    _target_: dummy.utils.data.DummyDataset
+    _target_: dummy.utils.data.DummyFeatToWaveDataset
+    n_mels:
+    up_scale:
+    length:
     size:
   validation:
-    _target_: dummy.utils.data.DummyDataset
+    _target_: dummy.utils.data.DummyFeatToWaveDataset
+    n_mels: ${..train.n_mels}
+    up_scale: ${..train.up_scale}
+    length: ${..train.length}
     size:
 
 dataloader:
@@ -23,9 +29,10 @@ dataloader:
 key_mapping:
   train:
     input:
-      input: input
-    output: criterion_input
+      input: melspectrogram
+    output: estimated_waveform
   validation: ${.train}
+  inference: ${.validation}
 
 resume:
   continue_from:

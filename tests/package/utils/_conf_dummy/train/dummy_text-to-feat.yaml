@@ -4,15 +4,19 @@ defaults:
 
 dataset:
   train:
-    _target_: dummy.utils.data.DummyWaveformDataset
+    _target_: dummy.utils.data.DummyTextToFeatDataset
+    vocab_size:
+    n_mels:
+    up_scale:
+    length:
     size:
-    min_length: 5
-    max_length: 10
   validation:
-    _target_: dummy.utils.data.DummyWaveformDataset
+    _target_: dummy.utils.data.DummyTextToFeatDataset
+    vocab_size: ${..train.vocab_size}
+    n_mels: ${..train.n_mels}
+    up_scale: ${..train.up_scale}
+    length: ${..train.length}
     size:
-    min_length: ${..train.min_length}
-    max_length: ${..train.max_length}
 
 dataloader:
   train:
@@ -27,14 +31,14 @@ dataloader:
 key_mapping:
   train:
     input:
-      waveform: input
-    output: criterion_input
+      input: text
+      duration: text_duration
+    output: estimated_melspectrogram
   validation: ${.train}
   inference:
     input:
-      initial_state: initial_state
-      max_length: max_length
-    output: criterion_input
+      input: text
+    output: estimated_melspectrogram
 
 resume:
   continue_from:

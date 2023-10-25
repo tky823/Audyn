@@ -1,0 +1,4 @@
+_target_: dummy.models.DummyCNN
+in_channels:
+out_channels:
+kernel_size:
