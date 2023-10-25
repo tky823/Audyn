@@ -1,9 +1,12 @@
 import os
 import tempfile
 
+import pytest
 import torch
 
 from audyn.utils.data.dataset import SortableTorchObjectDataset, TorchObjectDataset
+
+keys = ["input", "scalar"]
 
 
 def test_torch_object_dataset() -> None:
@@ -29,8 +32,10 @@ def test_torch_object_dataset() -> None:
             assert torch.equal(torch.tensor([idx + 1]), sample[key])
 
 
-def test_sortable_torch_object_dataset() -> None:
-    key = "input"
+@pytest.mark.parametrize("sort_key", keys)
+def test_sortable_torch_object_dataset(sort_key: str) -> None:
+    torch.manual_seed(0)
+
     list_path = "tests/mock/dataset/torch_object/sample.txt"
 
     with tempfile.TemporaryDirectory(dir=".") as temp_dir:
@@ -42,12 +47,27 @@ def test_sortable_torch_object_dataset() -> None:
             for line in f:
                 idx = int(line.strip())
                 feature_path = os.path.join(feature_dir, f"{idx}.pth")
-                feature = {key: torch.tensor([idx] * (idx + 1))}
+                scalar = torch.randint(0, 10, (), dtype=torch.long)
+                feature = {
+                    "input": torch.tensor([idx] * (idx + 1)),
+                    "scalar": scalar,
+                }
 
                 torch.save(feature, feature_path)
 
-        dataset = SortableTorchObjectDataset(list_path, feature_dir, sort_key=key)
+        dataset = SortableTorchObjectDataset(list_path, feature_dir, sort_key=sort_key)
+        min_scalar = float("inf")
 
         for idx, sample in enumerate(dataset):
             idx = len(dataset) - idx
-            assert torch.equal(torch.tensor([idx] * (idx + 1)), sample[key])
+
+            if sort_key == "input":
+                assert torch.equal(torch.tensor([idx] * (idx + 1)), sample[sort_key])
+            elif sort_key == "scalar":
+                scalar = sample[sort_key].item()
+
+                assert min_scalar >= scalar
+
+                min_scalar = min(min_scalar, scalar)
+            else:
+                raise ValueError(f"Invalid {sort_key} is detected.")
