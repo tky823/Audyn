@@ -8,6 +8,14 @@ __all__ = ["TorchObjectDataset", "SortableTorchObjectDataset"]
 
 
 class TorchObjectDataset(Dataset):
+    """Dataset for .pth objects.
+
+    Args:
+        list_path (str): Path to list file containing .pth filenames.
+        feature_dir (str): Path to directory containing .pth objects.
+
+    """
+
     def __init__(self, list_path: str, feature_dir: str) -> None:
         super().__init__()
 
@@ -38,6 +46,16 @@ class SortableTorchObjectDataset(TorchObjectDataset):
         sort_key: str = None,
         length_dim: int = -1,
     ) -> None:
+        """Dataset for .pth objects sorted by a certain feature.
+
+        Args:
+            list_path (str): Path to list file containing .pth filenames.
+            feature_dir (str): Path to directory containing .pth objects.
+            sort_by_length (bool): If ``True``, objects are sorted.
+            sort_key (str): Key to sort objects.
+            length_dim (int): Dimension to sort.
+
+        """
         if sort_key is None:
             raise ValueError("Specify sort_key.")
 
