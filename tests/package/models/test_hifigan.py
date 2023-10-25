@@ -31,6 +31,9 @@ def test_hifigan_generator(variation: str) -> None:
 
     assert output.size() == (batch_size, out_channels, upsampled_length)
 
+    if len(model.registered_weight_norms) > 0:
+        model.remove_weight_norm_()
+
 
 def test_multi_receptive_field_fusion() -> None:
     batch_size = 4
@@ -74,6 +77,9 @@ def test_multi_scale_discriminator() -> None:
 
             assert _feature_map.size(0) == batch_size
 
+    if model.weight_regularization is not None:
+        model.remove_weight_regularization_()
+
 
 def test_multi_period_discriminator() -> None:
     batch_size = 4
@@ -91,6 +97,9 @@ def test_multi_period_discriminator() -> None:
             _feature_map = feature_map[discriminator_idx][layer_idx]
 
             assert _feature_map.size(0) == batch_size
+
+    if model.weight_regularization is not None:
+        model.remove_weight_regularization_()
 
 
 def test_scale_discriminator() -> None:
