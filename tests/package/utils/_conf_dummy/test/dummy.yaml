@@ -22,7 +22,6 @@ checkpoint:
 
 output:
   exp_dir: "./exp"
-  tensorboard_dir: "./tensorboard"
   inference_dir: "./inference"
   audio:
     key_mapping:
