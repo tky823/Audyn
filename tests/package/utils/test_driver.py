@@ -14,9 +14,16 @@ from audyn.criterion.gan import GANCriterion
 from audyn.models.gan import BaseGAN
 from audyn.optim.lr_scheduler import GANLRScheduler
 from audyn.optim.optimizer import GANOptimizer
-from audyn.utils import instantiate_model, setup_system
+from audyn.utils import instantiate_cascade_text_to_wave, instantiate_model, setup_system
 from audyn.utils.data import BaseDataLoaders, default_collate_fn, make_noise
-from audyn.utils.driver import BaseGenerator, BaseTrainer, FeatToWaveTrainer, GANTrainer
+from audyn.utils.driver import (
+    BaseGenerator,
+    BaseTrainer,
+    CascadeTextToWaveGenerator,
+    FeatToWaveTrainer,
+    GANTrainer,
+    TextToFeatTrainer,
+)
 from audyn.utils.model import set_device
 
 config_template_path = join(dirname(realpath(audyn.__file__)), "utils", "driver", "_conf_template")
@@ -405,6 +412,204 @@ def test_gan_trainer(
         monkeypatch.undo()
 
 
+def test_cascade_text_to_wave(monkeypatch: MonkeyPatch) -> None:
+    DATA_SIZE = 20
+    BATCH_SIZE = 2
+    ITERATIONS = 3
+    VOCAB_SIZE = 10
+    N_MELS = 5
+    TEXT_TO_FEAT_UP_SCALE = 2
+    FEAT_TO_WAVE_UP_SCALE = 2
+
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
+        monkeypatch.chdir(temp_dir)
+
+        overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
+        text_to_feat_exp_dir = "./exp/text-to-feat"
+        feat_to_wave_exp_dir = "./exp/feat-to-wave"
+        text_to_wave_exp_dir = "./exp/text-to-wave"
+
+        # text-to-feat
+        with hydra.initialize(
+            version_base="1.2",
+            config_path=relpath(config_template_path, dirname(realpath(__file__))),
+            job_name="test_driver",
+        ):
+            config = hydra.compose(
+                config_name="config",
+                overrides=create_dummy_text_to_feat_override(
+                    overrides_conf_dir=overrides_conf_dir,
+                    exp_dir=text_to_feat_exp_dir,
+                    data_size=DATA_SIZE,
+                    batch_size=BATCH_SIZE,
+                    iterations=ITERATIONS,
+                    vocab_size=VOCAB_SIZE,
+                    n_mels=N_MELS,
+                    up_scale=TEXT_TO_FEAT_UP_SCALE,
+                ),
+                return_hydra_config=True,
+            )
+
+        setup_system(config)
+
+        train_dataset = hydra.utils.instantiate(config.train.dataset.train)
+        validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+
+        train_loader = hydra.utils.instantiate(
+            config.train.dataloader.train,
+            train_dataset,
+            collate_fn=default_collate_fn,
+        )
+        validation_loader = hydra.utils.instantiate(
+            config.train.dataloader.validation,
+            validation_dataset,
+            collate_fn=default_collate_fn,
+        )
+        loaders = BaseDataLoaders(train_loader, validation_loader)
+
+        model = instantiate_model(config.model)
+        model = set_device(
+            model,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
+        optimizer = hydra.utils.instantiate(config.optimizer, model.parameters())
+        lr_scheduler = hydra.utils.instantiate(config.lr_scheduler, optimizer)
+        criterion = hydra.utils.instantiate(config.criterion)
+        criterion = set_device(
+            criterion,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
+
+        trainer = TextToFeatTrainer(
+            loaders,
+            model,
+            optimizer,
+            lr_scheduler=lr_scheduler,
+            criterion=criterion,
+            config=config,
+        )
+        trainer.run()
+        trainer.writer.flush()
+
+        # feat-to-wave
+        with hydra.initialize(
+            version_base="1.2",
+            config_path=relpath(config_template_path, dirname(realpath(__file__))),
+            job_name="test_driver",
+        ):
+            config = hydra.compose(
+                config_name="config",
+                overrides=create_dummy_feat_to_wave_override(
+                    overrides_conf_dir=overrides_conf_dir,
+                    exp_dir=feat_to_wave_exp_dir,
+                    data_size=DATA_SIZE,
+                    batch_size=BATCH_SIZE,
+                    iterations=ITERATIONS,
+                    n_mels=N_MELS,
+                    up_scale=FEAT_TO_WAVE_UP_SCALE,
+                ),
+                return_hydra_config=True,
+            )
+
+        setup_system(config)
+
+        train_dataset = hydra.utils.instantiate(config.train.dataset.train)
+        validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+
+        train_loader = hydra.utils.instantiate(
+            config.train.dataloader.train,
+            train_dataset,
+            collate_fn=default_collate_fn,
+        )
+        validation_loader = hydra.utils.instantiate(
+            config.train.dataloader.validation,
+            validation_dataset,
+            collate_fn=default_collate_fn,
+        )
+        loaders = BaseDataLoaders(train_loader, validation_loader)
+
+        model = instantiate_model(config.model)
+        model = set_device(
+            model,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
+        optimizer = hydra.utils.instantiate(config.optimizer, model.parameters())
+        lr_scheduler = hydra.utils.instantiate(config.lr_scheduler, optimizer)
+        criterion = hydra.utils.instantiate(config.criterion)
+        criterion = set_device(
+            criterion,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
+
+        trainer = FeatToWaveTrainer(
+            loaders,
+            model,
+            optimizer,
+            lr_scheduler=lr_scheduler,
+            criterion=criterion,
+            config=config,
+        )
+        trainer.run()
+        trainer.writer.flush()
+
+        # text-to-wave
+        text_to_feat_checkpoint = os.path.join(text_to_feat_exp_dir, "model", "last.pth")
+        feat_to_wave_checkpoint = os.path.join(feat_to_wave_exp_dir, "model", "last.pth")
+
+        # text-to-wave
+        with hydra.initialize(
+            version_base="1.2",
+            config_path=relpath(config_template_path, dirname(realpath(__file__))),
+            job_name="test_driver",
+        ):
+            config = hydra.compose(
+                config_name="config",
+                overrides=create_dummy_text_to_wave_override(
+                    overrides_conf_dir=overrides_conf_dir,
+                    exp_dir=text_to_wave_exp_dir,
+                    data_size=DATA_SIZE,
+                    batch_size=BATCH_SIZE,
+                    vocab_size=VOCAB_SIZE,
+                    up_scale=TEXT_TO_FEAT_UP_SCALE * FEAT_TO_WAVE_UP_SCALE,
+                    text_to_feat_checkpoint=text_to_feat_checkpoint,
+                    feat_to_wave_checkpoint=feat_to_wave_checkpoint,
+                ),
+                return_hydra_config=True,
+            )
+
+        test_dataset = hydra.utils.instantiate(config.test.dataset.test)
+
+        test_loader = hydra.utils.instantiate(
+            config.test.dataloader.test,
+            test_dataset,
+            collate_fn=default_collate_fn,
+        )
+
+        model = instantiate_cascade_text_to_wave(
+            config.model,
+            text_to_feat_checkpoint=config.test.checkpoint.text_to_feat,
+            feat_to_wave_checkpoint=config.test.checkpoint.feat_to_wave,
+        )
+        model = set_device(
+            model,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
+
+        generator = CascadeTextToWaveGenerator(
+            test_loader,
+            model,
+            config=config,
+        )
+        generator.run()
+
+        monkeypatch.undo()
+
+
 @pytest.mark.parametrize(
     "dataloader",
     [
@@ -416,7 +621,7 @@ def test_trainer_for_dataloader(monkeypatch: MonkeyPatch, dataloader: str) -> No
     """Test BaseTrainer for dataloaders."""
     DATA_SIZE = 20
     BATCH_SIZE = 2
-    INITIAL_ITERATION = 3
+    ITERATIONS = 3
 
     with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         monkeypatch.chdir(temp_dir)
@@ -436,7 +641,7 @@ def test_trainer_for_dataloader(monkeypatch: MonkeyPatch, dataloader: str) -> No
                     exp_dir=exp_dir,
                     data_size=DATA_SIZE,
                     batch_size=BATCH_SIZE,
-                    iterations=INITIAL_ITERATION,
+                    iterations=ITERATIONS,
                     dataloader=dataloader,
                 ),
                 return_hydra_config=True,
@@ -586,6 +791,124 @@ def create_dummy_gan_override(
     )
 
     return overridden_config
+
+
+def create_dummy_text_to_feat_override(
+    overrides_conf_dir: str,
+    exp_dir: str,
+    data_size: int,
+    batch_size: int = 1,
+    iterations: int = 1,
+    vocab_size: int = 10,
+    n_mels: int = 5,
+    up_scale: int = 2,
+) -> List[str]:
+    sample_rate = 16000
+    length = 10
+
+    output_dir, _, tag = exp_dir.rsplit("/", maxsplit=2)
+    tensorboard_dir = os.path.join(output_dir, "tensorboard", tag)
+
+    return [
+        "train=dummy_text-to-feat",
+        "test=dummy",
+        "model=dummy_text-to-feat",
+        "optimizer=dummy",
+        "lr_scheduler=dummy",
+        "criterion=dummy",
+        f"hydra.searchpath=[{overrides_conf_dir}]",
+        "hydra.job.num=1",
+        f"hydra.runtime.output_dir={exp_dir}/log",
+        f"data.audio.sample_rate={sample_rate}",
+        f"train.dataset.train.size={data_size}",
+        f"train.dataset.validation.size={data_size}",
+        f"train.dataset.train.vocab_size={vocab_size}",
+        f"train.dataset.train.n_mels={n_mels}",
+        f"train.dataset.train.up_scale={up_scale}",
+        f"train.dataset.train.length={length}",
+        f"train.dataloader.train.batch_size={batch_size}",
+        f"train.dataloader.validation.batch_size={batch_size}",
+        f"train.output.exp_dir={exp_dir}",
+        f"train.output.tensorboard_dir={tensorboard_dir}",
+        f"train.steps.iterations={iterations}",
+        f"model.vocab_size={vocab_size}",
+        f"model.num_features={n_mels}",
+        "criterion.criterion_name.key_mapping.estimated.input=estimated_melspectrogram",
+        "criterion.criterion_name.key_mapping.target.target=melspectrogram",
+    ]
+
+
+def create_dummy_feat_to_wave_override(
+    overrides_conf_dir: str,
+    exp_dir: str,
+    data_size: int,
+    batch_size: int = 1,
+    iterations: int = 1,
+    n_mels: int = 5,
+    up_scale: int = 2,
+) -> List[str]:
+    sample_rate = 16000
+    length = 10
+
+    output_dir, _, tag = exp_dir.rsplit("/", maxsplit=2)
+    tensorboard_dir = os.path.join(output_dir, "tensorboard", tag)
+
+    return [
+        "train=dummy_feat-to-wave",
+        "test=dummy",
+        "model=dummy_feat-to-wave",
+        "optimizer=dummy",
+        "lr_scheduler=dummy",
+        "criterion=dummy",
+        f"hydra.searchpath=[{overrides_conf_dir}]",
+        "hydra.job.num=1",
+        f"hydra.runtime.output_dir={exp_dir}/log",
+        f"data.audio.sample_rate={sample_rate}",
+        f"train.dataset.train.size={data_size}",
+        f"train.dataset.validation.size={data_size}",
+        f"train.dataset.train.n_mels={n_mels}",
+        f"train.dataset.train.up_scale={up_scale}",
+        f"train.dataset.train.length={length}",
+        f"train.dataloader.train.batch_size={batch_size}",
+        f"train.dataloader.validation.batch_size={batch_size}",
+        f"train.output.exp_dir={exp_dir}",
+        f"train.output.tensorboard_dir={tensorboard_dir}",
+        f"train.steps.iterations={iterations}",
+        f"model.num_features={n_mels}",
+        "criterion.criterion_name.key_mapping.estimated.input=estimated_waveform",
+        "criterion.criterion_name.key_mapping.target.target=waveform",
+    ]
+
+
+def create_dummy_text_to_wave_override(
+    overrides_conf_dir: str,
+    exp_dir: str,
+    data_size: int,
+    batch_size: int = 1,
+    vocab_size: int = 10,
+    up_scale: int = 2,
+    text_to_feat_checkpoint: str = None,
+    feat_to_wave_checkpoint: str = None,
+) -> List[str]:
+    sample_rate = 16000
+    length = 10
+
+    return [
+        "test=dummy_text-to-wave",
+        "model=dummy_text-to-wave",
+        f"hydra.searchpath=[{overrides_conf_dir}]",
+        "hydra.job.num=1",
+        f"hydra.runtime.output_dir={exp_dir}/log",
+        f"data.audio.sample_rate={sample_rate}",
+        f"test.dataset.test.size={data_size}",
+        f"test.dataset.test.vocab_size={vocab_size}",
+        f"test.dataset.test.up_scale={up_scale}",
+        f"test.dataset.test.length={length}",
+        f"test.dataloader.test.batch_size={batch_size}",
+        f"test.checkpoint.text_to_feat={text_to_feat_checkpoint}",
+        f"test.checkpoint.feat_to_wave={feat_to_wave_checkpoint}",
+        f"test.output.exp_dir={exp_dir}",
+    ]
 
 
 def create_dummy_for_dataloader_override(
