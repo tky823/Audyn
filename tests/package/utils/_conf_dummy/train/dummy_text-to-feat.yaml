@@ -1,0 +1,51 @@
+defaults:
+  - output: dummy
+  - _self_
+
+dataset:
+  train:
+    _target_: dummy.utils.data.DummyTextToFeatDataset
+    vocab_size:
+    n_mels:
+    up_scale:
+    length:
+    size:
+  validation:
+    _target_: dummy.utils.data.DummyTextToFeatDataset
+    vocab_size: ${..train.vocab_size}
+    n_mels: ${..train.n_mels}
+    up_scale: ${..train.up_scale}
+    length: ${..train.length}
+    size:
+
+dataloader:
+  train:
+    _target_: torch.utils.data.DataLoader
+    batch_size:
+    shuffle: false
+  validation:
+    _target_: torch.utils.data.DataLoader
+    batch_size:
+    shuffle: false
+
+key_mapping:
+  train:
+    input:
+      input: text
+      duration: text_duration
+    output: estimated_melspectrogram
+  validation: ${.train}
+  inference:
+    input:
+      input: text
+    output: estimated_melspectrogram
+
+resume:
+  continue_from:
+
+record:
+
+steps:
+  epochs:
+  iterations:
+  lr_scheduler: iteration
