@@ -10,7 +10,7 @@ class DummyDataset(Dataset):
 
         self.size = size
 
-    def __getitem__(self, idx) -> torch.Tensor:
+    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         value = torch.tensor([idx], dtype=torch.float)
         output = {
             "input": value,
@@ -39,7 +39,7 @@ class DummyWaveformDataset(Dataset):
         self.min_length = min_length
         self.max_length = max_length
 
-    def __getitem__(self, idx: int) -> torch.Tensor:
+    def __getitem__(self, _: int) -> Dict[str, torch.Tensor]:
         min_length = self.min_length
         max_length = self.max_length
 
@@ -67,7 +67,7 @@ class DummyGANDataset(Dataset):
         self.min_length = min_length
         self.max_length = max_length
 
-    def __getitem__(self, idx) -> torch.Tensor:
+    def __getitem__(self, _: int) -> Dict[str, torch.Tensor]:
         min_length = self.min_length
         max_length = self.max_length
 
@@ -206,7 +206,7 @@ class DummySequentialDataset(Dataset):
         self.min_length = min_length
         self.size = size
 
-    def __getitem__(self, idx: int) -> torch.Tensor:
+    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         num_features = self.num_features
         min_length = self.min_length
 
