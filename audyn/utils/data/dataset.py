@@ -48,6 +48,11 @@ class SortableTorchObjectDataset(TorchObjectDataset):
     ) -> None:
         """Dataset for .pth objects sorted by a certain feature.
 
+        .. note::
+
+            If tensor of ``sort_key`` is 0-D (i.e. scalar),
+            the value itself is treated as length.
+
         Args:
             list_path (str): Path to list file containing .pth filenames.
             feature_dir (str): Path to directory containing .pth objects.
@@ -69,9 +74,7 @@ class SortableTorchObjectDataset(TorchObjectDataset):
                 data = torch.load(feature_path, map_location=lambda storage, loc: storage)
 
                 if data[sort_key].dim() == 0:
-                    raise NotImplementedError(
-                        f"0-dimension tensor (key={sort_key}) is not supported."
-                    )
+                    lengths[filename] = data[sort_key].item()
                 else:
                     lengths[filename] = data[sort_key].size(length_dim)
 
