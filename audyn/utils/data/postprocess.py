@@ -14,6 +14,7 @@ def slice_feautures(
     length_mapping: Optional[Dict[str, str]] = None,
     length_dims: Optional[Union[int, Dict[str, int]]] = None,
     random_slice: bool = False,
+    inplace: bool = True,
 ) -> Dict[str, Any]:
     """Add sliced features from given batch.
 
@@ -25,6 +26,8 @@ def slice_feautures(
         length_mapping  (dict, optional): Length mapping of features.
         length_dims (int or dict, optional): Dimension to get length of features.
         random_slice (bool): If ``True``, slice section is selected at random.
+        inplace (bool): If ``True``, sliced features are saved in given batch.
+            Otherwise, new dictionary is prepared to avoid inplace operation.
 
     Returns:
         dict: Dict-type batch including sliced features.
@@ -40,6 +43,11 @@ def slice_feautures(
             raise ValueError("0 is batch dimension.")
 
         return dim
+
+    if inplace:
+        output_batch = batch
+    else:
+        output_batch = {key: value for key, value in batch.items()}
 
     if key_mapping is None:
         key_mapping = {}
@@ -90,17 +98,17 @@ def slice_feautures(
     if len(key_mapping) > 0:
         batch_size_keys = sorted(list(key_mapping.keys()))
     else:
-        batch_size_keys = sorted(list(batch.keys()))
+        batch_size_keys = sorted(list(output_batch.keys()))
 
     batch_size_key = batch_size_keys[0]
-    batch_size = len(batch[batch_size_key])
+    batch_size = len(output_batch[batch_size_key])
 
     for slice_key in key_mapping.values():
-        batch[slice_key] = []
+        output_batch[slice_key] = []
 
     for sample_idx in range(batch_size):
         key = low_resolution_key
-        feature = batch[key][sample_idx]
+        feature = output_batch[key][sample_idx]
         length_key = _length_mapping[key]
         length_dim = _length_dims[key]
         hop_length = hop_lengths[key]
@@ -108,7 +116,7 @@ def slice_feautures(
         _length_dim = _compute_dim_without_batch(length_dim)
 
         length = _compute_length(
-            batch,
+            output_batch,
             key,
             sample_idx,
             length_key=length_key,
@@ -131,13 +139,13 @@ def slice_feautures(
             dim=_length_dim,
         )
 
-        batch[slice_key].append(sliced_feature)
+        output_batch[slice_key].append(sliced_feature)
 
         for key in key_mapping.keys():
             if key == low_resolution_key:
                 continue
 
-            feature = batch[key][sample_idx]
+            feature = output_batch[key][sample_idx]
             length_key = _length_mapping[key]
             length_dim = _length_dims[key]
             hop_length = hop_lengths[key]
@@ -145,7 +153,7 @@ def slice_feautures(
             _length_dim = _compute_dim_without_batch(length_dim)
 
             length = _compute_length(
-                batch,
+                output_batch,
                 key,
                 sample_idx,
                 length_key=length_key,
@@ -163,12 +171,12 @@ def slice_feautures(
                 dim=_length_dim,
             )
 
-            batch[slice_key].append(sliced_feature)
+            output_batch[slice_key].append(sliced_feature)
 
     for slice_key in key_mapping.values():
-        batch[slice_key] = torch.stack(batch[slice_key], dim=0)
+        output_batch[slice_key] = torch.stack(output_batch[slice_key], dim=0)
 
-    return batch
+    return output_batch
 
 
 def take_log_features(
