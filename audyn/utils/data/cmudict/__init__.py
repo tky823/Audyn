@@ -148,20 +148,41 @@ class CMUDict:
 
         self.cmudict = self.build_dict(path)
 
-    def __call__(self, word: str) -> str:
-        """Return phone from word."""
-        phone_candidates = self.cmudict.get(word.upper())
+    def __getitem__(self, word: str) -> Optional[List[str]]:
+        """Return phone from word.
 
-        if phone_candidates is None:
-            phone = UNK_SYMBOL
+        Args:
+            word (str): Single word.
+
+        Returns:
+            list: Pronunciation. If pronunciation is unknown,
+                dictionary returns ``None``.
+
+        Examples:
+
+            >>> from audyn.utils.data.cmudict import CMUDict
+            >>> cmudict = CMUDict()
+            >>> cmudict["Hello"]
+            ['HH', 'AH0', 'L', 'OW1']
+
+        """
+        pronunciation_candidates = self.cmudict.get(word.upper())
+
+        if pronunciation_candidates is None:
+            phones = None
         else:
-            phone = phone_candidates[0]
+            phones = pronunciation_candidates[0]
+            phones = phones.split(" ")
 
-        return phone
+        return phones
 
     @staticmethod
     def build_dict(path: str) -> Dict[str, List[str]]:
-        """Build pronunciation dictionary."""
+        """Build pronunciation dictionary.
+
+        Args:
+            path (str): Path to dictionary to load.
+        """
         cmudict = {}
 
         with open(path, encoding="latin-1") as f:
