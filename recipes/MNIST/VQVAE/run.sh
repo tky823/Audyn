@@ -13,7 +13,7 @@ exp_dir="./exp"
 
 system="defaults"
 preprocess="defaults"
-data="defaults"
+data=""
 train=""
 test=""
 model=""
@@ -37,6 +37,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         . ./train_vqvae.sh \
         --tag "${tag}" \
         --continue-from "${continue_from}" \
+        --exp-dir "${exp_dir}" \
         --system "${system}" \
         --data "${data}" \
         --train "${train}" \
