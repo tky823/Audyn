@@ -8,7 +8,7 @@ continue_from=""
 data_root="../data"
 
 system="defaults"
-data="defaults"
+data="vqvae"
 train="vqvae"
 test="vqvae"
 model="vqvae"

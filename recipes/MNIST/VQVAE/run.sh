@@ -16,7 +16,7 @@ data_root="../data"
 
 system="defaults"
 preprocess="defaults"
-data=""
+data="vqvae"
 train=""
 test=""
 model=""
