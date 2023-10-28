@@ -209,11 +209,11 @@ class Generator(BaseGenerator):
     def load_checkpoint(self, pixelcnn_path: str, vqvae_path: str) -> None:
         # load weights of PixelCNN
         state_dict = torch.load(pixelcnn_path, map_location=self.device)
-        self.model.pixelcnn.load_state_dict(state_dict["model"])
+        self.unwrapped_model.pixelcnn.load_state_dict(state_dict["model"])
 
         # load weights of PixelCNN
         state_dict = torch.load(vqvae_path, map_location=self.device)
-        self.model.vqvae.load_state_dict(state_dict["model"])
+        self.unwrapped_model.vqvae.load_state_dict(state_dict["model"])
 
     @run_only_master_rank()
     def save_figure_if_necessary(
