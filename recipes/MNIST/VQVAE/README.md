@@ -5,7 +5,6 @@
 ### Stage 1: train VQVAE
 
 ```sh
-data="vqvae"
 train="vqvae"
 model="vqvae"
 optimizer="vqvae"
@@ -16,7 +15,6 @@ criterion="vqvae"
 --stage 1 \
 --stop-stage 1 \
 --tag <TAG> \
---data "${data}" \
 --train "${train}" \
 --model "${model}" \
 --optimizer "${optimizer}" \
@@ -27,7 +25,6 @@ criterion="vqvae"
 ### Stage 2: save priors in latent space
 
 ```sh
-data="vqvae"
 train="prior"
 model="vqvae"
 vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.pth
@@ -36,7 +33,6 @@ vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.p
 --stage 2 \
 --stop-stage 2 \
 --tag <TAG> \
---data "${data}" \
 --vqvae-checkpoint "${vqvae_checkpoint}" \
 --train "${train}" \
 --model "${model}"
@@ -45,7 +41,6 @@ vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.p
 ### Stage 3: train PixelCNN
 
 ```sh
-data="vqvae"
 train="pixelcnn"
 model="pixelcnn"
 optimizer="pixelcnn"
@@ -56,7 +51,6 @@ criterion="pixelcnn"
 --stage 3 \
 --stop-stage 3 \
 --tag <TAG> \
---data "${data}" \
 --train "${train}" \
 --model "${model}" \
 --optimizer "${optimizer}" \
@@ -68,7 +62,6 @@ criterion="pixelcnn"
 ### Stage 4: generate images using PixelCNN + VQVAE
 
 ```sh
-data="vqvae"
 test="pixelcnn+vqvae"
 model="pixelcnn+vqvae"
 pixelcnn_checkpoint=<PATH/TO/PIXELCNN/CHECKPOINT>  # e.g. exp/<TAG>/model/pixelcnn/last.pth
@@ -80,7 +73,6 @@ vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.p
 --pixelcnn-checkpoint "${pixelcnn_checkpoint}" \
 --vqvae-checkpoint "${vqvae_checkpoint}" \
 --tag <TAG> \
---data "${data}" \
 --test "${test}" \
 --model "${model}"
 ```
