@@ -80,6 +80,7 @@ class VQVAE(nn.Module):
         if torch.is_floating_point(quantized):
             pass
         elif quantized.dtype in [torch.long]:
+            # to support torch.cuda.LongTensor, check dtype
             quantized = self.vector_quantizer.codebook(quantized)
             batch_size, *shape, embedding_dim = quantized.size()
             quantized = quantized.view(batch_size, -1, embedding_dim)
