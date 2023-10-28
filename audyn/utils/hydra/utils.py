@@ -100,8 +100,10 @@ def instantiate_cascade_text_to_wave(
         text_to_feat=text_to_feat,
         feat_to_wave=feat_to_wave,
     )
-    model.text_to_feat.load_state_dict(text_to_feat_state_dict["model"])
-    model.feat_to_wave.load_state_dict(feat_to_wave_state_dict["model"])
+
+    if load_weights:
+        model.text_to_feat.load_state_dict(text_to_feat_state_dict["model"])
+        model.feat_to_wave.load_state_dict(feat_to_wave_state_dict["model"])
 
     return model
 
