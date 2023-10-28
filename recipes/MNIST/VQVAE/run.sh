@@ -68,3 +68,23 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         --model "${model}"
     )
 fi
+
+if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
+    echo "Stage 3: Training of PixelCNN"
+
+    (
+        . ./train_pixelcnn.sh \
+        --tag "${tag}" \
+        --continue-from "${continue_from}" \
+        --exp-dir "${exp_dir}" \
+        --data-root "${data_root}" \
+        --system "${system}" \
+        --data "${data}" \
+        --train "${train}" \
+        --test "${test}" \
+        --model "${model}" \
+        --optimizer "${optimizer}" \
+        --lr_scheduler "${lr_scheduler}" \
+        --criterion "${criterion}"
+    )
+fi
