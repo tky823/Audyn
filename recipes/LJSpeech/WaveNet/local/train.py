@@ -7,7 +7,7 @@ import torchaudio.functional as aF
 from omegaconf import DictConfig
 
 import audyn
-from audyn.utils import setup_system
+from audyn.utils import instantiate_model, instantiate_optimizer, setup_system
 from audyn.utils.data import (
     BaseDataLoaders,
     default_collate_fn,
@@ -37,13 +37,13 @@ def main(config: DictConfig) -> None:
     )
     loaders = BaseDataLoaders(train_loader, validation_loader)
 
-    model = hydra.utils.instantiate(config.model)
+    model = instantiate_model(config.model)
     model = set_device(
         model,
         accelerator=config.system.accelerator,
         is_distributed=config.system.distributed.enable,
     )
-    optimizer = hydra.utils.instantiate(config.optimizer, model.parameters())
+    optimizer = instantiate_optimizer(config.optimizer, model.parameters())
     lr_scheduler = hydra.utils.instantiate(config.lr_scheduler, optimizer)
     criterion = hydra.utils.instantiate(config.criterion)
     criterion = set_device(
