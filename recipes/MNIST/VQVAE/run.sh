@@ -8,6 +8,7 @@ stop_stage=-1
 
 tag=""
 continue_from=""
+pixelcnn_checkpoint=""
 vqvae_checkpoint=""
 
 exp_dir="./exp"
@@ -86,5 +87,22 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
         --optimizer "${optimizer}" \
         --lr_scheduler "${lr_scheduler}" \
         --criterion "${criterion}"
+    )
+fi
+
+if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
+    echo "Stage 4: Generate images by PixelCNN + VQVAE"
+
+    (
+        . ./test.sh \
+        --tag "${tag}" \
+        --exp-dir "${exp_dir}" \
+        --pixelcnn-checkpoint "${pixelcnn_checkpoint}" \
+        --vqvae-checkpoint "${vqvae_checkpoint}" \
+        --data-root "${data_root}" \
+        --system "${system}" \
+        --data "${data}" \
+        --test "${test}" \
+        --model "${model}"
     )
 fi
