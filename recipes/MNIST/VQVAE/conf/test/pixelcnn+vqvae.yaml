@@ -1,0 +1,43 @@
+dataset:
+  test:
+    _target_: utils.dataset.MNIST
+    root: "../.data/"
+    train: false
+    transform:
+      _target_: torchvision.transforms.ToTensor
+    target_transform:
+      _target_: torch.tensor
+      _partial_: true
+    download: true
+
+dataloader:
+  test:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 1
+    shuffle: false
+
+key_mapping:
+  inference:
+    input:
+      initial_state: initial_index
+      height: height
+      width: width
+    output: generated_image
+    identifier:
+      filename: index
+
+checkpoint:
+  pixelcnn:
+  vqvae:
+
+output:
+  exp_dir: "./exp"
+  inference_dir: ${.exp_dir}/inference
+  figure:
+    key_mapping:
+      inference:
+        output:
+          generated_image: "{filename}_estimated.png"
+    transforms:
+      inference:
+        output:

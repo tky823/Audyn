@@ -1,13 +1,37 @@
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Iterable, Optional, Union, overload
 
 import hydra
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig, OmegaConf
+from packaging import version
+from torch.optim import Optimizer
+from torch.optim.lr_scheduler import _LRScheduler
 
 from ...models.text_to_wave import CascadeTextToWave
 
-__all__ = ["instantiate_model", "instantiate_cascade_text_to_wave"]
+__all__ = [
+    "instantiate_model",
+    "instantiate_cascade_text_to_wave",
+    "instantiate_optimizer",
+    "instantiate_lr_scheduler",
+]
+
+IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
+
+
+if IS_TORCH_LT_2_1:
+
+    @overload
+    def instantiate_optimizer(config: DictConfig, params: Iterable, *args, **kwargs) -> Optimizer:
+        ...
+
+else:
+    from torch.optim.optimizer import params_t
+
+    @overload
+    def instantiate_optimizer(config: DictConfig, params: params_t, *args, **kwargs) -> Optimizer:
+        ...
 
 
 def instantiate_model(
@@ -98,7 +122,32 @@ def instantiate_cascade_text_to_wave(
         text_to_feat=text_to_feat,
         feat_to_wave=feat_to_wave,
     )
-    model.text_to_feat.load_state_dict(text_to_feat_state_dict["model"])
-    model.feat_to_wave.load_state_dict(feat_to_wave_state_dict["model"])
+
+    if load_weights:
+        model.text_to_feat.load_state_dict(text_to_feat_state_dict["model"])
+        model.feat_to_wave.load_state_dict(feat_to_wave_state_dict["model"])
 
     return model
+
+
+def instantiate_optimizer(config, params, *args, **kwargs) -> Optimizer:
+    return hydra.utils.instantiate(config, params, *args, **kwargs)
+
+
+def instantiate_lr_scheduler(
+    config: DictConfig, optimizer: Optimizer, *args, **kwargs
+) -> Optional[_LRScheduler]:
+    """Instantiate learning rate scheduler.
+
+    .. note::
+
+        If ``config`` is empty dict, this function returns ``None``
+        unlike ``hydra.utils.instantiate``.
+
+    """
+    lr_scheduler = hydra.utils.instantiate(config, optimizer, *args, **kwargs)
+
+    if isinstance(lr_scheduler, DictConfig):
+        lr_scheduler = None
+
+    return lr_scheduler
