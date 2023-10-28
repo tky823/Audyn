@@ -1,15 +1,30 @@
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Iterable, Optional, Union, overload
 
 import hydra
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig, OmegaConf
+from packaging import version
 from torch.optim import Optimizer
-from torch.optim.optimizer import params_t
 
 from ...models.text_to_wave import CascadeTextToWave
 
 __all__ = ["instantiate_model", "instantiate_cascade_text_to_wave"]
+
+IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
+
+
+@overload
+def instantiate_optimizer(config: DictConfig, params: Iterable, *args, **kwargs) -> Optimizer:
+    ...
+
+
+if not IS_TORCH_LT_2_1:
+    from torch.optim.optimizer import params_t
+
+    @overload
+    def instantiate_optimizer(config: DictConfig, params: params_t, *args, **kwargs) -> Optimizer:
+        ...
 
 
 def instantiate_model(
@@ -108,5 +123,5 @@ def instantiate_cascade_text_to_wave(
     return model
 
 
-def instantiate_optimizer(config: DictConfig, params: params_t, *args, **kwargs) -> Optimizer:
+def instantiate_optimizer(config, params, *args, **kwargs) -> Optimizer:
     return hydra.utils.instantiate(config, params, *args, **kwargs)
