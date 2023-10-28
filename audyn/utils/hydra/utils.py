@@ -14,12 +14,13 @@ __all__ = ["instantiate_model", "instantiate_cascade_text_to_wave"]
 IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
 
-@overload
-def instantiate_optimizer(config: DictConfig, params: Iterable, *args, **kwargs) -> Optimizer:
-    ...
+if IS_TORCH_LT_2_1:
 
+    @overload
+    def instantiate_optimizer(config: DictConfig, params: Iterable, *args, **kwargs) -> Optimizer:
+        ...
 
-if not IS_TORCH_LT_2_1:
+else:
     from torch.optim.optimizer import params_t
 
     @overload
