@@ -67,3 +67,24 @@ criterion="pixelcnn"
 --lr-scheduler "${lr_scheduler}" \
 --criterion "${criterion}"
 ```
+
+
+### Stage 4: generate images using PixelCNN + VQVAE
+
+```sh
+data="vqvae"
+test="pixelcnn+vqvae"
+model="pixelcnn+vqvae"
+pixelcnn_checkpoint=<PATH/TO/PIXELCNN/CHECKPOINT>  # e.g. exp/<TAG>/model/pixelcnn/last.pth
+vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.pth
+
+. ./run.sh \
+--stage 4 \
+--stop-stage 4 \
+--pixelcnn-checkpoint "${pixelcnn_checkpoint}" \
+--vqvae-checkpoint "${vqvae_checkpoint}" \
+--tag <TAG> \
+--data "${data}" \
+--test "${test}" \
+--model "${model}"
+```
