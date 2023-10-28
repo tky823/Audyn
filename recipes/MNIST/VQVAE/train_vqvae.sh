@@ -5,6 +5,8 @@ exp_dir="./exp"
 tag=""
 continue_from=""
 
+data_root="../data"
+
 system="defaults"
 data="defaults"
 train="vqvae"
@@ -47,6 +49,7 @@ model="${model}" \
 optimizer="${optimizer}" \
 lr_scheduler="${lr_scheduler}" \
 criterion="${criterion}" \
+train.dataset.train.root="${data_root}" \
 train.resume.continue_from="${continue_from}" \
 train.output.exp_dir="${exp_dir}/${tag}" \
 train.output.tensorboard_dir="tensorboard/${tag}/vqvae"

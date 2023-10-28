@@ -11,6 +11,8 @@ continue_from=""
 
 exp_dir="./exp"
 
+data_root="../data"
+
 system="defaults"
 preprocess="defaults"
 data=""
@@ -38,6 +40,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         --tag "${tag}" \
         --continue-from "${continue_from}" \
         --exp-dir "${exp_dir}" \
+        --data-root "${data_root}" \
         --system "${system}" \
         --data "${data}" \
         --train "${train}" \
