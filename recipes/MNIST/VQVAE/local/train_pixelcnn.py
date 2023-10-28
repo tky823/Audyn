@@ -6,7 +6,12 @@ import torch
 from omegaconf import DictConfig
 
 import audyn
-from audyn.utils import instantiate_model, instantiate_optimizer, setup_system
+from audyn.utils import (
+    instantiate_lr_scheduler,
+    instantiate_model,
+    instantiate_optimizer,
+    setup_system,
+)
 from audyn.utils.data import BaseDataLoaders, default_collate_fn
 from audyn.utils.driver import BaseTrainer
 from audyn.utils.model import set_device
@@ -47,7 +52,7 @@ def main(config: DictConfig) -> None:
     )
 
     optimizer = instantiate_optimizer(config.optimizer, model.parameters())
-    lr_scheduler = hydra.utils.instantiate(config.lr_scheduler, optimizer)
+    lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
 
     criterion = hydra.utils.instantiate(config.criterion)
     criterion = set_device(
