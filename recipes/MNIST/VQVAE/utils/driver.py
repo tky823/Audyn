@@ -11,6 +11,13 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from utils.models.cascade import PixelCNNVQVAE
 
+try:
+    from tqdm import tqdm  # noqa: F811
+
+    IS_TQDM_AVAILABLE = True
+except ImportError:
+    IS_TQDM_AVAILABLE = False
+
 from audyn.utils.driver import BaseGenerator
 from audyn.utils.driver._decorator import run_only_master_rank
 from audyn.utils.driver.base import BaseDriver
@@ -53,7 +60,12 @@ class PriorSaver(BaseDriver):
         filename_template = train_config.output.filename
         filenames = []
 
-        for batch_idx, named_batch in tqdm(enumerate(self.loader)):
+        pbar = enumerate(self.loader)
+
+        if IS_TQDM_AVAILABLE:
+            pbar = tqdm(pbar)
+
+        for batch_idx, named_batch in pbar:
             batch_size = 0
 
             for data_key in named_batch.keys():
@@ -145,7 +157,12 @@ class Generator(BaseGenerator):
     def run(self) -> None:
         self.model.eval()
 
-        for named_batch in self.loader:
+        pbar = self.loader
+
+        if IS_TQDM_AVAILABLE:
+            pbar = tqdm(pbar)
+
+        for named_batch in pbar:
             named_batch = self.move_data_to_device(named_batch, self.device)
             named_input = self.map_to_named_input(
                 named_batch, key_mapping=self.config.test.key_mapping.inference
