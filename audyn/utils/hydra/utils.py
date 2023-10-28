@@ -10,7 +10,12 @@ from torch.optim.lr_scheduler import _LRScheduler
 
 from ...models.text_to_wave import CascadeTextToWave
 
-__all__ = ["instantiate_model", "instantiate_cascade_text_to_wave"]
+__all__ = [
+    "instantiate_model",
+    "instantiate_cascade_text_to_wave",
+    "instantiate_optimizer",
+    "instantiate_lr_scheduler",
+]
 
 IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
