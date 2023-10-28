@@ -6,6 +6,7 @@ import torch.nn as nn
 from omegaconf import DictConfig, OmegaConf
 from packaging import version
 from torch.optim import Optimizer
+from torch.optim.lr_scheduler import _LRScheduler
 
 from ...models.text_to_wave import CascadeTextToWave
 
@@ -126,3 +127,22 @@ def instantiate_cascade_text_to_wave(
 
 def instantiate_optimizer(config, params, *args, **kwargs) -> Optimizer:
     return hydra.utils.instantiate(config, params, *args, **kwargs)
+
+
+def instantiate_lr_scheduler(
+    config: DictConfig, optimizer: Optimizer, *args, **kwargs
+) -> Optional[_LRScheduler]:
+    """Instantiate learning rate scheduler.
+
+    .. note::
+
+        If ``config`` is empty dict, this function returns ``None``
+        unlike ``hydra.utils.instantiate``.
+
+    """
+    lr_scheduler = hydra.utils.instantiate(config, optimizer, *args, **kwargs)
+
+    if isinstance(lr_scheduler, DictConfig):
+        lr_scheduler = None
+
+    return lr_scheduler
