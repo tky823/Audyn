@@ -1,0 +1,32 @@
+dataset:
+  _target_: utils.dataset.MNIST
+  root: "../data/"
+  train: true
+  transform:
+    _target_: torchvision.transforms.ToTensor
+  target_transform:
+    _target_: torch.tensor
+    _partial_: true
+  download: true
+
+dataloader:
+  _target_: torch.utils.data.DataLoader
+  batch_size: 1
+  shuffle: False
+
+key_mapping:
+  input:
+    input: input
+  output:
+    - reconstructed
+    - encoded
+    - quantized
+    - indices
+  save:
+    indices: indices
+
+checkpoint: ??
+
+output:
+  exp_dir: "./exp"
+  filename: "{number}"
