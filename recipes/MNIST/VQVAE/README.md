@@ -7,7 +7,6 @@
 ```sh
 data="vqvae"
 train="vqvae"
-test="vqvae"
 model="vqvae"
 optimizer="vqvae"
 lr_scheduler="vqvae"
@@ -19,7 +18,6 @@ criterion="vqvae"
 --tag <TAG> \
 --data "${data}" \
 --train "${train}" \
---test "${test}" \
 --model "${model}" \
 --optimizer "${optimizer}" \
 --lr-scheduler "${lr_scheduler}" \
@@ -49,7 +47,6 @@ vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.p
 ```sh
 data="vqvae"
 train="pixelcnn"
-test="pixelcnn"
 model="pixelcnn"
 optimizer="pixelcnn"
 lr_scheduler="pixelcnn"
@@ -61,7 +58,6 @@ criterion="pixelcnn"
 --tag <TAG> \
 --data "${data}" \
 --train "${train}" \
---test "${test}" \
 --model "${model}" \
 --optimizer "${optimizer}" \
 --lr-scheduler "${lr_scheduler}" \
