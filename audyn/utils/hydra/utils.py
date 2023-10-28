@@ -4,6 +4,8 @@ import hydra
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig, OmegaConf
+from torch.optim import Optimizer
+from torch.optim.optimizer import params_t
 
 from ...models.text_to_wave import CascadeTextToWave
 
@@ -102,3 +104,7 @@ def instantiate_cascade_text_to_wave(
     model.feat_to_wave.load_state_dict(feat_to_wave_state_dict["model"])
 
     return model
+
+
+def instantiate_optimizer(config: DictConfig, params: params_t, *args, **kwargs) -> Optimizer:
+    return hydra.utils.instantiate(config, params, *args, **kwargs)

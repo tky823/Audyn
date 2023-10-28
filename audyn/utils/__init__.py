@@ -3,12 +3,13 @@ from omegaconf import DictConfig
 
 from .data import select_accelerator
 from .distributed import is_distributed, setup_distributed
-from .hydra.utils import instantiate_cascade_text_to_wave, instantiate_model
+from .hydra.utils import instantiate_cascade_text_to_wave, instantiate_model, instantiate_optimizer
 
 __all__ = [
     "setup_system",
     "instantiate_model",
     "instantiate_cascade_text_to_wave",
+    "instantiate_optimizer",
 ]
 
 
