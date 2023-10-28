@@ -81,10 +81,8 @@ def collate_fn(
     Args:
         list_batch (list): Single batch to be collated.
             Type of each data is expected ``Dict[str, torch.Tensor]``.
-        data_config (DictConfig): Config of data.
-        random_slice (bool): If ``random_slice=True``, waveform and
-            melspectrogram slices are selected at random. Default: ``True``.
-        std (float): Standard deviation of noise.
+        codebook_size (int): Size of codebook used in VQVAE.
+        downscale (int): Scale of downsampling in VQVAE.
 
     Returns:
         Dict of batch.
