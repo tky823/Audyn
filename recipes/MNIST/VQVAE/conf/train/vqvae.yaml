@@ -62,7 +62,7 @@ output:
     last:
       path: ${...exp_dir}/model/vqvae/last.pth
     best_epoch:
-      path: ${...exp_dir}/model/vqvae/best.pth
+      path: ${...exp_dir}/model/best_epoch.pth
 
 record:
   image:
