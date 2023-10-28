@@ -16,6 +16,7 @@ from audyn.optim.lr_scheduler import GANLRScheduler
 from audyn.optim.optimizer import GANOptimizer
 from audyn.utils import (
     instantiate_cascade_text_to_wave,
+    instantiate_lr_scheduler,
     instantiate_model,
     instantiate_optimizer,
     setup_system,
@@ -105,7 +106,7 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
             is_distributed=config.system.distributed.enable,
         )
         optimizer = instantiate_optimizer(config.optimizer, model.parameters())
-        lr_scheduler = hydra.utils.instantiate(config.lr_scheduler, optimizer)
+        lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
         criterion = hydra.utils.instantiate(config.criterion)
         criterion = set_device(
             criterion,
@@ -274,7 +275,7 @@ def test_feat_to_wave_trainer(monkeypatch: MonkeyPatch, use_ema: bool):
             is_distributed=config.system.distributed.enable,
         )
         optimizer = instantiate_optimizer(config.optimizer, model.parameters())
-        lr_scheduler = hydra.utils.instantiate(config.lr_scheduler, optimizer)
+        lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
         criterion = hydra.utils.instantiate(config.criterion)
         criterion = set_device(
             criterion,
@@ -479,7 +480,7 @@ def test_cascade_text_to_wave(monkeypatch: MonkeyPatch) -> None:
             is_distributed=config.system.distributed.enable,
         )
         optimizer = instantiate_optimizer(config.optimizer, model.parameters())
-        lr_scheduler = hydra.utils.instantiate(config.lr_scheduler, optimizer)
+        lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
         criterion = hydra.utils.instantiate(config.criterion)
         criterion = set_device(
             criterion,
@@ -542,7 +543,7 @@ def test_cascade_text_to_wave(monkeypatch: MonkeyPatch) -> None:
             is_distributed=config.system.distributed.enable,
         )
         optimizer = instantiate_optimizer(config.optimizer, model.parameters())
-        lr_scheduler = hydra.utils.instantiate(config.lr_scheduler, optimizer)
+        lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
         criterion = hydra.utils.instantiate(config.criterion)
         criterion = set_device(
             criterion,
