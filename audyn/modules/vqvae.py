@@ -3,7 +3,7 @@ from typing import Tuple
 import torch
 import torch.nn as nn
 
-from ..functional.vqvae import quantize_vector
+from ..functional.vector_quantization import quantize_vector
 
 __all__ = ["VectorQuantizer"]
 
