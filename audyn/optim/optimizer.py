@@ -2,7 +2,7 @@
 https://github.com/pytorch/pytorch/blob/0093df78df590a35deb784773aa2165884c1b7bd/torch/optim/optimizer.py.
 """
 import copy
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, overload
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, Union, overload
 
 import torch
 import torch.nn as nn
@@ -553,6 +553,68 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
         _load_groups(momentum_groups, packed_momentum_state)
         _load_groups(one_hot_sum_groups, packed_one_hot_sum_state)
         _load_groups(z_e_sum_groups, packed_z_e_sum_state)
+
+
+class MultiOptimizers:
+    """Module to manage multiple optimizers.
+
+    .. warning::
+
+        We cannot apply learning rate scheduler now.
+
+    """
+
+    # TODO: improve design
+
+    def __init__(self, optimizers: List[Union[Dict[str, Any], Optimizer]]) -> None:
+        self.optimizers = {}
+
+        for idx, optimizer in enumerate(optimizers):
+            if isinstance(optimizer, Optimizer):
+                k = str(idx)
+                v = optimizer
+            elif isinstance(optimizer, dict):
+                k = optimizer["name"]
+                v = optimizer["optimizer"]
+            else:
+                raise ValueError(f"{type(optimizer)} is not supported.")
+
+            if k in self.optimizers.keys():
+                raise ValueError(f"Duplicate optimizer name {k} is found.")
+
+            self.optimizers[k] = v
+
+    def zero_grad(self, *args, **kwargs) -> None:
+        for optimizer in self.optimizers.values():
+            optimizer: Optimizer
+            optimizer.zero_grad(*args, **kwargs)
+
+    def step(self, *args, **kwargs) -> None:
+        for optimizer in self.optimizers.values():
+            optimizer: Optimizer
+            optimizer.step(*args, **kwargs)
+
+    def state_dict(self, *args, **kwargs) -> Dict[str, Dict[str, Any]]:
+        state_dict = {}
+
+        for name, optimizer in self.optimizers.items():
+            optimizer: Optimizer
+            state_dict[name] = optimizer.state_dict(*args, **kwargs)
+
+        return state_dict
+
+    def load_state_dict(self, state_dict: Dict[str, Dict[str, Any]]) -> None:
+        r"""Loads the optimizer state.
+
+        Args:
+            state_dict (dict): optimizer state. Should be an object returned
+                from a call to ``state_dict``.
+
+        """
+
+        for name, optimizer in self.optimizers.items():
+            optimizer: Optimizer
+            optimizer.load_state_dict(state_dict[name])
 
 
 class GANOptimizer:
