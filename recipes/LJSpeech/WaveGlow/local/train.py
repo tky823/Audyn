@@ -58,7 +58,7 @@ def main(config: DictConfig) -> None:
         accelerator=config.system.accelerator,
         is_distributed=config.system.distributed.enable,
     )
-    optimizer = instantiate_optimizer(config.optimizer, model.parameters())
+    optimizer = instantiate_optimizer(config.optimizer, model)
     lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
     criterion = hydra.utils.instantiate(config.criterion)
     criterion = set_device(
