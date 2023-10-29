@@ -954,7 +954,12 @@ class BaseTrainer(BaseDriver):
 
         self.unwrapped_model.load_state_dict(state_dict["model"])
         self.optimizer.load_state_dict(state_dict["optimizer"])
-        self.lr_scheduler.load_state_dict(state_dict["lr_scheduler"])
+
+        if self.lr_scheduler is None:
+            assert state_dict["lr_scheduler"] is None
+        else:
+            self.lr_scheduler.load_state_dict(state_dict["lr_scheduler"])
+
         self.iteration_idx = state_dict["iteration_idx"]
         self.best_loss = state_dict["best_loss"]
         self.epoch_idx = self.iteration_idx // len(self.loaders.train)
@@ -970,7 +975,12 @@ class BaseTrainer(BaseDriver):
         state_dict = {}
         state_dict["model"] = self.unwrapped_model.state_dict()
         state_dict["optimizer"] = self.optimizer.state_dict()
-        state_dict["lr_scheduler"] = self.lr_scheduler.state_dict()
+
+        if self.lr_scheduler is None:
+            state_dict["lr_scheduler"] = None
+        else:
+            state_dict["lr_scheduler"] = self.lr_scheduler.state_dict()
+
         state_dict["iteration_idx"] = self.iteration_idx
         state_dict["best_loss"] = self.best_loss
         state_dict["resolved_config"] = OmegaConf.to_container(self.config, resolve=True)

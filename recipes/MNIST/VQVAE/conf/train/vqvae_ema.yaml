@@ -1,0 +1,74 @@
+defaults:
+  - record: vqvae
+  - _self_
+
+dataset:
+  train:
+    _target_: utils.dataset.MNIST
+    root: "../data/"
+    train: true
+    transform:
+      _target_: torchvision.transforms.ToTensor
+    target_transform:
+      _target_: torch.tensor
+      _partial_: true
+    download: true
+  validation:
+    _target_: ${..train._target_}
+    root: ${..train.root}
+    train: false
+    transform: ${..train.transform}
+    target_transform: ${..train.target_transform}
+    download: ${..train.download}
+
+dataloader:
+  train:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 128
+    shuffle: true
+  validation:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 128
+    shuffle: false
+
+key_mapping:
+  train:
+    input:
+      input: input
+    output:
+      - reconstructed
+      - encoded
+      - quantized
+      - indices
+  validation: ${.train}
+  inference:
+    input:
+      quantized: codebook_indices
+    output: reconstructed
+
+clip_gradient:
+  _target_: torch.nn.utils.clip_grad_norm_
+  max_norm: 10
+
+resume:
+  continue_from:
+
+output:
+  exp_dir: "./exp"
+  tensorboard_dir: "./tensorboard"
+  save_checkpoint:
+    iteration:
+      every: 5000
+      path: ${...exp_dir}/model/vqvae/iteration{iteration}.pth
+    epoch:
+      every: 20
+      path: ${...exp_dir}/model/vqvae/epoch{epoch}.pth
+    last:
+      path: ${...exp_dir}/model/vqvae/last.pth
+    best_epoch:
+      path: ${...exp_dir}/model/vqvae/best_epoch.pth
+
+steps:
+  epochs: 10
+  iterations:
+  lr_scheduler:

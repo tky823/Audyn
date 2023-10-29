@@ -5,10 +5,10 @@
 ### Stage 1: train VQVAE
 
 ```sh
-train="vqvae"
+train="vqvae"  # vqvae_ema
 model="vqvae"
-optimizer="vqvae"
-lr_scheduler="vqvae"
+optimizer="vqvae"  # vqvae_ema
+lr_scheduler="vqvae"  # vqvae_ema
 criterion="vqvae"
 
 . ./run.sh \
