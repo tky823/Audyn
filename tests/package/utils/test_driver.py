@@ -107,7 +107,7 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
             accelerator=config.system.accelerator,
             is_distributed=config.system.distributed.enable,
         )
-        optimizer = instantiate_optimizer(config.optimizer, model.parameters())
+        optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
         criterion = hydra.utils.instantiate(config.criterion)
         criterion = set_device(
@@ -284,7 +284,7 @@ def test_feat_to_wave_trainer(monkeypatch: MonkeyPatch, use_ema: bool, use_lr_sc
             accelerator=config.system.accelerator,
             is_distributed=config.system.distributed.enable,
         )
-        optimizer = instantiate_optimizer(config.optimizer, model.parameters())
+        optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
         criterion = hydra.utils.instantiate(config.criterion)
         criterion = set_device(
@@ -489,7 +489,7 @@ def test_cascade_text_to_wave(monkeypatch: MonkeyPatch) -> None:
             accelerator=config.system.accelerator,
             is_distributed=config.system.distributed.enable,
         )
-        optimizer = instantiate_optimizer(config.optimizer, model.parameters())
+        optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
         criterion = hydra.utils.instantiate(config.criterion)
         criterion = set_device(
@@ -552,7 +552,7 @@ def test_cascade_text_to_wave(monkeypatch: MonkeyPatch) -> None:
             accelerator=config.system.accelerator,
             is_distributed=config.system.distributed.enable,
         )
-        optimizer = instantiate_optimizer(config.optimizer, model.parameters())
+        optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
         criterion = hydra.utils.instantiate(config.criterion)
         criterion = set_device(
@@ -686,7 +686,7 @@ def test_trainer_for_dataloader(monkeypatch: MonkeyPatch, dataloader: str) -> No
             accelerator=config.system.accelerator,
             is_distributed=config.system.distributed.enable,
         )
-        optimizer = instantiate_optimizer(config.optimizer, model.parameters())
+        optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = hydra.utils.instantiate(config.lr_scheduler, optimizer)
         criterion = hydra.utils.instantiate(config.criterion)
         criterion = set_device(
