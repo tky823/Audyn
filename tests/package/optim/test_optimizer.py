@@ -6,12 +6,13 @@ import pytest
 import torch
 import torch.nn as nn
 from dummy import allclose
-from torch.optim import Adam
+from torch.optim import SGD, Adam
 
 from audyn.modules.vqvae import VectorQuantizer
 from audyn.optim.optimizer import (
     ExponentialMovingAverageCodebookOptimizer,
     ExponentialMovingAverageWrapper,
+    MultiOptimizers,
 )
 
 
@@ -163,6 +164,59 @@ def test_exponential_moving_average_codebook_optimizer() -> None:
                     assert v_sequential == v_resume
             else:
                 raise ValueError(f"Invalid key {k_sequential} is found.")
+
+
+@pytest.mark.parametrize(
+    "optim_type",
+    [
+        "list_dict",
+        "list_optim",
+    ],
+)
+def test_multi_optimizers(optim_type: str) -> None:
+    """Confirm moving average works correctly."""
+    torch.manual_seed(0)
+
+    batch_size = 2
+    in_channels, out_channels = 3, 5
+    iterations = 2  # update twice
+
+    model = CustomModel(in_channels, out_channels)
+    sgd_optimizer = SGD(model.linear.parameters(), lr=0.1)
+    adam_optimizer = Adam(model.norm.parameters(), lr=0.01)
+
+    if optim_type == "list_dict":
+        optimizers = [
+            {
+                "name": "sgd",
+                "optimizer": sgd_optimizer,
+            },
+            {
+                "name": "adam",
+                "optimizer": adam_optimizer,
+            },
+        ]
+    elif optim_type == "list_optim":
+        optimizers = [
+            sgd_optimizer,
+            adam_optimizer,
+        ]
+    else:
+        raise ValueError(f"{type(optim_type)} is not suppored as optim_type.")
+
+    optimizer = MultiOptimizers(optimizers)
+
+    for _ in range(iterations):
+        input = torch.randn((batch_size, in_channels))
+        output = model(input)
+        loss = torch.mean(output)
+
+        model.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        state_dict = optimizer.state_dict()
+        optimizer.load_state_dict(state_dict)
 
 
 class CustomModel(nn.Module):
