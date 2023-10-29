@@ -2,12 +2,19 @@
 https://github.com/pytorch/pytorch/blob/0093df78df590a35deb784773aa2165884c1b7bd/torch/optim/optimizer.py.
 """
 import copy
-from typing import Any, Dict, Type
+from typing import Any, Dict, Iterable, List, Type, overload
 
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from packaging import version
 from torch.optim import Optimizer
 
+from ..modules.vqvae import VectorQuantizer
+
 __all__ = ["ExponentialMovingAverageWrapper", "GANOptimizer"]
+
+IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
 
 class MovingAverageWrapper(Optimizer):
@@ -279,6 +286,192 @@ class ExponentialMovingAverageWrapper(MovingAverageWrapper):
                 p_moving_average.data = torch.lerp(
                     p.data, p_moving_average.data, weight=self.smooth
                 )
+
+
+class ExponentialMovingAverageCodebookOptimizer(Optimizer):
+    """Optimizer to update codebook using exponential moving average.
+
+    .. note::
+
+        This class does not use gradient descent.
+
+    .. warning::
+
+        This class does not support data parallel and distributed data parallel.
+
+    Examples:
+
+        >>> import torch
+        >>> from audyn.modules.vqvae import VectorQuantizer
+        >>> from audyn.optim.optimizer import ExponentialMovingAverageCodebookOptimizer
+        >>> torch.manual_seed(0)
+        >>> codebook_size, embedding_dim = 3, 4
+        >>> batch_size, length = 2, 5
+        >>> model = VectorQuantizer(codebook_size, embedding_dim)
+        >>> optimizer = ExponentialMovingAverageCodebookOptimizer(model.parameters())
+        >>> model.register_forward_hook(optimizer.store_current_stats)
+        >>> model.codebook.weight
+        Parameter containing:
+        tensor([[ 1.5410, -0.2934, -2.1788,  0.5684],
+                [-1.0845, -1.3986,  0.4033,  0.8380],
+                [-0.7193, -0.4033, -0.5966,  0.1820]], requires_grad=True)
+        >>> input = torch.randn((batch_size, embedding_dim, length))
+        >>> output, indices = model(input)
+        >>> optimizer.step()
+        >>> model.codebook.weight
+        Parameter containing:
+        tensor([[ 1.4807, -0.1351, -2.1238,  0.6231],
+                [-1.0845, -1.3986,  0.4033,  0.8380],
+                [-0.2900,  0.1278, -0.2841, -0.0953]], requires_grad=True)
+
+    """
+
+    if IS_TORCH_LT_2_1:
+
+        @overload
+        def __init__(self, params: Iterable, smooth: float = 0.9) -> Optimizer:
+            ...
+
+    else:
+        from torch.optim.optimizer import params_t
+
+        @overload
+        def __init__(self, params: params_t, smooth: float = 0.9) -> Optimizer:
+            ...
+
+    def __init__(self, params, smooth=0.9) -> None:
+        defaults = {}
+        super().__init__(params, defaults)
+
+        # running stats
+        num_samples_tracked_groups = []
+        momentum_groups = []
+
+        # current stats
+        one_hot_sum_groups = []
+        z_e_sum_groups = []
+
+        for param_group in self.param_groups:
+            num_samples_tracked = []
+            momentum = []
+            one_hot_sum_group = []
+            z_e_sum_group = []
+
+            for param in param_group["params"]:
+                weight: torch.Tensor = param.data
+
+                # We assume each codebook is used at least once,
+                # which is helpful to avoid zero division in updates of codebooks.
+                _num_samples_tracked = torch.ones(
+                    weight.size(0), device=weight.device, dtype=torch.float
+                )
+                num_samples_tracked.append(_num_samples_tracked)
+
+                _momentum = torch.empty_like(weight)
+                _momentum.data.copy_(weight.data)
+                momentum.append(_momentum)
+
+                one_hot_sum_group.append(
+                    torch.zeros(weight.size(0), device=weight.device, dtype=torch.long)
+                )
+                z_e_sum_group.append(torch.zeros_like(weight))
+
+            num_samples_tracked_groups.append(num_samples_tracked)
+            momentum_groups.append(momentum)
+            one_hot_sum_groups.append(one_hot_sum_group)
+            z_e_sum_groups.append(z_e_sum_group)
+
+        self.num_samples_tracked_groups: List[List[torch.Tensor]] = num_samples_tracked_groups
+        self.momentum_groups: List[List[torch.Tensor]] = momentum_groups
+        self.one_hot_sum_groups: List[List[torch.Tensor]] = one_hot_sum_groups
+        self.z_e_sum_groups: List[List[torch.Tensor]] = z_e_sum_groups
+
+        self.smooth = smooth
+
+    def store_current_stats(self, module: VectorQuantizer, input, output):
+        # TODO: generalize
+        assert isinstance(module, VectorQuantizer)
+
+        param_groups = list(module.parameters())
+        tracking_param_groups = self.param_groups
+        one_hot_sum_groups = self.one_hot_sum_groups
+        z_e_sum_groups = self.z_e_sum_groups
+
+        if not isinstance(param_groups[0], dict):
+            param_groups = [{"params": param_groups}]
+
+        (dequantized_input,) = input
+        _, indices = output
+
+        if len(param_groups) != len(tracking_param_groups):
+            # param_groups should be identical to tracking_param_groups
+            raise ValueError("Given parameter groups do not match tracking ones.")
+
+        for param_group, tracking_param_group, one_hot_sum_group, z_e_sum_group in zip(
+            param_groups, tracking_param_groups, one_hot_sum_groups, z_e_sum_groups
+        ):
+            if len(param_group["params"]) != len(tracking_param_group["params"]):
+                # param_group["params"] should be identical to tracking_param_group["params"]
+                raise ValueError("Given parameters do not match tracking ones.")
+
+            for idx, param in enumerate(param_group["params"]):
+                codebook_size, embedding_dim = param.data.size()
+
+                dequantized_input = dequantized_input.transpose(1, 0).contiguous()
+                dequantized_input = dequantized_input.view(embedding_dim, -1)
+                one_hot = F.one_hot(indices, num_classes=codebook_size)
+                one_hot = one_hot.view(-1, codebook_size)
+                one_hot = one_hot.float()
+                one_hot_sum = one_hot.sum(dim=0)
+
+                z_e_sum = torch.matmul(dequantized_input, one_hot)
+                z_e_sum = z_e_sum.permute(1, 0).contiguous()
+
+                one_hot_sum_group[idx].data = one_hot_sum.data
+                z_e_sum_group[idx].data = z_e_sum.data
+
+    def step(self) -> None:
+        param_groups = self.param_groups
+
+        num_samples_tracked_groups = self.num_samples_tracked_groups
+        momentum_groups = self.momentum_groups
+        one_hot_sum_groups = self.one_hot_sum_groups
+        z_e_sum_groups = self.z_e_sum_groups
+
+        smooth = self.smooth
+
+        for (
+            param_group,
+            num_samples_tracked_group,
+            momentum_group,
+            one_hot_sum_group,
+            z_e_sum_group,
+        ) in zip(
+            param_groups,
+            num_samples_tracked_groups,
+            momentum_groups,
+            one_hot_sum_groups,
+            z_e_sum_groups,
+        ):
+            for param, num_samples_tracked, momentum, one_hot_sum, z_e_sum in zip(
+                param_group["params"],
+                num_samples_tracked_group,
+                momentum_group,
+                one_hot_sum_group,
+                z_e_sum_group,
+            ):
+                param: nn.Parameter
+                num_samples_tracked.data = torch.lerp(
+                    one_hot_sum.data,
+                    num_samples_tracked.data,
+                    weight=smooth,
+                )
+                momentum.data = torch.lerp(
+                    z_e_sum.data,
+                    momentum.data,
+                    weight=smooth,
+                )
+                param.data = momentum / num_samples_tracked.unsqueeze(dim=-1)
 
 
 class GANOptimizer:
