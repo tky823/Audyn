@@ -1,4 +1,6 @@
 import copy
+import os
+import tempfile
 
 import pytest
 import torch
@@ -6,7 +8,11 @@ import torch.nn as nn
 from dummy import allclose
 from torch.optim import Adam
 
-from audyn.optim.optimizer import ExponentialMovingAverageWrapper
+from audyn.modules.vqvae import VectorQuantizer
+from audyn.optim.optimizer import (
+    ExponentialMovingAverageCodebookOptimizer,
+    ExponentialMovingAverageWrapper,
+)
 
 
 @pytest.mark.parametrize("build_from_optim_class", [True, False])
@@ -72,6 +78,91 @@ def test_exponential_moving_average_wrapper(build_from_optim_class: bool):
     model.load_state_dict(state_dict["moving_average_model"])
 
     optimizer_wrapper.load_state_dict(state_dict["optimizer"])
+
+
+def test_exponential_moving_average_codebook_optimizer() -> None:
+    torch.manual_seed(0)
+
+    codebook_size, embedding_dim = 3, 4
+    batch_size, length = 2, 5
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        model = VectorQuantizer(codebook_size, embedding_dim)
+        optimizer = ExponentialMovingAverageCodebookOptimizer(model.parameters())
+        model.register_forward_hook(optimizer.store_current_stats)
+        input = torch.randn((batch_size, embedding_dim, length))
+
+        optimizer.zero_grad()
+        _, _ = model(input)
+        optimizer.step()
+
+        state_dict_stop = {}
+        state_dict_stop["model"] = model.state_dict()
+        state_dict_stop["optimizer"] = optimizer.state_dict()
+
+        path = os.path.join(temp_dir, "stop.pth")
+        torch.save(state_dict_stop, path)
+
+        optimizer.zero_grad()
+        _, _ = model(input)
+        optimizer.step()
+
+        state_dict_sequential = {}
+        state_dict_sequential["model"] = model.state_dict()
+        state_dict_sequential["optimizer"] = optimizer.state_dict()
+
+        path = os.path.join(temp_dir, "sequential.pth")
+        torch.save(state_dict_sequential, path)
+
+        path = os.path.join(temp_dir, "stop.pth")
+        state_dict_stop = torch.load(path)
+
+        model.load_state_dict(state_dict_stop["model"])
+        optimizer.load_state_dict(state_dict_stop["optimizer"])
+
+        # resume training from checkpoint
+        optimizer.zero_grad()
+        _, _ = model(input)
+        optimizer.step()
+
+        state_dict_resume = {}
+        state_dict_resume["model"] = model.state_dict()
+        state_dict_resume["optimizer"] = optimizer.state_dict()
+
+        path = os.path.join(temp_dir, "sequential.pth")
+        state_dict_sequential = torch.load(path)
+
+        for (k_sequential, v_sequential), (k_resume, v_resume) in zip(
+            state_dict_sequential["model"].items(), state_dict_resume["model"].items()
+        ):
+            assert k_sequential == k_resume
+            assert torch.allclose(v_sequential, v_resume)
+
+        for (k_sequential, v_sequential), (k_resume, v_resume) in zip(
+            state_dict_sequential["optimizer"].items(), state_dict_resume["optimizer"].items()
+        ):
+            assert k_sequential == k_resume
+
+            if k_sequential.endswith("_state"):
+                for (_k_sequential, _v_sequential), (_k_resume, _v_resume) in zip(
+                    v_sequential.items(), v_resume.items()
+                ):
+                    assert _k_sequential == _k_resume
+                    assert torch.allclose(_v_sequential, _v_resume)
+            elif k_sequential.endswith("_groups"):
+                if k_sequential == "param_groups":
+                    # dictionary
+                    for _v_sequential, _v_resume in zip(v_sequential, v_resume):
+                        for (__k_sequential, __v_sequential), (__k_resume, __v_resume) in zip(
+                            _v_sequential.items(), _v_resume.items()
+                        ):
+                            assert __k_sequential == __k_resume
+                            assert __v_sequential == __v_resume
+                else:
+                    # list
+                    assert v_sequential == v_resume
+            else:
+                raise ValueError(f"Invalid key {k_sequential} is found.")
 
 
 class CustomModel(nn.Module):
