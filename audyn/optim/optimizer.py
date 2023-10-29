@@ -2,7 +2,7 @@
 https://github.com/pytorch/pytorch/blob/0093df78df590a35deb784773aa2165884c1b7bd/torch/optim/optimizer.py.
 """
 import copy
-from typing import Any, Dict, Iterable, List, Type, overload
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, overload
 
 import torch
 import torch.nn as nn
@@ -103,37 +103,8 @@ class MovingAverageWrapper(Optimizer):
         """
         state_dict = {}
 
-        param_mappings = {}
-        start_index = 0
-
-        def pack_group(group):
-            nonlocal start_index
-            param_mappings.update(
-                {
-                    id(p): i
-                    for i, p in enumerate(group["params"], start_index)
-                    if id(p) not in param_mappings
-                }
-            )
-            packed = {"params": [param_mappings[id(p)] for p in group["params"]]}
-            start_index += len(packed["params"])
-
-            return packed
-
-        param_groups = [pack_group(group) for group in self.moving_average_param_groups]
-        # Remap state to use order indices as keys
-        packed_state = {}
-
-        for group in self.moving_average_param_groups:
-            for k, v in group.items():
-                assert k == "params", "Only params is supported."
-
-                for p in v:
-                    assert isinstance(
-                        p, torch.Tensor
-                    ), "Only torch.Tensor is supported, but found {}.".format(type(p))
-
-                    packed_state.update({param_mappings[id(p)]: p.data})
+        param_groups, param_mappings = _pack_param_groups(self.moving_average_param_groups)
+        packed_state = _pack_param_state(self.moving_average_param_groups, param_mappings)
 
         moving_averate_state_dict = {
             "state": packed_state,
@@ -473,6 +444,112 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
                 )
                 param.data = momentum / num_samples_tracked.unsqueeze(dim=-1)
 
+    def state_dict(self) -> Dict[str, Any]:
+        """Returns the state of the optimizer as a ``dict``.
+
+        Returns:
+            dict: State dict of optimizer and moving average parameters.
+
+        """
+        state_dict = {}
+
+        param_groups, param_mappings = _pack_param_groups(self.param_groups)
+        num_samples_tracked_groups, num_samples_tracked_mappings = _pack_groups(
+            self.num_samples_tracked_groups
+        )
+        momentum_groups, momentum_mappings = _pack_groups(self.momentum_groups)
+        one_hot_sum_groups, one_hot_sum_mappings = _pack_groups(self.one_hot_sum_groups)
+        z_e_sum_groups, z_e_sum_mappings = _pack_groups(self.z_e_sum_groups)
+
+        packed_param_state = _pack_param_state(self.param_groups, param_mappings)
+        packed_num_samples_tracked_state = _pack_state(
+            self.num_samples_tracked_groups, num_samples_tracked_mappings
+        )
+        packed_momentum_state = _pack_state(self.momentum_groups, momentum_mappings)
+        packed_one_hot_sum_state = _pack_state(self.one_hot_sum_groups, one_hot_sum_mappings)
+        packed_z_e_sum_state = _pack_state(self.z_e_sum_groups, z_e_sum_mappings)
+
+        state_dict = {
+            "param_state": packed_param_state,
+            "param_groups": param_groups,
+            "num_samples_tracked_state": packed_num_samples_tracked_state,
+            "num_samples_tracked_groups": num_samples_tracked_groups,
+            "momentum_state": packed_momentum_state,
+            "momentum_groups": momentum_groups,
+            "one_hot_sum_state": packed_one_hot_sum_state,
+            "one_hot_sum_groups": one_hot_sum_groups,
+            "z_e_sum_state": packed_z_e_sum_state,
+            "z_e_sum_groups": z_e_sum_groups,
+        }
+
+        return state_dict
+
+    def load_state_dict(self, state_dict: Dict[str, Any]) -> None:
+        r"""Loads the optimizer state.
+
+        Args:
+            state_dict (dict): optimizer state. Should be an object returned
+                from a call to ``state_dict``.
+
+        """
+
+        def _validate_groups(groups, saved_groups, keys: Optional[List[str]] = None) -> None:
+            if len(groups) != len(saved_groups):
+                raise ValueError("Loaded state dict has a different number of parameter groups.")
+
+            if keys is None:
+                containing_lens = (len(group) for group in groups)
+                saved_lens = (len(saved_group) for saved_group in saved_groups)
+
+                if any(c_len != s_len for c_len, s_len in zip(containing_lens, saved_lens)):
+                    raise ValueError(
+                        "Loaded state dict contains a parameter group "
+                        "that doesn't match the size of optimizer's group."
+                    )
+            else:
+                for k in keys:
+                    containing_lens = (len(group[k]) for group in groups)
+                    saved_lens = (len(saved_group[k]) for saved_group in saved_groups)
+
+                    if any(c_len != s_len for c_len, s_len in zip(containing_lens, saved_lens)):
+                        raise ValueError(
+                            "Loaded state dict contains a parameter group "
+                            "that doesn't match the size of optimizer's group."
+                        )
+
+        # deepcopy, to be consistent with module API
+        state_dict = copy.deepcopy(state_dict)
+
+        param_groups = self.param_groups
+        saved_packed_param_groups = state_dict["param_groups"]
+        packed_param_state = state_dict["param_state"]
+
+        num_samples_tracked_groups = self.num_samples_tracked_groups
+        saved_packed_num_samples_tracked_groups = state_dict["num_samples_tracked_groups"]
+        packed_num_samples_tracked_state = state_dict["num_samples_tracked_state"]
+        momentum_groups = self.momentum_groups
+        saved_packed_momentum_groups = state_dict["momentum_groups"]
+        packed_momentum_state = state_dict["momentum_state"]
+        one_hot_sum_groups = self.one_hot_sum_groups
+        saved_packed_one_hot_sum_groups = state_dict["one_hot_sum_groups"]
+        packed_one_hot_sum_state = state_dict["one_hot_sum_state"]
+        z_e_sum_groups = self.z_e_sum_groups
+        saved_packed_z_e_sum_groups = state_dict["z_e_sum_groups"]
+        packed_z_e_sum_state = state_dict["z_e_sum_state"]
+
+        # validate state_dict
+        _validate_groups(param_groups, saved_packed_param_groups, keys=["params"])
+        _validate_groups(num_samples_tracked_groups, saved_packed_num_samples_tracked_groups)
+        _validate_groups(momentum_groups, saved_packed_momentum_groups)
+        _validate_groups(one_hot_sum_groups, saved_packed_one_hot_sum_groups)
+        _validate_groups(z_e_sum_groups, saved_packed_z_e_sum_groups)
+
+        _load_param_groups(param_groups, packed_param_state)
+        _load_groups(num_samples_tracked_groups, packed_num_samples_tracked_state)
+        _load_groups(momentum_groups, packed_momentum_state)
+        _load_groups(one_hot_sum_groups, packed_one_hot_sum_state)
+        _load_groups(z_e_sum_groups, packed_z_e_sum_state)
+
 
 class GANOptimizer:
     def __init__(self, generator: Optimizer, discriminator: Optimizer) -> None:
@@ -486,3 +563,127 @@ class GANOptimizer:
     def step(self, *args, **kwargs) -> None:
         self.generator.step(*args, **kwargs)
         self.discriminator.step(*args, **kwargs)
+
+
+# pack
+def _pack_param_groups(
+    param_groups: Dict[str, List[Any]]
+) -> Tuple[List[Dict[str, Any]], Dict[int, int]]:
+    param_mappings = {}
+    start_index = 0
+
+    def _pack_param_group(param_group):
+        nonlocal start_index
+        param_mappings.update(
+            {
+                id(p): i
+                for i, p in enumerate(param_group["params"], start_index)
+                if id(p) not in param_mappings
+            }
+        )
+        packed = {"params": [param_mappings[id(p)] for p in param_group["params"]]}
+        start_index += len(packed["params"])
+
+        return packed
+
+    param_groups = [_pack_param_group(param_group) for param_group in param_groups]
+
+    return param_groups, param_mappings
+
+
+def _pack_param_state(
+    param_groups: List[Dict[str, List[Any]]], param_mappings: Dict[int, int]
+) -> Dict[int, Any]:
+    # Remap state to use order indices as keys
+    packed_state = {}
+
+    for group in param_groups:
+        for k, v in group.items():
+            assert k == "params", "Only params is supported."
+
+            for p in v:
+                assert isinstance(
+                    p, torch.Tensor
+                ), "Only torch.Tensor is supported, but found {}.".format(type(p))
+
+                packed_state.update({param_mappings[id(p)]: p.data})
+
+    return packed_state
+
+
+def _pack_groups(groups: List[Any]) -> Tuple[List[Any], Dict[int, int]]:
+    # for ExponentialMovingAverageCodebookOptimizer
+    mappings = {}
+    start_index = 0
+
+    def _pack_group(group):
+        nonlocal start_index
+        mappings.update(
+            {id(p): i for i, p in enumerate(group, start_index) if id(p) not in mappings}
+        )
+        packed = [mappings[id(p)] for p in group]
+        start_index += len(packed)
+
+        return packed
+
+    groups = [_pack_group(group) for group in groups]
+
+    return groups, mappings
+
+
+def _pack_state(groups: List[Any], mappings: Dict[int, int]) -> Dict[int, Any]:
+    # Remap state to use order indices as keys
+    packed_state = {}
+
+    for group in groups:
+        for p in group:
+            assert isinstance(
+                p, torch.Tensor
+            ), "Only torch.Tensor is supported, but found {}.".format(type(p))
+
+            packed_state.update({mappings[id(p)]: p.data})
+
+    return packed_state
+
+
+# load
+def _load_param_groups(
+    param_groups: List[Dict[str, Any]], packed_param_state: Dict[int, Any]
+) -> None:
+    param_mappings = {}
+    start_index = 0
+
+    for group in param_groups:
+        params = group["params"]
+        param_mappings.update(
+            {id(p): i for i, p in enumerate(params, start_index) if id(p) not in param_mappings}
+        )
+        packed_params = []
+
+        for p in params:
+            p: nn.Parameter
+            param_id = param_mappings[id(p)]
+            packed_params.append(param_id)
+            p.data = packed_param_state[param_id]
+
+        start_index += len(packed_params)
+
+
+def _load_groups(param_groups: List[Dict[str, Any]], packed_param_state: Dict[int, Any]) -> None:
+    param_mappings = {}
+    start_index = 0
+
+    for group in param_groups:
+        params = group
+        param_mappings.update(
+            {id(p): i for i, p in enumerate(params, start_index) if id(p) not in param_mappings}
+        )
+        packed_params = []
+
+        for p in params:
+            p: nn.Parameter
+            param_id = param_mappings[id(p)]
+            packed_params.append(param_id)
+            p.data = packed_param_state[param_id]
+
+        start_index += len(packed_params)
