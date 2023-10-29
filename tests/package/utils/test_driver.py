@@ -52,6 +52,7 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
         train_name = "dummy"
         model_name = "dummy"
         criterion_name = "dummy"
+        lr_scheduler_name = "dummy"
 
         if use_ema:
             optimizer_name = "dummy"
@@ -75,6 +76,7 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
                     model=model_name,
                     criterion=criterion_name,
                     optimizer=optimizer_name,
+                    lr_scheduler=lr_scheduler_name,
                 ),
                 return_hydra_config=True,
             )
@@ -152,6 +154,7 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
                     model=model_name,
                     criterion=criterion_name,
                     optimizer=optimizer_name,
+                    lr_scheduler=lr_scheduler_name,
                     continue_from=f"{exp_dir}/model/iteration{INITIAL_ITERATION}.pth",
                 ),
                 return_hydra_config=True,
@@ -209,7 +212,8 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
 
 
 @pytest.mark.parametrize("use_ema", [True, False])
-def test_feat_to_wave_trainer(monkeypatch: MonkeyPatch, use_ema: bool):
+@pytest.mark.parametrize("use_lr_scheduler", [True, False])
+def test_feat_to_wave_trainer(monkeypatch: MonkeyPatch, use_ema: bool, use_lr_scheduler: bool):
     """Test FeatToWaveTrainer."""
     DATA_SIZE = 20
     BATCH_SIZE = 2
@@ -230,6 +234,11 @@ def test_feat_to_wave_trainer(monkeypatch: MonkeyPatch, use_ema: bool):
         else:
             optimizer_name = "dummy_ema"
 
+        if use_lr_scheduler:
+            lr_scheduler_name = "dummy"
+        else:
+            lr_scheduler_name = "dummy_null"
+
         with hydra.initialize(
             version_base="1.2",
             config_path=relpath(config_template_path, dirname(realpath(__file__))),
@@ -247,6 +256,7 @@ def test_feat_to_wave_trainer(monkeypatch: MonkeyPatch, use_ema: bool):
                     model=model_name,
                     criterion=criterion_name,
                     optimizer=optimizer_name,
+                    lr_scheduler=lr_scheduler_name,
                 ),
                 return_hydra_config=True,
             )
@@ -709,17 +719,18 @@ def create_dummy_override(
     model: str = "dummy",
     criterion: str = "dummy",
     optimizer: str = "dummy",
+    lr_scheduler: str = "dummy",
     continue_from: str = "",
     checkpoint: str = "",
 ) -> List[str]:
     sample_rate = 16000
 
-    return [
+    override_list = [
         f"train={train}",
         "test=dummy",
         f"model={model}",
         f"optimizer={optimizer}",
-        "lr_scheduler=dummy",
+        f"lr_scheduler={lr_scheduler}",
         f"criterion={criterion}",
         f"hydra.searchpath=[{overrides_conf_dir}]",
         "hydra.job.num=1",
@@ -735,6 +746,11 @@ def create_dummy_override(
         f"test.dataset.test.size={data_size}",
         f"test.checkpoint={checkpoint}",
     ]
+
+    if lr_scheduler == "dummy_null":
+        override_list += ["train.steps.lr_scheduler=''"]
+
+    return override_list
 
 
 def create_dummy_gan_override(
