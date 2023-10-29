@@ -12,7 +12,11 @@ from torch.optim import Optimizer
 
 from ..modules.vqvae import VectorQuantizer
 
-__all__ = ["ExponentialMovingAverageWrapper", "GANOptimizer"]
+__all__ = [
+    "ExponentialMovingAverageWrapper",
+    "ExponentialMovingAverageCodebookOptimizer",
+    "GANOptimizer",
+]
 
 IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
