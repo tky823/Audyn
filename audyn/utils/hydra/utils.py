@@ -1,14 +1,17 @@
+import itertools
 from typing import Any, Dict, Iterable, Optional, Union, overload
 
 import hydra
 import torch
 import torch.nn as nn
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, ListConfig, OmegaConf
 from packaging import version
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 
 from ...models.text_to_wave import CascadeTextToWave
+from ...modules.vqvae import VectorQuantizer
+from ...optim.optimizer import ExponentialMovingAverageCodebookOptimizer, MultiOptimizers
 
 __all__ = [
     "instantiate_model",
@@ -23,14 +26,24 @@ IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 if IS_TORCH_LT_2_1:
 
     @overload
-    def instantiate_optimizer(config: DictConfig, params: Iterable, *args, **kwargs) -> Optimizer:
+    def instantiate_optimizer(
+        config: Union[DictConfig, ListConfig],
+        module_or_params: Union[Iterable, nn.Module],
+        *args,
+        **kwargs,
+    ) -> Optimizer:
         ...
 
 else:
     from torch.optim.optimizer import params_t
 
     @overload
-    def instantiate_optimizer(config: DictConfig, params: params_t, *args, **kwargs) -> Optimizer:
+    def instantiate_optimizer(
+        config: Union[DictConfig, ListConfig],
+        module_or_params: Union[params_t, nn.Module],
+        *args,
+        **kwargs,
+    ) -> Optimizer:
         ...
 
 
@@ -130,7 +143,62 @@ def instantiate_cascade_text_to_wave(
     return model
 
 
-def instantiate_optimizer(config, params, *args, **kwargs) -> Optimizer:
+def instantiate_optimizer(
+    config, module_or_params, *args, **kwargs
+) -> Union[Optimizer, MultiOptimizers]:
+    """Instantiate optimizer."""
+
+    def _register_forward_hook_for_ema_codebook_optim(module: nn.Module, optimizer: Optimizer):
+        assert isinstance(module, VectorQuantizer), (
+            "Only VectorQuantizer is supported " "for ExponentialMovingAverageCodebookOptimizer."
+        )
+        assert isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
+
+        module: VectorQuantizer
+        optimizer: ExponentialMovingAverageCodebookOptimizer
+        module.register_forward_hook(optimizer.store_current_stats)
+
+    if isinstance(module_or_params, nn.Module):
+        module = module_or_params
+
+        if isinstance(config, ListConfig):
+            optimizers = []
+
+            for idx, subconfig in enumerate(config):
+                name = subconfig.get("name", f"{idx}")
+                params = []
+
+                for submodule_name in subconfig["modules"]:
+                    submodule: nn.Module = getattr(module, submodule_name)
+                    params.append(submodule.parameters())
+
+                params = itertools.chain(*params)
+                optimizer = hydra.utils.instantiate(
+                    subconfig["optimizer"], params, *args, **kwargs
+                )
+
+                if isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer):
+                    for submodule_name in subconfig["modules"]:
+                        submodule: nn.Module = getattr(module, submodule_name)
+                        _register_forward_hook_for_ema_codebook_optim(submodule, optimizer)
+
+                optimizer = {
+                    "name": name,
+                    "optimizer": optimizer,
+                }
+                optimizers.append(optimizer)
+
+            optimizers = MultiOptimizers(optimizers)
+
+            return optimizers
+        else:
+            params = module.parameters()
+    else:
+        params = module_or_params
+
+        if isinstance(config, ListConfig):
+            raise ValueError("ListConfig is not supported when parameters are given to optimizer.")
+
     return hydra.utils.instantiate(config, params, *args, **kwargs)
 
 
