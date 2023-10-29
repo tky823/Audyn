@@ -193,13 +193,19 @@ def instantiate_optimizer(
             return optimizers
         else:
             params = module.parameters()
+            optimizer = hydra.utils.instantiate(config, params, *args, **kwargs)
+
+            if isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer):
+                _register_forward_hook_for_ema_codebook_optim(module, optimizer)
     else:
         params = module_or_params
 
         if isinstance(config, ListConfig):
             raise ValueError("ListConfig is not supported when parameters are given to optimizer.")
 
-    return hydra.utils.instantiate(config, params, *args, **kwargs)
+        optimizer = hydra.utils.instantiate(config, params, *args, **kwargs)
+
+    return optimizer
 
 
 def instantiate_lr_scheduler(
