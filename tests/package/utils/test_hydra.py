@@ -4,6 +4,7 @@ import torch.nn as nn
 from omegaconf import OmegaConf
 from torch.optim import SGD
 
+from audyn.modules.vqvae import VectorQuantizer
 from audyn.utils.hydra.utils import instantiate_lr_scheduler, instantiate_optimizer
 
 
@@ -62,6 +63,19 @@ def test_instantiate_optimizer() -> None:
         model_by_config.parameters(), model_by_list_dict.parameters()
     ):
         assert torch.allclose(p_by_config, p_by_list_dict)
+
+    # optimizer for VectorQuantizer
+    codebook_size = 3
+    embedding_dim = 4
+
+    vector_quantizer = VectorQuantizer(codebook_size, embedding_dim)
+
+    config = OmegaConf.create(
+        {
+            "_target_": "audyn.optim.optimizer.ExponentialMovingAverageCodebookOptimizer",
+        },
+    )
+    optimizer = instantiate_optimizer(config, vector_quantizer)
 
 
 @pytest.mark.parametrize("is_null", [True, False])
