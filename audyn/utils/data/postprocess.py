@@ -124,9 +124,18 @@ def slice_feautures(
         )
 
         if random_slice:
-            low_start_idx = torch.randint(
-                0, length - sliced_feature_length, (), dtype=torch.long
-            ).item()
+            if length < sliced_feature_length:
+                raise ValueError(
+                    f"Input length ({length}) is shorter "
+                    f"than slice length ({sliced_feature_length}) "
+                    f"for {key} key."
+                )
+            elif length == sliced_feature_length:
+                low_start_idx = 0
+            else:
+                low_start_idx = torch.randint(
+                    0, length - sliced_feature_length, (), dtype=torch.long
+                ).item()
         else:
             low_start_idx = length // 2 - sliced_feature_length // 2
 
