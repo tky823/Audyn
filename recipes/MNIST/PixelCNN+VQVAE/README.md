@@ -1,4 +1,4 @@
-# VQVAE recipe using MNIST
+# PixelCNN + VQVAE recipe using MNIST
 
 ## Stages
 
