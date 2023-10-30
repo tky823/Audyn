@@ -267,6 +267,10 @@ class ExponentialMovingAverageWrapper(MovingAverageWrapper):
 class ExponentialMovingAverageCodebookOptimizer(Optimizer):
     """Optimizer to update codebook using exponential moving average.
 
+    Args:
+        params: Parameters to be optimized.
+        smooth (float): Smoothing factor. Default: ``0.999``.
+
     .. note::
 
         This class does not use gradient descent.
@@ -305,17 +309,17 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
     if IS_TORCH_LT_2_1:
 
         @overload
-        def __init__(self, params: Iterable, smooth: float = 0.9) -> Optimizer:
+        def __init__(self, params: Iterable, smooth: float = 0.999) -> Optimizer:
             ...
 
     else:
         from torch.optim.optimizer import params_t
 
         @overload
-        def __init__(self, params: params_t, smooth: float = 0.9) -> Optimizer:
+        def __init__(self, params: params_t, smooth: float = 0.999) -> Optimizer:
             ...
 
-    def __init__(self, params, smooth=0.9) -> None:
+    def __init__(self, params, smooth=0.999) -> None:
         defaults = {}
         super().__init__(params, defaults)
 
