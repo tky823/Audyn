@@ -5,6 +5,7 @@ import copy
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, Union, overload
 
 import torch
+import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
 from packaging import version
@@ -363,9 +364,11 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
 
         self.smooth = smooth
 
-    def store_current_stats(self, module: VectorQuantizer, input, output):
+    def store_current_stats(self, module: VectorQuantizer, input: Any, output: Any) -> None:
         # TODO: generalize
         assert isinstance(module, VectorQuantizer)
+
+        is_distributed = dist.is_available() and dist.is_initialized()
 
         param_groups = list(module.parameters())
         tracking_param_groups = self.param_groups
@@ -396,6 +399,26 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
                 dequantized_input = dequantized_input.view(embedding_dim, -1)
                 one_hot = F.one_hot(indices, num_classes=codebook_size)
                 one_hot = one_hot.view(-1, codebook_size)
+
+                if is_distributed:
+                    # gather dequantized_input and one_hot
+                    # dequantized_input:
+                    #     (embedding_dim, num_samples) -> (embedding_dim, num_gpus * num_samples)
+                    # one_hot:
+                    #     (num_samples, codebook_size) -> (num_gpus * num_samples, codebook_size)
+                    gathered_dequantized_input = [
+                        torch.zeros_like(dequantized_input) for _ in range(dist.get_world_size())
+                    ]
+                    gathered_one_hot = [
+                        torch.zeros_like(one_hot) for _ in range(dist.get_world_size())
+                    ]
+
+                    dist.all_gather(gathered_dequantized_input, dequantized_input)
+                    dist.all_gather(gathered_one_hot, one_hot)
+
+                    dequantized_input = torch.cat(gathered_dequantized_input, dim=1)
+                    one_hot = torch.cat(gathered_one_hot, dim=0)
+
                 one_hot = one_hot.float()
                 one_hot_sum = one_hot.sum(dim=0)
 
