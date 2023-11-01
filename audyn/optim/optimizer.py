@@ -108,8 +108,40 @@ class MovingAverageWrapper(Optimizer):
         """
         state_dict = {}
 
-        param_groups, param_mappings = _pack_param_groups(self.moving_average_param_groups)
-        packed_state = _pack_param_state(self.moving_average_param_groups, param_mappings)
+        param_mappings = {}
+        start_index = 0
+
+        def _pack_param_group(param_group):
+            nonlocal start_index
+            param_mappings.update(
+                {
+                    id(p): i
+                    for i, p in enumerate(param_group["params"], start_index)
+                    if id(p) not in param_mappings
+                }
+            )
+            packed = {"params": [param_mappings[id(p)] for p in param_group["params"]]}
+            start_index += len(packed["params"])
+
+            return packed
+
+        param_groups = [
+            _pack_param_group(param_group) for param_group in self.moving_average_param_groups
+        ]
+        packed_state = {}
+
+        for group in self.moving_average_param_groups:
+            for k, params in group.items():
+                assert k == "params", "Only params is supported."
+
+                for p in params:
+                    assert isinstance(
+                        p, torch.Tensor
+                    ), "Only torch.Tensor is supported, but found {}.".format(type(p))
+
+                    packed_state.update({param_mappings[id(p)]: p.data})
+
+        packed_state["smooth"] = self.smooth
 
         moving_averate_state_dict = {
             "state": packed_state,
@@ -169,6 +201,8 @@ class MovingAverageWrapper(Optimizer):
                 p.data = moving_averate_state_dict["state"][param_id]
 
             start_index += len(packed_params)
+
+        self.smooth = moving_averate_state_dict["state"].get("smooth", 0.999)
 
         # Load state dict of optimizer
         self.optimizer.load_state_dict(optimizer_state_dict)
