@@ -200,6 +200,7 @@ class MovingAverageWrapper(Optimizer):
 
             start_index += len(packed_params)
 
+        # for backward compatibility
         self.smooth = moving_averate_state_dict["state"].get("smooth", 0.999)
 
         # Load state dict of optimizer
