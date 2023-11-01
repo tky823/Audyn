@@ -313,9 +313,9 @@ class ExponentialMovingAverageWrapper(MovingAverageWrapper):
     def __init__(self, optimizer: Optimizer, smooth: float = 0.999) -> None:
         super().__init__(optimizer, smooth)
 
-    def step(self) -> None:
+    def step(self, *args, **kwargs) -> None:
         """Performs a single optimization step and update exponential moving average."""
-        self.optimizer.step()
+        self.optimizer.step(*args, **kwargs)
 
         for param_group, moving_average_param_group in zip(
             self.optimizer.param_groups, self.moving_average_param_groups
