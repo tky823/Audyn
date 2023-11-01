@@ -2,7 +2,7 @@
 https://github.com/pytorch/pytorch/blob/0093df78df590a35deb784773aa2165884c1b7bd/torch/optim/optimizer.py.
 """
 import copy
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, Union, overload
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, Union, overload
 
 import torch
 import torch.distributed as dist
@@ -10,6 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from packaging import version
 from torch.optim import Optimizer
+from torch.utils.hooks import RemovableHandle
 
 from ..modules.vqvae import VectorQuantizer
 
@@ -57,9 +58,6 @@ class MovingAverageWrapper(Optimizer):
             for param_group in self.optimizer.param_groups
         ]
         self.cached_param_groups = None
-
-    def __getattr__(self, __name: str) -> Any:
-        return getattr(self.optimizer, __name)
 
     @classmethod
     def build_from_optim_class(
@@ -234,6 +232,38 @@ class MovingAverageWrapper(Optimizer):
                 p.data = p_cache.data
 
         self.cached_param_groups = None
+
+    # define methods as those of self.optimizer
+    def __getstate__(self) -> Dict[str, Any]:
+        return self.optimizer.__getstate__()
+
+    def __setstate__(self, state: Dict[str, Any]) -> None:
+        return self.optimizer.__setstate__(state)
+
+    def __repr__(self) -> str:
+        return self.optimizer.__repr__()
+
+    def _cuda_graph_capture_health_check(self) -> None:
+        return self.optimizer._cuda_graph_capture_health_check()
+
+    def _optimizer_step_code(self) -> None:
+        return self.optimizer._optimizer_step_code()
+
+    def _patch_step_function(self) -> None:
+        return self.optimizer._patch_step_function()
+
+    def register_step_pre_hook(self, hook: Callable[[Any], None]) -> RemovableHandle:
+        return self.optimizer.register_step_pre_hook(hook)
+
+    def register_step_post_hook(self, hook: Callable[[Any], None]) -> RemovableHandle:
+        return self.optimizer.register_step_post_hook(hook)
+
+    def add_param_group(self, param_group: Dict[str, Any]) -> None:
+        return self.optimizer.add_param_group(param_group)
+
+    # if not found __name as attribute of self, search self.optimizer instead.
+    def __getattr__(self, __name: str) -> Any:
+        return getattr(self.optimizer, __name)
 
 
 class ExponentialMovingAverageWrapper(MovingAverageWrapper):
