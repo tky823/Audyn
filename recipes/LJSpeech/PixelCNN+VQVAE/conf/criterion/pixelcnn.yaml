@@ -9,4 +9,4 @@ cross_entropy:
     estimated:
       input: estimated_indices
     target:
-      target: indices
+      target: indices_slice
