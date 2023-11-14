@@ -528,8 +528,9 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
                 z_e_sum_group,
             ):
                 param: nn.Parameter
+                one_hot_sum_data = one_hot_sum.data.to(num_samples_tracked.data.dtype)
                 num_samples_tracked.data = torch.lerp(
-                    one_hot_sum.data,
+                    one_hot_sum_data,
                     num_samples_tracked.data,
                     weight=smooth,
                 )
