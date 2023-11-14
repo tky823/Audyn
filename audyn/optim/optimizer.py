@@ -494,8 +494,8 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
                 z_e_sum = torch.matmul(dequantized_input, one_hot)
                 z_e_sum = z_e_sum.permute(1, 0).contiguous()
 
-                one_hot_sum_group[idx].data = one_hot_sum.data
-                z_e_sum_group[idx].data = z_e_sum.data
+                one_hot_sum_group[idx].data.copy_(one_hot_sum.data)
+                z_e_sum_group[idx].data.copy_(z_e_sum.data)
 
     def step(self) -> None:
         param_groups = self.param_groups
