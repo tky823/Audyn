@@ -1,0 +1,5 @@
+_target_: utils.models.pixelcnn.PixelCNN
+num_classes: ${data.codebook.size}
+hidden_channels: 32
+kernel_size: 5
+num_layers: 3
