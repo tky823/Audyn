@@ -1,4 +1,5 @@
 import copy
+import math
 import os
 import tempfile
 
@@ -105,7 +106,9 @@ def test_exponential_moving_average_codebook_optimizer() -> None:
         torch.save(state_dict_stop, path)
 
         optimizer.zero_grad()
-        _, _ = model(input)
+        output, _ = model(input)
+        loss = output.mean()
+        loss.backward()
         optimizer.step()
 
         state_dict_sequential = {}
@@ -123,7 +126,9 @@ def test_exponential_moving_average_codebook_optimizer() -> None:
 
         # resume training from checkpoint
         optimizer.zero_grad()
-        _, _ = model(input)
+        output, _ = model(input)
+        loss = output.mean()
+        loss.backward()
         optimizer.step()
 
         state_dict_resume = {}
@@ -149,7 +154,12 @@ def test_exponential_moving_average_codebook_optimizer() -> None:
                     v_sequential.items(), v_resume.items()
                 ):
                     assert _k_sequential == _k_resume
-                    assert torch.allclose(_v_sequential, _v_resume)
+
+                    if isinstance(_v_sequential, torch.Tensor):
+                        assert isinstance(_v_resume, torch.Tensor)
+                        assert torch.allclose(_v_sequential, _v_resume)
+                    else:
+                        assert math.isclose(_v_sequential, _v_resume)
             elif k_sequential.endswith("_groups"):
                 if k_sequential == "param_groups":
                     # dictionary
