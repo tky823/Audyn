@@ -1,11 +1,10 @@
 #!/bin/bash
 
+data_root="../data"
 exp_dir="./exp"
 
 tag=""
 checkpoint=""
-
-data_root="../data"
 
 system="defaults"
 preprocess="defaults"
