@@ -1,0 +1,34 @@
+_target_: audyn.criterion.base.MultiCriteria
+reconstruction_loss:
+  _target_: audyn.criterion.base.BaseCriterionWrapper
+  criterion:
+    _target_: torch.nn.MSELoss
+    reduction: mean
+  weight: 1
+  key_mapping:
+    estimated:
+      input: reconstructed
+    target:
+      target: log_melspectrogram_slice
+codebook_loss:
+  _target_: audyn.criterion.base.BaseCriterionWrapper
+  criterion:
+    _target_: audyn.criterion.vqvae.CodebookLoss
+    reduction: mean
+  weight: 1
+  key_mapping:
+    estimated:
+      encoded: encoded
+      quantized: quantized
+    target:
+commitment_loss:
+  _target_: audyn.criterion.base.BaseCriterionWrapper
+  criterion:
+    _target_: audyn.criterion.vqvae.CommitmentLoss
+    reduction: mean
+  weight: 0.25
+  key_mapping:
+    estimated:
+      encoded: encoded
+      quantized: quantized
+    target:
