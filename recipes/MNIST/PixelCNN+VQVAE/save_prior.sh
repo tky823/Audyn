@@ -40,6 +40,7 @@ fi
 
 for subset in "train" "validation"; do
     list_path="${exp_dir}/${tag}/list/${subset}.txt"
+    filename="${subset}\{number\}"
 
     if [ "${subset}" = "train" ]; then
         is_train="true"
@@ -59,5 +60,6 @@ for subset in "train" "validation"; do
     preprocess.feature_dir="${feature_dir}" \
     train.dataset.root="${data_root}" \
     train.dataset.train=${is_train} \
-    train.checkpoint="${checkpoint}"
+    train.checkpoint="${checkpoint}" \
+    train.output.filename="${filename}"
 done
