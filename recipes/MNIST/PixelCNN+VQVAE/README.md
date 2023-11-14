@@ -22,6 +22,28 @@ criterion="vqvae"
 --criterion "${criterion}"
 ```
 
+If you resume training from a checkpoint,
+
+```sh
+train="vqvae"  # vqvae_ema
+model="vqvae"
+optimizer="vqvae"  # vqvae_ema
+lr_scheduler="vqvae"  # vqvae_ema
+criterion="vqvae"
+vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>
+
+. ./run.sh \
+--stage 1 \
+--stop-stage 1 \
+--tag <TAG> \
+--continue-from "${vqvae_checkpoint}" \
+--train "${train}" \
+--model "${model}" \
+--optimizer "${optimizer}" \
+--lr-scheduler "${lr_scheduler}" \
+--criterion "${criterion}"
+```
+
 ### Stage 2: save priors in latent space
 
 ```sh
