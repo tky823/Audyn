@@ -83,3 +83,19 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         --criterion "${criterion}"
     )
 fi
+
+if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
+    echo "Stage 2: Save prior from VQ-VAE"
+
+    (
+        . ./save_prior.sh \
+        --tag "${tag}" \
+        --exp-dir "${exp_dir}" \
+        --checkpoint "${vqvae_checkpoint}" \
+        --system "${system}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --train "${train}" \
+        --model "${model}"
+    )
+fi
