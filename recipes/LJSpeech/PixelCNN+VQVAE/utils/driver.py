@@ -48,14 +48,13 @@ class PriorSaver(BaseDriver):
         train_config = self.config.train
 
         feature_dir = self.config.preprocess.feature_dir
-        filename_template = train_config.output.filename
-
-        pbar = enumerate(self.loader)
 
         if IS_TQDM_AVAILABLE:
-            pbar = tqdm(pbar)
+            pbar = tqdm(self.loader)
+        else:
+            pbar = self.loader
 
-        for batch_idx, named_batch in pbar:
+        for named_batch in pbar:
             for data_key in named_batch.keys():
                 batch_size = len(named_batch[data_key])
 
@@ -75,14 +74,18 @@ class PriorSaver(BaseDriver):
             )
 
             for sample_idx in range(batch_size):
-                filename = filename_template.format(number=batch_idx + 1)
-                data = {"filename": filename}
+                data = {}
 
-                for save_key in train_config.key_mapping.save.keys():
-                    output_key = train_config.key_mapping.save[save_key]
+                for save_key in train_config.key_mapping.save.input.keys():
+                    input_key = train_config.key_mapping.save.input[save_key]
+                    data[save_key] = named_batch[input_key][sample_idx]
+
+                for save_key in train_config.key_mapping.save.output.keys():
+                    output_key = train_config.key_mapping.save.output[save_key]
                     data[save_key] = named_output[output_key][sample_idx]
 
-                path = os.path.join(feature_dir, f"{filename}.pth")
+                identifiler = data["identifier"]
+                path = os.path.join(feature_dir, f"{identifiler}.pth")
                 save_dir = os.path.dirname(path)
                 os.makedirs(save_dir, exist_ok=True)
 

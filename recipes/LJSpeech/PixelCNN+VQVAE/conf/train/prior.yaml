@@ -17,10 +17,12 @@ key_mapping:
     - quantized
     - indices
   save:
-    indices: indices
+    input:
+      identifier: filename
+    output:
+      indices: indices
 
 checkpoint: ??
 
 output:
   exp_dir: "./exp"
-  filename: "{number}"

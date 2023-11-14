@@ -42,7 +42,6 @@ fi
 
 for subset in "train" "validation" "test"; do
     list_path="${list_dir}/${subset}.txt"
-    filename="${subset}\{number\}"
 
     ${cmd} ./local/save_prior.py \
     --config-dir "./conf" \
@@ -55,6 +54,5 @@ for subset in "train" "validation" "test"; do
     preprocess.feature_dir="${save_dir}" \
     train.dataset.list_path="${list_path}" \
     train.dataset.feature_dir="${feature_dir}" \
-    train.checkpoint="${checkpoint}" \
-    train.output.filename="${filename}"
+    train.checkpoint="${checkpoint}"
 done
