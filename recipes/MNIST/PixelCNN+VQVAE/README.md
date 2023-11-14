@@ -30,7 +30,7 @@ model="vqvae"
 optimizer="vqvae"  # vqvae_ema
 lr_scheduler="vqvae"  # vqvae_ema
 criterion="vqvae"
-vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>
+vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.pth
 
 . ./run.sh \
 --stage 1 \
