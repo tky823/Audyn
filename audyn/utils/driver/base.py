@@ -1557,6 +1557,80 @@ class BaseGenerator(BaseDriver):
             **kwargs,
         )
 
+    @run_only_master_rank()
+    def save_spectrogram_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]],
+        named_reference: Optional[Dict[str, torch.Tensor]],
+        named_identifier: Dict[str, List[str]],
+        key_mapping: DictConfig = None,
+        transforms: Optional[DictConfig] = None,
+    ) -> None:
+        """Save spectrogram.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            named_identifier (dict, optional): Identifier to save sample.
+            key_mapping (DictConfig): Config to map data.
+            transforms (DictConfig, optional): Config to transform data.
+
+        """
+        identifier_keys = named_identifier.keys()
+
+        if hasattr(key_mapping, "output") and key_mapping.output is not None:
+            for key, filename in key_mapping.output.items():
+                for idx, image in enumerate(named_output[key]):
+                    if transforms is not None and transforms.output is not None:
+                        if key in transforms.output.keys():
+                            transform = hydra.utils.instantiate(transforms.output[key])
+                            image = transform(image)
+
+                    identifier_mapping = {
+                        identifier_key: named_identifier[identifier_key][idx]
+                        for identifier_key in identifier_keys
+                    }
+                    path = os.path.join(self.inference_dir, filename)
+                    path = path.format(**identifier_mapping)
+                    self.save_spectrogram(path, image)
+
+        if hasattr(key_mapping, "reference") and key_mapping.reference is not None:
+            if named_reference is None:
+                raise ValueError("named_reference is not specified.")
+
+            for key, filename in key_mapping.reference.items():
+                for image in named_reference[key]:
+                    if transforms is not None and transforms.reference is not None:
+                        if key in transforms.reference.keys():
+                            transform = hydra.utils.instantiate(transforms.reference[key])
+                            image = transform(image)
+
+                    identifier_mapping = {
+                        identifier_key: named_identifier[identifier_key][idx]
+                        for identifier_key in identifier_keys
+                    }
+                    path = os.path.join(self.inference_dir, filename)
+                    path = path.format(**identifier_mapping)
+                    self.save_spectrogram(path, image)
+
+    def save_spectrogram(self, path: str, spectrogram: torch.Tensor) -> None:
+        """Save spectrogram using matplotlib."""
+        assert (
+            spectrogram.dim() == 2
+        ), f"spectrogram is expected to be 2D tesor, but given as {spectrogram.dim()}D tensor."
+
+        spectrogram = spectrogram.detach().cpu()
+
+        save_dir = os.path.dirname(path)
+        os.makedirs(save_dir, exist_ok=True)
+
+        fig, axis = plt.subplots(figsize=(16, 10))
+        im = axis.pcolormesh(spectrogram)
+        fig.colorbar(im, ax=axis, fraction=0.05)
+        fig.tight_layout()
+        fig.savefig(path, bbox_inches="tight")
+        plt.close()
+
     def remove_weight_norm_if_necessary(self) -> None:
         """Remove weight normalization from self.model by calling self.model.remove_weight_norm()
         or self.model.remove_weight_norm_().
