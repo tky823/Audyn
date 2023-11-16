@@ -1,0 +1,7 @@
+dog_bark
+footstep
+gunshot
+keyboard
+moving_motor_vehicle
+rain
+sneeze_cough
