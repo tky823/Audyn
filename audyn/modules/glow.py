@@ -2,6 +2,7 @@ from collections import OrderedDict
 from typing import Any, Dict, Mapping, Optional, Tuple, Union
 
 import torch
+import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -172,6 +173,15 @@ class ActNorm1d(BaseFlow):
         self.is_initialized = False
 
     def _initialize_parameters(self, input: torch.Tensor) -> None:
+        is_distributed = dist.is_available() and dist.is_initialized()
+
+        if is_distributed:
+            # gather input
+            # (batch_size, num_features, length) -> (num_gpus * batch_size, num_features, length)
+            gathered_input = [torch.zeros_like(input) for _ in range(dist.get_world_size())]
+            dist.all_gather(gathered_input, input)
+            input = torch.cat(gathered_input, dim=0)
+
         std, mean = torch.std_mean(input, dim=(0, 2), unbiased=False)
         mean = mean.detach()
         log_std = torch.log(std.detach())
