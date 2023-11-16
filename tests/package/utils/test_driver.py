@@ -16,6 +16,7 @@ from audyn.optim.lr_scheduler import GANLRScheduler
 from audyn.optim.optimizer import GANOptimizer
 from audyn.utils import (
     instantiate_cascade_text_to_wave,
+    instantiate_criterion,
     instantiate_lr_scheduler,
     instantiate_model,
     instantiate_optimizer,
@@ -109,7 +110,7 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
         )
         optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
-        criterion = hydra.utils.instantiate(config.criterion)
+        criterion = instantiate_criterion(config.criterion)
         criterion = set_device(
             criterion,
             accelerator=config.system.accelerator,
@@ -286,7 +287,7 @@ def test_feat_to_wave_trainer(monkeypatch: MonkeyPatch, use_ema: bool, use_lr_sc
         )
         optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
-        criterion = hydra.utils.instantiate(config.criterion)
+        criterion = instantiate_criterion(config.criterion)
         criterion = set_device(
             criterion,
             accelerator=config.system.accelerator,
@@ -384,20 +385,20 @@ def test_gan_trainer(
             is_distributed=config.system.distributed.enable,
         )
 
-        generator_optimizer = hydra.utils.instantiate(
+        generator_optimizer = instantiate_optimizer(
             config.optimizer.generator, generator.parameters()
         )
-        discriminator_optimizer = hydra.utils.instantiate(
+        discriminator_optimizer = instantiate_optimizer(
             config.optimizer.discriminator, discriminator.parameters()
         )
-        generator_lr_scheduler = hydra.utils.instantiate(
+        generator_lr_scheduler = instantiate_lr_scheduler(
             config.lr_scheduler.generator, generator_optimizer
         )
-        discriminator_lr_scheduler = hydra.utils.instantiate(
+        discriminator_lr_scheduler = instantiate_lr_scheduler(
             config.lr_scheduler.discriminator, discriminator_optimizer
         )
-        generator_criterion = hydra.utils.instantiate(config.criterion.generator)
-        discriminator_criterion = hydra.utils.instantiate(config.criterion.discriminator)
+        generator_criterion = instantiate_criterion(config.criterion.generator)
+        discriminator_criterion = instantiate_criterion(config.criterion.discriminator)
         generator_criterion = set_device(
             generator_criterion,
             accelerator=config.system.accelerator,
@@ -491,7 +492,7 @@ def test_cascade_text_to_wave(monkeypatch: MonkeyPatch) -> None:
         )
         optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
-        criterion = hydra.utils.instantiate(config.criterion)
+        criterion = instantiate_criterion(config.criterion)
         criterion = set_device(
             criterion,
             accelerator=config.system.accelerator,
@@ -554,7 +555,7 @@ def test_cascade_text_to_wave(monkeypatch: MonkeyPatch) -> None:
         )
         optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
-        criterion = hydra.utils.instantiate(config.criterion)
+        criterion = instantiate_criterion(config.criterion)
         criterion = set_device(
             criterion,
             accelerator=config.system.accelerator,
@@ -687,8 +688,8 @@ def test_trainer_for_dataloader(monkeypatch: MonkeyPatch, dataloader: str) -> No
             is_distributed=config.system.distributed.enable,
         )
         optimizer = instantiate_optimizer(config.optimizer, model)
-        lr_scheduler = hydra.utils.instantiate(config.lr_scheduler, optimizer)
-        criterion = hydra.utils.instantiate(config.criterion)
+        lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
+        criterion = instantiate_criterion(config.criterion)
         criterion = set_device(
             criterion,
             accelerator=config.system.accelerator,
