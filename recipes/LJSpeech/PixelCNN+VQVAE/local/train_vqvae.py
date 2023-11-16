@@ -7,6 +7,7 @@ from omegaconf import DictConfig
 
 import audyn
 from audyn.utils import (
+    instantiate_criterion,
     instantiate_lr_scheduler,
     instantiate_model,
     instantiate_optimizer,
@@ -30,7 +31,7 @@ def main(config: DictConfig) -> None:
     validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
 
     codebook_size = config.data.codebook.size
-    down_scale = config.model.encoder.num_stacks * config.model.encoder.stride
+    down_scale = config.model.encoder.stride**config.model.encoder.num_stacks
 
     train_loader = hydra.utils.instantiate(
         config.train.dataloader.train,
@@ -66,7 +67,7 @@ def main(config: DictConfig) -> None:
     optimizer = instantiate_optimizer(config.optimizer, model)
     lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
 
-    criterion = hydra.utils.instantiate(config.criterion)
+    criterion = instantiate_criterion(config.criterion)
     criterion = set_device(
         criterion,
         accelerator=config.system.accelerator,
