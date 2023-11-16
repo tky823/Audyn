@@ -4,7 +4,7 @@ set -eu
 set -o pipefail
 
 ljspeech_url="https://data.keithito.com/data/speech/LJSpeech-1.1.tar.bz2"
-data_root="../.data"
+data_root="../data"
 
 . ../../_common/parse_options.sh || exit 1;
 

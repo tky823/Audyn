@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig, OmegaConf
-from torch.cuda.amp import GradScaler, autocast
+from torch.cuda.amp import autocast
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from utils.models.cascade import PixelCNNVQVAE
@@ -36,8 +36,6 @@ class PriorSaver(BaseDriver):
     def _reset(self, config: DictConfig) -> None:
         self.set_system(config=config.system)
 
-        self.scaler = GradScaler(enabled=self.enable_amp)
-
         # Set loggder
         self.logger = get_logger(self.__class__.__name__, is_distributed=self.is_distributed)
 
@@ -66,10 +64,8 @@ class PriorSaver(BaseDriver):
             pbar = tqdm(pbar)
 
         for batch_idx, named_batch in pbar:
-            batch_size = 0
-
             for data_key in named_batch.keys():
-                batch_size = named_batch[data_key].size(0)
+                batch_size = len(named_batch[data_key])
 
                 assert batch_size == 1
 

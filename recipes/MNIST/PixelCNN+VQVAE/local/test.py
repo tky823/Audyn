@@ -21,8 +21,8 @@ def main(config: DictConfig) -> None:
         config.test.checkpoint.vqvae, map_location=lambda storage, loc: storage
     )
     vqvae_config = OmegaConf.create(vqvae_state_dict["resolved_config"])
-    down_scale = vqvae_config.model.encoder.stride**vqvae_config.model.encoder.num_layers
     codebook_size = config.data.codebook.size
+    down_scale = vqvae_config.model.encoder.stride**vqvae_config.model.encoder.num_layers
 
     test_dataset = hydra.utils.instantiate(config.test.dataset.test)
     test_loader = hydra.utils.instantiate(
@@ -30,8 +30,8 @@ def main(config: DictConfig) -> None:
         test_dataset,
         collate_fn=functools.partial(
             collate_fn,
-            down_scale=down_scale,
             codebook_size=codebook_size,
+            down_scale=down_scale,
         ),
     )
 
@@ -56,8 +56,8 @@ def main(config: DictConfig) -> None:
 
 def collate_fn(
     list_batch: List[Dict[str, torch.Tensor]],
-    down_scale: int,
     codebook_size: int,
+    down_scale: int,
     keys: Optional[Iterable[str]] = None,
 ) -> Dict[str, torch.Tensor]:
     """Generate dict-based batch.

@@ -1,0 +1,29 @@
+dataset:
+  _target_: audyn.utils.data.dataset.TorchObjectDataset
+  list_path:
+  feature_dir:
+
+dataloader:
+  _target_: torch.utils.data.DataLoader
+  batch_size: 1
+  shuffle: false
+
+key_mapping:
+  input:
+    input: log_melspectrogram
+  output:
+    - reconstructed
+    - encoded
+    - quantized
+    - indices
+  save:
+    input:
+      identifier: filename
+      melspectrogram_length: melspectrogram_length
+    output:
+      indices: indices
+
+checkpoint: ??
+
+output:
+  exp_dir: "./exp"

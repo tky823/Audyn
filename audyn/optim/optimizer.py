@@ -2,13 +2,15 @@
 https://github.com/pytorch/pytorch/blob/0093df78df590a35deb784773aa2165884c1b7bd/torch/optim/optimizer.py.
 """
 import copy
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, Union, overload
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, Union, overload
 
 import torch
+import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
 from packaging import version
 from torch.optim import Optimizer
+from torch.utils.hooks import RemovableHandle
 
 from ..modules.vqvae import VectorQuantizer
 
@@ -57,9 +59,6 @@ class MovingAverageWrapper(Optimizer):
         ]
         self.cached_param_groups = None
 
-    def __getattr__(self, __name: str) -> Any:
-        return getattr(self.optimizer, __name)
-
     @classmethod
     def build_from_optim_class(
         cls, *args, optimizer_class: Type, smooth: float = 0.999, **kwargs
@@ -107,8 +106,40 @@ class MovingAverageWrapper(Optimizer):
         """
         state_dict = {}
 
-        param_groups, param_mappings = _pack_param_groups(self.moving_average_param_groups)
-        packed_state = _pack_param_state(self.moving_average_param_groups, param_mappings)
+        param_mappings = {}
+        start_index = 0
+
+        def _pack_param_group(param_group):
+            nonlocal start_index
+            param_mappings.update(
+                {
+                    id(p): i
+                    for i, p in enumerate(param_group["params"], start_index)
+                    if id(p) not in param_mappings
+                }
+            )
+            packed = {"params": [param_mappings[id(p)] for p in param_group["params"]]}
+            start_index += len(packed["params"])
+
+            return packed
+
+        param_groups = [
+            _pack_param_group(param_group) for param_group in self.moving_average_param_groups
+        ]
+        packed_state = {}
+
+        for group in self.moving_average_param_groups:
+            for k, params in group.items():
+                assert k == "params", "Only params is supported."
+
+                for p in params:
+                    assert isinstance(
+                        p, torch.Tensor
+                    ), "Only torch.Tensor is supported, but found {}.".format(type(p))
+
+                    packed_state.update({param_mappings[id(p)]: p.data})
+
+        packed_state["smooth"] = self.smooth
 
         moving_averate_state_dict = {
             "state": packed_state,
@@ -169,6 +200,9 @@ class MovingAverageWrapper(Optimizer):
 
             start_index += len(packed_params)
 
+        # for backward compatibility
+        self.smooth = moving_averate_state_dict["state"].get("smooth", 0.999)
+
         # Load state dict of optimizer
         self.optimizer.load_state_dict(optimizer_state_dict)
 
@@ -199,6 +233,38 @@ class MovingAverageWrapper(Optimizer):
                 p.data = p_cache.data
 
         self.cached_param_groups = None
+
+    # define methods as those of self.optimizer
+    def __getstate__(self) -> Dict[str, Any]:
+        return self.optimizer.__getstate__()
+
+    def __setstate__(self, state: Dict[str, Any]) -> None:
+        return self.optimizer.__setstate__(state)
+
+    def __repr__(self) -> str:
+        return self.optimizer.__repr__()
+
+    def _cuda_graph_capture_health_check(self) -> None:
+        return self.optimizer._cuda_graph_capture_health_check()
+
+    def _optimizer_step_code(self) -> None:
+        return self.optimizer._optimizer_step_code()
+
+    def _patch_step_function(self) -> None:
+        return self.optimizer._patch_step_function()
+
+    def register_step_pre_hook(self, hook: Callable[[Any], None]) -> RemovableHandle:
+        return self.optimizer.register_step_pre_hook(hook)
+
+    def register_step_post_hook(self, hook: Callable[[Any], None]) -> RemovableHandle:
+        return self.optimizer.register_step_post_hook(hook)
+
+    def add_param_group(self, param_group: Dict[str, Any]) -> None:
+        return self.optimizer.add_param_group(param_group)
+
+    # if not found __name as attribute of self, search self.optimizer instead.
+    def __getattr__(self, __name: str) -> Any:
+        return getattr(self.optimizer, __name)
 
 
 class ExponentialMovingAverageWrapper(MovingAverageWrapper):
@@ -248,9 +314,9 @@ class ExponentialMovingAverageWrapper(MovingAverageWrapper):
     def __init__(self, optimizer: Optimizer, smooth: float = 0.999) -> None:
         super().__init__(optimizer, smooth)
 
-    def step(self) -> None:
+    def step(self, *args, **kwargs) -> None:
         """Performs a single optimization step and update exponential moving average."""
-        self.optimizer.step()
+        self.optimizer.step(*args, **kwargs)
 
         for param_group, moving_average_param_group in zip(
             self.optimizer.param_groups, self.moving_average_param_groups
@@ -265,6 +331,10 @@ class ExponentialMovingAverageWrapper(MovingAverageWrapper):
 
 class ExponentialMovingAverageCodebookOptimizer(Optimizer):
     """Optimizer to update codebook using exponential moving average.
+
+    Args:
+        params: Parameters to be optimized.
+        smooth (float): Smoothing factor. Default: ``0.999``.
 
     .. note::
 
@@ -304,17 +374,17 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
     if IS_TORCH_LT_2_1:
 
         @overload
-        def __init__(self, params: Iterable, smooth: float = 0.9) -> Optimizer:
+        def __init__(self, params: Iterable, smooth: float = 0.999) -> Optimizer:
             ...
 
     else:
         from torch.optim.optimizer import params_t
 
         @overload
-        def __init__(self, params: params_t, smooth: float = 0.9) -> Optimizer:
+        def __init__(self, params: params_t, smooth: float = 0.999) -> Optimizer:
             ...
 
-    def __init__(self, params, smooth=0.9) -> None:
+    def __init__(self, params, smooth=0.999) -> None:
         defaults = {}
         super().__init__(params, defaults)
 
@@ -363,9 +433,11 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
 
         self.smooth = smooth
 
-    def store_current_stats(self, module: VectorQuantizer, input, output):
+    def store_current_stats(self, module: VectorQuantizer, input: Any, output: Any) -> None:
         # TODO: generalize
         assert isinstance(module, VectorQuantizer)
+
+        is_distributed = dist.is_available() and dist.is_initialized()
 
         param_groups = list(module.parameters())
         tracking_param_groups = self.param_groups
@@ -396,14 +468,34 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
                 dequantized_input = dequantized_input.view(embedding_dim, -1)
                 one_hot = F.one_hot(indices, num_classes=codebook_size)
                 one_hot = one_hot.view(-1, codebook_size)
+
+                if is_distributed:
+                    # gather dequantized_input and one_hot
+                    # dequantized_input:
+                    #     (embedding_dim, num_samples) -> (embedding_dim, num_gpus * num_samples)
+                    # one_hot:
+                    #     (num_samples, codebook_size) -> (num_gpus * num_samples, codebook_size)
+                    gathered_dequantized_input = [
+                        torch.zeros_like(dequantized_input) for _ in range(dist.get_world_size())
+                    ]
+                    gathered_one_hot = [
+                        torch.zeros_like(one_hot) for _ in range(dist.get_world_size())
+                    ]
+
+                    dist.all_gather(gathered_dequantized_input, dequantized_input)
+                    dist.all_gather(gathered_one_hot, one_hot)
+
+                    dequantized_input = torch.cat(gathered_dequantized_input, dim=1)
+                    one_hot = torch.cat(gathered_one_hot, dim=0)
+
                 one_hot = one_hot.float()
                 one_hot_sum = one_hot.sum(dim=0)
 
                 z_e_sum = torch.matmul(dequantized_input, one_hot)
                 z_e_sum = z_e_sum.permute(1, 0).contiguous()
 
-                one_hot_sum_group[idx].data = one_hot_sum.data
-                z_e_sum_group[idx].data = z_e_sum.data
+                one_hot_sum_group[idx].data.copy_(one_hot_sum.data)
+                z_e_sum_group[idx].data.copy_(z_e_sum.data)
 
     def step(self) -> None:
         param_groups = self.param_groups
@@ -436,8 +528,9 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
                 z_e_sum_group,
             ):
                 param: nn.Parameter
+                one_hot_sum_data = one_hot_sum.data.to(num_samples_tracked.data.dtype)
                 num_samples_tracked.data = torch.lerp(
-                    one_hot_sum.data,
+                    one_hot_sum_data,
                     num_samples_tracked.data,
                     weight=smooth,
                 )

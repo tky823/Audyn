@@ -8,5 +8,6 @@
 - name: ema
   optimizer:
     _target_: audyn.optim.optimizer.ExponentialMovingAverageCodebookOptimizer
+    smooth: 0.999
   modules:
     - vector_quantizer

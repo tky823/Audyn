@@ -1,0 +1,37 @@
+dataset:
+  test:
+    _target_: audyn.utils.data.dataset.TorchObjectDataset
+    list_path:
+    feature_dir:
+
+dataloader:
+  test:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 1
+    shuffle: false
+
+key_mapping:
+  inference:
+    input:
+      initial_state: initial_index
+      height: height
+      width: width
+    output: generated_melspectrogram
+    identifier:
+      filename: filename
+
+checkpoint:
+  pixelcnn:
+  vqvae:
+
+output:
+  exp_dir: "./exp"
+  inference_dir: ${.exp_dir}/inference
+  spectrogram:
+    key_mapping:
+      inference:
+        output:
+          generated_melspectrogram: "{filename}_estimated.png"
+    transforms:
+      inference:
+        output:

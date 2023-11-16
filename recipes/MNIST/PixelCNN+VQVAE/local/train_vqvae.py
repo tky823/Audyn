@@ -24,16 +24,16 @@ def main(config: DictConfig) -> None:
     train_dataset = hydra.utils.instantiate(config.train.dataset.train)
     validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
 
-    down_scale = config.model.encoder.stride**config.model.encoder.num_layers
     codebook_size = config.data.codebook.size
+    down_scale = config.model.encoder.stride**config.model.encoder.num_layers
 
     train_loader = hydra.utils.instantiate(
         config.train.dataloader.train,
         train_dataset,
         collate_fn=functools.partial(
             collate_fn,
-            down_scale=down_scale,
             codebook_size=codebook_size,
+            down_scale=down_scale,
         ),
     )
     validation_loader = hydra.utils.instantiate(
@@ -41,8 +41,8 @@ def main(config: DictConfig) -> None:
         validation_dataset,
         collate_fn=functools.partial(
             collate_fn,
-            down_scale=down_scale,
             codebook_size=codebook_size,
+            down_scale=down_scale,
         ),
     )
     loaders = BaseDataLoaders(train_loader, validation_loader)

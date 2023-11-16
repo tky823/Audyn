@@ -1,12 +1,11 @@
 #!/bin/bash
 
+data_root="../data"
 exp_dir="./exp"
 
 tag=""
 pixelcnn_checkpoint=""
 vqvae_checkpoint=""
-
-data_root="../data"
 
 system="defaults"
 data="vqvae"
