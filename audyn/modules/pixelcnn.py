@@ -96,6 +96,15 @@ class Conv2d(nn.Module):
         return F.conv2d(input, weight, bias, 1, self.padding, self.dilation, self.groups)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of Conv2d in PixelCNN.
+
+        Args:
+            input (torch.Tensor): Input feature of shape (batch_size, in_channels, height, width).
+
+        Returns:
+            torch.Tensor: Output feature of shape (batch_size, in_channels, height', width').
+
+        """
         in_channels, out_channels = self.in_channels, self.out_channels
         kernel_size = self.kernel_size
         groups = self.groups
