@@ -74,7 +74,7 @@ class Decoder(nn.Module):
 
         for _ in range(num_stacks):
             res_blocks.append(
-                ResBlock(
+                ResidualBlock(
                     hidden_channels,
                     res_channels,
                 )
@@ -149,7 +149,7 @@ class EncoderBlock(nn.Module):
         res_blocks = []
 
         for _ in range(num_stacks):
-            res_blocks.append(ResBlock(hidden_channels, res_channels))
+            res_blocks.append(ResidualBlock(hidden_channels, res_channels))
 
         self.res_blocks = nn.Sequential(*res_blocks)
         self.relu_3 = nn.ReLU()
@@ -166,7 +166,7 @@ class EncoderBlock(nn.Module):
         return output
 
 
-class ResBlock(nn.Module):
+class ResidualBlock(nn.Module):
     def __init__(self, num_features: int, hidden_channels: int) -> None:
         super().__init__()
 
