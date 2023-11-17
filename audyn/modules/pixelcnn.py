@@ -15,6 +15,28 @@ class Conv2d(nn.Module):
         capture_center (bool): If ``True``, center is captured by convolution (a.k.a Mask B
             in original paper). Otherwise, center is ignored (a.k.a Mask A).
 
+    .. note::
+
+        When ``kernel_size=(5, 5)``, ``capture_center=True``, convolution kernel is
+        shown as follows:
+
+        |0.1|0.4|0.3|0.1|0.8|
+        |0.3|0.6|0.3|0.2|0.6|
+        |0.5|0.4|0.7|0.0|0.0|
+        |0.0|0.0|0.0|0.0|0.0|
+        |0.0|0.0|0.0|0.0|0.0|
+
+        where ``0.0`` means padding value.
+
+        When ``kernel_size=(5, 5)``, ``capture_center=False``, convolution kernel is
+        shown as follows:
+
+        |0.1|0.4|0.3|0.1|0.8|
+        |0.3|0.6|0.3|0.2|0.6|
+        |0.5|0.4|0.0|0.0|0.0|
+        |0.0|0.0|0.0|0.0|0.0|
+        |0.0|0.0|0.0|0.0|0.0|
+
     """
 
     def __init__(
