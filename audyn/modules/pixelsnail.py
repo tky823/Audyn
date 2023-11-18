@@ -317,10 +317,18 @@ class CausalSelfAttention2d(nn.Module):
             ``out_channels`` should be divisible by ``num_heads``.
         kdim (int): Embedding dimension of keys. ``kdim`` should be divisible by ``num_heads``.
         num_heads (int): Number of heads in attention.
+        dropout (float): Dropout rate in attention. Default: ``0.0``.
 
     """
 
-    def __init__(self, in_channels: int, out_channels: int, kdim: int, num_heads: int) -> None:
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kdim: int,
+        num_heads: int,
+        dropout: float = 0.0,
+    ) -> None:
         super().__init__()
 
         self.q_proj = nn.Linear(in_channels, kdim)
@@ -337,6 +345,7 @@ class CausalSelfAttention2d(nn.Module):
         self.out_channels = out_channels
         self.kdim = kdim
         self.num_heads = num_heads
+        self.dropout = dropout
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         """Forward pass of CausalSelfAttention2d.
@@ -351,6 +360,7 @@ class CausalSelfAttention2d(nn.Module):
         out_channels = self.out_channels
         kdim = self.kdim
         num_heads = self.num_heads
+        dropout = self.dropout
         batch_size, in_channels, height, width = input.size()
 
         x = input.permute(0, 2, 3, 1).contiguous()
@@ -373,6 +383,7 @@ class CausalSelfAttention2d(nn.Module):
         )
         attn_score = attn_score + attn_mask
         attn_weights = F.softmax(attn_score, dim=-1)
+        attn_weights = F.dropout(attn_weights, p=dropout, training=self.training)
         x = torch.matmul(attn_weights, value)
         x = x.permute(0, 1, 3, 2).contiguous()
         output = x.view(batch_size, out_channels, height, width)
