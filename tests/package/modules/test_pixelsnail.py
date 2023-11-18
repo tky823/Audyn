@@ -9,6 +9,7 @@ from torch.nn.common_types import _size_2_t
 from audyn.modules.pixelsnail import (
     CausalConv2d,
     CausalSelfAttention2d,
+    PixelBlock,
     PointwiseConvBlock2d,
     ResidualBlock2d,
 )
@@ -22,6 +23,31 @@ parameters_weight_regularization = [
     "spectral_norm",
 ]
 parameters_capture_center = [True, False]
+
+
+def test_pixelsnail_block() -> None:
+    batch_size = 2
+    in_channels, skip_channels = 3, 2
+    height, width = 5, 7
+    kernel_size = 3
+    num_heads = 4
+    num_repeats = 2
+    kdim, vdim = 8, 16
+
+    module = PixelBlock(
+        in_channels,
+        skip_channels,
+        kernel_size,
+        num_heads,
+        num_repeats,
+        kdim=kdim,
+        vdim=vdim,
+    )
+    input = torch.randn((batch_size, in_channels, height, width))
+    skip = torch.randn((batch_size, skip_channels, height, width))
+    output = module(input, skip=skip)
+
+    assert output.size() == input.size()
 
 
 @pytest.mark.parametrize("kernel_size", parameters_kernel_size)
