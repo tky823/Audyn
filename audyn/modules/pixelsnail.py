@@ -216,7 +216,8 @@ class CausalConv2d(Conv2d):
 class PointwiseConvBlock2d(nn.Module):
     def __init__(
         self,
-        num_features: int,
+        in_channels: int,
+        out_channels: int,
         groups: int = 1,
         bias: bool = True,
         weight_regularization: Optional[str] = "weight_norm",
@@ -240,8 +241,8 @@ class PointwiseConvBlock2d(nn.Module):
 
         self.activation_1 = activation_1
         self.conv2d = nn.Conv2d(
-            num_features,
-            num_features,
+            in_channels,
+            out_channels,
             kernel_size=1,
             groups=groups,
             bias=bias,
