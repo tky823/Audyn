@@ -6,7 +6,12 @@ import torch.nn as nn
 from packaging import version
 from torch.nn.common_types import _size_2_t
 
-from audyn.modules.pixelsnail import CausalConv2d, PointwiseConvBlock2d, ResidualBlock2d
+from audyn.modules.pixelsnail import (
+    CausalConv2d,
+    CausalSelfAttention2d,
+    PointwiseConvBlock2d,
+    ResidualBlock2d,
+)
 
 IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
@@ -117,3 +122,18 @@ def test_pointwise_convblock2d(weight_regularization: Optional[str]) -> None:
             raise ValueError(
                 "{}-based weight regularization is not supported.".format(weight_regularization)
             )
+
+
+def test_causal_self_attn2d() -> None:
+    torch.manual_seed(0)
+
+    batch_size = 2
+    in_channels, out_channels, kdim = 3, 8, 16
+    num_heads = 4
+    height, width = 6, 7
+
+    module = CausalSelfAttention2d(in_channels, out_channels, kdim, num_heads=num_heads)
+    input = torch.randn((batch_size, in_channels, height, width))
+    output = module(input)
+
+    assert output.size() == (batch_size, out_channels, height, width)
