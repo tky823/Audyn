@@ -161,11 +161,20 @@ class VerticalConv2d(nn.Conv2d):
 
         |0.6|0.4|0.2|0.5|0.3|
         |0.1|0.4|0.5|0.2|0.7|
-        |0.0|0.0|0.0|0.0|0.0|
+        |0.3|0.2|0.2|0.5|0.1|
         |0.0|0.0|0.0|0.0|0.0|
         |0.0|0.0|0.0|0.0|0.0|
 
         where ``0.0`` means padding value.
+
+        When ``kernel_size=(5, 5)``, ``capture_center=False``, convolution kernel is
+        shown as follows:
+
+        |0.6|0.4|0.2|0.5|0.3|
+        |0.1|0.4|0.5|0.2|0.7|
+        |0.0|0.0|0.0|0.0|0.0|
+        |0.0|0.0|0.0|0.0|0.0|
+        |0.0|0.0|0.0|0.0|0.0|
 
     """
 
@@ -176,6 +185,7 @@ class VerticalConv2d(nn.Conv2d):
         kernel_size: _size_2_t,
         groups: int = 1,
         bias: bool = True,
+        capture_center: bool = True,
         device: torch.device = None,
         dtype: torch.dtype = None,
     ) -> None:
@@ -185,7 +195,10 @@ class VerticalConv2d(nn.Conv2d):
         if kernel_height % 2 == 0 or kernel_width % 2 == 0:
             raise ValueError("kernel_size is expected to be odd, but even number is given.")
 
-        kernel_size = (kernel_height // 2, kernel_width)
+        if capture_center:
+            kernel_size = (kernel_height // 2, kernel_width)
+        else:
+            kernel_size = (kernel_height // 2 + 1, kernel_width)
 
         super().__init__(
             in_channels,
@@ -200,6 +213,8 @@ class VerticalConv2d(nn.Conv2d):
             device=device,
             dtype=dtype,
         )
+
+        self.capture_center = capture_center
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         real_kernel_height, real_kernel_width = self.kernel_size
