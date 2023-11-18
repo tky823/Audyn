@@ -50,12 +50,18 @@ def test_causal_conv2d(kernel_size: _size_2_t, capture_center: bool) -> None:
 
 
 @pytest.mark.parametrize("kernel_size", parameters_kernel_size)
-def test_vertical_conv2d(kernel_size: _size_2_t) -> None:
+@pytest.mark.parametrize("capture_center", parameters_capture_center)
+def test_vertical_conv2d(kernel_size: _size_2_t, capture_center: bool) -> None:
     batch_size = 2
     in_channels, out_channels = 2, 3
     height, width = 5, 7
 
-    module = VerticalConv2d(in_channels, out_channels, kernel_size=kernel_size)
+    module = VerticalConv2d(
+        in_channels,
+        out_channels,
+        kernel_size=kernel_size,
+        capture_center=capture_center,
+    )
     input = torch.randn((batch_size, in_channels, height, width))
     output = module(input)
 
