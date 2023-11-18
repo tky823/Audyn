@@ -9,6 +9,7 @@ from torch.nn.modules.utils import _pair
 
 __all__ = [
     "Conv2d",
+    "CausalConv2d",
     "VerticalConv2d",
     "HorizontalConv2d",
 ]
@@ -142,6 +143,12 @@ class Conv2d(nn.Module):
         weight = weight.view(out_channels, in_channels // groups, kernel_size[0], kernel_size[1])
 
         return self._conv_forward(input, weight, self.bias)
+
+
+class CausalConv2d(Conv2d):
+    """Alias of Conv2d."""
+
+    pass
 
 
 class VerticalConv2d(nn.Conv2d):
