@@ -3,6 +3,7 @@
 See https://arxiv.org/abs/1712.09763 for the details.
 """
 import copy
+import math
 from typing import Callable, Optional, Union
 
 import torch
@@ -16,6 +17,7 @@ __all__ = [
     "Conv2d",
     "CausalConv2d",
     "PointwiseConvBlock2d",
+    "CausalSelfAttention2d",
 ]
 
 IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
@@ -306,6 +308,86 @@ class PointwiseConvBlock2d(nn.Module):
         self.conv2d = remove_spectral_norm_fn(self.conv2d, *remove_spectral_norm_args)
 
 
+class CausalSelfAttention2d(nn.Module):
+    """Self-attention with causality for 2D input.
+
+    Args:
+        in_channels: Number of input channels.
+        out_channels: Embedding dimension of values, which is equal to number of output channels.
+            ``out_channels`` should be divisible by ``num_heads``.
+        kdim (int): Embedding dimension of keys. ``kdim`` should be divisible by ``num_heads``.
+        num_heads (int): Number of heads in attention.
+
+    """
+
+    def __init__(self, in_channels: int, out_channels: int, kdim: int, num_heads: int) -> None:
+        super().__init__()
+
+        self.q_proj = nn.Linear(in_channels, kdim)
+        self.k_proj = nn.Linear(in_channels, kdim)
+        self.v_proj = nn.Linear(in_channels, out_channels)
+
+        assert (
+            out_channels % num_heads == 0
+        ), f"kdim ({out_channels}) should be divisible by num_heads ({num_heads})"
+        assert (
+            kdim % num_heads == 0
+        ), f"kdim ({kdim}) should be divisible by num_heads ({num_heads})"
+
+        self.out_channels = out_channels
+        self.kdim = kdim
+        self.num_heads = num_heads
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of CausalSelfAttention2d.
+
+        Args:
+            input (torch.Tensor): Input feature of shape (batch_size, in_channels, height, width).
+
+        Returns:
+            torch.Tensor: Output feature of shape (batch_size, out_channels, height, width).
+
+        """
+        out_channels = self.out_channels
+        kdim = self.kdim
+        num_heads = self.num_heads
+        batch_size, in_channels, height, width = input.size()
+
+        x = input.permute(0, 2, 3, 1).contiguous()
+        x = x.view(batch_size, height * width, in_channels)
+        query = self.q_proj(x)
+        key = self.k_proj(x)
+        value = self.v_proj(x)
+        query = query.view(batch_size, height * width, num_heads, kdim // num_heads)
+        key = key.view(batch_size, height * width, num_heads, kdim // num_heads)
+        value = value.view(batch_size, height * width, num_heads, out_channels // num_heads)
+        query = query.permute(0, 2, 1, 3)
+        key = key.permute(0, 2, 3, 1)
+        value = value.permute(0, 2, 1, 3)
+
+        attn_score = torch.matmul(query, key) / math.sqrt(kdim // num_heads)
+        attn_mask = self.generate_square_subsequent_mask(
+            height * width,
+            device=attn_score.device,
+            dtype=attn_score.dtype,
+        )
+        attn_score = attn_score + attn_mask
+        attn_weights = F.softmax(attn_score, dim=-1)
+        x = torch.matmul(attn_weights, value)
+        x = x.permute(0, 1, 3, 2).contiguous()
+        output = x.view(batch_size, out_channels, height, width)
+
+        return output
+
+    @staticmethod
+    def generate_square_subsequent_mask(
+        sz: int,
+        device: torch.device = torch.device(torch._C._get_default_device()),
+        dtype: torch.dtype = torch.get_default_dtype(),
+    ) -> torch.BoolTensor:
+        return _generate_square_subsequent_mask(sz, device=device, dtype=dtype)
+
+
 def _get_activation(activation: str) -> nn.Module:
     """Get activation module by str.
 
@@ -324,3 +406,20 @@ def _get_activation(activation: str) -> nn.Module:
         return nn.ELU()
 
     raise RuntimeError(f"activation should be relu/gelu/elu, not {activation}")
+
+
+def _generate_square_subsequent_mask(
+    sz: int,
+    device: torch.device = torch.device(torch._C._get_default_device()),
+    dtype: torch.dtype = torch.get_default_dtype(),
+) -> torch.Tensor:
+    r"""Generate a square causal mask for the sequence.
+
+    Ported from
+    https://github.com/pytorch/pytorch/blob/fdaddec2c3a64f9d0d98b5f71b8eef40a247c0c2/torch/nn/modules/transformer.py#L18-L30
+
+    """
+    return torch.triu(
+        torch.full((sz, sz), float("-inf"), dtype=dtype, device=device),
+        diagonal=1,
+    )
