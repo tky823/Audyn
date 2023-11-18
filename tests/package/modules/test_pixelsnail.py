@@ -6,7 +6,7 @@ import torch.nn as nn
 from packaging import version
 from torch.nn.common_types import _size_2_t
 
-from audyn.modules.pixelsnail import CausalConv2d, ResidualBlock2d
+from audyn.modules.pixelsnail import CausalConv2d, PointwiseConvBlock2d, ResidualBlock2d
 
 IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
@@ -88,3 +88,31 @@ def test_causal_conv2d(kernel_size: _size_2_t) -> None:
 
     module_spectral_norm = spectral_norm_fn(module)
     _ = module_spectral_norm(input)
+
+
+@pytest.mark.parametrize("weight_regularization", parameters_weight_regularization)
+def test_pointwise_convblock2d(weight_regularization: Optional[str]) -> None:
+    torch.manual_seed(0)
+
+    batch_size = 2
+    num_features = 4
+    height, width = 5, 7
+
+    module = PointwiseConvBlock2d(
+        num_features,
+        weight_regularization=weight_regularization,
+    )
+    input = torch.randn((batch_size, num_features, height, width))
+    output = module(input)
+
+    assert output.size() == input.size()
+
+    if weight_regularization is not None:
+        if weight_regularization == "weight_norm":
+            module.remove_weight_norm_()
+        elif weight_regularization == "spectral_norm":
+            module.remove_spectral_norm_()
+        else:
+            raise ValueError(
+                "{}-based weight regularization is not supported.".format(weight_regularization)
+            )
