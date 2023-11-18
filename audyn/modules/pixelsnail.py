@@ -445,7 +445,7 @@ class CausalSelfAttention2d(nn.Module):
 
         assert (
             out_channels % num_heads == 0
-        ), f"kdim ({out_channels}) should be divisible by num_heads ({num_heads})"
+        ), f"out_channels ({out_channels}) should be divisible by num_heads ({num_heads})"
         assert (
             kdim % num_heads == 0
         ), f"kdim ({kdim}) should be divisible by num_heads ({num_heads})"
