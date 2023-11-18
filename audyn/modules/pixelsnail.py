@@ -24,6 +24,114 @@ IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 available_weight_regularizations = {"weight_norm", "spectral_norm"}
 
 
+class PixelBlock(nn.Module):
+    """Block of PixelSNAIL.
+
+    Args:
+        in_channels (int): Number of input channels.
+        skip_channels (int): Number of skip channels.
+        kernel_size (_size_2_t): Kernel size in convolutions.
+        num_heads (int): Number of heads in attention.
+        num_repeats (int): Number of repeats of ``ResidualBlock2d``.
+        dropout (float): Dropout rate in attention. Default: ``0.0``.
+        kdim (int): Embedding dimension of keys. ``kdim`` should be divisible by ``num_heads``.
+        vdim (int): Embedding dimension of values. ``vdim`` should be divisible by ``num_heads``.
+        weight_regularization (str, optional): Weight regularization.
+        activation (str, nn.Module, or callable): Activation function. Default: ``elu``.
+
+    """
+
+    def __init__(
+        self,
+        in_channels: int,
+        skip_channels: int,
+        kernel_size: _size_2_t,
+        num_heads: int,
+        num_repeats: int,
+        dropout: float = 0.0,
+        kdim: Optional[int] = None,
+        vdim: Optional[int] = None,
+        weight_regularization: Optional[str] = "weight_norm",
+        activation: Optional[
+            Union[str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]
+        ] = "elu",
+        device: torch.device = None,
+        dtype: torch.dtype = None,
+    ) -> None:
+        factory_kwargs = {"device": device, "dtype": dtype}
+
+        super().__init__()
+
+        if kdim is None:
+            kdim = in_channels
+
+        if vdim is None:
+            vdim = in_channels
+
+        backbone = []
+
+        for _ in range(num_repeats):
+            block = ResidualBlock2d(
+                in_channels,
+                kernel_size=kernel_size,
+                weight_regularization=weight_regularization,
+                activation=activation,
+                **factory_kwargs,
+            )
+            backbone.append(block)
+
+        self.backbone = nn.Sequential(*backbone)
+        self.pointwise_conv2d_in = PointwiseConvBlock2d(
+            in_channels,
+            in_channels,
+            weight_regularization=weight_regularization,
+            activation=activation,
+            **factory_kwargs,
+        )
+        self.mha2d = CausalSelfAttention2d(
+            in_channels + skip_channels,
+            vdim,
+            kdim=kdim,
+            num_heads=num_heads,
+            dropout=dropout,
+        )
+        self.pointwise_conv2d_attn = PointwiseConvBlock2d(
+            vdim,
+            in_channels,
+            weight_regularization=weight_regularization,
+            activation=activation,
+            **factory_kwargs,
+        )
+        self.pointwise_conv2d_out = PointwiseConvBlock2d(
+            in_channels,
+            in_channels,
+            weight_regularization=weight_regularization,
+            activation=activation,
+            **factory_kwargs,
+        )
+
+    def forward(self, input: torch.Tensor, skip: torch.Tensor) -> torch.Tensor:
+        """Forward pass of ConvBlock2d.
+
+        Args:
+            input (torch.Tensor): Input feature of shape (batch_size, in_channels, height, width).
+            skip (torch.Tensor): Skip feature of shape (batch_size, skip_channels, height, width).
+
+        Returns:
+            torch.Tensor: Output feature of shape (batch_size, in_channels, height, width).
+
+        """
+        x = self.backbone(input)
+        x_in = self.pointwise_conv2d_in(x)
+        x_attn = torch.cat([x, skip], dim=1)
+        x_attn = self.mha2d(x_attn)
+        x_attn = self.pointwise_conv2d_attn(x_attn)
+        x = x_in + x_attn
+        output = self.pointwise_conv2d_out(x)
+
+        return output
+
+
 class ResidualBlock2d(nn.Module):
     def __init__(
         self,
