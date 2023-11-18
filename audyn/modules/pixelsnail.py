@@ -312,9 +312,9 @@ class CausalSelfAttention2d(nn.Module):
     """Self-attention with causality for 2D input.
 
     Args:
-        in_channels: Number of input channels.
-        out_channels: Embedding dimension of values, which is equal to number of output channels.
-            ``out_channels`` should be divisible by ``num_heads``.
+        in_channels (int): Number of input channels.
+        out_channels (int): Embedding dimension of values, which is equal to number of
+            output channels. ``out_channels`` should be divisible by ``num_heads``.
         kdim (int): Embedding dimension of keys. ``kdim`` should be divisible by ``num_heads``.
         num_heads (int): Number of heads in attention.
         dropout (float): Dropout rate in attention. Default: ``0.0``.
