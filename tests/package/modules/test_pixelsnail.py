@@ -95,17 +95,18 @@ def test_pointwise_convblock2d(weight_regularization: Optional[str]) -> None:
     torch.manual_seed(0)
 
     batch_size = 2
-    num_features = 4
+    in_channels, out_channels = 4, 6
     height, width = 5, 7
 
     module = PointwiseConvBlock2d(
-        num_features,
+        in_channels,
+        out_channels,
         weight_regularization=weight_regularization,
     )
-    input = torch.randn((batch_size, num_features, height, width))
+    input = torch.randn((batch_size, in_channels, height, width))
     output = module(input)
 
-    assert output.size() == input.size()
+    assert output.size() == (batch_size, out_channels, height, width)
 
     if weight_regularization is not None:
         if weight_regularization == "weight_norm":
