@@ -119,6 +119,7 @@ class GatedConv2d(nn.Module):
             num_features,
             2 * num_features,
             kernel_size=kernel_size,
+            capture_center=False,
         )
         self.horizontal_conv2d = HorizontalConv2d(
             num_features,
