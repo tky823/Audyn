@@ -152,6 +152,23 @@ class CausalConv2d(Conv2d):
 
 
 class VerticalConv2d(nn.Conv2d):
+    """Vertical 2D convolution.
+
+    .. note::
+
+        When ``kernel_size=(5, 5)``, ``capture_center=True``, convolution kernel is
+        shown as follows:
+
+        |0.6|0.4|0.2|0.5|0.3|
+        |0.1|0.4|0.5|0.2|0.7|
+        |0.0|0.0|0.0|0.0|0.0|
+        |0.0|0.0|0.0|0.0|0.0|
+        |0.0|0.0|0.0|0.0|0.0|
+
+        where ``0.0`` means padding value.
+
+    """
+
     def __init__(
         self,
         in_channels: int,
@@ -206,6 +223,24 @@ class VerticalConv2d(nn.Conv2d):
 
 
 class HorizontalConv2d(nn.Conv2d):
+    """Horizontal 2D convolution.
+
+    .. note::
+
+        When ``kernel_size=5``, ``capture_center=True``, convolution kernel is
+        shown as follows:
+
+        |0.2|0.3|0.5|0.0|0.0|
+
+        where ``0.0`` means padding value.
+
+        When ``kernel_size=5``, ``capture_center=False``, convolution kernel is
+        shown as follows:
+
+        |0.2|0.3|0.0|0.0|0.0|
+
+    """
+
     def __init__(
         self,
         in_channels: int,
