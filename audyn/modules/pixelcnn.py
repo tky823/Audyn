@@ -7,6 +7,12 @@ import torch.nn.functional as F
 from torch.nn.common_types import _size_2_t
 from torch.nn.modules.utils import _pair
 
+__all__ = [
+    "Conv2d",
+    "VerticalConv2d",
+    "HorizontalConv2d",
+]
+
 
 class Conv2d(nn.Module):
     """2D convolution for PixelCNN.
