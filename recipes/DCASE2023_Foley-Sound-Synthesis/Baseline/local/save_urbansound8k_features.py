@@ -84,10 +84,11 @@ def process(
         sample_rate = melspectrogram_transform.sample_rate
 
     waveform = waveform.mean(dim=0)
-    melspectrogram = melspectrogram_transform(waveform)
 
     if waveform.size(-1) < min_waveform_length:
         waveform = F.pad(waveform, (0, min_waveform_length - waveform.size(-1)))
+
+    melspectrogram = melspectrogram_transform(waveform)
 
     feature["waveform"] = waveform
     feature["melspectrogram"] = melspectrogram
