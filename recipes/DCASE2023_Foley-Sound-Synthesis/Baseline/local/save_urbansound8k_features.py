@@ -2,6 +2,7 @@ import os
 from concurrent.futures import ProcessPoolExecutor
 
 import torch
+import torch.nn.functional as F
 import torchaudio
 import torchaudio.functional as aF
 import torchaudio.transforms as aT
@@ -21,6 +22,7 @@ def main(config: DictConfig) -> None:
     assert wav_dir is not None, "Specify preprocess.wav_dir."
     assert feature_dir is not None, "Specify preprocess.feature_dir."
 
+    min_waveform_length = config.data.audio.slice_length
     melspectrogram_transform = aT.MelSpectrogram(**config.data.melspectrogram)
 
     os.makedirs(feature_dir, exist_ok=True)
@@ -42,6 +44,7 @@ def main(config: DictConfig) -> None:
                         filename=filename,
                         wav_path=wav_path,
                         feature_path=feature_path,
+                        min_waveform_length=min_waveform_length,
                         melspectrogram_transform=melspectrogram_transform,
                     )
                     futures.append(future)
@@ -59,6 +62,7 @@ def main(config: DictConfig) -> None:
                     filename=filename,
                     wav_path=wav_path,
                     feature_path=feature_path,
+                    min_waveform_length=min_waveform_length,
                     melspectrogram_transform=melspectrogram_transform,
                 )
 
@@ -67,6 +71,7 @@ def process(
     filename: str,
     wav_path: str,
     feature_path: str,
+    min_waveform_length: int,
     melspectrogram_transform: aT.MelSpectrogram = None,
 ) -> None:
     feature = {}
@@ -80,6 +85,9 @@ def process(
 
     waveform = waveform.mean(dim=0)
     melspectrogram = melspectrogram_transform(waveform)
+
+    if waveform.size(-1) < min_waveform_length:
+        waveform = F.pad(waveform, (0, min_waveform_length - waveform.size(-1)))
 
     feature["waveform"] = waveform
     feature["melspectrogram"] = melspectrogram
