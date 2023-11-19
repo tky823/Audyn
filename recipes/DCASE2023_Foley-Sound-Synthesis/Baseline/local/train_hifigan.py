@@ -154,7 +154,7 @@ def collate_fn(
             "melspectrogram": "log_melspectrogram",
             "melspectrogram_slice": "log_melspectrogram_slice",
         },
-        flooring_fn=lambda x: torch.clamp(x, min=1e-5),
+        flooring_fn=lambda x: torch.clamp(x, min=1e-10),
     )
     dict_batch["max_waveform_slice_length"] = dict_batch["waveform_slice"].size(-1)
 
