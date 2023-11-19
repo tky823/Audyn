@@ -69,7 +69,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     preprocess.category_path="${category_path}"
 
     for subset in "train" "validation"; do
-        python ./local/save_official_features.py \
+        python ./local/save_features.py \
         --config-dir "./conf" \
         hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
         preprocess="${preprocess}" \
