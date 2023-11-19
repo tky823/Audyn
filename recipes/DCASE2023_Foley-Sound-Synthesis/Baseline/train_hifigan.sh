@@ -1,4 +1,5 @@
 #!/bin/bash
+# This script is almost identical to recipes/LJSpeech/HiFiGAN/train.sh
 
 dump_root="./dump"
 exp_dir="./exp"
