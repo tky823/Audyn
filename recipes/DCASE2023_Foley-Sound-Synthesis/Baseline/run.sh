@@ -22,7 +22,7 @@ system="defaults"
 preprocess="baseline"
 data=""
 train=""
-test="pixelcnn+vqvae"
+test="pixelsnail+vqvae"
 model=""
 optimizer=""
 lr_scheduler=""
@@ -107,7 +107,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
 fi
 
 if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
-    echo "Stage 4: Training of PixelCNN"
+    echo "Stage 4: Training of PixelSNAIL"
 fi
 
 if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
