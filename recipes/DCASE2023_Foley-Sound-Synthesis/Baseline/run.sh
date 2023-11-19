@@ -101,3 +101,31 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         --criterion "${criterion}"
     )
 fi
+
+if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
+    echo "Stage 3: Save prior from VQ-VAE"
+fi
+
+if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
+    echo "Stage 4: Training of PixelCNN"
+fi
+
+if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
+    echo "Stage 5: Training of HiFi-GAN"
+
+    (
+        . ./train_hifigan.sh \
+        --tag "${tag}" \
+        --continue-from "${continue_from}" \
+        --exp-dir "${exp_dir}" \
+        --dump-root "${dump_root}" \
+        --system "${system}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --train "${train}" \
+        --model "${model}" \
+        --optimizer "${optimizer}" \
+        --lr_scheduler "${lr_scheduler}" \
+        --criterion "${criterion}"
+    )
+fi
