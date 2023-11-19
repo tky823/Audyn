@@ -6,7 +6,7 @@ set -o pipefail
 stage=0
 stop_stage=0
 
-data_root="../../UrbanSound8k/data"
+data_root="../../UrbanSound8K/data"
 dump_root="./dump"
 log_dir="./log"
 
@@ -20,7 +20,7 @@ n_validation=10
 urbansound8k_root="${data_root}/UrbanSound8K"
 csv_path="${urbansound8k_root}/metadata/UrbanSound8K.csv"
 wav_dir="${urbansound8k_root}/audio"
-class_list_path="../../UrbanSound8k/_common/class.txt"
+class_list_path="../../UrbanSound8K/_common/class.txt"
 
 dump_dir="${dump_root}/${data}"
 list_dir="${dump_dir}/list"
