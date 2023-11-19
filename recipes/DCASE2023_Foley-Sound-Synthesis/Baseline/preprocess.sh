@@ -46,11 +46,11 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         n_train=$((${n_all} - ${n_validation}))
 
         for filename in $(head -n ${n_train} "${all_list_path}"); do
-            echo "dev/${category}/${filename}" | sed "s/\.wav//" >> "${list_dir}/train.txt"
+            echo "dev/${category}/${filename/.wav/}" >> "${list_dir}/train.txt"
         done
 
         for filename in $(tail -n ${n_validation} "${all_list_path}"); do
-            echo "dev/${category}/${filename}" | sed "s/\.wav//" >> "${list_dir}/validation.txt"
+            echo "dev/${category}/${filename/.wav/}" >> "${list_dir}/validation.txt"
         done
     done < "${category_list_path}"
 
