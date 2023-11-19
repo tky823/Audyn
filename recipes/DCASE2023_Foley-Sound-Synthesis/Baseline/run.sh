@@ -40,7 +40,7 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
     echo "Stage 0: Preprocessing of official development dataset"
 
     (
-        . ./preprocess.sh \
+        . ./preprocess_official_dataset.sh \
         --stage 1 \
         --stop-stage 2 \
         --data-root "${official_data_root}" \
