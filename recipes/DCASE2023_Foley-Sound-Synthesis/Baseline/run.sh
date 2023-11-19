@@ -13,8 +13,9 @@ vqvae_checkpoint=""
 
 exp_dir="./exp"
 
+urbansound8k_url="https://zenodo.org/records/1203745/files/UrbanSound8K.tar.gz"
 official_data_root="../data"
-urbansound8k_data_root="../../UrbanSound8k/data"
+urbansound8k_data_root="../../UrbanSound8K/data"
 dump_root="./dump"
 
 system="defaults"
@@ -33,7 +34,16 @@ n_validation=10
 
 if [ ${stage} -le -1 ] && [ ${stop_stage} -ge -1 ]; then
     echo "Stage -1"
-    echo "Please place dataset under ${data_root}"
+
+    # official development dataset to train PixelSNAIL+VQVAE
+    echo "Please place official development dataset under ${official_data_root}."
+
+    (
+        # UrbanSound8K dataset to train HiFiGAN
+        . ../../UrbanSound8K/_common/download.sh \
+        --urbansound8k-url "${urbansound8k_url}" \
+        --data-root "${urbansound8k_data_root}"
+    )
 fi
 
 if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
@@ -52,7 +62,7 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
 fi
 
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
-    echo "Stage 1: Preprocessing of UrbanSound8k"
+    echo "Stage 1: Preprocessing of UrbanSound8K"
 
     (
         . ./preprocess_urbansound8k.sh \
