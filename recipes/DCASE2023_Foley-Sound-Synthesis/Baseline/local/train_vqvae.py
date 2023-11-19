@@ -113,7 +113,7 @@ def collate_fn(
         key_mapping={
             "melspectrogram": "log_melspectrogram",
         },
-        flooring_fn=lambda x: torch.clamp(x, min=1e-10),
+        flooring_fn=lambda x: torch.clamp(x, min=1e-5),
     )
 
     dict_batch["codebook_indices"] = torch.randint(
