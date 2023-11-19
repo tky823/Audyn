@@ -1,0 +1,1 @@
+../../LJSpeech/PixelCNN+VQVAE/train_vqvae.sh
