@@ -32,6 +32,13 @@ n_validation=10
 
 . ../../_common/parse_options.sh || exit 1;
 
+set +u
+
+# path to local scripts
+export PYTHONPATH="./:${PYTHONPATH}"
+
+set -u
+
 if [ ${stage} -le -1 ] && [ ${stop_stage} -ge -1 ]; then
     echo "Stage -1"
 
@@ -73,5 +80,24 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         --preprocess "${preprocess}" \
         --data "${data}" \
         --n-validation ${n_validation}
+    )
+fi
+
+if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
+    echo "Stage 2: Training of VQ-VAE"
+
+    (
+        . ./train_vqvae.sh \
+        --tag "${tag}" \
+        --continue-from "${continue_from}" \
+        --dump-root "${dump_root}" \
+        --exp-dir "${exp_dir}" \
+        --system "${system}" \
+        --data "${data}" \
+        --train "${train}" \
+        --model "${model}" \
+        --optimizer "${optimizer}" \
+        --lr_scheduler "${lr_scheduler}" \
+        --criterion "${criterion}"
     )
 fi
