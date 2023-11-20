@@ -573,31 +573,7 @@ class BaseTrainer(BaseDriver):
             self.optimizer.zero_grad()
             self.scaler.scale(total_loss).backward()
             self.clip_gradient_if_necessary()
-
-            if isinstance(self.optimizer, MultiOptimizers):
-                for optimizer in self.optimizer.optimizers.values():
-                    if (
-                        isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
-                        and self.scaler.is_enabled()
-                    ):
-                        raise NotImplementedError(
-                            "ExponentialMovingAverageCodebookOptimizer and AMP "
-                            "cannot be used simultaneously."
-                        )
-                    else:
-                        self.scaler.step(optimizer)
-            else:
-                if (
-                    isinstance(self.optimizer, ExponentialMovingAverageCodebookOptimizer)
-                    and self.scaler.is_enabled()
-                ):
-                    raise NotImplementedError(
-                        "ExponentialMovingAverageCodebookOptimizer and AMP "
-                        "cannot be used simultaneously."
-                    )
-                else:
-                    self.scaler.step(self.optimizer)
-
+            self.optimizer_step()
             self.scaler.update()
 
             if self.config.train.steps.lr_scheduler == "iteration":
@@ -960,6 +936,25 @@ class BaseTrainer(BaseDriver):
 
             clip_gradient_config = self.config.train.clip_gradient
             hydra.utils.instantiate(clip_gradient_config, self.model.parameters())
+
+    def optimizer_step(self, optimizer: Optional[Optimizer] = None) -> None:
+        if optimizer is None:
+            optimizer = self.optimizer
+
+        if isinstance(optimizer, MultiOptimizers):
+            for _optimizer in optimizer.optimizers.values():
+                self.optimizer_step(_optimizer)
+        else:
+            if (
+                isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
+                and self.scaler.is_enabled()
+            ):
+                raise NotImplementedError(
+                    "ExponentialMovingAverageCodebookOptimizer and AMP "
+                    "cannot be used simultaneously."
+                )
+            else:
+                self.scaler.step(optimizer)
 
     def display_loss(
         self, train_loss: Dict[str, float], validation_loss: Optional[Dict[str, float]] = None

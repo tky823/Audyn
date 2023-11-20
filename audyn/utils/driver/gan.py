@@ -260,32 +260,7 @@ class GANTrainer(BaseTrainer):
                 self.unwrapped_model.discriminator.parameters(),
                 self.optimizer.discriminator,
             )
-
-            if isinstance(self.optimizer.discriminator, MultiOptimizers):
-                for optimizer in self.optimizer.discriminator.optimizers.values():
-                    if (
-                        isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
-                        and self.scaler.is_enabled()
-                    ):
-                        raise NotImplementedError(
-                            "ExponentialMovingAverageCodebookOptimizer and AMP "
-                            "cannot be used simultaneously."
-                        )
-                    else:
-                        self.scaler.step(optimizer)
-            else:
-                if (
-                    isinstance(
-                        self.optimizer.discriminator, ExponentialMovingAverageCodebookOptimizer
-                    )
-                    and self.scaler.is_enabled()
-                ):
-                    raise NotImplementedError(
-                        "ExponentialMovingAverageCodebookOptimizer and AMP "
-                        "cannot be used simultaneously."
-                    )
-                else:
-                    self.scaler.step(self.optimizer.discriminator)
+            self.optimizer_step(self.optimizer.discriminator)
 
             if self.config.train.steps.lr_scheduler.discriminator == "iteration":
                 self.lr_scheduler.discriminator.step()
@@ -412,31 +387,7 @@ class GANTrainer(BaseTrainer):
                 self.unwrapped_model.generator.parameters(),
                 self.optimizer.generator,
             )
-
-            if isinstance(self.optimizer.generator, MultiOptimizers):
-                for optimizer in self.optimizer.generator.optimizers.values():
-                    if (
-                        isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
-                        and self.scaler.is_enabled()
-                    ):
-                        raise NotImplementedError(
-                            "ExponentialMovingAverageCodebookOptimizer and AMP "
-                            "cannot be used simultaneously."
-                        )
-                    else:
-                        self.scaler.step(optimizer)
-            else:
-                if (
-                    isinstance(self.optimizer.generator, ExponentialMovingAverageCodebookOptimizer)
-                    and self.scaler.is_enabled()
-                ):
-                    raise NotImplementedError(
-                        "ExponentialMovingAverageCodebookOptimizer and AMP "
-                        "cannot be used simultaneously."
-                    )
-                else:
-                    self.scaler.step(self.optimizer.generator)
-
+            self.optimizer_step(self.optimizer.generator)
             self.scaler.update()
 
             if self.config.train.steps.lr_scheduler.generator == "iteration":
