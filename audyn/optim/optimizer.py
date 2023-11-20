@@ -491,6 +491,8 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
                 one_hot = one_hot.float()
                 one_hot_sum = one_hot.sum(dim=0)
 
+                # NOTE: In some cases with mixed precision training,
+                #       the following matmul operation may cause inf.
                 z_e_sum = torch.matmul(dequantized_input, one_hot)
                 z_e_sum = z_e_sum.permute(1, 0).contiguous()
 

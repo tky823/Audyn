@@ -916,6 +916,7 @@ class BaseTrainer(BaseDriver):
                             isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
                             and self.scaler.is_enabled()
                         ):
+                            # TODO: address numerical instability
                             raise NotImplementedError(
                                 "ExponentialMovingAverageCodebookOptimizer and AMP "
                                 "cannot be used simultaneously."
@@ -927,6 +928,7 @@ class BaseTrainer(BaseDriver):
                         isinstance(self.optimizer, ExponentialMovingAverageCodebookOptimizer)
                         and self.scaler.is_enabled()
                     ):
+                        # TODO: address numerical instability
                         raise NotImplementedError(
                             "ExponentialMovingAverageCodebookOptimizer and AMP "
                             "cannot be used simultaneously."
@@ -949,6 +951,7 @@ class BaseTrainer(BaseDriver):
                 isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
                 and self.scaler.is_enabled()
             ):
+                # TODO: address numerical instability
                 raise NotImplementedError(
                     "ExponentialMovingAverageCodebookOptimizer and AMP "
                     "cannot be used simultaneously."
