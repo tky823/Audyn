@@ -14,6 +14,7 @@ from audyn.criterion.base import BaseCriterionWrapper, MultiCriteria
 from ...models.text_to_wave import CascadeTextToWave
 from ...modules.vqvae import VectorQuantizer
 from ...optim.optimizer import ExponentialMovingAverageCodebookOptimizer, MultiOptimizers
+from ..parallel import is_dp_or_ddp
 
 __all__ = [
     "instantiate_model",
@@ -171,7 +172,12 @@ def instantiate_optimizer(
                 params = []
 
                 for submodule_name in subconfig["modules"]:
-                    submodule: nn.Module = getattr(module, submodule_name)
+                    if is_dp_or_ddp(module):
+                        unwrapped_module = module.module
+                    else:
+                        unwrapped_module = module
+
+                    submodule: nn.Module = getattr(unwrapped_module, submodule_name)
                     params.append(submodule.parameters())
 
                 params = itertools.chain(*params)
@@ -181,7 +187,12 @@ def instantiate_optimizer(
 
                 if isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer):
                     for submodule_name in subconfig["modules"]:
-                        submodule: nn.Module = getattr(module, submodule_name)
+                        if is_dp_or_ddp(module):
+                            unwrapped_module = module.module
+                        else:
+                            unwrapped_module = module
+
+                        submodule: nn.Module = getattr(unwrapped_module, submodule_name)
                         _register_forward_hook_for_ema_codebook_optim(submodule, optimizer)
 
                 optimizer = {
