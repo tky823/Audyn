@@ -257,7 +257,7 @@ class GANTrainer(BaseTrainer):
             )
 
             if isinstance(self.optimizer.discriminator, MultiOptimizers):
-                for optimizer in self.optimizer.discriminator.optimizers.items():
+                for optimizer in self.optimizer.discriminator.optimizers.values():
                     self.scaler.step(optimizer)
             else:
                 self.scaler.step(self.optimizer.discriminator)
@@ -389,7 +389,7 @@ class GANTrainer(BaseTrainer):
             )
 
             if isinstance(self.optimizer.generator, MultiOptimizers):
-                for optimizer in self.optimizer.generator.optimizers.items():
+                for optimizer in self.optimizer.generator.optimizers.values():
                     self.scaler.step(optimizer)
             else:
                 self.scaler.step(self.optimizer.generator)
@@ -895,7 +895,7 @@ class GANTrainer(BaseTrainer):
                     raise ValueError("optimizer is not given.")
 
                 if isinstance(optimizer, MultiOptimizers):
-                    for _optimizer in optimizer.optimizers.items():
+                    for _optimizer in optimizer.optimizers.values():
                         self.scaler.unscale_(_optimizer)
                 else:
                     self.scaler.unscale_(optimizer)
