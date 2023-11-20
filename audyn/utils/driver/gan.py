@@ -12,7 +12,7 @@ from ... import __version__ as _version
 from ...criterion.gan import GANCriterion
 from ...models.gan import BaseGAN
 from ...optim.lr_scheduler import GANLRScheduler
-from ...optim.optimizer import GANOptimizer, MovingAverageWrapper
+from ...optim.optimizer import GANOptimizer, MovingAverageWrapper, MultiOptimizers
 from ..data import BaseDataLoaders
 from .base import BaseTrainer
 
@@ -255,7 +255,12 @@ class GANTrainer(BaseTrainer):
                 self.unwrapped_model.discriminator.parameters(),
                 self.optimizer.discriminator,
             )
-            self.scaler.step(self.optimizer.discriminator)
+
+            if isinstance(self.optimizer.discriminator, MultiOptimizers):
+                for optimizer in self.optimizer.discriminator.optimizers:
+                    self.scaler.step(optimizer)
+            else:
+                self.scaler.step(self.optimizer.discriminator)
 
             if self.config.train.steps.lr_scheduler.discriminator == "iteration":
                 self.lr_scheduler.discriminator.step()
@@ -382,7 +387,12 @@ class GANTrainer(BaseTrainer):
                 self.unwrapped_model.generator.parameters(),
                 self.optimizer.generator,
             )
-            self.scaler.step(self.optimizer.generator)
+
+            if isinstance(self.optimizer.generator, MultiOptimizers):
+                for optimizer in self.optimizer.generator.optimizers:
+                    self.scaler.step(optimizer)
+            else:
+                self.scaler.step(self.optimizer.generator)
 
             self.scaler.update()
 
@@ -884,7 +894,11 @@ class GANTrainer(BaseTrainer):
                 if self.scaler.is_enabled() and optimizer is None:
                     raise ValueError("optimizer is not given.")
 
-                self.scaler.unscale_(optimizer)
+                if isinstance(optimizer, MultiOptimizers):
+                    for _optimizer in optimizer.optimizers:
+                        self.scaler.unscale_(_optimizer)
+                else:
+                    self.scaler.unscale_(optimizer)
 
             clip_gradient_config = self.config.train.clip_gradient
             hydra.utils.instantiate(clip_gradient_config, parameters)

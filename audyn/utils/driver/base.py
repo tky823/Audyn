@@ -17,7 +17,7 @@ from torch.optim.lr_scheduler import _LRScheduler
 from torch.utils.data import DataLoader
 
 from ... import __version__ as _version
-from ...optim.optimizer import MovingAverageWrapper
+from ...optim.optimizer import MovingAverageWrapper, MultiOptimizers
 from ...utils.logging import get_logger
 from ...utils.parallel import is_dp_or_ddp
 from ...utils.tensorboard import get_summary_writer
@@ -569,7 +569,13 @@ class BaseTrainer(BaseDriver):
             self.optimizer.zero_grad()
             self.scaler.scale(total_loss).backward()
             self.clip_gradient_if_necessary()
-            self.scaler.step(self.optimizer)
+
+            if isinstance(self.optimizer, MultiOptimizers):
+                for optimizer in self.optimizer.optimizers:
+                    self.scaler.step(optimizer)
+            else:
+                self.scaler.step(self.optimizer)
+
             self.scaler.update()
 
             if self.config.train.steps.lr_scheduler == "iteration":
@@ -906,7 +912,11 @@ class BaseTrainer(BaseDriver):
         """
         if hasattr(self.config.train, "clip_gradient"):
             if unscale_if_necessary:
-                self.scaler.unscale_(self.optimizer)
+                if isinstance(self.optimizer, MultiOptimizers):
+                    for optimizer in self.optimizer.optimizers:
+                        self.scaler.unscale_(optimizer)
+                else:
+                    self.scaler.unscale_(self.optimizer)
 
             clip_gradient_config = self.config.train.clip_gradient
             hydra.utils.instantiate(clip_gradient_config, self.model.parameters())
