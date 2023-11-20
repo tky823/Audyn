@@ -17,7 +17,11 @@ from torch.optim.lr_scheduler import _LRScheduler
 from torch.utils.data import DataLoader
 
 from ... import __version__ as _version
-from ...optim.optimizer import MovingAverageWrapper, MultiOptimizers
+from ...optim.optimizer import (
+    ExponentialMovingAverageCodebookOptimizer,
+    MovingAverageWrapper,
+    MultiOptimizers,
+)
 from ...utils.logging import get_logger
 from ...utils.parallel import is_dp_or_ddp
 from ...utils.tensorboard import get_summary_writer
@@ -572,9 +576,27 @@ class BaseTrainer(BaseDriver):
 
             if isinstance(self.optimizer, MultiOptimizers):
                 for optimizer in self.optimizer.optimizers.values():
-                    self.scaler.step(optimizer)
+                    if (
+                        isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
+                        and self.scaler.is_enabled()
+                    ):
+                        raise NotImplementedError(
+                            "ExponentialMovingAverageCodebookOptimizer and AMP "
+                            "cannot be used simultaneously."
+                        )
+                    else:
+                        self.scaler.step(optimizer)
             else:
-                self.scaler.step(self.optimizer)
+                if (
+                    isinstance(self.optimizer, ExponentialMovingAverageCodebookOptimizer)
+                    and self.scaler.is_enabled()
+                ):
+                    raise NotImplementedError(
+                        "ExponentialMovingAverageCodebookOptimizer and AMP "
+                        "cannot be used simultaneously."
+                    )
+                else:
+                    self.scaler.step(self.optimizer)
 
             self.scaler.update()
 
@@ -914,9 +936,27 @@ class BaseTrainer(BaseDriver):
             if unscale_if_necessary:
                 if isinstance(self.optimizer, MultiOptimizers):
                     for optimizer in self.optimizer.optimizers.values():
-                        self.scaler.unscale_(optimizer)
+                        if (
+                            isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
+                            and self.scaler.is_enabled()
+                        ):
+                            raise NotImplementedError(
+                                "ExponentialMovingAverageCodebookOptimizer and AMP "
+                                "cannot be used simultaneously."
+                            )
+                        else:
+                            self.scaler.unscale_(optimizer)
                 else:
-                    self.scaler.unscale_(self.optimizer)
+                    if (
+                        isinstance(self.optimizer, ExponentialMovingAverageCodebookOptimizer)
+                        and self.scaler.is_enabled()
+                    ):
+                        raise NotImplementedError(
+                            "ExponentialMovingAverageCodebookOptimizer and AMP "
+                            "cannot be used simultaneously."
+                        )
+                    else:
+                        self.scaler.unscale_(self.optimizer)
 
             clip_gradient_config = self.config.train.clip_gradient
             hydra.utils.instantiate(clip_gradient_config, self.model.parameters())

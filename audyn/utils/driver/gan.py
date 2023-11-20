@@ -12,7 +12,12 @@ from ... import __version__ as _version
 from ...criterion.gan import GANCriterion
 from ...models.gan import BaseGAN
 from ...optim.lr_scheduler import GANLRScheduler
-from ...optim.optimizer import GANOptimizer, MovingAverageWrapper, MultiOptimizers
+from ...optim.optimizer import (
+    ExponentialMovingAverageCodebookOptimizer,
+    GANOptimizer,
+    MovingAverageWrapper,
+    MultiOptimizers,
+)
 from ..data import BaseDataLoaders
 from .base import BaseTrainer
 
@@ -258,9 +263,29 @@ class GANTrainer(BaseTrainer):
 
             if isinstance(self.optimizer.discriminator, MultiOptimizers):
                 for optimizer in self.optimizer.discriminator.optimizers.values():
-                    self.scaler.step(optimizer)
+                    if (
+                        isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
+                        and self.scaler.is_enabled()
+                    ):
+                        raise NotImplementedError(
+                            "ExponentialMovingAverageCodebookOptimizer and AMP "
+                            "cannot be used simultaneously."
+                        )
+                    else:
+                        self.scaler.step(optimizer)
             else:
-                self.scaler.step(self.optimizer.discriminator)
+                if (
+                    isinstance(
+                        self.optimizer.discriminator, ExponentialMovingAverageCodebookOptimizer
+                    )
+                    and self.scaler.is_enabled()
+                ):
+                    raise NotImplementedError(
+                        "ExponentialMovingAverageCodebookOptimizer and AMP "
+                        "cannot be used simultaneously."
+                    )
+                else:
+                    self.scaler.step(self.optimizer.discriminator)
 
             if self.config.train.steps.lr_scheduler.discriminator == "iteration":
                 self.lr_scheduler.discriminator.step()
@@ -390,9 +415,27 @@ class GANTrainer(BaseTrainer):
 
             if isinstance(self.optimizer.generator, MultiOptimizers):
                 for optimizer in self.optimizer.generator.optimizers.values():
-                    self.scaler.step(optimizer)
+                    if (
+                        isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
+                        and self.scaler.is_enabled()
+                    ):
+                        raise NotImplementedError(
+                            "ExponentialMovingAverageCodebookOptimizer and AMP "
+                            "cannot be used simultaneously."
+                        )
+                    else:
+                        self.scaler.step(optimizer)
             else:
-                self.scaler.step(self.optimizer.generator)
+                if (
+                    isinstance(self.optimizer.generator, ExponentialMovingAverageCodebookOptimizer)
+                    and self.scaler.is_enabled()
+                ):
+                    raise NotImplementedError(
+                        "ExponentialMovingAverageCodebookOptimizer and AMP "
+                        "cannot be used simultaneously."
+                    )
+                else:
+                    self.scaler.step(self.optimizer.generator)
 
             self.scaler.update()
 
@@ -896,9 +939,27 @@ class GANTrainer(BaseTrainer):
 
                 if isinstance(optimizer, MultiOptimizers):
                     for _optimizer in optimizer.optimizers.values():
-                        self.scaler.unscale_(_optimizer)
+                        if (
+                            isinstance(_optimizer, ExponentialMovingAverageCodebookOptimizer)
+                            and self.scaler.is_enabled()
+                        ):
+                            raise NotImplementedError(
+                                "ExponentialMovingAverageCodebookOptimizer and AMP "
+                                "cannot be used simultaneously."
+                            )
+                        else:
+                            self.scaler.unscale_(_optimizer)
                 else:
-                    self.scaler.unscale_(optimizer)
+                    if (
+                        isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
+                        and self.scaler.is_enabled()
+                    ):
+                        raise NotImplementedError(
+                            "ExponentialMovingAverageCodebookOptimizer and AMP "
+                            "cannot be used simultaneously."
+                        )
+                    else:
+                        self.scaler.unscale_(optimizer)
 
             clip_gradient_config = self.config.train.clip_gradient
             hydra.utils.instantiate(clip_gradient_config, parameters)
