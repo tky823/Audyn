@@ -33,7 +33,7 @@ data="vqvae"
 train="vqvae"
 model="vqvae"
 optimizer="vqvae"
-lr_scheduler="vqvae"
+lr_scheduler="none"
 criterion="vqvae"
 
 . ./run.sh \
