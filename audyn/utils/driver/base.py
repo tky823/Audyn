@@ -571,7 +571,7 @@ class BaseTrainer(BaseDriver):
             self.clip_gradient_if_necessary()
 
             if isinstance(self.optimizer, MultiOptimizers):
-                for optimizer in self.optimizer.optimizers:
+                for optimizer in self.optimizer.optimizers.values():
                     self.scaler.step(optimizer)
             else:
                 self.scaler.step(self.optimizer)
@@ -913,7 +913,7 @@ class BaseTrainer(BaseDriver):
         if hasattr(self.config.train, "clip_gradient"):
             if unscale_if_necessary:
                 if isinstance(self.optimizer, MultiOptimizers):
-                    for optimizer in self.optimizer.optimizers:
+                    for optimizer in self.optimizer.optimizers.values():
                         self.scaler.unscale_(optimizer)
                 else:
                     self.scaler.unscale_(self.optimizer)
