@@ -81,6 +81,7 @@ class Conv2d(nn.Module):
         self.dilation = dilation
         self.groups = groups
         self.padding_mode = padding_mode
+        self.capture_center = capture_center
         self.num_pixels = num_pixels
 
         weight = torch.empty((out_channels, in_channels // groups, num_pixels), **factory_kwargs)
@@ -115,6 +116,7 @@ class Conv2d(nn.Module):
             s += ", bias=False"
         if self.padding_mode != "zeros":
             s += ", padding_mode={padding_mode}"
+        s += ", capture_center={capture_center}"
         return s.format(**self.__dict__)
 
     def _conv_forward(
