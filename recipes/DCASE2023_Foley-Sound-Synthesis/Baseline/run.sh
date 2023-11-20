@@ -104,6 +104,18 @@ fi
 
 if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
     echo "Stage 3: Save prior from VQ-VAE"
+
+    (
+        . ./save_prior.sh \
+        --tag "${tag}" \
+        --exp-dir "${exp_dir}" \
+        --checkpoint "${vqvae_checkpoint}" \
+        --system "${system}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --train "${train}" \
+        --model "${model}"
+    )
 fi
 
 if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
