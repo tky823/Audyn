@@ -69,4 +69,4 @@ output:
 steps:
   epochs:
   iterations: 70000
-  lr_scheduler: epoch
+  lr_scheduler:
