@@ -40,6 +40,7 @@ criterion="vqvae"
 . ./run.sh \
 --stage 2 \
 --stop-stage 2 \
+--tag <TAG> \
 --data "${data}" \
 --train "${train}" \
 --model "${model}" \
@@ -61,6 +62,7 @@ criterion="hifigan"
 . ./run.sh \
 --stage 5 \
 --stop-stage 5 \
+--tag <TAG> \
 --data "${data}" \
 --train "${train}" \
 --model "${model}" \
