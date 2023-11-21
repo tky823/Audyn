@@ -59,7 +59,7 @@ output:
       every: 20000
       path: ${...exp_dir}/model/vqvae/iteration{iteration}.pth
     epoch:
-      every: 50
+      every: 200
       path: ${...exp_dir}/model/vqvae/epoch{epoch}.pth
     last:
       path: ${...exp_dir}/model/vqvae/last.pth
