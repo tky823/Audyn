@@ -542,8 +542,8 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
                     dequantized_input = torch.cat(gathered_dequantized_input, dim=1)
                     one_hot = torch.cat(gathered_one_hot, dim=0)
 
-                one_hot = one_hot.float()
                 one_hot_sum = one_hot.sum(dim=0)
+                one_hot = one_hot.to(dequantized_input.dtype)
 
                 # NOTE: In some cases with mixed precision training,
                 #       the following matmul operation may cause inf.
