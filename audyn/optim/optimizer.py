@@ -339,9 +339,10 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
         reset_step (int, optional): Step to reset codebook proposed by
             [#williams2020hierarchical]_. Default: ``None`` (Codebook
             reset is deactivated).
-        reset_var (float, optional): Variance of codebook reset.
-            If ``None``, 0.01 is used by default.
-        reset_rate (float, optional): If usage of least used codebook is
+        reset_var (float, optional): This parameter is activated if ``reset_step``
+            is specified. Variance of codebook reset. If ``None``, 0.01 is used by default.
+        reset_rate (float, optional): This parameter is activated if ``reset_step``
+            is specified. If usage of least used codebook is
             less than ``reset_rate``, position will be reset. If ``None``,
             0.03 is used by default.
 
