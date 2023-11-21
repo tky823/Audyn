@@ -341,6 +341,9 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
             reset is deactivated).
         reset_var (float, optional): Variance of codebook reset.
             If ``None``, 0.01 is used by default.
+        reset_rate (float, optional): If usage of least used codebook is
+            less than ``reset_rate``, position will be reset. If ``None``,
+            0.03 is used by default.
 
     .. note::
 
@@ -394,6 +397,7 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
             smooth: float = 0.999,
             reset_step: Optional[int] = None,
             reset_var: Optional[float] = None,
+            reset_rate: Optional[float] = None,
         ) -> Optimizer:
             ...
 
@@ -407,16 +411,27 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
             smooth: float = 0.999,
             reset_step: Optional[int] = None,
             reset_var: Optional[float] = None,
+            reset_rate: Optional[float] = None,
         ) -> Optimizer:
             ...
 
-    def __init__(self, params, smooth=0.999, reset_step=None, reset_var=None) -> None:
+    def __init__(
+        self,
+        params,
+        smooth=0.999,
+        reset_step=None,
+        reset_var=None,
+        reset_rate=None,
+    ) -> None:
         defaults = {}
         super().__init__(params, defaults)
 
         if reset_step is None:
             if reset_var is not None:
                 raise ValueError("reset_var is specified, but reset_step is not defined.")
+
+            if reset_rate is not None:
+                raise ValueError("reset_rate is specified, but reset_step is not defined.")
 
             codebook_reset = False
         else:
@@ -438,6 +453,9 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
 
             if reset_var is None:
                 reset_var = 0.01
+
+            if reset_rate is None:
+                reset_rate = 0.03
         else:
             accumulated_steps = None
 
@@ -496,6 +514,7 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
         ] = num_accumulated_groups
         self.reset_step = reset_step
         self.reset_var = reset_var
+        self.reset_rate = reset_rate
 
     def store_current_stats(self, module: VectorQuantizer, input: Any, output: Any) -> None:
         # TODO: generalize
@@ -633,17 +652,18 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
                 if codebook_reset and self.accumulated_steps % self.reset_step == 0:
                     std = math.sqrt(self.reset_var)
 
-                    min_idx = torch.argmin(num_accumulated)
-                    max_idx = torch.argmax(num_accumulated)
-                    most_used = param.data[max_idx]
-                    replaced = most_used + std * torch.randn_like(most_used)
+                    least_usage, min_idx = torch.min(num_accumulated, dim=0)
+                    most_usage, max_idx = torch.max(num_accumulated, dim=0)
 
-                    param.data[min_idx].copy_(replaced)
+                    if least_usage < self.reset_rate * most_usage:
+                        most_used = param.data[max_idx]
+                        replaced = most_used + std * torch.randn_like(most_used)
+                        param.data[min_idx].copy_(replaced)
 
-                    # reset statistics
-                    momentum.data[min_idx].copy_(replaced)
-                    num_samples_tracked.data[min_idx].fill_(1)
-                    num_accumulated.data.zero_()
+                        # reset statistics
+                        momentum.data[min_idx].copy_(replaced)
+                        num_samples_tracked.data[min_idx].fill_(1)
+                        num_accumulated.data.zero_()
 
     def state_dict(self) -> Dict[str, Any]:
         """Returns the state of the optimizer as a ``dict``.
