@@ -87,6 +87,7 @@ def test_exponential_moving_average_codebook_optimizer() -> None:
 
     codebook_size, embedding_dim = 3, 4
     batch_size, length = 2, 5
+    num_initial_steps, num_total_steps = 5, 10
 
     with tempfile.TemporaryDirectory() as temp_dir:
         model = VectorQuantizer(codebook_size, embedding_dim)
@@ -94,9 +95,10 @@ def test_exponential_moving_average_codebook_optimizer() -> None:
         model.register_forward_hook(optimizer.store_current_stats)
         input = torch.randn((batch_size, embedding_dim, length))
 
-        optimizer.zero_grad()
-        _, _ = model(input)
-        optimizer.step()
+        for _ in range(num_initial_steps):
+            optimizer.zero_grad()
+            _, _ = model(input)
+            optimizer.step()
 
         state_dict_stop = {}
         state_dict_stop["model"] = model.state_dict()
@@ -105,11 +107,12 @@ def test_exponential_moving_average_codebook_optimizer() -> None:
         path = os.path.join(temp_dir, "stop.pth")
         torch.save(state_dict_stop, path)
 
-        optimizer.zero_grad()
-        output, _ = model(input)
-        loss = output.mean()
-        loss.backward()
-        optimizer.step()
+        for _ in range(num_initial_steps, num_total_steps):
+            optimizer.zero_grad()
+            output, _ = model(input)
+            loss = output.mean()
+            loss.backward()
+            optimizer.step()
 
         state_dict_sequential = {}
         state_dict_sequential["model"] = model.state_dict()
@@ -125,11 +128,12 @@ def test_exponential_moving_average_codebook_optimizer() -> None:
         optimizer.load_state_dict(state_dict_stop["optimizer"])
 
         # resume training from checkpoint
-        optimizer.zero_grad()
-        output, _ = model(input)
-        loss = output.mean()
-        loss.backward()
-        optimizer.step()
+        for _ in range(num_initial_steps, num_total_steps):
+            optimizer.zero_grad()
+            output, _ = model(input)
+            loss = output.mean()
+            loss.backward()
+            optimizer.step()
 
         state_dict_resume = {}
         state_dict_resume["model"] = model.state_dict()
