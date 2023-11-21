@@ -702,6 +702,7 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
             "one_hot_sum_groups": one_hot_sum_groups,
             "z_e_sum_state": packed_z_e_sum_state,
             "z_e_sum_groups": z_e_sum_groups,
+            "smooth": self.smooth,
         }
 
         if self.codebook_reset:
@@ -790,6 +791,9 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
         _load_groups(momentum_groups, packed_momentum_state)
         _load_groups(one_hot_sum_groups, packed_one_hot_sum_state)
         _load_groups(z_e_sum_groups, packed_z_e_sum_state)
+
+        # In older version, smooth parameter is not saved.
+        self.smooth = state_dict.get("smooth", self.smooth)
 
         if self.codebook_reset:
             num_accumulated_groups = self.num_accumulated_groups
