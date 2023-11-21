@@ -717,6 +717,9 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
                     "num_accumulated_state": packed_num_accumulated_state,
                     "num_accumulated_groups": num_accumulated_groups,
                     "accumulated_steps": self.accumulated_steps,
+                    "reset_step": self.reset_step,
+                    "reset_var": self.reset_var,
+                    "reset_rate": self.reset_rate,
                 }
             )
 
@@ -797,6 +800,9 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
             _load_groups(num_accumulated_groups, packed_num_accumulated_state)
 
             self.accumulated_steps = state_dict["accumulated_steps"]
+            self.reset_step = state_dict["reset_step"]
+            self.reset_var = state_dict["reset_var"]
+            self.reset_rate = state_dict["reset_rate"]
 
 
 class MultiOptimizers:
