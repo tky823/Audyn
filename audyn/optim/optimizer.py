@@ -335,6 +335,11 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
     Args:
         params: Parameters to be optimized.
         smooth (float): Smoothing factor. Default: ``0.999``.
+        reset_step (int, optional): Step to reset codebook proposed by
+            [#williams2020hierarchical]_. Default: ``None`` (Codebook
+            reset is deactivated).
+        reset_var (float, optional): Variance of codebook reset.
+            If ``None``, 0.01 is used by default.
 
     .. note::
 
@@ -353,6 +358,7 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
         >>> codebook_size, embedding_dim = 3, 4
         >>> batch_size, length = 2, 5
         >>> model = VectorQuantizer(codebook_size, embedding_dim)
+        >>> # w/o codebook reset
         >>> optimizer = ExponentialMovingAverageCodebookOptimizer(model.parameters())
         >>> model.register_forward_hook(optimizer.store_current_stats)
         >>> model.codebook.weight
@@ -369,24 +375,52 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
                 [-1.0845, -1.3986,  0.4033,  0.8380],
                 [-0.2900,  0.1278, -0.2841, -0.0953]], requires_grad=True)
 
+    .. [#williams2020hierarchical]
+        W. Williams et al., "Hierarchical quantized autoencoders,"
+        in *NeurIPS*, 2020, pp.4524-4535,
     """
 
     if IS_TORCH_LT_2_1:
 
         @overload
-        def __init__(self, params: Iterable, smooth: float = 0.999) -> Optimizer:
+        def __init__(
+            self,
+            params: Iterable,
+            smooth: float = 0.999,
+            reset_step: Optional[int] = None,
+            reset_var: Optional[float] = None,
+        ) -> Optimizer:
             ...
 
     else:
         from torch.optim.optimizer import params_t
 
         @overload
-        def __init__(self, params: params_t, smooth: float = 0.999) -> Optimizer:
+        def __init__(
+            self,
+            params: params_t,
+            smooth: float = 0.999,
+            reset_step: Optional[int] = None,
+            reset_var: Optional[float] = None,
+        ) -> Optimizer:
             ...
 
-    def __init__(self, params, smooth=0.999) -> None:
+    def __init__(self, params, smooth=0.999, reset_step=None, reset_var=None) -> None:
         defaults = {}
         super().__init__(params, defaults)
+
+        # codebook reset
+        if reset_step is None:
+            if reset_var is not None:
+                raise ValueError("reset_var is specified, but reset_step is not defined.")
+
+            codebook_reset = False
+            accumulated_steps = None
+            num_accumulated_groups = None
+        else:
+            codebook_reset = True
+            accumulated_steps = 0
+            num_accumulated_groups = []
 
         # running stats
         num_samples_tracked_groups = []
@@ -402,13 +436,16 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
             one_hot_sum_group = []
             z_e_sum_group = []
 
+            if codebook_reset:
+                num_accumulated = []
+
             for param in param_group["params"]:
                 weight: torch.Tensor = param.data
 
                 # We assume each codebook is used at least once,
                 # which is helpful to avoid zero division in updates of codebooks.
                 _num_samples_tracked = torch.ones(
-                    weight.size(0), device=weight.device, dtype=torch.float
+                    weight.size(0), device=weight.device, dtype=weight.dtype
                 )
                 num_samples_tracked.append(_num_samples_tracked)
 
@@ -416,15 +453,24 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
                 _momentum.data.copy_(weight.data)
                 momentum.append(_momentum)
 
-                one_hot_sum_group.append(
-                    torch.zeros(weight.size(0), device=weight.device, dtype=torch.long)
-                )
-                z_e_sum_group.append(torch.zeros_like(weight))
+                one_hot_sum = torch.zeros(weight.size(0), device=weight.device, dtype=torch.long)
+                one_hot_sum_group.append(one_hot_sum)
+                z_e_sum = torch.zeros_like(weight)
+                z_e_sum_group.append(z_e_sum)
+
+                if codebook_reset:
+                    _num_accumulated = torch.zeros(
+                        weight.size(0), device=weight.device, dtype=torch.long
+                    )
+                    num_accumulated.append(_num_accumulated)
 
             num_samples_tracked_groups.append(num_samples_tracked)
             momentum_groups.append(momentum)
             one_hot_sum_groups.append(one_hot_sum_group)
             z_e_sum_groups.append(z_e_sum_group)
+
+            if codebook_reset:
+                num_accumulated_groups.append(num_accumulated)
 
         self.num_samples_tracked_groups: List[List[torch.Tensor]] = num_samples_tracked_groups
         self.momentum_groups: List[List[torch.Tensor]] = momentum_groups
@@ -432,6 +478,14 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
         self.z_e_sum_groups: List[List[torch.Tensor]] = z_e_sum_groups
 
         self.smooth = smooth
+
+        self.codebook_reset = codebook_reset
+        self.accumulated_steps = accumulated_steps
+        self.num_accumulated_groups: Optional[
+            List[List[torch.LongTensor]]
+        ] = num_accumulated_groups
+        self.reset_step = reset_step
+        self.reset_var = reset_var
 
     def store_current_stats(self, module: VectorQuantizer, input: Any, output: Any) -> None:
         # TODO: generalize
