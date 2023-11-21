@@ -33,7 +33,7 @@ data="hifigan"
 data="vqvae"
 train="vqvae"
 model="vqvae"
-optimizer="vqvae"
+optimizer="vqvae_ema"  # "vqvae"
 lr_scheduler="none"
 criterion="vqvae"
 
