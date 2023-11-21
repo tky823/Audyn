@@ -1,6 +1,7 @@
 # Baseline recipe of Foley Sound Synthesis task in DCASE 2023
 
 This recipe reproduces the baseline system of Foley Sound Synthesis task in DCASE 2023.
+The original implementation can be found at https://github.com/DCASE2023-Task7-Foley-Sound-Synthesis/dcase2023_task7_baseline.
 
 ## Stages
 
