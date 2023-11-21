@@ -346,9 +346,13 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
 
         This class does not use gradient descent.
 
+    .. note::
+
+        This class supports distributed data parallel.
+
     .. warning::
 
-        This class does not support data parallel and distributed data parallel.
+        This class does not support data parallel.
 
     Examples:
 
