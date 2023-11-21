@@ -82,16 +82,27 @@ def test_exponential_moving_average_wrapper(build_from_optim_class: bool):
     optimizer_wrapper.load_state_dict(state_dict["optimizer"])
 
 
-def test_exponential_moving_average_codebook_optimizer() -> None:
+@pytest.mark.parametrize("codebook_reset", [True, False])
+def test_exponential_moving_average_codebook_optimizer(codebook_reset: bool) -> None:
     torch.manual_seed(0)
 
     codebook_size, embedding_dim = 3, 4
     batch_size, length = 2, 5
     num_initial_steps, num_total_steps = 5, 10
+    reset_step, reset_var = 3, 0.1
 
     with tempfile.TemporaryDirectory() as temp_dir:
         model = VectorQuantizer(codebook_size, embedding_dim)
-        optimizer = ExponentialMovingAverageCodebookOptimizer(model.parameters())
+
+        if codebook_reset:
+            optimizer = ExponentialMovingAverageCodebookOptimizer(
+                model.parameters(),
+                reset_step=reset_step,
+                reset_var=reset_var,
+            )
+        else:
+            optimizer = ExponentialMovingAverageCodebookOptimizer(model.parameters())
+
         model.register_forward_hook(optimizer.store_current_stats)
         input = torch.randn((batch_size, embedding_dim, length))
 
@@ -141,6 +152,10 @@ def test_exponential_moving_average_codebook_optimizer() -> None:
 
         path = os.path.join(temp_dir, "sequential.pth")
         state_dict_sequential = torch.load(path)
+
+        if codebook_reset:
+            # When codebook_reset=True, optimizer uses torch.randn, which violates reproducibility.
+            return
 
         for (k_sequential, v_sequential), (k_resume, v_resume) in zip(
             state_dict_sequential["model"].items(), state_dict_resume["model"].items()
