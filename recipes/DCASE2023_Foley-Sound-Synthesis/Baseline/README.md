@@ -14,7 +14,7 @@ Our implementation is based on https://github.com/DCASE2023-Task7-Foley-Sound-Sy
 ### Stage 0: Preprocess official development dataset
 
 ```sh
-data="vqvae"
+data="pixelsnail+vqvae"
 
 . ./run.sh \
 --stage 0 \
@@ -36,7 +36,7 @@ data="hifigan"
 ### Stage 2: Train VQVAE
 
 ```sh
-data="vqvae"
+data="pixelsnail+vqvae"
 train="vqvae"
 model="vqvae"
 optimizer="vqvae_ema"  # "vqvae"
@@ -58,7 +58,7 @@ criterion="vqvae"
 ### Stage 3: Save prior of VQVAE
 
 ```sh
-data="vqvae"
+data="pixelsnail+vqvae"
 train="prior"
 model="vqvae"
 
@@ -77,7 +77,7 @@ vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.p
 ### Stage 4: Train PixelSNAIL
 
 ```sh
-data="vqvae"
+data="pixelsnail+vqvae"
 train="pixelsnail"
 model="pixelsnail"
 optimizer="pixelsnail"

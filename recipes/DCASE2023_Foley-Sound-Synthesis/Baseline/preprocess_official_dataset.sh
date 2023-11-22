@@ -11,7 +11,7 @@ dump_root="./dump"
 log_dir="./log"
 
 preprocess="baseline"
-data="vqvae"
+data="pixelsnail+vqvae"
 
 n_validation=10
 
