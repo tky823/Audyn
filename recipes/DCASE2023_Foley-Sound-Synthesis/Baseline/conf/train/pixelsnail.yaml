@@ -26,11 +26,13 @@ key_mapping:
   train:
     input:
       input: indices
+      conditioning: category
     output: estimated_indices
   validation: ${.train}
   inference:
     input:
       initial_state: initial_index
+      conditioning: category
       height: height
       width: width
     output: estimated_indices

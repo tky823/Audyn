@@ -106,6 +106,10 @@ def collate_fn(
         (batch_size, 1, 1),
         **factory_kwargs,
     )
+    dict_batch["category"] = torch.tensor(
+        dict_batch["category"],
+        **factory_kwargs,
+    )
     dict_batch["height"] = height
     dict_batch["width"] = width
 
