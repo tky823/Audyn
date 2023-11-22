@@ -108,6 +108,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
     (
         . ./save_prior.sh \
         --tag "${tag}" \
+        --dump-root "${dump_root}" \
         --exp-dir "${exp_dir}" \
         --checkpoint "${vqvae_checkpoint}" \
         --system "${system}" \
