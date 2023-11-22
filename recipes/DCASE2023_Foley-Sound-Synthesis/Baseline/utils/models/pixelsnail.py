@@ -1,14 +1,274 @@
+import copy
 import math
-from typing import Optional
+from typing import Callable, Optional, Union
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from packaging import version
+from torch.nn.common_types import _size_2_t
+from torch.nn.modules.utils import _pair
 
-from audyn.modules.pixelsnail import _generate_square_subsequent_mask
+from audyn.modules.pixelcnn import CausalConv2d as PixelCNNCausalConv2d
+from audyn.modules.pixelsnail import _generate_square_subsequent_mask, _get_activation
 
 IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
+
+
+class ResidualBlock(nn.Module):
+    """ResidualBlock.
+
+    Args:
+        in_channels (int): Number of input channels.
+        hidden_channels (int): Number of hidden channels.
+        kernel_size (_size_2_t): Kernel size in convolutions.
+        causal: Causality. If ``causal=True``, causal convolution is used.
+        weight_regularization (str, optional): Weight regularization.
+        activation (str, nn.Module, or callable): Activation function. Default: ``elu``.
+        dropout (float): Dropout rate in attention. Default: ``0.0``.
+
+    """
+
+    def __init__(
+        self,
+        in_channels: int,
+        hidden_channels: int,
+        kernel_size: _size_2_t,
+        causal: bool = False,
+        weight_regularization: Optional[str] = "weight_norm",
+        activation: Optional[
+            Union[str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]
+        ] = "elu",
+        dropout: float = 0.1,
+        auxiliary_channels: Optional[int] = None,
+        conditional_channels: Optional[int] = None,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
+    ) -> None:
+        factory_kwargs = {"device": device, "dtype": dtype}
+
+        super().__init__()
+
+        kernel_size = _pair(kernel_size)
+
+        if causal:
+            # To be compatible with definition in CausalConv2d,
+            # re-define kernel_size.
+            kh, kw = kernel_size
+            kernel_size = 2 * kh - 1, kw
+
+        self.kernel_size = kernel_size
+        self.causal = causal
+
+        if isinstance(activation, str):
+            activation_1 = _get_activation(activation)
+            activation_2 = _get_activation(activation)
+
+            if auxiliary_channels is None:
+                aux_activation = None
+            else:
+                aux_activation = _get_activation(activation)
+        else:
+            # NOTE: Activations are not shared with each other.
+            activation_1 = copy.deepcopy(activation)
+            activation_2 = copy.deepcopy(activation)
+
+            if auxiliary_channels is None:
+                aux_activation = None
+            else:
+                aux_activation = copy.deepcopy(activation)
+
+        self.activation_1 = activation_1
+
+        if causal:
+            # NOTE: capture_center=True also ensures causality.
+            self.conv2d_1 = PixelCNNCausalConv2d(
+                in_channels,
+                hidden_channels,
+                kernel_size=kernel_size,
+                capture_center=False,
+                **factory_kwargs,
+            )
+        else:
+            self.conv2d_1 = nn.Conv2d(
+                in_channels,
+                hidden_channels,
+                kernel_size=kernel_size,
+                **factory_kwargs,
+            )
+
+        # auxiliary input
+        if auxiliary_channels is None:
+            self.aux_activation = None
+            self.aux_conv2d = None
+        else:
+            self.aux_activation = aux_activation
+            self.aux_conv2d = nn.Conv2d(
+                auxiliary_channels,
+                hidden_channels,
+                kernel_size=1,
+                **factory_kwargs,
+            )
+
+        self.activation_2 = activation_2
+        self.dropout2d = nn.Dropout(dropout)
+
+        if causal:
+            # NOTE: capture_center=True also ensures causality.
+            self.conv2d_2 = PixelCNNCausalConv2d(
+                hidden_channels,
+                2 * in_channels,
+                kernel_size=kernel_size,
+                capture_center=False,
+                **factory_kwargs,
+            )
+        else:
+            self.conv2d_2 = nn.Conv2d(
+                hidden_channels,
+                2 * in_channels,
+                kernel_size=kernel_size,
+                **factory_kwargs,
+            )
+
+        # conditional input
+        if conditional_channels is None:
+            self.conditional_conv2d = None
+        else:
+            self.conditional_conv2d = nn.Conv2d(
+                conditional_channels,
+                2 * in_channels,
+                kernel_size=1,
+                bias=False,
+                **factory_kwargs,
+            )
+
+        self.glu = nn.GLU(dim=1)
+
+        if weight_regularization is not None:
+            if weight_regularization == "weight_norm":
+                self.weight_norm_()
+            elif weight_regularization == "spectral_norm":
+                self.spectral_norm_()
+            else:
+                raise ValueError(
+                    "{}-based weight regularization is not supported.".format(
+                        weight_regularization
+                    )
+                )
+
+    def forward(
+        self,
+        input: torch.Tensor,
+        auxiliary: Optional[torch.Tensor] = None,
+        conditioning: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """
+
+        Args:
+            input (torch.Tensor): Input feature of shape (batch_size, in_channels, height, width).
+            auxiliary (torch.Tensor, optional): Auxiliary feature of
+                shape (batch_size, auxiliary_channels, height, width).
+            conditioning (torch.Tensor, optional): Conditional feature of
+                shape (batch_size, conditional_channels, height, width).
+
+        Returns:
+            torch.Tensor: Output feature of shape (batch_size, in_channels, height, width).
+
+        """
+        kh, kw = self.kernel_size
+
+        padding_height = (kh - 1) // 2
+        padding_width = (kw - 1) // 2
+        padding_size = (padding_width, padding_width, padding_height, padding_height)
+
+        x = self.activation_1(input)
+        x = F.pad(x, padding_size)
+        x = self.conv2d_1(x)
+
+        if auxiliary is not None:
+            x_auxiliary = self.aux_activation(auxiliary)
+            x = x + self.aux_conv2d(x_auxiliary)
+
+        x = self.activation_2(x)
+        x = self.dropout2d(x)
+        x = F.pad(x, padding_size)
+        x = self.conv2d_2(x)
+
+        if conditioning is not None:
+            x = x + self.conditional_conv2d(conditioning)
+
+        x = self.glu(x)
+        output = x + input
+
+        return output
+
+    def weight_norm_(self) -> None:
+        """Set weight_norm to convolutions."""
+        if IS_TORCH_LT_2_1:
+            weight_norm_fn = nn.utils.weight_norm
+        else:
+            weight_norm_fn = nn.utils.parametrizations.weight_norm
+
+        self.conv2d_1 = weight_norm_fn(self.conv2d_1)
+        self.conv2d_2 = weight_norm_fn(self.conv2d_2)
+
+        if self.aux_conv2d is not None:
+            self.aux_conv2d = weight_norm_fn(self.aux_conv2d)
+
+        if self.conditional_conv2d is not None:
+            self.conditional_conv2d = weight_norm_fn(self.conditional_conv2d)
+
+    def remove_weight_norm_(self) -> None:
+        """Remove weight_norm from convolutions."""
+        if IS_TORCH_LT_2_1:
+            remove_weight_norm_fn = nn.utils.remove_weight_norm
+            remove_weight_norm_args = ()
+        else:
+            remove_weight_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_weight_norm_args = ("weight",)
+
+        self.conv2d_1 = remove_weight_norm_fn(self.conv2d_1, *remove_weight_norm_args)
+        self.conv2d_2 = remove_weight_norm_fn(self.conv2d_2, *remove_weight_norm_args)
+
+        if self.aux_conv2d is not None:
+            self.aux_conv2d = remove_weight_norm_fn(self.aux_conv2d)
+
+        if self.conditional_conv2d is not None:
+            self.conditional_conv2d = remove_weight_norm_fn(self.conditional_conv2d)
+
+    def spectral_norm_(self) -> None:
+        """Set spectral_norm to convolutions."""
+        if IS_TORCH_LT_2_1:
+            spectral_norm_fn = nn.utils.spectral_norm
+        else:
+            spectral_norm_fn = nn.utils.parametrizations.spectral_norm
+
+        self.conv2d_1 = spectral_norm_fn(self.conv2d_1)
+        self.conv2d_2 = spectral_norm_fn(self.conv2d_2)
+
+        if self.aux_conv2d is not None:
+            self.aux_conv2d = spectral_norm_fn(self.aux_conv2d)
+
+        if self.conditional_conv2d is not None:
+            self.conditional_conv2d = spectral_norm_fn(self.conditional_conv2d)
+
+    def remove_spectral_norm_(self) -> None:
+        """Remove spectral_norm from convolutions."""
+        if IS_TORCH_LT_2_1:
+            remove_spectral_norm_fn = nn.utils.remove_spectral_norm
+            remove_spectral_norm_args = ()
+        else:
+            remove_spectral_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_spectral_norm_args = ("weight",)
+
+        self.conv2d_1 = remove_spectral_norm_fn(self.conv2d_1, *remove_spectral_norm_args)
+        self.conv2d_2 = remove_spectral_norm_fn(self.conv2d_2, *remove_spectral_norm_args)
+
+        if self.aux_conv2d is not None:
+            self.aux_conv2d = remove_spectral_norm_fn(self.aux_conv2d)
+
+        if self.conditional_conv2d is not None:
+            self.conditional_conv2d = remove_spectral_norm_fn(self.conditional_conv2d)
 
 
 class CausalAttention2d(nn.Module):
