@@ -1,0 +1,63 @@
+defaults:
+  - record: pixelsnail
+  - _self_
+
+dataset:
+  train:
+    _target_: audyn.utils.data.dataset.TorchObjectDataset
+    list_path:
+    feature_dir:
+  validation:
+    _target_: audyn.utils.data.dataset.TorchObjectDataset
+    list_path:
+    feature_dir:
+
+dataloader:
+  train:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 8
+    shuffle: true
+  validation:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 8
+    shuffle: false
+
+key_mapping:
+  train:
+    input:
+      input: indices
+    output: estimated_indices
+  validation: ${.train}
+  inference:
+    input:
+      initial_state: initial_index
+      height: height
+      width: width
+    output: estimated_indices
+
+clip_gradient:
+  _target_: torch.nn.utils.clip_grad_norm_
+  max_norm: 10
+
+resume:
+  continue_from:
+
+output:
+  exp_dir: "./exp"
+  tensorboard_dir: "./tensorboard"
+  save_checkpoint:
+    iteration:
+      every: 5000
+      path: ${...exp_dir}/model/pixelsnail/iteration{iteration}.pth
+    epoch:
+      every: 20
+      path: ${...exp_dir}/model/pixelsnail/epoch{epoch}.pth
+    last:
+      path: ${...exp_dir}/model/pixelsnail/last.pth
+    best_epoch:
+      path: ${...exp_dir}/model/pixelsnail/best_epoch.pth
+
+steps:
+  epochs: 1500
+  iterations:
+  lr_scheduler:
