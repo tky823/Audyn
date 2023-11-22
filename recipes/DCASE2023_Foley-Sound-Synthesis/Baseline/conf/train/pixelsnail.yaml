@@ -47,10 +47,10 @@ output:
   tensorboard_dir: "./tensorboard"
   save_checkpoint:
     iteration:
-      every: 5000
+      every: 200000
       path: ${...exp_dir}/model/pixelsnail/iteration{iteration}.pth
     epoch:
-      every: 20
+      every: 500
       path: ${...exp_dir}/model/pixelsnail/epoch{epoch}.pth
     last:
       path: ${...exp_dir}/model/pixelsnail/last.pth

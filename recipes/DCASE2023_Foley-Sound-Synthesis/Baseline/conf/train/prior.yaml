@@ -19,7 +19,6 @@ key_mapping:
   save:
     input:
       identifier: filename
-      melspectrogram_length: melspectrogram_length
     output:
       indices: indices
 

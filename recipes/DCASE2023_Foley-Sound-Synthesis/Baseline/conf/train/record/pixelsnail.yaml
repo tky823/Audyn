@@ -1,6 +1,6 @@
 image:
   iteration:
-    every: 100
+    every: 1000
     sample_size: 1
     key_mapping:
       output:
