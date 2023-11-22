@@ -36,8 +36,8 @@ class PixelSNAIL(nn.Module):
         num_heads: int,
         num_blocks: int,
         num_repeats: int,
+        num_post_blocks: int = 0,
         dropout: float = 0.1,
-        auxiliary_channels: Optional[int] = None,
         conditional_channels: Optional[int] = None,
         weight_regularization: Optional[str] = "weight_norm",
         activation: Optional[
@@ -87,7 +87,6 @@ class PixelSNAIL(nn.Module):
                 num_heads=num_heads,
                 num_repeats=num_repeats,
                 dropout=dropout,
-                auxiliary_channels=auxiliary_channels,
                 conditional_channels=conditional_channels,
                 weight_regularization=weight_regularization,
                 activation=activation,
@@ -100,7 +99,7 @@ class PixelSNAIL(nn.Module):
             in_channels,
             codebook_size,
             hidden_channels,
-            num_blocks=0,
+            num_blocks=num_post_blocks,
             weight_regularization=weight_regularization,
         )
 
@@ -456,7 +455,6 @@ class PixelBlock(nn.Module):
         num_heads: int,
         num_repeats: int,
         dropout: float = 0.1,
-        auxiliary_channels: Optional[int] = None,
         conditional_channels: Optional[int] = None,
         weight_regularization: Optional[str] = "weight_norm",
         activation: Optional[
@@ -482,7 +480,6 @@ class PixelBlock(nn.Module):
                 weight_regularization=weight_regularization,
                 activation=activation,
                 dropout=dropout,
-                auxiliary_channels=auxiliary_channels,
                 conditional_channels=conditional_channels,
                 **factory_kwargs,
             )
