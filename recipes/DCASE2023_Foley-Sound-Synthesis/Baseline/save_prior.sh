@@ -8,7 +8,7 @@ checkpoint=""
 
 system="defaults"
 preprocess="defaults"
-data="pixelsnail+vqvae"
+data="baseline"
 train="prior"
 model="vqvae"
 

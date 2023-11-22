@@ -20,7 +20,7 @@ dump_root="./dump"
 
 system="defaults"
 preprocess="baseline"
-data=""
+data="baseline"
 train=""
 test="pixelsnail+vqvae"
 model=""

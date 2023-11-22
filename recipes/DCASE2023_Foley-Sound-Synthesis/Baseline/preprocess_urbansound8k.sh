@@ -11,7 +11,7 @@ dump_root="./dump"
 log_dir="./log"
 
 preprocess="defaults"
-data="hifigan"
+data="baseline"
 
 n_validation=10
 

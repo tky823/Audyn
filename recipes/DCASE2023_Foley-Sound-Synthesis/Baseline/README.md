@@ -14,7 +14,7 @@ Our implementation is based on https://github.com/DCASE2023-Task7-Foley-Sound-Sy
 ### Stage 0: Preprocess official development dataset
 
 ```sh
-data="pixelsnail+vqvae"
+data="baseline"
 
 . ./run.sh \
 --stage 0 \
@@ -25,7 +25,7 @@ data="pixelsnail+vqvae"
 ### Stage 1: Preprocess UrbanSound8K
 
 ```sh
-data="hifigan"
+data="baseline"
 
 . ./run.sh \
 --stage 1 \
@@ -36,7 +36,7 @@ data="hifigan"
 ### Stage 2: Train VQVAE
 
 ```sh
-data="pixelsnail+vqvae"
+data="baseline"
 train="vqvae"
 model="vqvae"
 optimizer="vqvae_ema"  # "vqvae"
@@ -58,7 +58,7 @@ criterion="vqvae"
 ### Stage 3: Save prior of VQVAE
 
 ```sh
-data="pixelsnail+vqvae"
+data="baseline"
 train="prior"
 model="vqvae"
 
@@ -77,7 +77,7 @@ vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.p
 ### Stage 4: Train PixelSNAIL
 
 ```sh
-data="pixelsnail+vqvae"
+data="baseline"
 train="pixelsnail"
 model="pixelsnail"
 optimizer="pixelsnail"
@@ -99,7 +99,7 @@ criterion="pixelsnail"
 ### Stage 5: Train HiFiGAN
 
 ```sh
-data="hifigan"
+data="baseline"
 train="hifigan"
 model="hifigan_v1"
 optimizer="hifigan"

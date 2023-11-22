@@ -7,7 +7,7 @@ tag=""
 continue_from=""
 
 system="defaults"
-data="pixelsnail+vqvae"
+data="baseline"
 train="vqvae"
 model="vqvae"
 optimizer="vqvae_ema"

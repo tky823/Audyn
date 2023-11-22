@@ -9,7 +9,7 @@ continue_from=""
 
 system="defaults"
 preprocess="defaults"
-data="hifigan"
+data="baseline"
 train="hifigan"
 model="hifigan_v1"
 optimizer="hifigan"
