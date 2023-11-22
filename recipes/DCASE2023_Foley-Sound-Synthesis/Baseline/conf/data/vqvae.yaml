@@ -1,5 +1,6 @@
 audio:
   sample_rate: 22050
+  length: 88200  # 4 sec.
 spectrogram:
   sample_rate: ${..audio.sample_rate}
   n_fft: 1024
@@ -14,5 +15,8 @@ melspectrogram:
 
 codebook:
   size: 512
+  shape:
+    - 20  # ${...melspectrogram.n_mels} // (${model.encoder.stride} ** ${model.encoder.num_stacks})
+    - 86  # ${...audio.length} // ${...melspectrogram.hop_length} // (${model.encoder.stride} ** ${model.encoder.num_stacks})
 
 num_categories: 8  # 7 category + unknown
