@@ -15,6 +15,145 @@ from audyn.modules.pixelsnail import _generate_square_subsequent_mask, _get_acti
 IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
 
+class PostNet(nn.Module):
+    """PostNet of PixelSNAIL."""
+
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        hidden_channels: int,
+        num_blocks: int,
+        weight_regularization: Optional[str] = "weight_norm",
+    ) -> None:
+        super().__init__()
+
+        self.num_blocks = num_blocks
+
+        backbone = []
+
+        for _ in range(num_blocks):
+            block = ResidualBlock2d(
+                in_channels,
+                hidden_channels,
+                kernel_size=1,
+                weight_regularization=weight_regularization,
+            )
+            backbone.append(block)
+
+        self.backbone = nn.Sequential(*backbone)
+        self.activation2d = nn.ELU()
+        self.conv2d = nn.Conv2d(
+            in_channels,
+            out_channels,
+            kernel_size=1,
+        )
+
+        # registered_weight_norms and registered_spectral_norms manage normalization status
+        self.registered_weight_norms = set()
+        self.registered_spectral_norms = set()
+
+        if weight_regularization is not None:
+            if weight_regularization == "weight_norm":
+                self.registered_weight_norms.add("backbone")
+                self.weight_norm_()
+            elif weight_regularization == "spectral_norm":
+                self.registered_spectral_norms.add("backbone")
+                self.spectral_norm_()
+            else:
+                raise ValueError(
+                    "{}-based weight regularization is not supported.".format(
+                        weight_regularization
+                    )
+                )
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of PostNet.
+
+        Args:
+            input (torch.Tensor): Input feature of shape (batch_size, in_channels, height, width).
+
+        Returns:
+            torch.Tensor: Output feature of shape (batch_size, in_channels, height, width).
+
+        """
+        x = self.backbone(input)
+        x = self.activation2d(x)
+        output = self.conv2d(x)
+
+        return output
+
+    def weight_norm_(self) -> None:
+        """Set weight_norm to conv2d."""
+        if IS_TORCH_LT_2_1:
+            weight_norm_fn = nn.utils.weight_norm
+        else:
+            weight_norm_fn = nn.utils.parametrizations.weight_norm
+
+        self.conv2d = weight_norm_fn(self.conv2d)
+        self.registered_weight_norms.add("conv2d")
+
+        if "backbone" not in self.registered_weight_norms:
+            for block in self.backbone:
+                block: ResidualBlock2d
+                block.weight_norm_()
+
+            self.registered_weight_norms.add("backbone")
+
+    def remove_weight_norm_(self) -> None:
+        """Remove weight_norm from conv2d."""
+        if IS_TORCH_LT_2_1:
+            remove_weight_norm_fn = nn.utils.remove_weight_norm
+            remove_weight_norm_args = ()
+        else:
+            remove_weight_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_weight_norm_args = ("weight",)
+
+        self.conv2d = remove_weight_norm_fn(self.conv2d, *remove_weight_norm_args)
+        self.registered_weight_norms.remove("conv2d")
+
+        for block in self.backbone:
+            block: ResidualBlock2d
+            block.remove_weight_norm_()
+
+        self.registered_weight_norms.remove("backbone")
+
+    def spectral_norm_(self) -> None:
+        """Set spectral_norm to conv2d."""
+        if IS_TORCH_LT_2_1:
+            spectral_norm_fn = nn.utils.spectral_norm
+        else:
+            spectral_norm_fn = nn.utils.parametrizations.spectral_norm
+
+        self.conv2d = spectral_norm_fn(self.conv2d)
+        self.registered_spectral_norms.add("conv2d")
+
+        if "backbone" not in self.registered_spectral_norms:
+            for block in self.backbone:
+                block: ResidualBlock2d
+                block.spectral_norm_()
+
+            self.registered_spectral_norms.add("backbone")
+
+    def remove_spectral_norm_(self) -> None:
+        """Remove spectral_norm from conv2d."""
+        if IS_TORCH_LT_2_1:
+            remove_spectral_norm_fn = nn.utils.remove_spectral_norm
+            remove_spectral_norm_args = ()
+        else:
+            remove_spectral_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_spectral_norm_args = ("weight",)
+
+        self.conv2d = remove_spectral_norm_fn(self.conv2d, *remove_spectral_norm_args)
+        self.registered_spectral_norms.remove("conv2d")
+
+        for block in self.backbone:
+            block: ResidualBlock2d
+            block.remove_spectral_norm_()
+
+        self.registered_spectral_norms.remove("backbone")
+
+
 class PixelBlock(nn.Module):
     """Block of PixelSNAIL.
 
