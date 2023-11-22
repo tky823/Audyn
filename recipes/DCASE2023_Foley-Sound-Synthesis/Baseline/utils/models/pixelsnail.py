@@ -265,7 +265,12 @@ class PixelSNAIL(nn.Module):
 class EmbeddingNet(nn.Module):
     """Embedding network to transform discrete input to dense feature."""
 
-    def __init__(self, num_embeddings: int, shape: _size_2_t) -> None:
+    def __init__(
+        self,
+        num_embeddings: int,
+        shape: _size_2_t,
+        pad_idx: Optional[int] = None,
+    ) -> None:
         super().__init__()
 
         self.shape = _pair(shape)
@@ -275,7 +280,11 @@ class EmbeddingNet(nn.Module):
         for s in self.shape:
             embedding_dim *= s
 
-        self.embedding = nn.Embedding(num_embeddings, embedding_dim)
+        self.embedding = nn.Embedding(
+            num_embeddings,
+            embedding_dim,
+            padding_idx=pad_idx,
+        )
 
     def forward(self, input: torch.LongTensor) -> torch.Tensor:
         """Transform discrete input to dense feature.

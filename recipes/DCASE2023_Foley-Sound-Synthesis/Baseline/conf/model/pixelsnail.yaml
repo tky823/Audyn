@@ -16,3 +16,4 @@ conditionor:
   _target_: utils.models.pixelsnail.EmbeddingNet
   num_embeddings: ${data.num_categories}
   shape: ${..input_shape}
+  pad_idx: 0  # for <UNK> category
