@@ -56,7 +56,7 @@ class PixelBlock(nn.Module):
         backbone = []
 
         for _ in range(num_repeats):
-            block = ResidualBlock(
+            block = ResidualBlock2d(
                 in_channels,
                 hidden_channels,
                 kernel_size=kernel_size,
@@ -72,7 +72,7 @@ class PixelBlock(nn.Module):
 
         self.backbone = nn.ModuleList(backbone)
 
-        self.q_proj = ResidualBlock(
+        self.q_proj = ResidualBlock2d(
             in_channels + 2,
             in_channels,
             kernel_size=1,
@@ -82,7 +82,7 @@ class PixelBlock(nn.Module):
             dropout=dropout,
             **factory_kwargs,
         )
-        self.k_proj = ResidualBlock(
+        self.k_proj = ResidualBlock2d(
             2 * in_channels + 2,
             in_channels,
             kernel_size=1,
@@ -100,7 +100,7 @@ class PixelBlock(nn.Module):
             dropout=dropout,
             weight_regularization=weight_regularization,
         )
-        self.out_proj = ResidualBlock(
+        self.out_proj = ResidualBlock2d(
             in_channels,
             in_channels,
             kernel_size=1,
@@ -158,7 +158,7 @@ class PixelBlock(nn.Module):
     def weight_norm_(self) -> None:
         """Set weight_norm to modules."""
         for block in self.backbone:
-            block: ResidualBlock
+            block: ResidualBlock2d
             block.weight_norm_()
 
         self.q_proj.weight_norm_()
@@ -169,7 +169,7 @@ class PixelBlock(nn.Module):
     def remove_weight_norm_(self) -> None:
         """Remove weight_norm from module."""
         for block in self.backbone:
-            block: ResidualBlock
+            block: ResidualBlock2d
             block.weight_norm_()
 
         self.q_proj.weight_norm_()
@@ -178,8 +178,8 @@ class PixelBlock(nn.Module):
         self.out_proj.weight_norm_()
 
 
-class ResidualBlock(nn.Module):
-    """ResidualBlock.
+class ResidualBlock2d(nn.Module):
+    """ResidualBlock for 2D input.
 
     Args:
         in_channels (int): Number of input channels.
