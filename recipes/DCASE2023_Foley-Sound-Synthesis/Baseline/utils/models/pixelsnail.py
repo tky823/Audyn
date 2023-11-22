@@ -116,7 +116,7 @@ class PixelBlock(nn.Module):
         background: torch.Tensor,
         conditioning: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
-        """Forward pass of ConvBlock2d.
+        """Forward pass of PixelBlock.
 
         Args:
             input (torch.Tensor): Input feature of shape (batch_size, in_channels, height, width).
