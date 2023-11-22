@@ -15,6 +15,169 @@ from audyn.modules.pixelsnail import _generate_square_subsequent_mask, _get_acti
 IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
 
+class PixelBlock(nn.Module):
+    """Block of PixelSNAIL.
+
+    Args:
+        in_channels (int): Number of input channels.
+        hidden_channels (int): Number of hidden channels used in ``ResidualBlock2d``.
+        kernel_size (_size_2_t): Kernel size in convolutions.
+        num_heads (int): Number of heads in attention.
+        num_repeats (int): Number of repeats of ``ResidualBlock2d``.
+        dropout (float): Dropout rate in attention. Default: ``0.0``.
+        weight_regularization (str, optional): Weight regularization.
+        activation (str, nn.Module, or callable): Activation function. Default: ``elu``.
+
+    """
+
+    def __init__(
+        self,
+        in_channels: int,
+        hidden_channels: int,
+        kernel_size: _size_2_t,
+        num_heads: int,
+        num_repeats: int,
+        dropout: float = 0.1,
+        auxiliary_channels: Optional[int] = None,
+        conditional_channels: Optional[int] = None,
+        weight_regularization: Optional[str] = "weight_norm",
+        activation: Optional[
+            Union[str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]
+        ] = "elu",
+        device: torch.device = None,
+        dtype: torch.dtype = None,
+    ) -> None:
+        factory_kwargs = {"device": device, "dtype": dtype}
+
+        super().__init__()
+
+        self.num_repeats = num_repeats
+
+        backbone = []
+
+        for _ in range(num_repeats):
+            block = ResidualBlock(
+                in_channels,
+                hidden_channels,
+                kernel_size=kernel_size,
+                causal=True,
+                weight_regularization=weight_regularization,
+                activation=activation,
+                dropout=dropout,
+                auxiliary_channels=auxiliary_channels,
+                conditional_channels=conditional_channels,
+                **factory_kwargs,
+            )
+            backbone.append(block)
+
+        self.backbone = nn.ModuleList(backbone)
+
+        self.q_proj = ResidualBlock(
+            in_channels + 2,
+            in_channels,
+            kernel_size=1,
+            causal=False,
+            weight_regularization=weight_regularization,
+            activation=activation,
+            dropout=dropout,
+            **factory_kwargs,
+        )
+        self.k_proj = ResidualBlock(
+            2 * in_channels + 2,
+            in_channels,
+            kernel_size=1,
+            causal=False,
+            weight_regularization=weight_regularization,
+            activation=activation,
+            dropout=dropout,
+            **factory_kwargs,
+        )
+        self.mha2d = CausalAttention2d(
+            in_channels // 2,
+            in_channels + 2,
+            2 * in_channels + 2,
+            num_heads=num_heads,
+            dropout=dropout,
+            weight_regularization=weight_regularization,
+        )
+        self.out_proj = ResidualBlock(
+            in_channels,
+            in_channels,
+            kernel_size=1,
+            weight_regularization=weight_regularization,
+            auxiliary_channels=in_channels // 2,
+            dropout=dropout,
+            **factory_kwargs,
+        )
+
+    def forward(
+        self,
+        input: torch.Tensor,
+        background: torch.Tensor,
+        conditioning: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """Forward pass of ConvBlock2d.
+
+        Args:
+            input (torch.Tensor): Input feature of shape (batch_size, in_channels, height, width).
+            background (torch.Tensor): Background embedding of shape
+                (batch_size, 2, height, width) or (2, height, width).
+            conditioning (torch.Tensor, optional): Conditional feature of
+                shape (batch_size, conditional_channels, height, width).
+
+        Returns:
+            torch.Tensor: Output feature of shape (batch_size, in_channels, height, width).
+
+        """
+        num_repeats = self.num_repeats
+
+        batch_size, _, height, width = input.size()
+
+        if background.dim() == 3:
+            x_background = background.unsqueeze(dim=0)
+            x_background = x_background.expand(batch_size, 2, height, width)
+        elif x_background.dim() == 4:
+            x_background = background
+        else:
+            raise ValueError("background is expected 3D or 4D.")
+
+        x = input
+
+        for repeat_idx in range(num_repeats):
+            x = self.backbone[repeat_idx](x, conditioning=conditioning)
+
+        query = torch.cat([x, x_background], dim=1)
+        query = self.q_proj(query)
+        key = torch.cat([x, input, x_background], dim=1)
+        key = self.k_proj(key)
+        attn_output = self.mha2d(query, key)
+        output = self.out_proj(x, attn_output)
+
+        return output
+
+    def weight_norm_(self) -> None:
+        """Set weight_norm to modules."""
+        for block in self.backbone:
+            block: ResidualBlock
+            block.weight_norm_()
+
+        self.q_proj.weight_norm_()
+        self.k_proj.weight_norm_()
+        self.mha2d.weight_norm_()
+        self.out_proj.weight_norm_()
+
+    def remove_weight_norm_(self) -> None:
+        """Remove weight_norm from module."""
+        for block in self.backbone:
+            block: ResidualBlock
+            block.weight_norm_()
+
+        self.q_proj.weight_norm_()
+        self.k_proj.weight_norm_()
+        self.mha2d.weight_norm_()
+        self.out_proj.weight_norm_()
+
+
 class ResidualBlock(nn.Module):
     """ResidualBlock.
 
