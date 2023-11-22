@@ -3,6 +3,12 @@
 This recipe reproduces the baseline system of Foley Sound Synthesis task in DCASE 2023.
 The original implementation can be found at https://github.com/DCASE2023-Task7-Foley-Sound-Synthesis/dcase2023_task7_baseline.
 
+## Models
+
+### PixelSNAIL
+
+Our implementation is based on https://github.com/DCASE2023-Task7-Foley-Sound-Synthesis/dcase2023_task7_baseline/blob/main/pixelsnail.py. However, we changed some details.
+
 ## Stages
 
 ### Stage 0: Preprocess official development dataset
@@ -79,8 +85,8 @@ lr_scheduler="none"
 criterion="pixelsnail"
 
 . ./run.sh \
---stage 3 \
---stop-stage 3 \
+--stage 4 \
+--stop-stage 4 \
 --tag <TAG> \
 --data "${data}" \
 --train "${train}" \
