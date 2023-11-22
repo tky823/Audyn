@@ -18,7 +18,7 @@ criterion="hifigan"
 
 . ../../_common/parse_options.sh || exit 1;
 
-dump_dir="${dump_root}/${data}"
+dump_dir="${dump_root}/${data}/hifigan"
 list_dir="${dump_dir}/list"
 feature_dir="${dump_dir}/feature"
 

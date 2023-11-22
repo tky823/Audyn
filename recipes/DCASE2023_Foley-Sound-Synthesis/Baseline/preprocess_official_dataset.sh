@@ -20,7 +20,7 @@ n_validation=10
 dataset_root="${data_root}/DCASE_2023_Challenge_Task_7_Dataset"
 category_list_path="../_common/category.txt"
 
-dump_dir="${dump_root}/${data}"
+dump_dir="${dump_root}/${data}/pixelsnail+vqvae"
 list_dir="${dump_dir}/list"
 feature_dir="${dump_dir}/feature"
 category_path="${dump_dir}/category.pth"

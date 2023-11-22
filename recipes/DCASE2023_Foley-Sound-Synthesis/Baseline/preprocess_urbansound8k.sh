@@ -22,7 +22,7 @@ csv_path="${urbansound8k_root}/metadata/UrbanSound8K.csv"
 wav_dir="${urbansound8k_root}/audio"
 class_list_path="../../UrbanSound8K/_common/class.txt"
 
-dump_dir="${dump_root}/${data}"
+dump_dir="${dump_root}/${data}/hifigan"
 list_dir="${dump_dir}/list"
 feature_dir="${dump_dir}/feature"
 

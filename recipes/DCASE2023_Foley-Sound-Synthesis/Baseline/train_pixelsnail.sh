@@ -16,7 +16,7 @@ criterion="pixelsnail"
 
 . ../../_common/parse_options.sh || exit 1;
 
-dump_dir="${dump_root}/${data}"
+dump_dir="${dump_root}/${data}/pixelsnail+vqvae"
 list_dir="${dump_dir}/list"
 
 if [ -z "${tag}" ]; then
