@@ -47,6 +47,7 @@ class PriorSaver(BaseDriver):
         self.model.eval()
 
         train_config = self.config.train
+        data_config = self.config.data
 
         feature_dir = self.config.preprocess.feature_dir
 
@@ -84,6 +85,10 @@ class PriorSaver(BaseDriver):
                 for save_key in train_config.key_mapping.save.output.keys():
                     output_key = train_config.key_mapping.save.output[save_key]
                     data[save_key] = named_output[output_key][sample_idx]
+
+                    if save_key == "indices":
+                        # validate shape of latent feature
+                        assert data[save_key].size() == data_config.codebook.shape
 
                 identifiler = data["identifier"]
                 path = os.path.join(feature_dir, f"{identifiler}.pth")
