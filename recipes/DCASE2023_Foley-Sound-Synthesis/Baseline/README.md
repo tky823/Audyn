@@ -49,6 +49,47 @@ criterion="vqvae"
 --criterion "${criterion}"
 ```
 
+### Stage 3: Save prior of VQVAE
+
+```sh
+data="vqvae"
+train="prior"
+model="vqvae"
+
+vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.pth
+
+. ./run.sh \
+--stage 3 \
+--stop-stage 3 \
+--tag <TAG> \
+--vqvae-checkpoint "${vqvae_checkpoint}" \
+--data "${data}" \
+--train "${train}" \
+--model "${model}"
+```
+
+### Stage 4: Train PixelSNAIL
+
+```sh
+data="vqvae"
+train="pixelsnail"
+model="pixelsnail"
+optimizer="pixelsnail"
+lr_scheduler="none"
+criterion="pixelsnail"
+
+. ./run.sh \
+--stage 3 \
+--stop-stage 3 \
+--tag <TAG> \
+--data "${data}" \
+--train "${train}" \
+--model "${model}" \
+--optimizer "${optimizer}" \
+--lr_scheduler "${lr_scheduler}" \
+--criterion "${criterion}"
+```
+
 ### Stage 5: Train HiFiGAN
 
 ```sh
