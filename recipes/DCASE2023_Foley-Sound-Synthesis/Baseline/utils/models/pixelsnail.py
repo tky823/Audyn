@@ -1,6 +1,6 @@
 import copy
 import math
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -10,9 +10,288 @@ from torch.nn.common_types import _size_2_t
 from torch.nn.modules.utils import _pair
 
 from audyn.modules.pixelcnn import CausalConv2d as PixelCNNCausalConv2d
+from audyn.modules.pixelcnn import VerticalConv2d
+from audyn.modules.pixelsnail import CausalConv2d as PixelSNAILCausalConv2d
 from audyn.modules.pixelsnail import _generate_square_subsequent_mask, _get_activation
 
 IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
+
+
+class PixelSNAIL(nn.Module):
+    """PixelSNAIL used in liu2021conditional [#liu2021conditional]_.
+
+    .. [#liu2021conditional]
+        X. Liu et al.,
+        "Conditional sound generation using neural discrete time-frequency representation
+        learning," in **MLSP**, 2021, pp.1-6.
+
+    """
+
+    def __init__(
+        self,
+        codebook_size: int,
+        in_channels: int,
+        hidden_channels: int,
+        kernel_size: _size_2_t,
+        num_heads: int,
+        num_blocks: int,
+        num_repeats: int,
+        dropout: float = 0.1,
+        auxiliary_channels: Optional[int] = None,
+        conditional_channels: Optional[int] = None,
+        weight_regularization: Optional[str] = "weight_norm",
+        activation: Optional[
+            Union[str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]
+        ] = "elu",
+        input_shape: Tuple[int, int] = None,
+        conditionor: Optional[nn.Module] = None,
+        device: torch.device = None,
+        dtype: torch.dtype = None,
+    ) -> None:
+        factory_kwargs = {"device": device, "dtype": dtype}
+
+        super().__init__()
+
+        kernel_size = _pair(kernel_size)
+
+        self.codebook_size = codebook_size
+        self.num_blocks = num_blocks
+        self.input_shape = input_shape
+
+        background = self.create_background(input_shape)
+        self.register_buffer("background", background)
+
+        kh, kw = kernel_size
+        _kernel_size = (kh + 1) // 2, kw // 2
+
+        self.vertical_conv2d = VerticalConv2d(
+            codebook_size,
+            in_channels,
+            kernel_size=kernel_size,
+            capture_center=True,
+        )
+        self.horizontal_conv2d = PixelSNAILCausalConv2d(
+            codebook_size,
+            in_channels,
+            kernel_size=_kernel_size,
+        )
+        self.conditionor = conditionor
+
+        backbone = []
+
+        for _ in range(num_blocks):
+            block = PixelBlock(
+                in_channels,
+                hidden_channels,
+                kernel_size=kernel_size,
+                num_heads=num_heads,
+                num_repeats=num_repeats,
+                dropout=dropout,
+                auxiliary_channels=auxiliary_channels,
+                conditional_channels=conditional_channels,
+                weight_regularization=weight_regularization,
+                activation=activation,
+                **factory_kwargs,
+            )
+            backbone.append(block)
+
+        self.backbone = nn.ModuleList(backbone)
+        self.post_net = PostNet(
+            in_channels,
+            codebook_size,
+            hidden_channels,
+            num_blocks=0,
+            weight_regularization=weight_regularization,
+        )
+
+        # registered_weight_norms manages normalization status
+        self.registered_weight_norms = set()
+
+        if weight_regularization == "weight_norm":
+            self.registered_weight_norms.add("backbone")
+            self.registered_weight_norms.add("post_net")
+            self.weight_norm_()
+
+    def forward(
+        self,
+        input: torch.LongTensor,
+        conditioning: Optional[torch.LongTensor] = None,
+    ) -> torch.Tensor:
+        """Forward pass of PixelSNAIL.
+
+        Args:
+            input (torch.LongTensor): Codebook indices of shape (batch_size, height, width).
+            conditioning (torch.LongTensor): Conditional feature of shape (batch_size,).
+
+        Returns:
+            torch.Tensor (torch.Tensor): Output feature of shape (batch_size, height, width).
+
+        """
+        self.background: nn.Parameter
+
+        codebook_size = self.codebook_size
+        num_blocks = self.num_blocks
+        background = self.background
+
+        x = F.one_hot(input, num_classes=codebook_size)
+        x = x.permute(0, 3, 1, 2)
+        x = x.to(background.dtype)
+        x_vertical = self.vertical_conv2d(x)
+        x_horizontal = self.horizontal_conv2d(x)
+
+        x_vertical = F.pad(x_vertical, (0, 0, 1, -1))
+        x_horizontal = F.pad(x_horizontal, (1, -1))
+        x = x_horizontal + x_vertical
+
+        if conditioning is None:
+            x_conditioning = None
+        else:
+            x_conditioning = self.conditionor(conditioning)
+
+        height_in, width_in = x.size()[-2:]
+        height, width = background.size()[-2:]
+
+        assert height >= height_in and width >= width_in
+
+        x_background = F.pad(background, (0, width_in - width, 0, height_in - height))
+
+        if x_conditioning is not None:
+            x_conditioning = F.pad(x_conditioning, (0, width_in - width, 0, height_in - height))
+
+        for block_idx in range(num_blocks):
+            x = self.backbone[block_idx](x, x_background, conditioning=x_conditioning)
+
+        output = self.post_net(x)
+
+        return output
+
+    @torch.no_grad()
+    def inference(
+        self,
+        initial_state: torch.LongTensor,
+        conditioning: Optional[torch.LongTensor] = None,
+        height: Optional[int] = None,
+        width: Optional[int] = None,
+    ) -> torch.LongTensor:
+        self.background: nn.Parameter
+
+        if height is None:
+            height = self.input_shape[0]
+
+        if width is None:
+            width = self.input_shape[1]
+
+        batch_size, height_in, width_in = initial_state.size()
+
+        assert (height_in, width_in) == (1, 1)
+
+        output = F.pad(initial_state, (0, width - 1, 0, height - 1))
+
+        for row_idx in range(height):
+            for column_idx in range(width):
+                x = F.pad(output, (0, 0, 0, -(height - 1 - row_idx)))
+                x = self.forward(x, conditioning=conditioning)
+                last_output = F.pad(x, (-column_idx, -(width - 1 - column_idx), -row_idx, 0))
+                last_output = last_output.view(batch_size, -1)
+
+                # sampling from categorical distribution
+                last_output = torch.softmax(last_output, dim=1)
+                last_output = torch.distributions.Categorical(last_output).sample()
+                output[:, row_idx, column_idx] = last_output
+
+        return output
+
+    @staticmethod
+    def create_background(shape: Tuple[int, int]) -> torch.Tensor:
+        height, width = shape
+        x = torch.arange(width, dtype=torch.float) / width - 0.5
+        y = torch.arange(height, dtype=torch.float) / height - 0.5
+        x, y = torch.meshgrid(x, y, indexing="xy")
+        background = torch.stack([y, x], dim=0)
+
+        return background
+
+    def weight_norm_(self) -> None:
+        """Set weight_norm from conv2d."""
+        if IS_TORCH_LT_2_1:
+            weight_norm_fn = nn.utils.weight_norm
+        else:
+            weight_norm_fn = nn.utils.parametrizations.weight_norm
+
+        self.vertical_conv2d = weight_norm_fn(self.vertical_conv2d)
+        self.horizontal_conv2d = weight_norm_fn(self.horizontal_conv2d)
+        self.registered_weight_norms.add("vertical_conv2d")
+        self.registered_weight_norms.add("horizontal_conv2d")
+
+        if "backbone" not in self.registered_weight_norms:
+            for block in self.backbone:
+                block: PixelBlock
+                block.weight_norm_()
+
+            self.registered_weight_norms.add("backbone")
+
+        if "post_net" not in self.registered_weight_norms:
+            self.post_net.weight_norm_()
+            self.registered_weight_norms.add("post_net")
+
+    def remove_weight_norm_(self) -> None:
+        """Remove weight_norm from conv2d."""
+        if IS_TORCH_LT_2_1:
+            remove_weight_norm_fn = nn.utils.remove_weight_norm
+            remove_weight_norm_args = ()
+        else:
+            remove_weight_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_weight_norm_args = ("weight",)
+
+        self.vertical_conv2d = remove_weight_norm_fn(
+            self.vertical_conv2d, *remove_weight_norm_args
+        )
+        self.horizontal_conv2d = remove_weight_norm_fn(
+            self.horizontal_conv2d, *remove_weight_norm_args
+        )
+
+        self.registered_weight_norms.remove("vertical_conv2d")
+        self.registered_weight_norms.remove("horizontal_conv2d")
+
+        for block in self.backbone:
+            block: PixelBlock
+            block.weight_norm_()
+
+        self.registered_weight_norms.remove("backbone")
+
+        self.post_net.remove_weight_norm_()
+        self.registered_weight_norms.remove("post_net")
+
+
+class EmbeddingNet(nn.Module):
+    """Embedding network to transform discrete input to dense feature."""
+
+    def __init__(self, num_embeddings: int, shape: _size_2_t) -> None:
+        super().__init__()
+
+        self.shape = _pair(shape)
+
+        embedding_dim = 1
+
+        for s in self.shape:
+            embedding_dim *= s
+
+        self.embedding = nn.Embedding(num_embeddings, embedding_dim)
+
+    def forward(self, input: torch.LongTensor) -> torch.Tensor:
+        """Transform discrete input to dense feature.
+
+        Args:
+            input (torch.LongTensor): (batch_size,)
+
+        Returns:
+            torch.Tensor: Embeddings of shape (batch_size, 1, height, width)
+
+        """
+        x = self.embedding(input)
+        output = x.view(-1, 1, *self.shape)
+
+        return output
 
 
 class PostNet(nn.Module):
