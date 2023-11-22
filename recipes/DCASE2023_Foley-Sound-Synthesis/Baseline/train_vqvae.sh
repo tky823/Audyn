@@ -10,7 +10,7 @@ system="defaults"
 data="pixelsnail+vqvae"
 train="vqvae"
 model="vqvae"
-optimizer="vqvae"
+optimizer="vqvae_ema"
 lr_scheduler="none"
 criterion="vqvae"
 
