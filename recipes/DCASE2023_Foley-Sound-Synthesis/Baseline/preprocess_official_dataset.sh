@@ -26,20 +26,22 @@ feature_dir="${dump_dir}/feature"
 category_path="${dump_dir}/category.pth"
 
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
-    echo "Preprocess stage 1: Split dev set into training/validation"
+    echo "Preprocess stage 1"
+    echo "Split dev set into training/validation(/test)"
 
     tmp_root="/tmp/$(uuidgen)"
     
     mkdir -p "${tmp_root}"
     mkdir -p "${list_dir}"
 
-    for subset in "train" "validation"; do
+    for subset in "train" "validation" "test"; do
         : > "${list_dir}/${subset}.txt"
     done
 
     while read category; do
         all_list_path="${tmp_root}/${category}.txt"
 
+        # train & validation
         ls "${dataset_root}/dev/${category}" > "${all_list_path}"
 
         n_all=$(wc -l < "${all_list_path}")
@@ -51,6 +53,13 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
 
         for filename in $(tail -n ${n_validation} "${all_list_path}"); do
             echo "dev/${category}/${filename/.wav/}" >> "${list_dir}/validation.txt"
+        done
+
+        # test
+        ls "${dataset_root}/eval/${category}" > "${all_list_path}"
+
+        for filename in $(cat "${all_list_path}"); do
+            echo "eval/${category}/${filename/.wav/}" >> "${list_dir}/test.txt"
         done
     done < "${category_list_path}"
 
@@ -68,7 +77,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     preprocess.category_list_path="${category_list_path}" \
     preprocess.category_path="${category_path}"
 
-    for subset in "train" "validation"; do
+    for subset in "train" "validation" "test"; do
         python ./local/save_official_features.py \
         --config-dir "./conf" \
         hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
