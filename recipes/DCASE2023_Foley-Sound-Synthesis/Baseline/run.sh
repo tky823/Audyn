@@ -175,3 +175,22 @@ if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
         --criterion "${criterion}"
     )
 fi
+
+if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ]; then
+    echo "Stage 7: Generate conditional audio samples"
+
+    (
+        . ./test.sh \
+        --tag "${tag}" \
+        --dump-root "${dump_root}" \
+        --exp-dir "${exp_dir}" \
+        --pixelsnail-checkpoint "${pixelsnail_checkpoint}" \
+        --vqvae-checkpoint "${vqvae_checkpoint}" \
+        --hifigan-checkpoint "${hifigan_checkpoint}" \
+        --system "${system}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --test "${test}" \
+        --model "${model}"
+    )
+fi
