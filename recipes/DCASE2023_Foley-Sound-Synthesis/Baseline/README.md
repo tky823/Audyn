@@ -22,7 +22,7 @@ data="baseline"
 --data "${data}"
 ```
 
-### Stage 1: Preprocess UrbanSound8K
+### Stage 0: Preprocess test set
 
 ```sh
 data="baseline"
@@ -33,7 +33,18 @@ data="baseline"
 --data "${data}"
 ```
 
-### Stage 2: Train VQVAE
+### Stage 2: Preprocess UrbanSound8K
+
+```sh
+data="baseline"
+
+. ./run.sh \
+--stage 2 \
+--stop-stage 2 \
+--data "${data}"
+```
+
+### Stage 3: Train VQVAE
 
 ```sh
 data="baseline"
@@ -44,8 +55,8 @@ lr_scheduler="none"
 criterion="vqvae"
 
 . ./run.sh \
---stage 2 \
---stop-stage 2 \
+--stage 3 \
+--stop-stage 3 \
 --tag <TAG> \
 --data "${data}" \
 --train "${train}" \
@@ -55,7 +66,7 @@ criterion="vqvae"
 --criterion "${criterion}"
 ```
 
-### Stage 3: Save prior of VQVAE
+### Stage 4: Save prior of VQVAE
 
 ```sh
 data="baseline"
@@ -65,8 +76,8 @@ model="vqvae"
 vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.pth
 
 . ./run.sh \
---stage 3 \
---stop-stage 3 \
+--stage 4 \
+--stop-stage 4 \
 --tag <TAG> \
 --vqvae-checkpoint "${vqvae_checkpoint}" \
 --data "${data}" \
@@ -74,7 +85,7 @@ vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.p
 --model "${model}"
 ```
 
-### Stage 4: Train PixelSNAIL
+### Stage 5: Train PixelSNAIL
 
 ```sh
 data="baseline"
@@ -85,8 +96,8 @@ lr_scheduler="none"
 criterion="pixelsnail"
 
 . ./run.sh \
---stage 4 \
---stop-stage 4 \
+--stage 5 \
+--stop-stage 5 \
 --tag <TAG> \
 --data "${data}" \
 --train "${train}" \
@@ -96,7 +107,7 @@ criterion="pixelsnail"
 --criterion "${criterion}"
 ```
 
-### Stage 5: Train HiFiGAN
+### Stage 6: Train HiFiGAN
 
 ```sh
 data="baseline"
@@ -107,8 +118,8 @@ lr_scheduler="hifigan"
 criterion="hifigan"
 
 . ./run.sh \
---stage 5 \
---stop-stage 5 \
+--stage 6 \
+--stop-stage 6 \
 --tag <TAG> \
 --data "${data}" \
 --train "${train}" \
