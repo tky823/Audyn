@@ -25,8 +25,9 @@ data="baseline"
 ### Stage 1: Train HiFi-GAN (optional)
 
 ```sh
+system="defaults"  # "cuda", "cuda_ddp", "cuda_amp", "cuda_ddp_amp"
 data="baseline"
-train="hifigan"
+train="hifigan"  # "hifigan_ddp"
 model="hifigan_v1"
 optimizer="hifigan"
 lr_scheduler="hifigan"
@@ -36,6 +37,7 @@ criterion="hifigan"
 --stage 1 \
 --stop-stage 1 \
 --tag <TAG> \
+--system "${system}" \
 --data "${data}" \
 --train "${train}" \
 --model "${model}" \
@@ -69,8 +71,9 @@ data="baseline"
 ### Stage 4: Train VQVAE
 
 ```sh
+system="defaults"  # "cuda", "cuda_ddp"
 data="baseline"
-train="vqvae"
+train="vqvae"  # "vqvae_ddp"
 model="vqvae"
 optimizer="vqvae_ema"  # "vqvae"
 lr_scheduler="none"
@@ -80,6 +83,7 @@ criterion="vqvae"
 --stage 4 \
 --stop-stage 4 \
 --tag <TAG> \
+--system "${system}" \
 --data "${data}" \
 --train "${train}" \
 --model "${model}" \
@@ -91,6 +95,7 @@ criterion="vqvae"
 ### Stage 5: Save prior of VQVAE
 
 ```sh
+system="defaults"  # "cuda"
 data="baseline"
 train="prior"
 model="vqvae"
@@ -102,6 +107,7 @@ vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.p
 --stop-stage 5 \
 --tag <TAG> \
 --vqvae-checkpoint "${vqvae_checkpoint}" \
+--system "${system}" \
 --data "${data}" \
 --train "${train}" \
 --model "${model}"
@@ -110,8 +116,9 @@ vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.p
 ### Stage 6: Train PixelSNAIL
 
 ```sh
+system="defaults"  # "cuda", "cuda_ddp"
 data="baseline"
-train="pixelsnail"
+train="pixelsnail"  # "pixelsnail_ddp"
 model="pixelsnail"
 optimizer="pixelsnail"
 lr_scheduler="none"
@@ -121,6 +128,7 @@ criterion="pixelsnail"
 --stage 6 \
 --stop-stage 6 \
 --tag <TAG> \
+--system "${system}" \
 --data "${data}" \
 --train "${train}" \
 --model "${model}" \
@@ -132,6 +140,7 @@ criterion="pixelsnail"
 ### Stage 7: Generate conditional audio samples
 
 ```sh
+system="defaults"  # "cuda"
 data="baseline"
 test="baseline"
 model="baseline"
@@ -147,6 +156,7 @@ hifigan_checkpoint=<PATH/TO/HIFIGAN/CHECKPOINT>  # e.g. exp/<TAG>/model/hifigan/
 --pixelsnail-checkpoint "${pixelsnail_checkpoint}"
 --vqvae-checkpoint "${vqvae_checkpoint}" \
 --hifigan-checkpoint "${hifigan_checkpoint}" \
+--system "${system}" \
 --data "${data}" \
 --test "${test}" \
 --model "${model}"
