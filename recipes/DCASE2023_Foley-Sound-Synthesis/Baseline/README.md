@@ -22,7 +22,7 @@ data="baseline"
 --data "${data}"
 ```
 
-### Stage 0: Preprocess test set
+### Stage 1: Preprocess test set
 
 ```sh
 data="baseline"
@@ -107,7 +107,7 @@ criterion="pixelsnail"
 --criterion "${criterion}"
 ```
 
-### Stage 6: Train HiFiGAN
+### Stage 6: Train HiFi-GAN
 
 ```sh
 data="baseline"
@@ -127,4 +127,27 @@ criterion="hifigan"
 --optimizer "${optimizer}" \
 --lr_scheduler "${lr_scheduler}" \
 --criterion "${criterion}"
+```
+
+### Stage 7: Generate conditional audio samples
+
+```sh
+data="baseline"
+test="baseline"
+model="baseline"
+
+pixelsnail_checkpoint=<PATH/TO/PIXELSNAIL/CHECKPOINT>  # e.g. exp/<TAG>/model/pixelsnail/last.pth
+vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.pth
+hifigan_checkpoint=<PATH/TO/HIFIGAN/CHECKPOINT>  # e.g. exp/<TAG>/model/hifigan/last.pth
+
+. ./run.sh \
+--stage 7 \
+--stop-stage 7 \
+--tag <TAG> \
+--pixelsnail-checkpoint "${pixelsnail_checkpoint}"
+--vqvae-checkpoint "${vqvae_checkpoint}" \
+--hifigan-checkpoint "${hifigan_checkpoint}" \
+--data "${data}" \
+--test "${test}" \
+--model "${model}"
 ```
