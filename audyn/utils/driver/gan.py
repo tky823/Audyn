@@ -4,7 +4,7 @@ from typing import Dict, Iterable, Optional, Union
 import hydra
 import torch
 import torch.nn as nn
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 
@@ -974,6 +974,7 @@ class GANTrainer(BaseTrainer):
 
         state_dict["iteration_idx"] = self.iteration_idx
         state_dict["best_loss"] = self.best_loss
+        state_dict["resolved_config"] = OmegaConf.to_container(self.config, resolve=True)
 
         if isinstance(self.optimizer.generator, MovingAverageWrapper) or isinstance(
             self.optimizer.discriminator, MovingAverageWrapper
