@@ -56,37 +56,7 @@ if [ ${stage} -le -1 ] && [ ${stop_stage} -ge -1 ]; then
 fi
 
 if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
-    echo "Stage 0: Preprocessing of official development dataset"
-
-    (
-        . ./preprocess_official_dataset.sh \
-        --stage 1 \
-        --stop-stage 2 \
-        --data-root "${official_data_root}" \
-        --dump-root "${dump_root}" \
-        --preprocess "${preprocess}" \
-        --data "${data}" \
-        --n-validation ${n_validation}
-    )
-fi
-
-if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
-    echo "Stage 1: Preprocessing of test set"
-
-    (
-        . ./preprocess_official_test_dataset.sh \
-        --stage 1 \
-        --stop-stage 2 \
-        --data-root "${official_data_root}" \
-        --dump-root "${dump_root}" \
-        --preprocess "${preprocess}" \
-        --data "${data}" \
-        --n-test "${n_test}"
-    )
-fi
-
-if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
-    echo "Stage 2: Preprocessing of UrbanSound8K"
+    echo "Stage 0: Preprocessing of UrbanSound8K"
 
     (
         . ./preprocess_urbansound8k.sh \
@@ -100,8 +70,58 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     )
 fi
 
+if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
+    echo "Stage 1: Training of HiFi-GAN"
+
+    (
+        . ./train_hifigan.sh \
+        --tag "${tag}" \
+        --continue-from "${continue_from}" \
+        --exp-dir "${exp_dir}" \
+        --dump-root "${dump_root}" \
+        --system "${system}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --train "${train}" \
+        --model "${model}" \
+        --optimizer "${optimizer}" \
+        --lr_scheduler "${lr_scheduler}" \
+        --criterion "${criterion}"
+    )
+fi
+
+if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
+    echo "Stage 2: Preprocessing of official development dataset"
+
+    (
+        . ./preprocess_official_dataset.sh \
+        --stage 1 \
+        --stop-stage 2 \
+        --data-root "${official_data_root}" \
+        --dump-root "${dump_root}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --n-validation ${n_validation}
+    )
+fi
+
 if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
-    echo "Stage 3: Training of VQ-VAE"
+    echo "Stage 3: Preprocessing of test set"
+
+    (
+        . ./preprocess_official_test_dataset.sh \
+        --stage 1 \
+        --stop-stage 2 \
+        --data-root "${official_data_root}" \
+        --dump-root "${dump_root}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --n-test "${n_test}"
+    )
+fi
+
+if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
+    echo "Stage 4: Training of VQ-VAE"
 
     (
         . ./train_vqvae.sh \
@@ -119,8 +139,8 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
     )
 fi
 
-if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
-    echo "Stage 4: Save prior from VQ-VAE"
+if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
+    echo "Stage 5: Save prior from VQ-VAE"
 
     (
         . ./save_prior.sh \
@@ -136,31 +156,11 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
     )
 fi
 
-if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
-    echo "Stage 5: Training of PixelSNAIL"
+if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
+    echo "Stage 6: Training of PixelSNAIL"
 
     (
         . ./train_pixelsnail.sh \
-        --tag "${tag}" \
-        --continue-from "${continue_from}" \
-        --exp-dir "${exp_dir}" \
-        --dump-root "${dump_root}" \
-        --system "${system}" \
-        --preprocess "${preprocess}" \
-        --data "${data}" \
-        --train "${train}" \
-        --model "${model}" \
-        --optimizer "${optimizer}" \
-        --lr_scheduler "${lr_scheduler}" \
-        --criterion "${criterion}"
-    )
-fi
-
-if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
-    echo "Stage 6: Training of HiFi-GAN"
-
-    (
-        . ./train_hifigan.sh \
         --tag "${tag}" \
         --continue-from "${continue_from}" \
         --exp-dir "${exp_dir}" \
