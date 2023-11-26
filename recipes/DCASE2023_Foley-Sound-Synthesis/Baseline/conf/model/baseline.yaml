@@ -1,0 +1,4 @@
+_target_: utils.models.cascade.BaselineModel
+pixelsnail:
+vqvae:
+hifigan_generator:
