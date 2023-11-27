@@ -144,6 +144,7 @@ class BaseDriver:
         self,
         named_data: Dict[str, torch.Tensor],
         key_mapping: Optional[DictConfig] = None,
+        strict: bool = True,
     ) -> Dict[str, torch.Tensor]:
         if key_mapping is None:
             key_mapping = self.config.train.key_mapping
@@ -152,7 +153,14 @@ class BaseDriver:
 
         for model_key in key_mapping.input.keys():
             data_key = key_mapping.input[model_key]
-            named_input[model_key] = named_data[data_key]
+
+            _named_data = named_data.get(data_key)
+
+            if _named_data is None:
+                if strict:
+                    raise ValueError("data_key is not found in named_data.")
+            else:
+                named_input[model_key] = _named_data
 
         return named_input
 
