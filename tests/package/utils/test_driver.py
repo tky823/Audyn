@@ -212,6 +212,87 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
         monkeypatch.undo()
 
 
+def test_text_to_feat_trainer(monkeypatch: MonkeyPatch) -> None:
+    """Test TextToFeatTrainer."""
+    DATA_SIZE = 20
+    BATCH_SIZE = 2
+    ITERATIONS = 3
+    VOCAB_SIZE = 10
+    N_MELS = 5
+    TEXT_TO_FEAT_UP_SCALE = 2
+
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
+        monkeypatch.chdir(temp_dir)
+
+        overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
+        exp_dir = "./exp"
+
+        with hydra.initialize(
+            version_base="1.2",
+            config_path=relpath(config_template_path, dirname(realpath(__file__))),
+            job_name="test_driver",
+        ):
+            config = hydra.compose(
+                config_name="config",
+                overrides=create_dummy_text_to_feat_override(
+                    overrides_conf_dir=overrides_conf_dir,
+                    exp_dir=exp_dir,
+                    data_size=DATA_SIZE,
+                    batch_size=BATCH_SIZE,
+                    iterations=ITERATIONS,
+                    vocab_size=VOCAB_SIZE,
+                    n_mels=N_MELS,
+                    up_scale=TEXT_TO_FEAT_UP_SCALE,
+                ),
+                return_hydra_config=True,
+            )
+
+        setup_system(config)
+
+        train_dataset = hydra.utils.instantiate(config.train.dataset.train)
+        validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+
+        train_loader = hydra.utils.instantiate(
+            config.train.dataloader.train,
+            train_dataset,
+            collate_fn=default_collate_fn,
+        )
+        validation_loader = hydra.utils.instantiate(
+            config.train.dataloader.validation,
+            validation_dataset,
+            collate_fn=default_collate_fn,
+        )
+        loaders = BaseDataLoaders(train_loader, validation_loader)
+
+        model = instantiate_model(config.model)
+        model = set_device(
+            model,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
+        optimizer = instantiate_optimizer(config.optimizer, model)
+        lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
+        criterion = instantiate_criterion(config.criterion)
+        criterion = set_device(
+            criterion,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
+
+        trainer = TextToFeatTrainer(
+            loaders,
+            model,
+            optimizer,
+            lr_scheduler=lr_scheduler,
+            criterion=criterion,
+            config=config,
+        )
+        trainer.run()
+        trainer.writer.flush()
+
+        monkeypatch.undo()
+
+
 @pytest.mark.parametrize("use_ema", [True, False])
 @pytest.mark.parametrize("use_lr_scheduler", [True, False])
 def test_feat_to_wave_trainer(monkeypatch: MonkeyPatch, use_ema: bool, use_lr_scheduler: bool):
@@ -238,7 +319,7 @@ def test_feat_to_wave_trainer(monkeypatch: MonkeyPatch, use_ema: bool, use_lr_sc
         if use_lr_scheduler:
             lr_scheduler_name = "dummy"
         else:
-            lr_scheduler_name = "dummy_null"
+            lr_scheduler_name = "none"
 
         with hydra.initialize(
             version_base="1.2",
@@ -748,7 +829,7 @@ def create_dummy_override(
         f"test.checkpoint={checkpoint}",
     ]
 
-    if lr_scheduler == "dummy_null":
+    if lr_scheduler == "none":
         override_list += ["train.steps.lr_scheduler=''"]
 
     return override_list
@@ -829,7 +910,7 @@ def create_dummy_text_to_feat_override(
     sample_rate = 16000
     length = 10
 
-    output_dir, _, tag = exp_dir.rsplit("/", maxsplit=2)
+    output_dir, *_, tag = exp_dir.rsplit("/", maxsplit=2)
     tensorboard_dir = os.path.join(output_dir, "tensorboard", tag)
 
     return [
