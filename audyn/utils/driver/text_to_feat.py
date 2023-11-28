@@ -52,8 +52,11 @@ class TextToFeatTrainer(BaseTrainer):
         if hasattr(train_config, "pretrained_feat_to_wave"):
             pretrained_config = train_config.pretrained_feat_to_wave
 
-            if hasattr(pretrained_config, "path") and pretrained_config.path is not None:
-                use_pretrained_feat_to_wave = True
+            if hasattr(pretrained_config, "path"):
+                path = pretrained_config.path
+
+                if path is not None and path != "":
+                    use_pretrained_feat_to_wave = True
 
         if use_pretrained_feat_to_wave:
             state_dict = torch.load(
