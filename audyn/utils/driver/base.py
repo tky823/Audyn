@@ -23,7 +23,7 @@ from ...optim.optimizer import (
     MultiOptimizers,
 )
 from ...utils.logging import get_logger
-from ...utils.parallel import is_dp_or_ddp
+from ...utils.model import unwrap
 from ...utils.tensorboard import get_summary_writer
 from ..data import BaseDataLoaders, select_device
 from ..distributed import select_global_rank, select_local_rank
@@ -46,11 +46,7 @@ class BaseDriver:
     @property
     def unwrapped_model(self) -> nn.Module:
         """Unwrapped model to access attributes directly."""
-        if is_dp_or_ddp(self.model):
-            self.model: Union[nn.parallel.DataParallel, nn.parallel.DistributedDataParallel]
-            return self.model.module
-        else:
-            return self.model
+        return unwrap(self.model)
 
     def count_num_parameters(self) -> int:
         """Count number of parameters.
