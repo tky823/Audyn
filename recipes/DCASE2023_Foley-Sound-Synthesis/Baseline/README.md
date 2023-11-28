@@ -70,6 +70,8 @@ data="baseline"
 
 ### Stage 4: Train VQVAE
 
+If you choose `vqvae_ema` as `optimizer`, you cannot use mixed precision (`cuda_amp` and `cuda_ddp_amp`).
+
 ```sh
 system="defaults"  # "cuda", "cuda_ddp"
 data="baseline"
@@ -114,6 +116,8 @@ vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.p
 ```
 
 ### Stage 6: Train PixelSNAIL
+
+You cannot use mixed precision (`cuda_amp` and `cuda_ddp_amp`) for training of PixelSNAIL due to numerical instability.
 
 ```sh
 system="defaults"  # "cuda", "cuda_ddp"
