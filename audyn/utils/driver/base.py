@@ -731,17 +731,17 @@ class BaseTrainer(BaseDriver):
                 image_config = record_config.image.epoch
                 global_step = self.epoch_idx + 1
 
-                if hasattr(image_config.key_mapping, "validation"):
-                    key_mapping = image_config.key_mapping.validation
-                else:
-                    key_mapping = image_config.key_mapping
-
-                if hasattr(image_config.transforms, "validation"):
-                    transforms = image_config.transforms.validation
-                else:
-                    transforms = image_config.transforms
-
                 if image_config is not None and global_step % image_config.every == 0:
+                    if hasattr(image_config.key_mapping, "validation"):
+                        key_mapping = image_config.key_mapping.validation
+                    else:
+                        key_mapping = image_config.key_mapping
+
+                    if hasattr(image_config.transforms, "validation"):
+                        transforms = image_config.transforms.validation
+                    else:
+                        transforms = image_config.transforms
+
                     self.write_image_if_necessary(
                         named_output,
                         named_data,
