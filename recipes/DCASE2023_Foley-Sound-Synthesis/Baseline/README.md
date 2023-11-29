@@ -94,6 +94,35 @@ criterion="vqvae"
 --criterion "${criterion}"
 ```
 
+If you want to use pretrained HiFi-GAN as a vocoder, please set `--train vqvae+pretrained_hifigan` or `--train vqvae+pretrained_hifigan_ddp`.
+In addition, `hifigan_checkpoint` is required.
+In this setting, parameters in HiFi-GAN are not updated by the optimizer.
+
+```sh
+hifigan_checkpoint=<PATH/TO/PRETRAINED/HIFIGAN/CHECKPOINT>
+
+system="defaults"  # "cuda", "cuda_ddp"
+data="baseline"
+train="vqvae+pretrained_hifigan"  # "vqvae+pretrained_hifigan_ddp"
+model="vqvae"
+optimizer="vqvae_ema"  # "vqvae"
+lr_scheduler="none"
+criterion="vqvae"
+
+. ./run.sh \
+--stage 4 \
+--stop-stage 4 \
+--tag <TAG> \
+--hifigan-checkpoint "${hifigan_checkpoint}" \
+--system "${system}" \
+--data "${data}" \
+--train "${train}" \
+--model "${model}" \
+--optimizer "${optimizer}" \
+--lr_scheduler "${lr_scheduler}" \
+--criterion "${criterion}"
+```
+
 ### Stage 5: Save prior of VQVAE
 
 ```sh
