@@ -690,26 +690,22 @@ class GANTrainer(BaseTrainer):
                 if waveform_config is not None and global_step % waveform_config.every == 0:
                     if hasattr(waveform_config.key_mapping, "inference"):
                         key_mapping = waveform_config.key_mapping.inference
-                    elif hasattr(waveform_config.key_mapping, "validation"):
-                        key_mapping = waveform_config.key_mapping.validation
-                    else:
-                        key_mapping = waveform_config.key_mapping
 
-                    if hasattr(waveform_config.transforms, "inference"):
-                        transforms = waveform_config.transforms.inference
-                    elif hasattr(waveform_config.transforms, "validation"):
-                        transforms = waveform_config.transforms.validation
-                    else:
-                        transforms = waveform_config.transforms
+                        if hasattr(waveform_config.transforms, "inference"):
+                            transforms = waveform_config.transforms.inference
+                        elif hasattr(waveform_config.transforms, "validation"):
+                            transforms = waveform_config.transforms.validation
+                        else:
+                            transforms = waveform_config.transforms
 
-                    self.write_waveform_if_necessary(
-                        named_output,
-                        named_batch,
-                        sample_size=waveform_config.sample_size,
-                        key_mapping=key_mapping,
-                        transforms=transforms,
-                        global_step=global_step,
-                    )
+                        self.write_waveform_if_necessary(
+                            named_output,
+                            named_batch,
+                            sample_size=waveform_config.sample_size,
+                            key_mapping=key_mapping,
+                            transforms=transforms,
+                            global_step=global_step,
+                        )
 
             if hasattr(self.config.train.record, "audio") and n_batch < 1:
                 audio_config = self.config.train.record.audio.epoch
@@ -718,55 +714,47 @@ class GANTrainer(BaseTrainer):
                 if audio_config is not None and global_step % audio_config.every == 0:
                     if hasattr(audio_config.key_mapping, "inference"):
                         key_mapping = audio_config.key_mapping.inference
-                    elif hasattr(audio_config.key_mapping, "validation"):
-                        key_mapping = audio_config.key_mapping.validation
-                    else:
-                        key_mapping = audio_config.key_mapping
 
-                    if hasattr(audio_config.transforms, "inference"):
-                        transforms = audio_config.transforms.inference
-                    elif hasattr(audio_config.transforms, "validation"):
-                        transforms = audio_config.transforms.validation
-                    else:
-                        transforms = audio_config.transforms
+                        if hasattr(audio_config.transforms, "inference"):
+                            transforms = audio_config.transforms.inference
+                        elif hasattr(audio_config.transforms, "validation"):
+                            transforms = audio_config.transforms.validation
+                        else:
+                            transforms = audio_config.transforms
 
-                    self.write_audio_if_necessary(
-                        named_output,
-                        named_batch,
-                        sample_size=audio_config.sample_size,
-                        key_mapping=key_mapping,
-                        transforms=transforms,
-                        global_step=global_step,
-                        sample_rate=audio_config.sample_rate,
-                    )
+                        self.write_audio_if_necessary(
+                            named_output,
+                            named_batch,
+                            sample_size=audio_config.sample_size,
+                            key_mapping=key_mapping,
+                            transforms=transforms,
+                            global_step=global_step,
+                            sample_rate=audio_config.sample_rate,
+                        )
 
             if hasattr(self.config.train.record, "image") and n_batch < 1:
                 image_config = self.config.train.record.image.epoch
                 global_step = self.epoch_idx + 1
 
-                if hasattr(image_config.key_mapping, "inference"):
-                    key_mapping = image_config.key_mapping.inference
-                elif hasattr(image_config.key_mapping, "validation"):
-                    key_mapping = image_config.key_mapping.validation
-                else:
-                    key_mapping = image_config.key_mapping
-
-                if hasattr(image_config.transforms, "inference"):
-                    transforms = image_config.transforms.inference
-                elif hasattr(image_config.transforms, "validation"):
-                    transforms = image_config.transforms.validation
-                else:
-                    transforms = image_config.transforms
-
                 if image_config is not None and global_step % image_config.every == 0:
-                    self.write_image_if_necessary(
-                        named_output,
-                        named_batch,
-                        sample_size=image_config.sample_size,
-                        key_mapping=key_mapping,
-                        transforms=transforms,
-                        global_step=global_step,
-                    )
+                    if hasattr(image_config.key_mapping, "inference"):
+                        key_mapping = image_config.key_mapping.inference
+
+                        if hasattr(image_config.transforms, "inference"):
+                            transforms = image_config.transforms.inference
+                        elif hasattr(image_config.transforms, "validation"):
+                            transforms = image_config.transforms.validation
+                        else:
+                            transforms = image_config.transforms
+
+                        self.write_image_if_necessary(
+                            named_output,
+                            named_batch,
+                            sample_size=image_config.sample_size,
+                            key_mapping=key_mapping,
+                            transforms=transforms,
+                            global_step=global_step,
+                        )
 
             n_batch += 1
 
