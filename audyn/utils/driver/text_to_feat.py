@@ -52,11 +52,8 @@ class TextToFeatTrainer(BaseTrainer):
         if hasattr(train_config, "pretrained_feat_to_wave"):
             pretrained_config = train_config.pretrained_feat_to_wave
 
-            if hasattr(pretrained_config, "path"):
-                path = pretrained_config.path
-
-                if path is not None and path != "":
-                    use_pretrained_feat_to_wave = True
+            if hasattr(pretrained_config, "path") and pretrained_config.path:
+                use_pretrained_feat_to_wave = True
 
         if use_pretrained_feat_to_wave:
             state_dict = torch.load(
@@ -72,8 +69,16 @@ class TextToFeatTrainer(BaseTrainer):
                     is_distributed=system_config.distributed.enable,
                 )
                 feat_to_wave.load_state_dict(state_dict["model"])
+            elif "generator" in feat_to_wave_config.model:
+                # generator of GAN
+                feat_to_wave = instantiate_model(feat_to_wave_config.model.generator)
+                feat_to_wave = set_device(
+                    feat_to_wave,
+                    accelerator=system_config.accelerator,
+                    is_distributed=system_config.distributed.enable,
+                )
+                feat_to_wave.load_state_dict(state_dict["model"]["generator"])
             else:
-                # TODO support generator of GAN
                 raise ValueError("Given config type is not supported now.")
 
             if hasattr(pretrained_config, "transform_middle"):
@@ -486,7 +491,7 @@ class TextToFeatTrainer(BaseTrainer):
 
         if self.transform_middle is None:
             named_transform_middle_output = {}
-        else:
+        elif hasattr(key_mapping, "transform_middle") and key_mapping.transform_middle is not None:
             # transform middle
             transform_middle_key_mapping = key_mapping.transform_middle
 
@@ -525,70 +530,75 @@ class TextToFeatTrainer(BaseTrainer):
             named_transform_middle_output = self.map_to_named_output(
                 transform_middle_output, key_mapping=transform_middle_key_mapping
             )
+        else:
+            named_transform_middle_output = {}
 
         # feat-to-wave
-        feat_to_wave_key_mapping = key_mapping.feat_to_wave
+        if hasattr(key_mapping, "feat_to_wave") and key_mapping.feat_to_wave is not None:
+            feat_to_wave_key_mapping = key_mapping.feat_to_wave
 
-        named_feat_to_wave_input = self.map_to_named_input(
-            named_data,
-            key_mapping=feat_to_wave_key_mapping,
-            strict=False,
-        )
-        named_feat_to_wave_input_from_named_output = self.map_to_named_input(
-            named_output,
-            key_mapping=feat_to_wave_key_mapping,
-            strict=False,
-        )
-        named_feat_to_wave_input_from_named_transform_middle_output = self.map_to_named_input(
-            named_transform_middle_output,
-            key_mapping=feat_to_wave_key_mapping,
-            strict=False,
-        )
+            named_feat_to_wave_input = self.map_to_named_input(
+                named_data,
+                key_mapping=feat_to_wave_key_mapping,
+                strict=False,
+            )
+            named_feat_to_wave_input_from_named_output = self.map_to_named_input(
+                named_output,
+                key_mapping=feat_to_wave_key_mapping,
+                strict=False,
+            )
+            named_feat_to_wave_input_from_named_transform_middle_output = self.map_to_named_input(
+                named_transform_middle_output,
+                key_mapping=feat_to_wave_key_mapping,
+                strict=False,
+            )
 
-        assert (
-            set(named_feat_to_wave_input.keys())
-            & set(named_feat_to_wave_input_from_named_output.keys())
-            == set()
-        ), (
-            "named_feat_to_wave_input and named_feat_to_wave_input_from_named_output "
-            "should be disjointed."
-        )
-        assert (
-            set(named_feat_to_wave_input.keys())
-            & set(named_feat_to_wave_input_from_named_transform_middle_output.keys())
-            == set()
-        ), (
-            "named_feat_to_wave_input and "
-            "named_feat_to_wave_input_from_named_transform_middle_output "
-            "should be disjointed."
-        )
-        assert (
-            set(named_feat_to_wave_input_from_named_output.keys())
-            & set(named_feat_to_wave_input_from_named_transform_middle_output.keys())
-            == set()
-        ), (
-            "named_feat_to_wave_input_from_named_output and "
-            "named_feat_to_wave_input_from_named_transform_middle_output "
-            "should be disjointed."
-        )
+            assert (
+                set(named_feat_to_wave_input.keys())
+                & set(named_feat_to_wave_input_from_named_output.keys())
+                == set()
+            ), (
+                "named_feat_to_wave_input and named_feat_to_wave_input_from_named_output "
+                "should be disjointed."
+            )
+            assert (
+                set(named_feat_to_wave_input.keys())
+                & set(named_feat_to_wave_input_from_named_transform_middle_output.keys())
+                == set()
+            ), (
+                "named_feat_to_wave_input and "
+                "named_feat_to_wave_input_from_named_transform_middle_output "
+                "should be disjointed."
+            )
+            assert (
+                set(named_feat_to_wave_input_from_named_output.keys())
+                & set(named_feat_to_wave_input_from_named_transform_middle_output.keys())
+                == set()
+            ), (
+                "named_feat_to_wave_input_from_named_output and "
+                "named_feat_to_wave_input_from_named_transform_middle_output "
+                "should be disjointed."
+            )
 
-        named_feat_to_wave_input.update(named_feat_to_wave_input_from_named_output)
-        named_feat_to_wave_input.update(
-            named_feat_to_wave_input_from_named_transform_middle_output
-        )
+            named_feat_to_wave_input.update(named_feat_to_wave_input_from_named_output)
+            named_feat_to_wave_input.update(
+                named_feat_to_wave_input_from_named_transform_middle_output
+            )
 
-        if forward_method is None:
-            forward_fn = self.feat_to_wave
-        else:
-            if hasattr(self.feat_to_wave, forward_method):
-                unwrapped_feat_to_wave = unwrap(self.feat_to_wave)
-                forward_fn = getattr(unwrapped_feat_to_wave, forward_method)
-            else:
+            if forward_method is None:
                 forward_fn = self.feat_to_wave
+            else:
+                if hasattr(self.feat_to_wave, forward_method):
+                    unwrapped_feat_to_wave = unwrap(self.feat_to_wave)
+                    forward_fn = getattr(unwrapped_feat_to_wave, forward_method)
+                else:
+                    forward_fn = self.feat_to_wave
 
-        feat_to_wave_output = forward_fn(**named_feat_to_wave_input)
-        named_feat_to_wave_output = self.map_to_named_output(
-            feat_to_wave_output, key_mapping=feat_to_wave_key_mapping
-        )
+            feat_to_wave_output = forward_fn(**named_feat_to_wave_input)
+            named_feat_to_wave_output = self.map_to_named_output(
+                feat_to_wave_output, key_mapping=feat_to_wave_key_mapping
+            )
+        else:
+            named_feat_to_wave_output = {}
 
         return named_transform_middle_output, named_feat_to_wave_output
