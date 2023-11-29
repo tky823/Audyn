@@ -33,3 +33,19 @@ waveform:
         output:
         reference:
       inference: ${.validation}
+audio:
+  iteration:
+  epoch:
+    every: 1
+    sample_size: 1
+    sample_rate: ${data.audio.sample_rate}
+    key_mapping:
+      validation:
+        output:
+          estimated_waveform: "Estimated audio (epoch)"
+        reference:
+      inference:
+        output:
+          estimated_waveform: "Estimated audio of inference (epoch)"
+        reference:
+    transforms: ${...waveform.epoch.transforms}
