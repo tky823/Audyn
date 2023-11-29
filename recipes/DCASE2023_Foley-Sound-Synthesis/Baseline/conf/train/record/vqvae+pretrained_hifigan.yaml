@@ -1,0 +1,35 @@
+spectrogram:
+  iteration:
+    every: 1000
+    sample_size: 1
+    key_mapping:
+      output:
+        reconstructed: "Reconstructed Mel-spectrogram (iteration)"
+      reference:
+        log_melspectrogram: "Target Mel-spectrogram (iteration)"
+    transforms:
+  epoch:
+    every: 1
+    sample_size: 1
+    key_mapping:
+      output:
+        reconstructed: "Generated Mel-spectrogram (epoch)"
+    transforms:
+waveform:
+  iteration:
+  epoch:
+    every: 1
+    sample_size: 1
+    key_mapping:
+      validation:
+        output:
+          estimated_waveform: "Estimated waveform (epoch)"
+        reference:
+      inference:
+        output:
+          estimated_waveform: "Estimated waveform of inference (epoch)"
+    transforms:
+      validation:
+        output:
+        reference:
+      inference: ${.validation}
