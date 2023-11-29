@@ -68,7 +68,8 @@ class TextToFeatTrainer(BaseTrainer):
                     accelerator=system_config.accelerator,
                     is_distributed=system_config.distributed.enable,
                 )
-                feat_to_wave.load_state_dict(state_dict["model"])
+                unwrapped_feat_to_wave = unwrap(feat_to_wave)
+                unwrapped_feat_to_wave.load_state_dict(state_dict["model"])
             elif "generator" in feat_to_wave_config.model:
                 # generator of GAN
                 feat_to_wave = instantiate_model(feat_to_wave_config.model.generator)
@@ -77,7 +78,8 @@ class TextToFeatTrainer(BaseTrainer):
                     accelerator=system_config.accelerator,
                     is_distributed=system_config.distributed.enable,
                 )
-                feat_to_wave.load_state_dict(state_dict["model"]["generator"])
+                unwrapped_feat_to_wave = unwrap(feat_to_wave)
+                unwrapped_feat_to_wave.load_state_dict(state_dict["model"]["generator"])
             else:
                 raise ValueError("Given config type is not supported now.")
 
