@@ -5,6 +5,7 @@ exp_dir="./exp"
 
 tag=""
 continue_from=""
+hifigan_checkpoint=""
 
 system="defaults"
 data="baseline"
@@ -55,5 +56,6 @@ train.dataset.train.feature_dir="${feature_dir}" \
 train.dataset.validation.list_path="${list_dir}/validation.txt" \
 train.dataset.validation.feature_dir="${feature_dir}" \
 train.resume.continue_from="${continue_from}" \
+++train.pretrained_feat_to_wave.path="${hifigan_checkpoint}" \
 train.output.exp_dir="${exp_dir}/${tag}" \
 train.output.tensorboard_dir="tensorboard/${tag}/vqvae"

@@ -127,6 +127,7 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
         . ./train_vqvae.sh \
         --tag "${tag}" \
         --continue-from "${continue_from}" \
+        --hifigan-checkpoint "${hifigan_checkpoint}" \
         --dump-root "${dump_root}" \
         --exp-dir "${exp_dir}" \
         --system "${system}" \
