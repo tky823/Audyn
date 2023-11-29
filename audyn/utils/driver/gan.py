@@ -337,6 +337,19 @@ class GANTrainer(BaseTrainer):
                 total_generator_loss,
                 global_step=self.iteration_idx + 1,
             )
+            if hasattr(self.config.train.record, "spectrogram"):
+                spectrogram_config = self.config.train.record.spectrogram.iteration
+                global_step = self.iteration_idx + 1
+
+                if spectrogram_config is not None and global_step % spectrogram_config.every == 0:
+                    self.write_spectrogram_if_necessary(
+                        named_output,
+                        named_batch,
+                        sample_size=spectrogram_config.sample_size,
+                        key_mapping=spectrogram_config.key_mapping,
+                        transforms=spectrogram_config.transforms,
+                        global_step=global_step,
+                    )
 
             if hasattr(self.config.train.record, "waveform"):
                 waveform_config = self.config.train.record.waveform.iteration
@@ -565,6 +578,30 @@ class GANTrainer(BaseTrainer):
                     + generator_loss[criterion_name].item()
                 )
 
+            if hasattr(self.config.train.record, "spectrogram") and n_batch < 1:
+                spectrogram_config = self.config.train.record.spectrogram.epoch
+                global_step = self.epoch_idx + 1
+
+                if spectrogram_config is not None and global_step % spectrogram_config.every == 0:
+                    if hasattr(spectrogram_config.key_mapping, "validation"):
+                        key_mapping = spectrogram_config.key_mapping.validation
+                    else:
+                        key_mapping = spectrogram_config.key_mapping
+
+                    if hasattr(spectrogram_config.key_mapping, "validation"):
+                        transforms = spectrogram_config.transforms.validation
+                    else:
+                        transforms = spectrogram_config.transforms
+
+                    self.write_spectrogram_if_necessary(
+                        named_output,
+                        named_batch,
+                        sample_size=spectrogram_config.sample_size,
+                        key_mapping=key_mapping,
+                        transforms=transforms,
+                        global_step=global_step,
+                    )
+
             if hasattr(self.config.train.record, "waveform") and n_batch < 1:
                 waveform_config = self.config.train.record.waveform.epoch
                 global_step = self.epoch_idx + 1
@@ -682,6 +719,30 @@ class GANTrainer(BaseTrainer):
                 output,
                 key_mapping=inference_key_mapping,
             )
+
+            if hasattr(self.config.train.record, "spectrogram") and n_batch < 1:
+                spectrogram_config = self.config.train.record.spectrogram.epoch
+                global_step = self.epoch_idx + 1
+
+                if spectrogram_config is not None and global_step % spectrogram_config.every == 0:
+                    if hasattr(spectrogram_config.key_mapping, "inference"):
+                        key_mapping = spectrogram_config.key_mapping.inference
+
+                        if hasattr(spectrogram_config.transforms, "inference"):
+                            transforms = spectrogram_config.transforms.inference
+                        elif hasattr(spectrogram_config.transforms, "validation"):
+                            transforms = spectrogram_config.transforms.validation
+                        else:
+                            transforms = spectrogram_config.transforms
+
+                        self.write_spectrogram_if_necessary(
+                            named_output,
+                            named_batch,
+                            sample_size=spectrogram_config.sample_size,
+                            key_mapping=key_mapping,
+                            transforms=transforms,
+                            global_step=global_step,
+                        )
 
             if hasattr(self.config.train.record, "waveform") and n_batch < 1:
                 waveform_config = self.config.train.record.waveform.epoch
