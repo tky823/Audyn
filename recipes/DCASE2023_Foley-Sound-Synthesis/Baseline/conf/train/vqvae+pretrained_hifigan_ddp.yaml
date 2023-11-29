@@ -38,11 +38,20 @@ key_mapping:
       - encoded
       - quantized
       - indices
-  validation: ${.train}
+  validation:
+    text_to_feat: ${..train}
+    transform_middle:
+    feat_to_wave:
+      input:
+        input: reconstructed
+      output: estimated_waveform
   inference:
-    input:
-      quantized: codebook_indices
-    output: reconstructed
+    text_to_feat:
+      input:
+        quantized: codebook_indices
+      output: reconstructed
+    transform_middle: ${..validation.transform_middle}
+    feat_to_wave: ${..validation.feat_to_wave}
 
 clip_gradient:
   _target_: torch.nn.utils.clip_grad_norm_
