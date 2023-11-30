@@ -1,6 +1,7 @@
 import torch
 from omegaconf import DictConfig
 
+from .clip_grad import GradClipper
 from .data import select_accelerator
 from .distributed import is_distributed, setup_distributed
 from .hydra.utils import (
@@ -18,6 +19,7 @@ __all__ = [
     "instantiate_optimizer",
     "instantiate_lr_scheduler",
     "instantiate_criterion",
+    "GradClipper",
 ]
 
 
