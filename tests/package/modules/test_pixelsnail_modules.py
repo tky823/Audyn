@@ -92,15 +92,16 @@ def test_causal_conv2d(kernel_size: _size_2_t) -> None:
     in_channels, out_channels = 4, 3
     height, width = 5, 7
 
+    input = torch.randn((batch_size, in_channels, height, width))
+
+    # weight normalization
     module = CausalConv2d(
         in_channels,
         out_channels,
         kernel_size=kernel_size,
     )
-    input = torch.randn((batch_size, in_channels, height, width))
     output = module(input)
 
-    # weight normalization
     if IS_TORCH_LT_2_1:
         weight_norm_fn = nn.utils.weight_norm
     else:
@@ -112,6 +113,12 @@ def test_causal_conv2d(kernel_size: _size_2_t) -> None:
     assert torch.allclose(output, output_weight_norm)
 
     # spectral normalization
+    module = CausalConv2d(
+        in_channels,
+        out_channels,
+        kernel_size=kernel_size,
+    )
+
     if IS_TORCH_LT_2_1:
         spectral_norm_fn = nn.utils.spectral_norm
     else:

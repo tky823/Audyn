@@ -15,20 +15,23 @@ parameters_capture_center = [True, False]
 @pytest.mark.parametrize("kernel_size", parameters_kernel_size)
 @pytest.mark.parametrize("capture_center", parameters_capture_center)
 def test_causal_conv2d(kernel_size: _size_2_t, capture_center: bool) -> None:
+    torch.manual_seed(0)
+
     batch_size = 2
     in_channels, out_channels = 2, 3
     height, width = 5, 7
 
+    input = torch.randn((batch_size, in_channels, height, width))
+
+    # weight normalization
     module = CausalConv2d(
         in_channels,
         out_channels,
         kernel_size=kernel_size,
         capture_center=capture_center,
     )
-    input = torch.randn((batch_size, in_channels, height, width))
     output = module(input)
 
-    # weight normalization
     if IS_TORCH_LT_2_1:
         weight_norm_fn = nn.utils.weight_norm
     else:
@@ -40,6 +43,13 @@ def test_causal_conv2d(kernel_size: _size_2_t, capture_center: bool) -> None:
     assert torch.allclose(output, output_weight_norm)
 
     # spectral normalization
+    module = CausalConv2d(
+        in_channels,
+        out_channels,
+        kernel_size=kernel_size,
+        capture_center=capture_center,
+    )
+
     if IS_TORCH_LT_2_1:
         spectral_norm_fn = nn.utils.spectral_norm
     else:
@@ -52,20 +62,23 @@ def test_causal_conv2d(kernel_size: _size_2_t, capture_center: bool) -> None:
 @pytest.mark.parametrize("kernel_size", parameters_kernel_size)
 @pytest.mark.parametrize("capture_center", parameters_capture_center)
 def test_vertical_conv2d(kernel_size: _size_2_t, capture_center: bool) -> None:
+    torch.manual_seed(0)
+
     batch_size = 2
     in_channels, out_channels = 2, 3
     height, width = 5, 7
 
+    input = torch.randn((batch_size, in_channels, height, width))
+
+    # weight normalization
     module = VerticalConv2d(
         in_channels,
         out_channels,
         kernel_size=kernel_size,
         capture_center=capture_center,
     )
-    input = torch.randn((batch_size, in_channels, height, width))
     output = module(input)
 
-    # weight normalization
     if IS_TORCH_LT_2_1:
         weight_norm_fn = nn.utils.weight_norm
     else:
@@ -77,6 +90,13 @@ def test_vertical_conv2d(kernel_size: _size_2_t, capture_center: bool) -> None:
     assert torch.allclose(output, output_weight_norm)
 
     # spectral normalization
+    module = VerticalConv2d(
+        in_channels,
+        out_channels,
+        kernel_size=kernel_size,
+        capture_center=capture_center,
+    )
+
     if IS_TORCH_LT_2_1:
         spectral_norm_fn = nn.utils.spectral_norm
     else:
@@ -88,21 +108,24 @@ def test_vertical_conv2d(kernel_size: _size_2_t, capture_center: bool) -> None:
 
 @pytest.mark.parametrize("capture_center", parameters_capture_center)
 def test_horizontal_conv2d(capture_center: bool) -> None:
+    torch.manual_seed(0)
+
     batch_size = 2
     in_channels, out_channels = 2, 3
     kernel_size = 5
     height, width = 5, 7
 
+    input = torch.randn((batch_size, in_channels, height, width))
+
+    # weight normalization
     module = HorizontalConv2d(
         in_channels,
         out_channels,
         kernel_size=kernel_size,
         capture_center=capture_center,
     )
-    input = torch.randn((batch_size, in_channels, height, width))
     output = module(input)
 
-    # weight normalization
     if IS_TORCH_LT_2_1:
         weight_norm_fn = nn.utils.weight_norm
     else:
@@ -114,6 +137,13 @@ def test_horizontal_conv2d(capture_center: bool) -> None:
     assert torch.allclose(output, output_weight_norm)
 
     # spectral normalization
+    module = HorizontalConv2d(
+        in_channels,
+        out_channels,
+        kernel_size=kernel_size,
+        capture_center=capture_center,
+    )
+
     if IS_TORCH_LT_2_1:
         spectral_norm_fn = nn.utils.spectral_norm
     else:
