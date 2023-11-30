@@ -14,6 +14,7 @@ from audyn.criterion.base import BaseCriterionWrapper, MultiCriteria
 from ...models.text_to_wave import CascadeTextToWave
 from ...modules.vqvae import VectorQuantizer
 from ...optim.optimizer import ExponentialMovingAverageCodebookOptimizer, MultiOptimizers
+from ..clip_grad import GradClipper
 from ..parallel import is_dp_or_ddp
 
 __all__ = [
@@ -21,6 +22,7 @@ __all__ = [
     "instantiate_cascade_text_to_wave",
     "instantiate_optimizer",
     "instantiate_lr_scheduler",
+    "instantiate_grad_clipper",
 ]
 
 IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
@@ -238,6 +240,22 @@ def instantiate_lr_scheduler(
         lr_scheduler = None
 
     return lr_scheduler
+
+
+def instantiate_grad_clipper(
+    config: DictConfig, module_or_params: Optimizer, *args, **kwargs
+) -> GradClipper:
+    # for backward compatibility
+    if config._target_ in ["torch.nn.utils.clip_value_", "torch.nn.utils.clip_norm_"]:
+        if config._target_ == "torch.nn.utils.clip_value_":
+            config.mode = "value"
+        elif config._target_ == "torch.nn.utils.clip_norm_":
+            config.mode = "norm"
+        config._target_ = "audyn.utils.GradClipper"
+
+    grad_clipper = hydra.utils.instantiate(config, module_or_params, *args, **kwargs)
+
+    return grad_clipper
 
 
 def instantiate_criterion(
