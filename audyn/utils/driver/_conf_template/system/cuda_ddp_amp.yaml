@@ -1,0 +1,11 @@
+seed: 0
+distributed:
+  enable: true
+  backend: nccl
+  init_method: "env://"
+cudnn:
+  benchmark: true
+  deterministic: false
+amp:
+  enable: true
+accelerator: cuda

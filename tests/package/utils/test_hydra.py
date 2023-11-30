@@ -1,11 +1,20 @@
+from os.path import dirname, join, realpath
+
 import pytest
 import torch
 import torch.nn as nn
 from omegaconf import OmegaConf
 from torch.optim import SGD
 
+from audyn.criterion.base import MultiCriteria
 from audyn.modules.vqvae import VectorQuantizer
-from audyn.utils.hydra.utils import instantiate_lr_scheduler, instantiate_optimizer
+from audyn.utils.hydra.utils import (
+    instantiate_criterion,
+    instantiate_lr_scheduler,
+    instantiate_optimizer,
+)
+
+dummy_conf_dir = join(dirname(realpath(__file__)), "_conf_dummy")
 
 
 def test_instantiate_optimizer() -> None:
@@ -96,3 +105,18 @@ def test_instantiate_lr_scheduler(is_null: bool) -> None:
         assert lr_scheduler is None
     else:
         assert lr_scheduler is not None
+
+
+@pytest.mark.parametrize(
+    "config_name",
+    [
+        "dummy_dict_instantiation.yaml",
+        "dummy_list_instantiation.yaml",
+    ],
+)
+def test_instantiate_criterion(config_name: str) -> None:
+    config_path = join(dummy_conf_dir, "criterion", config_name)
+    config = OmegaConf.load(config_path)
+    criterion = instantiate_criterion(config)
+
+    assert isinstance(criterion, MultiCriteria)

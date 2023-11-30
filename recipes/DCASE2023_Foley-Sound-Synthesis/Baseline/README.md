@@ -1,0 +1,196 @@
+# Baseline recipe of Foley Sound Synthesis task in DCASE 2023
+
+This recipe reproduces the baseline system of Foley Sound Synthesis task in DCASE 2023.
+The original implementation can be found at https://github.com/DCASE2023-Task7-Foley-Sound-Synthesis/dcase2023_task7_baseline.
+
+## Models
+
+### PixelSNAIL
+
+Our implementation is based on https://github.com/DCASE2023-Task7-Foley-Sound-Synthesis/dcase2023_task7_baseline/blob/main/pixelsnail.py. However, we changed some details.
+
+## Stages
+
+### Stage 0: Preprocess UrbanSound8K (optional)
+
+```sh
+data="baseline"
+
+. ./run.sh \
+--stage 0 \
+--stop-stage 0 \
+--data "${data}"
+```
+
+### Stage 1: Train HiFi-GAN (optional)
+
+```sh
+system="defaults"  # "cuda", "cuda_ddp", "cuda_amp", "cuda_ddp_amp"
+data="baseline"
+train="hifigan"  # "hifigan_ddp"
+model="hifigan_v1"
+optimizer="hifigan"
+lr_scheduler="hifigan"
+criterion="hifigan"
+
+. ./run.sh \
+--stage 1 \
+--stop-stage 1 \
+--tag <TAG> \
+--system "${system}" \
+--data "${data}" \
+--train "${train}" \
+--model "${model}" \
+--optimizer "${optimizer}" \
+--lr_scheduler "${lr_scheduler}" \
+--criterion "${criterion}"
+```
+
+### Stage 2: Preprocess official development dataset
+
+```sh
+data="baseline"
+
+. ./run.sh \
+--stage 2 \
+--stop-stage 2 \
+--data "${data}"
+```
+
+### Stage 3: Preprocess test set
+
+```sh
+data="baseline"
+
+. ./run.sh \
+--stage 3 \
+--stop-stage 3 \
+--data "${data}"
+```
+
+### Stage 4: Train VQVAE
+
+If you choose `vqvae_ema` as `optimizer`, you cannot use mixed precision (`cuda_amp` and `cuda_ddp_amp`).
+
+```sh
+system="defaults"  # "cuda", "cuda_ddp"
+data="baseline"
+train="vqvae"  # "vqvae_ddp"
+model="vqvae"
+optimizer="vqvae_ema"  # "vqvae"
+lr_scheduler="none"
+criterion="vqvae"
+
+. ./run.sh \
+--stage 4 \
+--stop-stage 4 \
+--tag <TAG> \
+--system "${system}" \
+--data "${data}" \
+--train "${train}" \
+--model "${model}" \
+--optimizer "${optimizer}" \
+--lr_scheduler "${lr_scheduler}" \
+--criterion "${criterion}"
+```
+
+If you want to use pretrained HiFi-GAN as a vocoder, please set `--train vqvae+pretrained_hifigan` or `--train vqvae+pretrained_hifigan_ddp`.
+In addition, `hifigan_checkpoint` is required.
+In this setting, parameters in HiFi-GAN are not updated by the optimizer.
+
+```sh
+hifigan_checkpoint=<PATH/TO/PRETRAINED/HIFIGAN/CHECKPOINT>
+
+system="defaults"  # "cuda", "cuda_ddp"
+data="baseline"
+train="vqvae+pretrained_hifigan"  # "vqvae+pretrained_hifigan_ddp"
+model="vqvae"
+optimizer="vqvae_ema"  # "vqvae"
+lr_scheduler="none"
+criterion="vqvae"
+
+. ./run.sh \
+--stage 4 \
+--stop-stage 4 \
+--tag <TAG> \
+--hifigan-checkpoint "${hifigan_checkpoint}" \
+--system "${system}" \
+--data "${data}" \
+--train "${train}" \
+--model "${model}" \
+--optimizer "${optimizer}" \
+--lr_scheduler "${lr_scheduler}" \
+--criterion "${criterion}"
+```
+
+### Stage 5: Save prior of VQVAE
+
+```sh
+system="defaults"  # "cuda"
+data="baseline"
+train="prior"
+model="vqvae"
+
+vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.pth
+
+. ./run.sh \
+--stage 5 \
+--stop-stage 5 \
+--tag <TAG> \
+--vqvae-checkpoint "${vqvae_checkpoint}" \
+--system "${system}" \
+--data "${data}" \
+--train "${train}" \
+--model "${model}"
+```
+
+### Stage 6: Train PixelSNAIL
+
+You cannot use mixed precision (`cuda_amp` and `cuda_ddp_amp`) for training of PixelSNAIL due to numerical instability.
+
+```sh
+system="defaults"  # "cuda", "cuda_ddp"
+data="baseline"
+train="pixelsnail"  # "pixelsnail_ddp"
+model="pixelsnail"
+optimizer="pixelsnail"
+lr_scheduler="none"
+criterion="pixelsnail"
+
+. ./run.sh \
+--stage 6 \
+--stop-stage 6 \
+--tag <TAG> \
+--system "${system}" \
+--data "${data}" \
+--train "${train}" \
+--model "${model}" \
+--optimizer "${optimizer}" \
+--lr_scheduler "${lr_scheduler}" \
+--criterion "${criterion}"
+```
+
+### Stage 7: Generate conditional audio samples
+
+```sh
+system="defaults"  # "cuda"
+data="baseline"
+test="baseline"
+model="baseline"
+
+pixelsnail_checkpoint=<PATH/TO/PIXELSNAIL/CHECKPOINT>  # e.g. exp/<TAG>/model/pixelsnail/last.pth
+vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.pth
+hifigan_checkpoint=<PATH/TO/HIFIGAN/CHECKPOINT>  # e.g. exp/<TAG>/model/hifigan/last.pth
+
+. ./run.sh \
+--stage 7 \
+--stop-stage 7 \
+--tag <TAG> \
+--pixelsnail-checkpoint "${pixelsnail_checkpoint}"
+--vqvae-checkpoint "${vqvae_checkpoint}" \
+--hifigan-checkpoint "${hifigan_checkpoint}" \
+--system "${system}" \
+--data "${data}" \
+--test "${test}" \
+--model "${model}"
+```

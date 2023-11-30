@@ -1,0 +1,19 @@
+_target_: utils.models.pixelsnail.PixelSNAIL
+codebook_size: ${data.codebook.size}
+in_channels: 256
+hidden_channels: 256
+kernel_size: 5
+num_heads: 8
+num_blocks: 4
+num_repeats: 4
+num_post_blocks: 0  # In the original implementation, num_post_blocks is always 0.
+dropout: 0.1
+conditional_channels: 1  # When you use utils.models.pixelsnail.EmbeddingNet, this should be 1.
+weight_regularization: weight_norm
+activation: elu
+input_shape: ${data.codebook.shape}
+conditionor:
+  _target_: utils.models.pixelsnail.EmbeddingNet
+  num_embeddings: ${data.num_categories}
+  shape: ${..input_shape}
+  pad_idx: 0  # for <UNK> category

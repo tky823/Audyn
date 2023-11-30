@@ -17,9 +17,13 @@ from torch.optim.lr_scheduler import _LRScheduler
 from torch.utils.data import DataLoader
 
 from ... import __version__ as _version
-from ...optim.optimizer import MovingAverageWrapper
+from ...optim.optimizer import (
+    ExponentialMovingAverageCodebookOptimizer,
+    MovingAverageWrapper,
+    MultiOptimizers,
+)
 from ...utils.logging import get_logger
-from ...utils.parallel import is_dp_or_ddp
+from ...utils.model import unwrap
 from ...utils.tensorboard import get_summary_writer
 from ..data import BaseDataLoaders, select_device
 from ..distributed import select_global_rank, select_local_rank
@@ -42,11 +46,7 @@ class BaseDriver:
     @property
     def unwrapped_model(self) -> nn.Module:
         """Unwrapped model to access attributes directly."""
-        if is_dp_or_ddp(self.model):
-            self.model: Union[nn.parallel.DataParallel, nn.parallel.DistributedDataParallel]
-            return self.model.module
-        else:
-            return self.model
+        return unwrap(self.model)
 
     def count_num_parameters(self) -> int:
         """Count number of parameters.
@@ -140,6 +140,7 @@ class BaseDriver:
         self,
         named_data: Dict[str, torch.Tensor],
         key_mapping: Optional[DictConfig] = None,
+        strict: bool = True,
     ) -> Dict[str, torch.Tensor]:
         if key_mapping is None:
             key_mapping = self.config.train.key_mapping
@@ -148,7 +149,14 @@ class BaseDriver:
 
         for model_key in key_mapping.input.keys():
             data_key = key_mapping.input[model_key]
-            named_input[model_key] = named_data[data_key]
+
+            _named_data = named_data.get(data_key)
+
+            if _named_data is None:
+                if strict:
+                    raise ValueError("data_key is not found in named_data.")
+            else:
+                named_input[model_key] = _named_data
 
         return named_input
 
@@ -569,7 +577,7 @@ class BaseTrainer(BaseDriver):
             self.optimizer.zero_grad()
             self.scaler.scale(total_loss).backward()
             self.clip_gradient_if_necessary()
-            self.scaler.step(self.optimizer)
+            self.optimizer_step()
             self.scaler.update()
 
             if self.config.train.steps.lr_scheduler == "iteration":
@@ -613,7 +621,6 @@ class BaseTrainer(BaseDriver):
     @torch.no_grad()
     def validate_one_epoch(self) -> Dict[str, float]:
         """Validate model for one epoch."""
-        record_config = self.config.train.record
         criterion_names = {
             key
             for key in self.config.criterion.keys()
@@ -646,102 +653,30 @@ class BaseTrainer(BaseDriver):
                     validation_loss[criterion_name] + loss[criterion_name].item()
                 )
 
-            if hasattr(record_config, "spectrogram") and n_batch < 1:
-                spectrogram_config = record_config.spectrogram.epoch
-                global_step = self.epoch_idx + 1
-
-                if spectrogram_config is not None and global_step % spectrogram_config.every == 0:
-                    if hasattr(spectrogram_config.key_mapping, "validation"):
-                        key_mapping = spectrogram_config.key_mapping.validation
-                    else:
-                        key_mapping = spectrogram_config.key_mapping
-
-                    if hasattr(spectrogram_config.key_mapping, "validation"):
-                        transforms = spectrogram_config.transforms.validation
-                    else:
-                        transforms = spectrogram_config.transforms
-
-                    self.write_spectrogram_if_necessary(
-                        named_output,
-                        named_data,
-                        sample_size=spectrogram_config.sample_size,
-                        key_mapping=key_mapping,
-                        transforms=transforms,
-                        global_step=global_step,
-                    )
-
-            if hasattr(record_config, "waveform") and n_batch < 1:
-                waveform_config = record_config.waveform.epoch
-                global_step = self.epoch_idx + 1
-
-                if waveform_config is not None and global_step % waveform_config.every == 0:
-                    if hasattr(waveform_config.key_mapping, "validation"):
-                        key_mapping = waveform_config.key_mapping.validation
-                    else:
-                        key_mapping = waveform_config.key_mapping
-
-                    if hasattr(waveform_config.transforms, "validation"):
-                        transforms = waveform_config.transforms.validation
-                    else:
-                        transforms = waveform_config.transforms
-
-                    self.write_waveform_if_necessary(
-                        named_output,
-                        named_data,
-                        sample_size=waveform_config.sample_size,
-                        key_mapping=key_mapping,
-                        transforms=transforms,
-                        global_step=global_step,
-                    )
-
-            if hasattr(record_config, "audio") and n_batch < 1:
-                audio_config = record_config.audio.epoch
-                global_step = self.epoch_idx + 1
-
-                if audio_config is not None and global_step % audio_config.every == 0:
-                    if hasattr(audio_config.key_mapping, "validation"):
-                        key_mapping = audio_config.key_mapping.validation
-                    else:
-                        key_mapping = audio_config.key_mapping
-
-                    if hasattr(audio_config.transforms, "validation"):
-                        transforms = audio_config.transforms.validation
-                    else:
-                        transforms = audio_config.transforms
-
-                    self.write_audio_if_necessary(
-                        named_output,
-                        named_data,
-                        sample_size=audio_config.sample_size,
-                        key_mapping=key_mapping,
-                        transforms=transforms,
-                        global_step=global_step,
-                        sample_rate=audio_config.sample_rate,
-                    )
-
-            if hasattr(record_config, "image") and n_batch < 1:
-                image_config = record_config.image.epoch
-                global_step = self.epoch_idx + 1
-
-                if hasattr(image_config.key_mapping, "validation"):
-                    key_mapping = image_config.key_mapping.validation
-                else:
-                    key_mapping = image_config.key_mapping
-
-                if hasattr(image_config.transforms, "validation"):
-                    transforms = image_config.transforms.validation
-                else:
-                    transforms = image_config.transforms
-
-                if image_config is not None and global_step % image_config.every == 0:
-                    self.write_image_if_necessary(
-                        named_output,
-                        named_data,
-                        sample_size=image_config.sample_size,
-                        key_mapping=key_mapping,
-                        transforms=transforms,
-                        global_step=global_step,
-                    )
+            self.write_validation_spectrogram_if_necessary(
+                named_output,
+                named_data,
+                config=self.config.train.record,
+                batch_idx=n_batch,
+            )
+            self.write_validation_waveform_if_necessary(
+                named_output,
+                named_data,
+                config=self.config.train.record,
+                batch_idx=n_batch,
+            )
+            self.write_validation_audio_if_necessary(
+                named_output,
+                named_data,
+                config=self.config.train.record,
+                batch_idx=n_batch,
+            )
+            self.write_validation_image_if_necessary(
+                named_output,
+                named_data,
+                config=self.config.train.record,
+                batch_idx=n_batch,
+            )
 
             n_batch += 1
 
@@ -753,8 +688,6 @@ class BaseTrainer(BaseDriver):
     @torch.no_grad()
     def infer_one_batch(self) -> Dict[str, float]:
         """Inference using one batch."""
-        record_config = self.config.train.record
-
         if hasattr(self.config.train.key_mapping, "inference"):
             inference_key_mapping = self.config.train.key_mapping.inference
         elif hasattr(self.config.train.key_mapping, "validation"):
@@ -777,118 +710,30 @@ class BaseTrainer(BaseDriver):
 
             named_output = self.map_to_named_output(output, key_mapping=inference_key_mapping)
 
-            if hasattr(record_config, "spectrogram") and n_batch < 1:
-                spectrogram_config = record_config.spectrogram.epoch
-                global_step = self.epoch_idx + 1
-
-                if spectrogram_config is not None and global_step % spectrogram_config.every == 0:
-                    if hasattr(spectrogram_config.key_mapping, "inference"):
-                        key_mapping = spectrogram_config.key_mapping.inference
-                    elif hasattr(spectrogram_config.key_mapping, "validation"):
-                        key_mapping = spectrogram_config.key_mapping.validation
-                    else:
-                        key_mapping = spectrogram_config.key_mapping
-
-                    if hasattr(spectrogram_config.key_mapping, "inference"):
-                        transforms = spectrogram_config.transforms.inference
-                    elif hasattr(spectrogram_config.key_mapping, "validation"):
-                        transforms = spectrogram_config.transforms.validation
-                    else:
-                        transforms = spectrogram_config.transforms
-
-                    self.write_spectrogram_if_necessary(
-                        named_output,
-                        named_data,
-                        sample_size=spectrogram_config.sample_size,
-                        key_mapping=key_mapping,
-                        transforms=transforms,
-                        global_step=global_step,
-                    )
-
-            if hasattr(record_config, "waveform") and n_batch < 1:
-                waveform_config = record_config.waveform.epoch
-                global_step = self.epoch_idx + 1
-
-                if waveform_config is not None and global_step % waveform_config.every == 0:
-                    if hasattr(waveform_config.key_mapping, "inference"):
-                        key_mapping = waveform_config.key_mapping.inference
-                    elif hasattr(waveform_config.key_mapping, "validation"):
-                        key_mapping = waveform_config.key_mapping.validation
-                    else:
-                        key_mapping = waveform_config.key_mapping
-
-                    if hasattr(waveform_config.transforms, "inference"):
-                        transforms = waveform_config.transforms.inference
-                    elif hasattr(waveform_config.transforms, "validation"):
-                        transforms = waveform_config.transforms.validation
-                    else:
-                        transforms = waveform_config.transforms
-
-                    self.write_waveform_if_necessary(
-                        named_output,
-                        named_data,
-                        sample_size=waveform_config.sample_size,
-                        key_mapping=key_mapping,
-                        transforms=transforms,
-                        global_step=global_step,
-                    )
-
-            if hasattr(record_config, "audio") and n_batch < 1:
-                audio_config = record_config.audio.epoch
-                global_step = self.epoch_idx + 1
-
-                if audio_config is not None and global_step % audio_config.every == 0:
-                    if hasattr(audio_config.key_mapping, "inference"):
-                        key_mapping = audio_config.key_mapping.inference
-                    elif hasattr(audio_config.key_mapping, "validation"):
-                        key_mapping = audio_config.key_mapping.validation
-                    else:
-                        key_mapping = audio_config.key_mapping
-
-                    if hasattr(audio_config.transforms, "inference"):
-                        transforms = audio_config.transforms.inference
-                    elif hasattr(audio_config.transforms, "validation"):
-                        transforms = audio_config.transforms.validation
-                    else:
-                        transforms = audio_config.transforms
-
-                    self.write_audio_if_necessary(
-                        named_output,
-                        named_data,
-                        sample_size=audio_config.sample_size,
-                        key_mapping=key_mapping,
-                        transforms=transforms,
-                        global_step=global_step,
-                        sample_rate=audio_config.sample_rate,
-                    )
-
-            if hasattr(record_config, "image") and n_batch < 1:
-                image_config = record_config.image.epoch
-                global_step = self.epoch_idx + 1
-
-                if hasattr(image_config.key_mapping, "inference"):
-                    key_mapping = image_config.key_mapping.inference
-                elif hasattr(image_config.key_mapping, "validation"):
-                    key_mapping = image_config.key_mapping.validation
-                else:
-                    key_mapping = image_config.key_mapping
-
-                if hasattr(image_config.transforms, "inference"):
-                    transforms = image_config.transforms.inference
-                elif hasattr(image_config.transforms, "validation"):
-                    transforms = image_config.transforms.validation
-                else:
-                    transforms = image_config.transforms
-
-                if image_config is not None and global_step % image_config.every == 0:
-                    self.write_image_if_necessary(
-                        named_output,
-                        named_data,
-                        sample_size=image_config.sample_size,
-                        key_mapping=key_mapping,
-                        transforms=transforms,
-                        global_step=global_step,
-                    )
+            self.write_inference_spectrogram_if_necessary(
+                named_output,
+                named_data,
+                config=self.config.train.record,
+                batch_idx=n_batch,
+            )
+            self.write_inference_waveform_if_necessary(
+                named_output,
+                named_data,
+                config=self.config.train.record,
+                batch_idx=n_batch,
+            )
+            self.write_inference_audio_if_necessary(
+                named_output,
+                named_data,
+                config=self.config.train.record,
+                batch_idx=n_batch,
+            )
+            self.write_inference_image_if_necessary(
+                named_output,
+                named_data,
+                config=self.config.train.record,
+                batch_idx=n_batch,
+            )
 
             n_batch += 1
 
@@ -906,10 +751,54 @@ class BaseTrainer(BaseDriver):
         """
         if hasattr(self.config.train, "clip_gradient"):
             if unscale_if_necessary:
-                self.scaler.unscale_(self.optimizer)
+                if isinstance(self.optimizer, MultiOptimizers):
+                    for optimizer in self.optimizer.optimizers.values():
+                        if (
+                            isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
+                            and self.scaler.is_enabled()
+                        ):
+                            # TODO: address numerical instability
+                            raise NotImplementedError(
+                                "ExponentialMovingAverageCodebookOptimizer and AMP "
+                                "cannot be used simultaneously."
+                            )
+                        else:
+                            self.scaler.unscale_(optimizer)
+                else:
+                    if (
+                        isinstance(self.optimizer, ExponentialMovingAverageCodebookOptimizer)
+                        and self.scaler.is_enabled()
+                    ):
+                        # TODO: address numerical instability
+                        raise NotImplementedError(
+                            "ExponentialMovingAverageCodebookOptimizer and AMP "
+                            "cannot be used simultaneously."
+                        )
+                    else:
+                        self.scaler.unscale_(self.optimizer)
 
             clip_gradient_config = self.config.train.clip_gradient
             hydra.utils.instantiate(clip_gradient_config, self.model.parameters())
+
+    def optimizer_step(self, optimizer: Optional[Optimizer] = None) -> None:
+        if optimizer is None:
+            optimizer = self.optimizer
+
+        if isinstance(optimizer, MultiOptimizers):
+            for _optimizer in optimizer.optimizers.values():
+                self.optimizer_step(_optimizer)
+        else:
+            if (
+                isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
+                and self.scaler.is_enabled()
+            ):
+                # TODO: address numerical instability
+                raise NotImplementedError(
+                    "ExponentialMovingAverageCodebookOptimizer and AMP "
+                    "cannot be used simultaneously."
+                )
+            else:
+                self.scaler.step(optimizer)
 
     def display_loss(
         self, train_loss: Dict[str, float], validation_loss: Optional[Dict[str, float]] = None
@@ -1005,6 +894,352 @@ class BaseTrainer(BaseDriver):
 
         s = f"Save model: {save_path}."
         self.logger.info(s)
+
+    def write_validation_spectrogram_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        config: DictConfig = None,
+        batch_idx: int = 0,
+    ) -> None:
+        """Write spectrogram to tensorboard for validation.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            config (DictConfig, optional): Config to write out to tensorboard.
+            batch_idx (int): Batch index.
+
+        """
+        if config is None:
+            config = self.config.train.record
+
+        if hasattr(config, "spectrogram") and batch_idx < 1:
+            spectrogram_config = config.spectrogram.epoch
+            global_step = self.epoch_idx + 1
+
+            if spectrogram_config is not None and global_step % spectrogram_config.every == 0:
+                if hasattr(spectrogram_config.key_mapping, "validation"):
+                    key_mapping = spectrogram_config.key_mapping.validation
+                else:
+                    key_mapping = spectrogram_config.key_mapping
+
+                if hasattr(spectrogram_config.key_mapping, "validation"):
+                    transforms = spectrogram_config.transforms.validation
+                else:
+                    transforms = spectrogram_config.transforms
+
+                self.write_spectrogram_if_necessary(
+                    named_output,
+                    named_reference,
+                    sample_size=spectrogram_config.sample_size,
+                    key_mapping=key_mapping,
+                    transforms=transforms,
+                    global_step=global_step,
+                )
+
+    def write_validation_waveform_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        config: DictConfig = None,
+        batch_idx: int = 0,
+    ) -> None:
+        """Write waveform to tensorboard for validation.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            config (DictConfig, optional): Config to write out to tensorboard.
+            batch_idx (int): Batch index.
+
+        """
+        if config is None:
+            config = self.config.train.record
+
+        if hasattr(config, "waveform") and batch_idx < 1:
+            waveform_config = config.waveform.epoch
+            global_step = self.epoch_idx + 1
+
+            if waveform_config is not None and global_step % waveform_config.every == 0:
+                if hasattr(waveform_config.key_mapping, "validation"):
+                    key_mapping = waveform_config.key_mapping.validation
+                else:
+                    key_mapping = waveform_config.key_mapping
+
+                if hasattr(waveform_config.transforms, "validation"):
+                    transforms = waveform_config.transforms.validation
+                else:
+                    transforms = waveform_config.transforms
+
+                self.write_waveform_if_necessary(
+                    named_output,
+                    named_reference,
+                    sample_size=waveform_config.sample_size,
+                    key_mapping=key_mapping,
+                    transforms=transforms,
+                    global_step=global_step,
+                )
+
+    def write_validation_audio_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        config: DictConfig = None,
+        batch_idx: int = 0,
+    ) -> None:
+        """Write audio to tensorboard for validation.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            config (DictConfig, optional): Config to write out to tensorboard.
+            batch_idx (int): Batch index.
+
+        """
+        if config is None:
+            config = self.config.train.record
+
+        if hasattr(config, "audio") and batch_idx < 1:
+            audio_config = config.audio.epoch
+            global_step = self.epoch_idx + 1
+
+            if audio_config is not None and global_step % audio_config.every == 0:
+                if hasattr(audio_config.key_mapping, "validation"):
+                    key_mapping = audio_config.key_mapping.validation
+                else:
+                    key_mapping = audio_config.key_mapping
+
+                if hasattr(audio_config.transforms, "validation"):
+                    transforms = audio_config.transforms.validation
+                else:
+                    transforms = audio_config.transforms
+
+                self.write_audio_if_necessary(
+                    named_output,
+                    named_reference,
+                    sample_size=audio_config.sample_size,
+                    key_mapping=key_mapping,
+                    transforms=transforms,
+                    global_step=global_step,
+                    sample_rate=audio_config.sample_rate,
+                )
+
+    def write_validation_image_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        config: DictConfig = None,
+        batch_idx: int = 0,
+    ) -> None:
+        """Write image to tensorboard for validation.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            config (DictConfig, optional): Config to write out to tensorboard.
+            batch_idx (int): Batch index.
+
+        """
+        if config is None:
+            config = self.config.train.record
+
+        if hasattr(config, "image") and batch_idx < 1:
+            image_config = config.image.epoch
+            global_step = self.epoch_idx + 1
+
+            if image_config is not None and global_step % image_config.every == 0:
+                if hasattr(image_config.key_mapping, "validation"):
+                    key_mapping = image_config.key_mapping.validation
+                else:
+                    key_mapping = image_config.key_mapping
+
+                if hasattr(image_config.transforms, "validation"):
+                    transforms = image_config.transforms.validation
+                else:
+                    transforms = image_config.transforms
+
+                self.write_image_if_necessary(
+                    named_output,
+                    named_reference,
+                    sample_size=image_config.sample_size,
+                    key_mapping=key_mapping,
+                    transforms=transforms,
+                    global_step=global_step,
+                )
+
+    def write_inference_spectrogram_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        config: DictConfig = None,
+        batch_idx: int = 0,
+    ) -> None:
+        """Write spectrogram to tensorboard for inference.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            config (DictConfig, optional): Config to write out to tensorboard.
+            batch_idx (int): Batch index.
+
+        """
+        if config is None:
+            config = self.config.train.record
+
+        if hasattr(config, "spectrogram") and batch_idx < 1:
+            spectrogram_config = config.spectrogram.epoch
+            global_step = self.epoch_idx + 1
+
+            if spectrogram_config is not None and global_step % spectrogram_config.every == 0:
+                if hasattr(spectrogram_config.key_mapping, "inference"):
+                    key_mapping = spectrogram_config.key_mapping.inference
+
+                    if hasattr(spectrogram_config.transforms, "inference"):
+                        transforms = spectrogram_config.transforms.inference
+                    elif hasattr(spectrogram_config.transforms, "validation"):
+                        transforms = spectrogram_config.transforms.validation
+                    else:
+                        transforms = spectrogram_config.transforms
+
+                    self.write_spectrogram_if_necessary(
+                        named_output,
+                        named_reference,
+                        sample_size=spectrogram_config.sample_size,
+                        key_mapping=key_mapping,
+                        transforms=transforms,
+                        global_step=global_step,
+                    )
+
+    def write_inference_waveform_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        config: DictConfig = None,
+        batch_idx: int = 0,
+    ) -> None:
+        """Write waveform to tensorboard for inference.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            config (DictConfig, optional): Config to write out to tensorboard.
+            batch_idx (int): Batch index.
+
+        """
+        if config is None:
+            config = self.config.train.record
+
+        if hasattr(config, "waveform") and batch_idx < 1:
+            waveform_config = config.waveform.epoch
+            global_step = self.epoch_idx + 1
+
+            if waveform_config is not None and global_step % waveform_config.every == 0:
+                if hasattr(waveform_config.key_mapping, "inference"):
+                    key_mapping = waveform_config.key_mapping.inference
+
+                    if hasattr(waveform_config.transforms, "inference"):
+                        transforms = waveform_config.transforms.inference
+                    elif hasattr(waveform_config.transforms, "validation"):
+                        transforms = waveform_config.transforms.validation
+                    else:
+                        transforms = waveform_config.transforms
+
+                    self.write_waveform_if_necessary(
+                        named_output,
+                        named_reference,
+                        sample_size=waveform_config.sample_size,
+                        key_mapping=key_mapping,
+                        transforms=transforms,
+                        global_step=global_step,
+                    )
+
+    def write_inference_audio_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        config: DictConfig = None,
+        batch_idx: int = 0,
+    ) -> None:
+        """Write audio to tensorboard for inference.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            config (DictConfig, optional): Config to write out to tensorboard.
+            batch_idx (int): Batch index.
+
+        """
+        if config is None:
+            config = self.config.train.record
+
+        if hasattr(config, "audio") and batch_idx < 1:
+            audio_config = config.audio.epoch
+            global_step = self.epoch_idx + 1
+
+            if audio_config is not None and global_step % audio_config.every == 0:
+                if hasattr(audio_config.key_mapping, "inference"):
+                    key_mapping = audio_config.key_mapping.inference
+
+                    if hasattr(audio_config.transforms, "inference"):
+                        transforms = audio_config.transforms.inference
+                    elif hasattr(audio_config.transforms, "validation"):
+                        transforms = audio_config.transforms.validation
+                    else:
+                        transforms = audio_config.transforms
+
+                    self.write_audio_if_necessary(
+                        named_output,
+                        named_reference,
+                        sample_size=audio_config.sample_size,
+                        key_mapping=key_mapping,
+                        transforms=transforms,
+                        global_step=global_step,
+                        sample_rate=audio_config.sample_rate,
+                    )
+
+    def write_inference_image_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        config: DictConfig = None,
+        batch_idx: int = 0,
+    ) -> None:
+        """Write image to tensorboard for inference.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            config (DictConfig, optional): Config to write out to tensorboard.
+            batch_idx (int): Batch index.
+
+        """
+        if config is None:
+            config = self.config.train.record
+
+        if hasattr(config, "image") and batch_idx < 1:
+            image_config = config.image.epoch
+            global_step = self.epoch_idx + 1
+
+            if image_config is not None and global_step % image_config.every == 0:
+                if hasattr(image_config.key_mapping, "inference"):
+                    key_mapping = image_config.key_mapping.inference
+
+                    if hasattr(image_config.transforms, "inference"):
+                        transforms = image_config.transforms.inference
+                    elif hasattr(image_config.transforms, "validation"):
+                        transforms = image_config.transforms.validation
+                    else:
+                        transforms = image_config.transforms
+
+                    self.write_image_if_necessary(
+                        named_output,
+                        named_reference,
+                        sample_size=image_config.sample_size,
+                        key_mapping=key_mapping,
+                        transforms=transforms,
+                        global_step=global_step,
+                    )
 
     @run_only_master_rank()
     def write_scalar_if_necessary(self, tag: Any, scalar_value: Any, global_step: Any) -> None:

@@ -21,7 +21,7 @@ class MelSpectrogramL1Loss(nn.Module):
         window_fn: Callable[[Any], torch.Tensor] = torch.hann_window,
         power: float = 2,
         normalized: bool = False,
-        wkwargs: Optional[dict] | None = None,
+        wkwargs: Optional[dict] = None,
         center: bool = True,
         pad_mode: Optional[str] = "reflect",
         onesided: Optional[bool] = None,
@@ -29,10 +29,16 @@ class MelSpectrogramL1Loss(nn.Module):
         mel_scale: str = "htk",
         take_log: bool = False,
         reduction: str = "mean",
+        clamp_min: Optional[float] = None,
     ) -> None:
         super().__init__()
 
         self.take_log = take_log
+        self.clamp_min = clamp_min
+
+        if not take_log and clamp_min is not None:
+            raise ValueError("clamp_min is specified, but is not used.")
+
         self.criterion = nn.L1Loss(reduction=reduction)
         self.transform = aT.MelSpectrogram(
             sample_rate,
@@ -62,10 +68,16 @@ class MelSpectrogramL1Loss(nn.Module):
             target (torch.Tensor): Waveform of shape (*, length).
 
         """
+        clamp_min = self.clamp_min
+
         input = self.transform(input)
         target = self.transform(target)
 
         if self.take_log:
+            if clamp_min is not None:
+                input = torch.clamp(input, min=clamp_min)
+                target = torch.clamp(target, min=clamp_min)
+
             input = torch.log(input)
             target = torch.log(target)
 

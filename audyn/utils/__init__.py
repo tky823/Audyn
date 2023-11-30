@@ -5,6 +5,7 @@ from .data import select_accelerator
 from .distributed import is_distributed, setup_distributed
 from .hydra.utils import (
     instantiate_cascade_text_to_wave,
+    instantiate_criterion,
     instantiate_lr_scheduler,
     instantiate_model,
     instantiate_optimizer,
@@ -16,6 +17,7 @@ __all__ = [
     "instantiate_cascade_text_to_wave",
     "instantiate_optimizer",
     "instantiate_lr_scheduler",
+    "instantiate_criterion",
 ]
 
 

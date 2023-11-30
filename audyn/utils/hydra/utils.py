@@ -9,9 +9,12 @@ from packaging import version
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 
+from audyn.criterion.base import BaseCriterionWrapper, MultiCriteria
+
 from ...models.text_to_wave import CascadeTextToWave
 from ...modules.vqvae import VectorQuantizer
 from ...optim.optimizer import ExponentialMovingAverageCodebookOptimizer, MultiOptimizers
+from ..parallel import is_dp_or_ddp
 
 __all__ = [
     "instantiate_model",
@@ -169,7 +172,12 @@ def instantiate_optimizer(
                 params = []
 
                 for submodule_name in subconfig["modules"]:
-                    submodule: nn.Module = getattr(module, submodule_name)
+                    if is_dp_or_ddp(module):
+                        unwrapped_module = module.module
+                    else:
+                        unwrapped_module = module
+
+                    submodule: nn.Module = getattr(unwrapped_module, submodule_name)
                     params.append(submodule.parameters())
 
                 params = itertools.chain(*params)
@@ -179,7 +187,12 @@ def instantiate_optimizer(
 
                 if isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer):
                     for submodule_name in subconfig["modules"]:
-                        submodule: nn.Module = getattr(module, submodule_name)
+                        if is_dp_or_ddp(module):
+                            unwrapped_module = module.module
+                        else:
+                            unwrapped_module = module
+
+                        submodule: nn.Module = getattr(unwrapped_module, submodule_name)
                         _register_forward_hook_for_ema_codebook_optim(submodule, optimizer)
 
                 optimizer = {
@@ -225,3 +238,34 @@ def instantiate_lr_scheduler(
         lr_scheduler = None
 
     return lr_scheduler
+
+
+def instantiate_criterion(
+    config: Union[DictConfig, ListConfig], *args, **kwargs
+) -> Optional[nn.Module]:
+    """Instantiate criterion."""
+
+    if isinstance(config, DictConfig):
+        criterion = hydra.utils.instantiate(config, *args, **kwargs)
+    elif isinstance(config, ListConfig):
+        assert len(args) == 0, "Positional arguments are not supported."
+        assert len(kwargs) == 0, "Keyword arguments are not supported."
+
+        criteria_kwargs = {}
+
+        for _config in config:
+            _name = _config.name
+            _criterion = hydra.utils.instantiate(_config.criterion)
+            _weight = _config.weight
+            _key_mapping = OmegaConf.to_object(_config.key_mapping)
+            _criterion_wrapper = BaseCriterionWrapper(
+                _criterion, key_mapping=_key_mapping, weight=_weight
+            )
+
+            criteria_kwargs.update({_name: _criterion_wrapper})
+
+        criterion = MultiCriteria(**criteria_kwargs)
+    else:
+        raise TypeError(f"Invalid type of config ({type(config)}) is specified.")
+
+    return criterion

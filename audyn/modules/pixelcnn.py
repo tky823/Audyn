@@ -7,6 +7,13 @@ import torch.nn.functional as F
 from torch.nn.common_types import _size_2_t
 from torch.nn.modules.utils import _pair
 
+__all__ = [
+    "Conv2d",
+    "CausalConv2d",
+    "VerticalConv2d",
+    "HorizontalConv2d",
+]
+
 
 class Conv2d(nn.Module):
     """2D convolution for PixelCNN.
@@ -14,6 +21,28 @@ class Conv2d(nn.Module):
     Args:
         capture_center (bool): If ``True``, center is captured by convolution (a.k.a Mask B
             in original paper). Otherwise, center is ignored (a.k.a Mask A).
+
+    .. note::
+
+        When ``kernel_size=(5, 5)``, ``capture_center=True``, convolution kernel is
+        shown as follows:
+
+        |0.1|0.4|0.3|0.1|0.8|
+        |0.3|0.6|0.3|0.2|0.6|
+        |0.5|0.4|0.7|0.0|0.0|
+        |0.0|0.0|0.0|0.0|0.0|
+        |0.0|0.0|0.0|0.0|0.0|
+
+        where ``0.0`` means padding value.
+
+        When ``kernel_size=(5, 5)``, ``capture_center=False``, convolution kernel is
+        shown as follows:
+
+        |0.1|0.4|0.3|0.1|0.8|
+        |0.3|0.6|0.3|0.2|0.6|
+        |0.5|0.4|0.0|0.0|0.0|
+        |0.0|0.0|0.0|0.0|0.0|
+        |0.0|0.0|0.0|0.0|0.0|
 
     """
 
@@ -52,6 +81,7 @@ class Conv2d(nn.Module):
         self.dilation = dilation
         self.groups = groups
         self.padding_mode = padding_mode
+        self.capture_center = capture_center
         self.num_pixels = num_pixels
 
         weight = torch.empty((out_channels, in_channels // groups, num_pixels), **factory_kwargs)
@@ -86,6 +116,7 @@ class Conv2d(nn.Module):
             s += ", bias=False"
         if self.padding_mode != "zeros":
             s += ", padding_mode={padding_mode}"
+        s += ", capture_center={capture_center}"
         return s.format(**self.__dict__)
 
     def _conv_forward(
@@ -96,6 +127,15 @@ class Conv2d(nn.Module):
         return F.conv2d(input, weight, bias, 1, self.padding, self.dilation, self.groups)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of Conv2d in PixelCNN.
+
+        Args:
+            input (torch.Tensor): Input feature of shape (batch_size, in_channels, height, width).
+
+        Returns:
+            torch.Tensor: Output feature of shape (batch_size, in_channels, height', width').
+
+        """
         in_channels, out_channels = self.in_channels, self.out_channels
         kernel_size = self.kernel_size
         groups = self.groups
@@ -107,7 +147,39 @@ class Conv2d(nn.Module):
         return self._conv_forward(input, weight, self.bias)
 
 
+class CausalConv2d(Conv2d):
+    """Alias of Conv2d."""
+
+    pass
+
+
 class VerticalConv2d(nn.Conv2d):
+    """Vertical 2D convolution.
+
+    .. note::
+
+        When ``kernel_size=(5, 5)``, ``capture_center=True``, convolution kernel is
+        shown as follows:
+
+        |0.6|0.4|0.2|0.5|0.3|
+        |0.1|0.4|0.5|0.2|0.7|
+        |0.3|0.2|0.2|0.5|0.1|
+        |0.0|0.0|0.0|0.0|0.0|
+        |0.0|0.0|0.0|0.0|0.0|
+
+        where ``0.0`` means padding value.
+
+        When ``kernel_size=(5, 5)``, ``capture_center=False``, convolution kernel is
+        shown as follows:
+
+        |0.6|0.4|0.2|0.5|0.3|
+        |0.1|0.4|0.5|0.2|0.7|
+        |0.0|0.0|0.0|0.0|0.0|
+        |0.0|0.0|0.0|0.0|0.0|
+        |0.0|0.0|0.0|0.0|0.0|
+
+    """
+
     def __init__(
         self,
         in_channels: int,
@@ -115,6 +187,7 @@ class VerticalConv2d(nn.Conv2d):
         kernel_size: _size_2_t,
         groups: int = 1,
         bias: bool = True,
+        capture_center: bool = True,
         device: torch.device = None,
         dtype: torch.dtype = None,
     ) -> None:
@@ -124,7 +197,10 @@ class VerticalConv2d(nn.Conv2d):
         if kernel_height % 2 == 0 or kernel_width % 2 == 0:
             raise ValueError("kernel_size is expected to be odd, but even number is given.")
 
-        kernel_size = (kernel_height // 2, kernel_width)
+        if capture_center:
+            kernel_size = (kernel_height // 2, kernel_width)
+        else:
+            kernel_size = (kernel_height // 2 + 1, kernel_width)
 
         super().__init__(
             in_channels,
@@ -139,6 +215,8 @@ class VerticalConv2d(nn.Conv2d):
             device=device,
             dtype=dtype,
         )
+
+        self.capture_center = capture_center
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         real_kernel_height, real_kernel_width = self.kernel_size
@@ -162,6 +240,24 @@ class VerticalConv2d(nn.Conv2d):
 
 
 class HorizontalConv2d(nn.Conv2d):
+    """Horizontal 2D convolution.
+
+    .. note::
+
+        When ``kernel_size=5``, ``capture_center=True``, convolution kernel is
+        shown as follows:
+
+        |0.2|0.3|0.5|0.0|0.0|
+
+        where ``0.0`` means padding value.
+
+        When ``kernel_size=5``, ``capture_center=False``, convolution kernel is
+        shown as follows:
+
+        |0.2|0.3|0.0|0.0|0.0|
+
+    """
+
     def __init__(
         self,
         in_channels: int,

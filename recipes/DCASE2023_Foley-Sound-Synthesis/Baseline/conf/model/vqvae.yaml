@@ -1,0 +1,20 @@
+_target_: audyn.models.vqvae.VQVAE
+encoder:
+  _target_: utils.models.vqvae.Encoder
+  out_channels: ${..embedding_dim}
+  hidden_channels: 128
+  res_channels: 32
+  kernel_size: 2
+  stride: 2
+  num_blocks: 4
+  num_stacks: 2
+decoder:
+  _target_: utils.models.vqvae.Decoder
+  in_channels: ${..embedding_dim}
+  hidden_channels: ${..encoder.hidden_channels}
+  res_channels: ${..encoder.res_channels}
+  kernel_size: 4
+  stride: ${..encoder.stride}
+  num_stacks: ${..encoder.num_stacks}
+codebook_size: ${data.codebook.size}
+embedding_dim: 64

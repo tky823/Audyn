@@ -1,0 +1,72 @@
+defaults:
+  - record: vqvae
+  - _self_
+
+dataset:
+  train:
+    _target_: audyn.utils.data.dataset.TorchObjectDataset
+    list_path:
+    feature_dir:
+  validation:
+    _target_: audyn.utils.data.dataset.TorchObjectDataset
+    list_path:
+    feature_dir:
+
+dataloader:
+  train:
+    _target_: audyn.utils.data.DistributedDataLoader
+    batch_size: 64
+    num_replicas:
+      _target_: builtins.int
+      _args_: ${oc.env:WORLD_SIZE}
+    rank:
+      _target_: builtins.int
+      _args_: ${oc.env:RANK}
+    shuffle: true
+    seed: ${system.seed}
+  validation:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 64
+    shuffle: false
+
+key_mapping:
+  train:
+    input:
+      input: log_melspectrogram
+    output:
+      - reconstructed
+      - encoded
+      - quantized
+      - indices
+  validation: ${.train}
+  inference:
+    input:
+      quantized: codebook_indices
+    output: reconstructed
+
+clip_gradient:
+  _target_: torch.nn.utils.clip_grad_norm_
+  max_norm: 10
+
+resume:
+  continue_from:
+
+output:
+  exp_dir: "./exp"
+  tensorboard_dir: "./tensorboard"
+  save_checkpoint:
+    iteration:
+      every: 20000
+      path: ${...exp_dir}/model/vqvae/iteration{iteration}.pth
+    epoch:
+      every: 200
+      path: ${...exp_dir}/model/vqvae/epoch{epoch}.pth
+    last:
+      path: ${...exp_dir}/model/vqvae/last.pth
+    best_epoch:
+      path: ${...exp_dir}/model/vqvae/best_epoch.pth
+
+steps:
+  epochs: 800
+  iterations:
+  lr_scheduler:

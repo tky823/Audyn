@@ -2,6 +2,7 @@
 https://github.com/pytorch/pytorch/blob/0093df78df590a35deb784773aa2165884c1b7bd/torch/optim/optimizer.py.
 """
 import copy
+import math
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, Union, overload
 
 import torch
@@ -335,14 +336,27 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
     Args:
         params: Parameters to be optimized.
         smooth (float): Smoothing factor. Default: ``0.999``.
+        reset_step (int, optional): Step to reset codebook proposed by
+            [#williams2020hierarchical]_. Default: ``None`` (Codebook
+            reset is deactivated).
+        reset_var (float, optional): This parameter is activated if ``reset_step``
+            is specified. Variance of codebook reset. If ``None``, 0.01 is used by default.
+        reset_rate (float, optional): This parameter is activated if ``reset_step``
+            is specified. If usage of least used codebook is
+            less than ``reset_rate``, position will be reset. If ``None``,
+            0.03 is used by default.
 
     .. note::
 
         This class does not use gradient descent.
 
+    .. note::
+
+        This class supports distributed data parallel.
+
     .. warning::
 
-        This class does not support data parallel and distributed data parallel.
+        This class does not support data parallel.
 
     Examples:
 
@@ -353,6 +367,7 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
         >>> codebook_size, embedding_dim = 3, 4
         >>> batch_size, length = 2, 5
         >>> model = VectorQuantizer(codebook_size, embedding_dim)
+        >>> # w/o codebook reset
         >>> optimizer = ExponentialMovingAverageCodebookOptimizer(model.parameters())
         >>> model.register_forward_hook(optimizer.store_current_stats)
         >>> model.codebook.weight
@@ -369,24 +384,59 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
                 [-1.0845, -1.3986,  0.4033,  0.8380],
                 [-0.2900,  0.1278, -0.2841, -0.0953]], requires_grad=True)
 
+    .. [#williams2020hierarchical]
+        W. Williams et al., "Hierarchical quantized autoencoders,"
+        in *NeurIPS*, 2020, pp.4524-4535,
     """
 
     if IS_TORCH_LT_2_1:
 
         @overload
-        def __init__(self, params: Iterable, smooth: float = 0.999) -> Optimizer:
+        def __init__(
+            self,
+            params: Iterable,
+            smooth: float = 0.999,
+            reset_step: Optional[int] = None,
+            reset_var: Optional[float] = None,
+            reset_rate: Optional[float] = None,
+        ) -> Optimizer:
             ...
 
     else:
         from torch.optim.optimizer import params_t
 
         @overload
-        def __init__(self, params: params_t, smooth: float = 0.999) -> Optimizer:
+        def __init__(
+            self,
+            params: params_t,
+            smooth: float = 0.999,
+            reset_step: Optional[int] = None,
+            reset_var: Optional[float] = None,
+            reset_rate: Optional[float] = None,
+        ) -> Optimizer:
             ...
 
-    def __init__(self, params, smooth=0.999) -> None:
+    def __init__(
+        self,
+        params,
+        smooth=0.999,
+        reset_step=None,
+        reset_var=None,
+        reset_rate=None,
+    ) -> None:
         defaults = {}
         super().__init__(params, defaults)
+
+        if reset_step is None:
+            if reset_var is not None:
+                raise ValueError("reset_var is specified, but reset_step is not defined.")
+
+            if reset_rate is not None:
+                raise ValueError("reset_rate is specified, but reset_step is not defined.")
+
+            codebook_reset = False
+        else:
+            codebook_reset = True
 
         # running stats
         num_samples_tracked_groups = []
@@ -396,11 +446,26 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
         one_hot_sum_groups = []
         z_e_sum_groups = []
 
+        # codebook reset
+        num_accumulated_groups = []
+
+        if codebook_reset:
+            accumulated_steps = 0
+
+            if reset_var is None:
+                reset_var = 0.01
+
+            if reset_rate is None:
+                reset_rate = 0.03
+        else:
+            accumulated_steps = None
+
         for param_group in self.param_groups:
             num_samples_tracked = []
             momentum = []
             one_hot_sum_group = []
             z_e_sum_group = []
+            num_accumulated = []
 
             for param in param_group["params"]:
                 weight: torch.Tensor = param.data
@@ -408,7 +473,7 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
                 # We assume each codebook is used at least once,
                 # which is helpful to avoid zero division in updates of codebooks.
                 _num_samples_tracked = torch.ones(
-                    weight.size(0), device=weight.device, dtype=torch.float
+                    weight.size(0), device=weight.device, dtype=weight.dtype
                 )
                 num_samples_tracked.append(_num_samples_tracked)
 
@@ -416,15 +481,25 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
                 _momentum.data.copy_(weight.data)
                 momentum.append(_momentum)
 
-                one_hot_sum_group.append(
-                    torch.zeros(weight.size(0), device=weight.device, dtype=torch.long)
-                )
-                z_e_sum_group.append(torch.zeros_like(weight))
+                one_hot_sum = torch.zeros(weight.size(0), device=weight.device, dtype=torch.long)
+                one_hot_sum_group.append(one_hot_sum)
+                z_e_sum = torch.zeros_like(weight)
+                z_e_sum_group.append(z_e_sum)
+
+                if codebook_reset:
+                    _num_accumulated = torch.zeros(
+                        weight.size(0), device=weight.device, dtype=torch.long
+                    )
+                else:
+                    _num_accumulated = None
+
+                num_accumulated.append(_num_accumulated)
 
             num_samples_tracked_groups.append(num_samples_tracked)
             momentum_groups.append(momentum)
             one_hot_sum_groups.append(one_hot_sum_group)
             z_e_sum_groups.append(z_e_sum_group)
+            num_accumulated_groups.append(num_accumulated)
 
         self.num_samples_tracked_groups: List[List[torch.Tensor]] = num_samples_tracked_groups
         self.momentum_groups: List[List[torch.Tensor]] = momentum_groups
@@ -433,16 +508,27 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
 
         self.smooth = smooth
 
+        self.codebook_reset = codebook_reset
+        self.accumulated_steps = accumulated_steps
+        self.num_accumulated_groups: Optional[
+            List[List[torch.LongTensor]]
+        ] = num_accumulated_groups
+        self.reset_step = reset_step
+        self.reset_var = reset_var
+        self.reset_rate = reset_rate
+
     def store_current_stats(self, module: VectorQuantizer, input: Any, output: Any) -> None:
         # TODO: generalize
         assert isinstance(module, VectorQuantizer)
 
+        codebook_reset = self.codebook_reset
         is_distributed = dist.is_available() and dist.is_initialized()
 
         param_groups = list(module.parameters())
         tracking_param_groups = self.param_groups
         one_hot_sum_groups = self.one_hot_sum_groups
         z_e_sum_groups = self.z_e_sum_groups
+        num_accumulated_groups = self.num_accumulated_groups
 
         if not isinstance(param_groups[0], dict):
             param_groups = [{"params": param_groups}]
@@ -454,8 +540,18 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
             # param_groups should be identical to tracking_param_groups
             raise ValueError("Given parameter groups do not match tracking ones.")
 
-        for param_group, tracking_param_group, one_hot_sum_group, z_e_sum_group in zip(
-            param_groups, tracking_param_groups, one_hot_sum_groups, z_e_sum_groups
+        for (
+            param_group,
+            tracking_param_group,
+            one_hot_sum_group,
+            z_e_sum_group,
+            num_accumulated,
+        ) in zip(
+            param_groups,
+            tracking_param_groups,
+            one_hot_sum_groups,
+            z_e_sum_groups,
+            num_accumulated_groups,
         ):
             if len(param_group["params"]) != len(tracking_param_group["params"]):
                 # param_group["params"] should be identical to tracking_param_group["params"]
@@ -488,14 +584,19 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
                     dequantized_input = torch.cat(gathered_dequantized_input, dim=1)
                     one_hot = torch.cat(gathered_one_hot, dim=0)
 
-                one_hot = one_hot.float()
                 one_hot_sum = one_hot.sum(dim=0)
+                one_hot = one_hot.to(dequantized_input.dtype)
 
+                # NOTE: In some cases with mixed precision training,
+                #       the following matmul operation may cause inf.
                 z_e_sum = torch.matmul(dequantized_input, one_hot)
                 z_e_sum = z_e_sum.permute(1, 0).contiguous()
 
                 one_hot_sum_group[idx].data.copy_(one_hot_sum.data)
                 z_e_sum_group[idx].data.copy_(z_e_sum.data)
+
+                if codebook_reset:
+                    num_accumulated[idx].data.add_(one_hot_sum.data)
 
     def step(self) -> None:
         param_groups = self.param_groups
@@ -504,8 +605,13 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
         momentum_groups = self.momentum_groups
         one_hot_sum_groups = self.one_hot_sum_groups
         z_e_sum_groups = self.z_e_sum_groups
+        num_accumulated_groups = self.num_accumulated_groups
 
         smooth = self.smooth
+        codebook_reset = self.codebook_reset
+
+        if codebook_reset:
+            self.accumulated_steps += 1
 
         for (
             param_group,
@@ -513,19 +619,22 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
             momentum_group,
             one_hot_sum_group,
             z_e_sum_group,
+            num_accumulated_group,
         ) in zip(
             param_groups,
             num_samples_tracked_groups,
             momentum_groups,
             one_hot_sum_groups,
             z_e_sum_groups,
+            num_accumulated_groups,
         ):
-            for param, num_samples_tracked, momentum, one_hot_sum, z_e_sum in zip(
+            for param, num_samples_tracked, momentum, one_hot_sum, z_e_sum, num_accumulated in zip(
                 param_group["params"],
                 num_samples_tracked_group,
                 momentum_group,
                 one_hot_sum_group,
                 z_e_sum_group,
+                num_accumulated_group,
             ):
                 param: nn.Parameter
                 one_hot_sum_data = one_hot_sum.data.to(num_samples_tracked.data.dtype)
@@ -540,6 +649,22 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
                     weight=smooth,
                 )
                 param.data = momentum / num_samples_tracked.unsqueeze(dim=-1)
+
+                if codebook_reset and self.accumulated_steps % self.reset_step == 0:
+                    std = math.sqrt(self.reset_var)
+
+                    least_usage, min_idx = torch.min(num_accumulated, dim=0)
+                    most_usage, max_idx = torch.max(num_accumulated, dim=0)
+
+                    if least_usage < self.reset_rate * most_usage:
+                        most_used = param.data[max_idx]
+                        replaced = most_used + std * torch.randn_like(most_used)
+                        param.data[min_idx].copy_(replaced)
+
+                        # reset statistics
+                        momentum.data[min_idx].copy_(replaced)
+                        num_samples_tracked.data[min_idx].fill_(1)
+                        num_accumulated.data.zero_()
 
     def state_dict(self) -> Dict[str, Any]:
         """Returns the state of the optimizer as a ``dict``.
@@ -577,7 +702,27 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
             "one_hot_sum_groups": one_hot_sum_groups,
             "z_e_sum_state": packed_z_e_sum_state,
             "z_e_sum_groups": z_e_sum_groups,
+            "smooth": self.smooth,
         }
+
+        if self.codebook_reset:
+            num_accumulated_groups, num_accumulated_mappings = _pack_groups(
+                self.num_accumulated_groups
+            )
+            packed_num_accumulated_state = _pack_state(
+                self.num_accumulated_groups, num_accumulated_mappings
+            )
+
+            state_dict.update(
+                {
+                    "num_accumulated_state": packed_num_accumulated_state,
+                    "num_accumulated_groups": num_accumulated_groups,
+                    "accumulated_steps": self.accumulated_steps,
+                    "reset_step": self.reset_step,
+                    "reset_var": self.reset_var,
+                    "reset_rate": self.reset_rate,
+                }
+            )
 
         return state_dict
 
@@ -646,6 +791,22 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
         _load_groups(momentum_groups, packed_momentum_state)
         _load_groups(one_hot_sum_groups, packed_one_hot_sum_state)
         _load_groups(z_e_sum_groups, packed_z_e_sum_state)
+
+        # In older version, smooth parameter is not saved.
+        self.smooth = state_dict.get("smooth", self.smooth)
+
+        if self.codebook_reset:
+            num_accumulated_groups = self.num_accumulated_groups
+            saved_packed_num_samples_tracked_groups = state_dict["num_accumulated_groups"]
+            packed_num_accumulated_state = state_dict["num_accumulated_state"]
+
+            _validate_groups(num_accumulated_groups, saved_packed_num_samples_tracked_groups)
+            _load_groups(num_accumulated_groups, packed_num_accumulated_state)
+
+            self.accumulated_steps = state_dict["accumulated_steps"]
+            self.reset_step = state_dict["reset_step"]
+            self.reset_var = state_dict["reset_var"]
+            self.reset_rate = state_dict["reset_rate"]
 
 
 class MultiOptimizers:

@@ -4,7 +4,7 @@ from typing import Dict, Iterable, Optional, Union
 import hydra
 import torch
 import torch.nn as nn
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 
@@ -12,7 +12,12 @@ from ... import __version__ as _version
 from ...criterion.gan import GANCriterion
 from ...models.gan import BaseGAN
 from ...optim.lr_scheduler import GANLRScheduler
-from ...optim.optimizer import GANOptimizer, MovingAverageWrapper
+from ...optim.optimizer import (
+    ExponentialMovingAverageCodebookOptimizer,
+    GANOptimizer,
+    MovingAverageWrapper,
+    MultiOptimizers,
+)
 from ..data import BaseDataLoaders
 from .base import BaseTrainer
 
@@ -255,7 +260,7 @@ class GANTrainer(BaseTrainer):
                 self.unwrapped_model.discriminator.parameters(),
                 self.optimizer.discriminator,
             )
-            self.scaler.step(self.optimizer.discriminator)
+            self.optimizer_step(self.optimizer.discriminator)
 
             if self.config.train.steps.lr_scheduler.discriminator == "iteration":
                 self.lr_scheduler.discriminator.step()
@@ -332,6 +337,19 @@ class GANTrainer(BaseTrainer):
                 total_generator_loss,
                 global_step=self.iteration_idx + 1,
             )
+            if hasattr(self.config.train.record, "spectrogram"):
+                spectrogram_config = self.config.train.record.spectrogram.iteration
+                global_step = self.iteration_idx + 1
+
+                if spectrogram_config is not None and global_step % spectrogram_config.every == 0:
+                    self.write_spectrogram_if_necessary(
+                        named_output,
+                        named_batch,
+                        sample_size=spectrogram_config.sample_size,
+                        key_mapping=spectrogram_config.key_mapping,
+                        transforms=spectrogram_config.transforms,
+                        global_step=global_step,
+                    )
 
             if hasattr(self.config.train.record, "waveform"):
                 waveform_config = self.config.train.record.waveform.iteration
@@ -382,8 +400,7 @@ class GANTrainer(BaseTrainer):
                 self.unwrapped_model.generator.parameters(),
                 self.optimizer.generator,
             )
-            self.scaler.step(self.optimizer.generator)
-
+            self.optimizer_step(self.optimizer.generator)
             self.scaler.update()
 
             if self.config.train.steps.lr_scheduler.generator == "iteration":
@@ -561,78 +578,30 @@ class GANTrainer(BaseTrainer):
                     + generator_loss[criterion_name].item()
                 )
 
-            if hasattr(self.config.train.record, "waveform") and n_batch < 1:
-                waveform_config = self.config.train.record.waveform.epoch
-                global_step = self.epoch_idx + 1
-
-                if waveform_config is not None and global_step % waveform_config.every == 0:
-                    if hasattr(waveform_config.key_mapping, "validation"):
-                        key_mapping = waveform_config.key_mapping.validation
-                    else:
-                        key_mapping = waveform_config.key_mapping
-
-                    if hasattr(waveform_config.transforms, "validation"):
-                        transforms = waveform_config.transforms.validation
-                    else:
-                        transforms = waveform_config.transforms
-
-                    self.write_waveform_if_necessary(
-                        named_output,
-                        named_batch,
-                        sample_size=waveform_config.sample_size,
-                        key_mapping=key_mapping,
-                        transforms=transforms,
-                        global_step=global_step,
-                    )
-
-            if hasattr(self.config.train.record, "audio") and n_batch < 1:
-                audio_config = self.config.train.record.audio.epoch
-                global_step = self.epoch_idx + 1
-
-                if audio_config is not None and global_step % audio_config.every == 0:
-                    if hasattr(audio_config.key_mapping, "validation"):
-                        key_mapping = audio_config.key_mapping.validation
-                    else:
-                        key_mapping = audio_config.key_mapping
-
-                    if hasattr(audio_config.transforms, "validation"):
-                        transforms = audio_config.transforms.validation
-                    else:
-                        transforms = audio_config.transforms
-
-                    self.write_audio_if_necessary(
-                        named_output,
-                        named_batch,
-                        sample_size=audio_config.sample_size,
-                        key_mapping=key_mapping,
-                        transforms=transforms,
-                        global_step=global_step,
-                        sample_rate=audio_config.sample_rate,
-                    )
-
-            if hasattr(self.config.train.record, "image") and n_batch < 1:
-                image_config = self.config.train.record.image.epoch
-                global_step = self.epoch_idx + 1
-
-                if hasattr(image_config.key_mapping, "validation"):
-                    key_mapping = image_config.key_mapping.validation
-                else:
-                    key_mapping = image_config.key_mapping
-
-                if hasattr(image_config.transforms, "validation"):
-                    transforms = image_config.transforms.validation
-                else:
-                    transforms = image_config.transforms
-
-                if image_config is not None and global_step % image_config.every == 0:
-                    self.write_image_if_necessary(
-                        named_output,
-                        named_batch,
-                        sample_size=image_config.sample_size,
-                        key_mapping=key_mapping,
-                        transforms=transforms,
-                        global_step=global_step,
-                    )
+            self.write_validation_spectrogram_if_necessary(
+                named_output,
+                named_batch,
+                config=self.config.train.record,
+                batch_idx=n_batch,
+            )
+            self.write_validation_waveform_if_necessary(
+                named_output,
+                named_batch,
+                config=self.config.train.record,
+                batch_idx=n_batch,
+            )
+            self.write_validation_audio_if_necessary(
+                named_output,
+                named_batch,
+                config=self.config.train.record,
+                batch_idx=n_batch,
+            )
+            self.write_validation_image_if_necessary(
+                named_output,
+                named_batch,
+                config=self.config.train.record,
+                batch_idx=n_batch,
+            )
 
             n_batch += 1
 
@@ -679,90 +648,30 @@ class GANTrainer(BaseTrainer):
                 key_mapping=inference_key_mapping,
             )
 
-            if hasattr(self.config.train.record, "waveform") and n_batch < 1:
-                waveform_config = self.config.train.record.waveform.epoch
-                global_step = self.epoch_idx + 1
-
-                if waveform_config is not None and global_step % waveform_config.every == 0:
-                    if hasattr(waveform_config.key_mapping, "inference"):
-                        key_mapping = waveform_config.key_mapping.inference
-                    elif hasattr(waveform_config.key_mapping, "validation"):
-                        key_mapping = waveform_config.key_mapping.validation
-                    else:
-                        key_mapping = waveform_config.key_mapping
-
-                    if hasattr(waveform_config.transforms, "inference"):
-                        transforms = waveform_config.transforms.inference
-                    elif hasattr(waveform_config.transforms, "validation"):
-                        transforms = waveform_config.transforms.validation
-                    else:
-                        transforms = waveform_config.transforms
-
-                    self.write_waveform_if_necessary(
-                        named_output,
-                        named_batch,
-                        sample_size=waveform_config.sample_size,
-                        key_mapping=key_mapping,
-                        transforms=transforms,
-                        global_step=global_step,
-                    )
-
-            if hasattr(self.config.train.record, "audio") and n_batch < 1:
-                audio_config = self.config.train.record.audio.epoch
-                global_step = self.epoch_idx + 1
-
-                if audio_config is not None and global_step % audio_config.every == 0:
-                    if hasattr(audio_config.key_mapping, "inference"):
-                        key_mapping = audio_config.key_mapping.inference
-                    elif hasattr(audio_config.key_mapping, "validation"):
-                        key_mapping = audio_config.key_mapping.validation
-                    else:
-                        key_mapping = audio_config.key_mapping
-
-                    if hasattr(audio_config.transforms, "inference"):
-                        transforms = audio_config.transforms.inference
-                    elif hasattr(audio_config.transforms, "validation"):
-                        transforms = audio_config.transforms.validation
-                    else:
-                        transforms = audio_config.transforms
-
-                    self.write_audio_if_necessary(
-                        named_output,
-                        named_batch,
-                        sample_size=audio_config.sample_size,
-                        key_mapping=key_mapping,
-                        transforms=transforms,
-                        global_step=global_step,
-                        sample_rate=audio_config.sample_rate,
-                    )
-
-            if hasattr(self.config.train.record, "image") and n_batch < 1:
-                image_config = self.config.train.record.image.epoch
-                global_step = self.epoch_idx + 1
-
-                if hasattr(image_config.key_mapping, "inference"):
-                    key_mapping = image_config.key_mapping.inference
-                elif hasattr(image_config.key_mapping, "validation"):
-                    key_mapping = image_config.key_mapping.validation
-                else:
-                    key_mapping = image_config.key_mapping
-
-                if hasattr(image_config.transforms, "inference"):
-                    transforms = image_config.transforms.inference
-                elif hasattr(image_config.transforms, "validation"):
-                    transforms = image_config.transforms.validation
-                else:
-                    transforms = image_config.transforms
-
-                if image_config is not None and global_step % image_config.every == 0:
-                    self.write_image_if_necessary(
-                        named_output,
-                        named_batch,
-                        sample_size=image_config.sample_size,
-                        key_mapping=key_mapping,
-                        transforms=transforms,
-                        global_step=global_step,
-                    )
+            self.write_inference_spectrogram_if_necessary(
+                named_output,
+                named_batch,
+                config=self.config.train.record,
+                batch_idx=n_batch,
+            )
+            self.write_inference_waveform_if_necessary(
+                named_output,
+                named_batch,
+                config=self.config.train.record,
+                batch_idx=n_batch,
+            )
+            self.write_inference_audio_if_necessary(
+                named_output,
+                named_batch,
+                config=self.config.train.record,
+                batch_idx=n_batch,
+            )
+            self.write_inference_image_if_necessary(
+                named_output,
+                named_batch,
+                config=self.config.train.record,
+                batch_idx=n_batch,
+            )
 
             n_batch += 1
 
@@ -884,7 +793,29 @@ class GANTrainer(BaseTrainer):
                 if self.scaler.is_enabled() and optimizer is None:
                     raise ValueError("optimizer is not given.")
 
-                self.scaler.unscale_(optimizer)
+                if isinstance(optimizer, MultiOptimizers):
+                    for _optimizer in optimizer.optimizers.values():
+                        if (
+                            isinstance(_optimizer, ExponentialMovingAverageCodebookOptimizer)
+                            and self.scaler.is_enabled()
+                        ):
+                            raise NotImplementedError(
+                                "ExponentialMovingAverageCodebookOptimizer and AMP "
+                                "cannot be used simultaneously."
+                            )
+                        else:
+                            self.scaler.unscale_(_optimizer)
+                else:
+                    if (
+                        isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
+                        and self.scaler.is_enabled()
+                    ):
+                        raise NotImplementedError(
+                            "ExponentialMovingAverageCodebookOptimizer and AMP "
+                            "cannot be used simultaneously."
+                        )
+                    else:
+                        self.scaler.unscale_(optimizer)
 
             clip_gradient_config = self.config.train.clip_gradient
             hydra.utils.instantiate(clip_gradient_config, parameters)
@@ -948,6 +879,7 @@ class GANTrainer(BaseTrainer):
 
         state_dict["iteration_idx"] = self.iteration_idx
         state_dict["best_loss"] = self.best_loss
+        state_dict["resolved_config"] = OmegaConf.to_container(self.config, resolve=True)
 
         if isinstance(self.optimizer.generator, MovingAverageWrapper) or isinstance(
             self.optimizer.discriminator, MovingAverageWrapper

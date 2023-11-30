@@ -1,0 +1,41 @@
+dataset:
+  test:
+    _target_: audyn.utils.data.dataset.TorchObjectDataset
+    list_path:
+    feature_dir:
+
+dataloader:
+  test:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 1
+    shuffle: false
+
+key_mapping:
+  inference:
+    input:
+      initial_state: initial_index
+      height: height
+      width: width
+    output: estimated_waveform
+    identifier:
+      filename: filename
+
+checkpoint:
+  pixelsnail:
+  vqvae:
+  hifigan:
+
+output:
+  exp_dir: "./exp"
+  inference_dir: ${.exp_dir}/inference
+  audio:
+    sample_rate: ${data.audio.sample_rate}
+    key_mapping:
+      inference:
+        output:
+          estimated_waveform: "{filename}_estimated.wav"
+        reference:
+    transforms:
+      inference:
+        output:
+        reference:

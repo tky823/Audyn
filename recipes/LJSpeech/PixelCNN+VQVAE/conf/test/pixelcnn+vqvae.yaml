@@ -16,7 +16,7 @@ key_mapping:
       initial_state: initial_index
       height: height
       width: width
-    output: generated_melspectrogram
+    output: generated_log_melspectrogram
     identifier:
       filename: filename
 
@@ -31,7 +31,7 @@ output:
     key_mapping:
       inference:
         output:
-          generated_melspectrogram: "{filename}_estimated.png"
+          generated_log_melspectrogram: "{filename}_estimated.png"
     transforms:
       inference:
         output:

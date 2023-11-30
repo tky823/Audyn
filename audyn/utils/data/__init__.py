@@ -7,6 +7,7 @@ from omegaconf import DictConfig
 from torch.utils.data import DataLoader
 
 from .dataloader import (
+    DistributedDataLoader,
     DistributedDynamicBatchDataLoader,
     DistributedSequentialBatchDataLoader,
     DynamicBatchDataLoader,
@@ -19,6 +20,7 @@ __all__ = [
     "TorchObjectDataset",
     "SortableTorchObjectDataset",
     "SequentialBatchDataLoader",
+    "DistributedDataLoader",
     "DistributedSequentialBatchDataLoader",
     "DynamicBatchDataLoader",
     "DistributedDynamicBatchDataLoader",

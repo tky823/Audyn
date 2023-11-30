@@ -1,0 +1,49 @@
+image:
+  iteration:
+    every: 1000
+    sample_size: 1
+    key_mapping:
+      output:
+        estimated_indices: "Estimated latent (iteration)"
+      reference:
+        indices: "Target latent (iteration)"
+    transforms:
+      output:
+        estimated_indices:
+          _target_: torchvision.transforms.Compose
+          _args_:
+            - - _target_: torch.argmax
+                _partial_: true
+                _convert_: partial
+                dim: 0
+              - _target_: utils.transforms.NormalizeIndex
+                max: ${data.codebook.size}
+      reference:
+        indices:
+          _target_: utils.transforms.NormalizeIndex
+          max: ${data.codebook.size}
+  epoch:
+    every: 1
+    sample_size: 1
+    key_mapping:
+      validation:
+        output:
+          estimated_indices: "Estimated latent (epoch)"
+        reference:
+          indices: "Target latent (epoch)"
+      inference:
+        output:
+          estimated_indices: "Estimated latent of inference (epoch)"
+        reference:
+          indices: "Target latent of inference (epoch)"
+    transforms:
+      validation: ${...iteration.transforms}
+      inference:
+        output:
+          estimated_indices: 
+            _target_: utils.transforms.NormalizeIndex
+            max: ${data.codebook.size}
+        reference:
+          indices:
+            _target_: utils.transforms.NormalizeIndex
+            max: ${data.codebook.size}

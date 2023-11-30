@@ -1,0 +1,79 @@
+defaults:
+  - record: vqvae+pretrained_hifigan
+  - _self_
+
+dataset:
+  train:
+    _target_: audyn.utils.data.dataset.TorchObjectDataset
+    list_path:
+    feature_dir:
+  validation:
+    _target_: audyn.utils.data.dataset.TorchObjectDataset
+    list_path:
+    feature_dir:
+
+dataloader:
+  train:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 64
+    shuffle: true
+  validation:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 64
+    shuffle: false
+
+key_mapping:
+  train:
+    input:
+      input: log_melspectrogram
+    output:
+      - reconstructed
+      - encoded
+      - quantized
+      - indices
+  validation:
+    text_to_feat: ${..train}
+    transform_middle:
+    feat_to_wave:
+      input:
+        input: reconstructed
+      output: estimated_waveform
+  inference:
+    text_to_feat:
+      input:
+        quantized: codebook_indices
+      output: reconstructed
+    transform_middle: ${..validation.transform_middle}
+    feat_to_wave: ${..validation.feat_to_wave}
+
+clip_gradient:
+  _target_: torch.nn.utils.clip_grad_norm_
+  max_norm: 10
+
+resume:
+  continue_from:
+
+pretrained_feat_to_wave:
+  path:
+  transform_middle:
+    _target_: audyn.models.text_to_wave.FastSpeechWaveNetBridge
+
+output:
+  exp_dir: "./exp"
+  tensorboard_dir: "./tensorboard"
+  save_checkpoint:
+    iteration:
+      every: 20000
+      path: ${...exp_dir}/model/vqvae/iteration{iteration}.pth
+    epoch:
+      every: 200
+      path: ${...exp_dir}/model/vqvae/epoch{epoch}.pth
+    last:
+      path: ${...exp_dir}/model/vqvae/last.pth
+    best_epoch:
+      path: ${...exp_dir}/model/vqvae/best_epoch.pth
+
+steps:
+  epochs: 800
+  iterations:
+  lr_scheduler:
