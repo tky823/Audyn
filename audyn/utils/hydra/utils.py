@@ -257,20 +257,28 @@ def instantiate_lr_scheduler(
 
 
 def instantiate_grad_clipper(config, module_or_params, *args, **kwargs) -> GradClipper:
-    if config._target_ in TORCH_CLIP_GRAD_FN:
-        # for backward compatibility
-        if config._target_ == "torch.nn.utils.clip_grad_value_":
-            mode = "value"
-        elif config._target_ == "torch.nn.utils.clip_grad_norm_":
-            mode = "norm"
+    if hasattr(config, "_target_"):
+        if config._target_ in TORCH_CLIP_GRAD_FN:
+            # for backward compatibility
+            if config._target_ == "torch.nn.utils.clip_grad_value_":
+                mode = "value"
+            elif config._target_ == "torch.nn.utils.clip_grad_norm_":
+                mode = "norm"
 
-        overridden_config = OmegaConf.to_container(config)
-        overridden_config.update({"_target_": "audyn.utils.GradClipper", "mode": mode})
-        overridden_config = OmegaConf.create(overridden_config)
+            overridden_config = OmegaConf.to_container(config)
+            overridden_config.update({"_target_": "audyn.utils.GradClipper", "mode": mode})
+            overridden_config = OmegaConf.create(overridden_config)
+        else:
+            overridden_config = config
+
+        grad_clipper = hydra.utils.instantiate(
+            overridden_config, module_or_params, *args, **kwargs
+        )
+
+        if isinstance(grad_clipper, DictConfig):
+            grad_clipper = None
     else:
-        overridden_config = config
-
-    grad_clipper = hydra.utils.instantiate(overridden_config, module_or_params, *args, **kwargs)
+        grad_clipper = None
 
     return grad_clipper
 
