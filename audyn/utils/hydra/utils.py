@@ -27,6 +27,8 @@ __all__ = [
 
 IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
+TORCH_CLIP_GRAD_FN = ["torch.nn.utils.clip_grad_value_", "torch.nn.utils.clip_grad_norm_"]
+
 
 if IS_TORCH_LT_2_1:
 
@@ -39,6 +41,12 @@ if IS_TORCH_LT_2_1:
     ) -> Optimizer:
         ...
 
+    @overload
+    def instantiate_grad_clipper(
+        config: DictConfig, module_or_params: Iterable, *args, **kwargs
+    ) -> GradClipper:
+        ...
+
 else:
     from torch.optim.optimizer import params_t
 
@@ -49,6 +57,12 @@ else:
         *args,
         **kwargs,
     ) -> Optimizer:
+        ...
+
+    @overload
+    def instantiate_grad_clipper(
+        config: DictConfig, module_or_params: params_t, *args, **kwargs
+    ) -> GradClipper:
         ...
 
 
@@ -242,18 +256,21 @@ def instantiate_lr_scheduler(
     return lr_scheduler
 
 
-def instantiate_grad_clipper(
-    config: DictConfig, module_or_params: Optimizer, *args, **kwargs
-) -> GradClipper:
-    # for backward compatibility
-    if config._target_ in ["torch.nn.utils.clip_value_", "torch.nn.utils.clip_norm_"]:
-        if config._target_ == "torch.nn.utils.clip_value_":
-            config.mode = "value"
-        elif config._target_ == "torch.nn.utils.clip_norm_":
-            config.mode = "norm"
-        config._target_ = "audyn.utils.GradClipper"
+def instantiate_grad_clipper(config, module_or_params, *args, **kwargs) -> GradClipper:
+    if config._target_ in TORCH_CLIP_GRAD_FN:
+        # for backward compatibility
+        if config._target_ == "torch.nn.utils.clip_grad_value_":
+            mode = "value"
+        elif config._target_ == "torch.nn.utils.clip_grad_norm_":
+            mode = "norm"
 
-    grad_clipper = hydra.utils.instantiate(config, module_or_params, *args, **kwargs)
+        overridden_config = OmegaConf.to_container(config)
+        overridden_config.update({"_target_": "audyn.utils.GradClipper", "mode": mode})
+        overridden_config = OmegaConf.create(overridden_config)
+    else:
+        overridden_config = config
+
+    grad_clipper = hydra.utils.instantiate(overridden_config, module_or_params, *args, **kwargs)
 
     return grad_clipper
 
