@@ -7,8 +7,9 @@ from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.utils.data.dataloader import DataLoader
 
-from ...utils.logging import get_logger
+from ..clip_grad import GradClipper
 from ..data import BaseDataLoaders
+from ..logging import get_logger
 from .base import BaseGenerator, BaseTrainer
 
 
@@ -21,6 +22,7 @@ class FeatToWaveTrainer(BaseTrainer):
         model: nn.Module,
         optimizer: Optimizer,
         lr_scheduler: Optional[_LRScheduler] = None,
+        grad_clipper: Optional[GradClipper] = None,
         criterion: Dict[str, nn.Module] = None,
         config: DictConfig = None,
     ) -> None:
@@ -29,6 +31,7 @@ class FeatToWaveTrainer(BaseTrainer):
             model,
             optimizer,
             lr_scheduler=lr_scheduler,
+            grad_clipper=grad_clipper,
             criterion=criterion,
             config=config,
         )

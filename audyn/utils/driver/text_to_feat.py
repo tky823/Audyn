@@ -6,9 +6,10 @@ from omegaconf import DictConfig, OmegaConf
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 
-from ...utils.hydra.utils import instantiate_model
-from ...utils.model import set_device, unwrap
+from ..clip_grad import GradClipper
 from ..data import BaseDataLoaders
+from ..hydra.utils import instantiate_model
+from ..model import set_device, unwrap
 from .base import BaseTrainer
 
 
@@ -21,6 +22,7 @@ class TextToFeatTrainer(BaseTrainer):
         model: nn.Module,
         optimizer: Optimizer,
         lr_scheduler: Optional[_LRScheduler] = None,
+        grad_clipper: Optional[GradClipper] = None,
         criterion: Dict[str, nn.Module] = None,
         config: DictConfig = None,
     ) -> None:
@@ -29,6 +31,7 @@ class TextToFeatTrainer(BaseTrainer):
             model,
             optimizer,
             lr_scheduler=lr_scheduler,
+            grad_clipper=grad_clipper,
             criterion=criterion,
             config=config,
         )
