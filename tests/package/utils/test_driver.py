@@ -1118,7 +1118,7 @@ def create_dummy_feat_to_wave_override(
     sample_rate = 16000
     length = 10
 
-    output_dir, _, tag = exp_dir.rsplit("/", maxsplit=2)
+    output_dir, *_, tag = exp_dir.rsplit("/", maxsplit=2)
     tensorboard_dir = os.path.join(output_dir, "tensorboard", tag)
 
     return [
