@@ -18,7 +18,9 @@ from ...optim.optimizer import (
     MovingAverageWrapper,
     MultiOptimizers,
 )
+from ..clip_grad import GradClipper
 from ..data import BaseDataLoaders
+from ..hydra.utils import TORCH_CLIP_GRAD_FN
 from .base import BaseTrainer
 
 
@@ -34,6 +36,7 @@ class GANTrainer(BaseTrainer):
         model: BaseGAN,
         optimizer: GANOptimizer,
         lr_scheduler: Optional[_LRScheduler] = None,
+        grad_clipper: Optional[GradClipper] = None,
         criterion: GANCriterion = None,
         config: DictConfig = None,
     ) -> None:
@@ -42,6 +45,7 @@ class GANTrainer(BaseTrainer):
             model,
             optimizer,
             lr_scheduler=lr_scheduler,
+            grad_clipper=grad_clipper,
             criterion=criterion,
             config=config,
         )
@@ -778,7 +782,7 @@ class GANTrainer(BaseTrainer):
         optimizer: Optional[Optimizer] = None,
         unscale_if_necessary: bool = True,
     ) -> None:
-        """Clip gradient if self.config.train.clip_gradient is given.
+        """Clip gradient if self.grad_clipper is given.
 
         Args:
             parameters (Iterable of torch.Tensor or torch.Tensor): Model parameters.
@@ -788,26 +792,34 @@ class GANTrainer(BaseTrainer):
                 doesn't anything when ``self.scaler.is_enabled()`` is ``False``.
 
         """
-        if hasattr(self.config.train, "clip_gradient"):
-            if unscale_if_necessary:
-                if self.scaler.is_enabled() and optimizer is None:
-                    raise ValueError("optimizer is not given.")
+        if not hasattr(self.config.train, "clip_gradient"):
+            # clip_gradient is not defined.
+            return
 
-                if isinstance(optimizer, MultiOptimizers):
-                    for _optimizer in optimizer.optimizers.values():
-                        if (
-                            isinstance(_optimizer, ExponentialMovingAverageCodebookOptimizer)
-                            and self.scaler.is_enabled()
-                        ):
-                            raise NotImplementedError(
-                                "ExponentialMovingAverageCodebookOptimizer and AMP "
-                                "cannot be used simultaneously."
-                            )
-                        else:
-                            self.scaler.unscale_(_optimizer)
-                else:
+        clip_gradient_config = self.config.train.clip_gradient
+
+        if not hasattr(clip_gradient_config, "_target_"):
+            # clip_gradient is not used.
+            return
+
+        if clip_gradient_config._target_ is None or clip_gradient_config._target_ == "":
+            return
+
+        if self.grad_clipper is not None:
+            is_legacy = False
+        elif clip_gradient_config._target_ in TORCH_CLIP_GRAD_FN:
+            is_legacy = True
+        else:
+            raise ValueError("Invalid condition is detected.")
+
+        if unscale_if_necessary:
+            if self.scaler.is_enabled() and optimizer is None:
+                raise ValueError("optimizer is not given.")
+
+            if isinstance(optimizer, MultiOptimizers):
+                for _optimizer in optimizer.optimizers.values():
                     if (
-                        isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
+                        isinstance(_optimizer, ExponentialMovingAverageCodebookOptimizer)
                         and self.scaler.is_enabled()
                     ):
                         raise NotImplementedError(
@@ -815,10 +827,26 @@ class GANTrainer(BaseTrainer):
                             "cannot be used simultaneously."
                         )
                     else:
-                        self.scaler.unscale_(optimizer)
+                        self.scaler.unscale_(_optimizer)
+            else:
+                if (
+                    isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
+                    and self.scaler.is_enabled()
+                ):
+                    raise NotImplementedError(
+                        "ExponentialMovingAverageCodebookOptimizer and AMP "
+                        "cannot be used simultaneously."
+                    )
+                else:
+                    self.scaler.unscale_(optimizer)
 
-            clip_gradient_config = self.config.train.clip_gradient
+        if is_legacy:
+            # for backward compatibility
             hydra.utils.instantiate(clip_gradient_config, parameters)
+        else:
+            # If multiple models are used (e.g. generator and discriminator of GAN),
+            # the following operation may be redundant.
+            self.grad_clipper.step()
 
     def load_checkpoint(self, path: str) -> None:
         generator_key, discriminator_key = "generator", "discriminator"

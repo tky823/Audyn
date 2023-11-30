@@ -22,11 +22,13 @@ from ...optim.optimizer import (
     MovingAverageWrapper,
     MultiOptimizers,
 )
-from ...utils.logging import get_logger
-from ...utils.model import unwrap
-from ...utils.tensorboard import get_summary_writer
+from ..clip_grad import GradClipper
 from ..data import BaseDataLoaders, select_device
 from ..distributed import select_global_rank, select_local_rank
+from ..hydra.utils import TORCH_CLIP_GRAD_FN
+from ..logging import get_logger
+from ..model import unwrap
+from ..tensorboard import get_summary_writer
 from ._decorator import run_only_master_rank
 
 
@@ -306,6 +308,7 @@ class BaseTrainer(BaseDriver):
         model: nn.Module,
         optimizer: Optimizer,
         lr_scheduler: Optional[_LRScheduler] = None,
+        grad_clipper: Optional[GradClipper] = None,
         criterion: Dict[str, nn.Module] = None,
         config: DictConfig = None,
     ) -> None:
@@ -323,6 +326,7 @@ class BaseTrainer(BaseDriver):
         self.model = model
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
+        self.grad_clipper = grad_clipper
         self.criterion = criterion
 
         self.config = config
@@ -741,7 +745,7 @@ class BaseTrainer(BaseDriver):
             break
 
     def clip_gradient_if_necessary(self, unscale_if_necessary: bool = True) -> None:
-        """Clip gradient if self.config.train.clip_gradient is given.
+        """Clip gradient if self.grad_clipper is given.
 
         Args:
             unscale_if_necessary (bool): If ``True``, ``self.scaler.unscale_`` is
@@ -749,24 +753,31 @@ class BaseTrainer(BaseDriver):
                 doesn't anything when ``self.scaler.is_enabled()`` is ``False``.
 
         """
-        if hasattr(self.config.train, "clip_gradient"):
-            if unscale_if_necessary:
-                if isinstance(self.optimizer, MultiOptimizers):
-                    for optimizer in self.optimizer.optimizers.values():
-                        if (
-                            isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
-                            and self.scaler.is_enabled()
-                        ):
-                            # TODO: address numerical instability
-                            raise NotImplementedError(
-                                "ExponentialMovingAverageCodebookOptimizer and AMP "
-                                "cannot be used simultaneously."
-                            )
-                        else:
-                            self.scaler.unscale_(optimizer)
-                else:
+        if not hasattr(self.config.train, "clip_gradient"):
+            # clip_gradient is not defined.
+            return
+
+        clip_gradient_config = self.config.train.clip_gradient
+
+        if not hasattr(clip_gradient_config, "_target_"):
+            # clip_gradient is not used.
+            return
+
+        if clip_gradient_config._target_ is None or clip_gradient_config._target_ == "":
+            return
+
+        if self.grad_clipper is not None:
+            is_legacy = False
+        elif clip_gradient_config._target_ in TORCH_CLIP_GRAD_FN:
+            is_legacy = True
+        else:
+            raise ValueError("Invalid condition is detected.")
+
+        if unscale_if_necessary:
+            if isinstance(self.optimizer, MultiOptimizers):
+                for optimizer in self.optimizer.optimizers.values():
                     if (
-                        isinstance(self.optimizer, ExponentialMovingAverageCodebookOptimizer)
+                        isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
                         and self.scaler.is_enabled()
                     ):
                         # TODO: address numerical instability
@@ -775,10 +786,25 @@ class BaseTrainer(BaseDriver):
                             "cannot be used simultaneously."
                         )
                     else:
-                        self.scaler.unscale_(self.optimizer)
+                        self.scaler.unscale_(optimizer)
+            else:
+                if (
+                    isinstance(self.optimizer, ExponentialMovingAverageCodebookOptimizer)
+                    and self.scaler.is_enabled()
+                ):
+                    # TODO: address numerical instability
+                    raise NotImplementedError(
+                        "ExponentialMovingAverageCodebookOptimizer and AMP "
+                        "cannot be used simultaneously."
+                    )
+                else:
+                    self.scaler.unscale_(self.optimizer)
 
-            clip_gradient_config = self.config.train.clip_gradient
+        if is_legacy:
+            # for backward compatibility
             hydra.utils.instantiate(clip_gradient_config, self.model.parameters())
+        else:
+            self.grad_clipper.step()
 
     def optimizer_step(self, optimizer: Optional[Optimizer] = None) -> None:
         if optimizer is None:
