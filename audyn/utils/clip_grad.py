@@ -16,7 +16,28 @@ class GradClipper:
         params: Parameters to be clipped.
         mode (str): Clipping mode. ``value`` and ``norm`` are available.
         kwargs: Keyword arguments given to ``nn.utils.clip_grad_value_``
-            or ``nn.utils.clip_grad_norm_``
+            or ``nn.utils.clip_grad_norm_``.
+
+    Examples:
+
+        >>> import torch.nn as nn
+        >>> from torch.optim import Adam
+        >>> batch_size = 4
+        >>> in_features, out_features = 3, 2
+        >>> clip_value = 0.1
+        >>> model = nn.Linear(2, 3)
+        >>> optimizer = Adam(model.parameters())
+        >>> grad_clipper = GradClipper(
+        ...     model.parameters(), mode="value", clip_value=clip_value
+        ... )
+        >>> input = torch.randn((batch_size, in_features))
+        >>> target = torch.randn((batch_size, out_features))
+        >>> output = model(input)
+        >>> loss = torch.mean((output - target) ** 2)
+        >>> optimizer.zero_grad()
+        >>> loss.backward()
+        >>> grad_clipper.step()
+        >>> optimizer.step()
 
     """
 
