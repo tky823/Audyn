@@ -36,6 +36,10 @@ key_mapping:
       max_length: max_length
     output: criterion_input
 
+clip_gradient:
+  _target_: torch.nn.utils.clip_grad_norm_
+  max_norm: 10
+
 resume:
   continue_from:
 

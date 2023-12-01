@@ -44,7 +44,8 @@ key_mapping:
     output: estimated_indices
 
 clip_gradient:
-  _target_: torch.nn.utils.clip_grad_norm_
+  _target_: audyn.utils.GradClipper
+  mode: norm
   max_norm: 10
 
 resume:

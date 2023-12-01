@@ -55,8 +55,11 @@ key_mapping:
       output: estimated_waveform
 
 clip_gradient:
-  _target_: torch.nn.utils.clip_grad_norm_
-  max_norm: 1
+  generator:
+    _target_: audyn.utils.GradClipper
+    mode: norm
+    max_norm: 1
+  discriminator: ${.generator}
 
 resume:
   continue_from:

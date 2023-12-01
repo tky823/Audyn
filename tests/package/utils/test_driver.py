@@ -7,6 +7,7 @@ import hydra
 import pytest
 import torch
 from dummy import allclose
+from omegaconf import OmegaConf
 from pytest import MonkeyPatch
 
 import audyn
@@ -17,11 +18,13 @@ from audyn.optim.optimizer import GANOptimizer
 from audyn.utils import (
     instantiate_cascade_text_to_wave,
     instantiate_criterion,
+    instantiate_grad_clipper,
     instantiate_lr_scheduler,
     instantiate_model,
     instantiate_optimizer,
     setup_system,
 )
+from audyn.utils.clip_grad import GANGradClipper
 from audyn.utils.data import BaseDataLoaders, default_collate_fn, make_noise
 from audyn.utils.driver import (
     BaseGenerator,
@@ -212,7 +215,15 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
         monkeypatch.undo()
 
 
-def test_text_to_feat_trainer(monkeypatch: MonkeyPatch) -> None:
+@pytest.mark.parametrize(
+    "is_legacy_grad_clipper, is_legacy_grad_clipper_recipe",
+    [(True, True), (True, False), (False, False)],
+)
+def test_text_to_feat_trainer(
+    monkeypatch: MonkeyPatch,
+    is_legacy_grad_clipper: bool,
+    is_legacy_grad_clipper_recipe: bool,
+) -> None:
     """Test TextToFeatTrainer."""
     DATA_SIZE = 20
     BATCH_SIZE = 2
@@ -248,6 +259,18 @@ def test_text_to_feat_trainer(monkeypatch: MonkeyPatch) -> None:
                 return_hydra_config=True,
             )
 
+        if not is_legacy_grad_clipper:
+            assert config.train.clip_gradient._target_ == "torch.nn.utils.clip_grad_norm_"
+
+            config = OmegaConf.to_container(config)
+            config["train"]["clip_gradient"].update(
+                {
+                    "_target_": "audyn.utils.GradClipper",
+                    "mode": "norm",
+                }
+            )
+            config = OmegaConf.create(config)
+
         setup_system(config)
 
         train_dataset = hydra.utils.instantiate(config.train.dataset.train)
@@ -273,6 +296,12 @@ def test_text_to_feat_trainer(monkeypatch: MonkeyPatch) -> None:
         )
         optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
+
+        if is_legacy_grad_clipper and is_legacy_grad_clipper_recipe:
+            grad_clipper = None
+        else:
+            grad_clipper = instantiate_grad_clipper(config.train.clip_gradient, model.parameters())
+
         criterion = instantiate_criterion(config.criterion)
         criterion = set_device(
             criterion,
@@ -285,6 +314,7 @@ def test_text_to_feat_trainer(monkeypatch: MonkeyPatch) -> None:
             model,
             optimizer,
             lr_scheduler=lr_scheduler,
+            grad_clipper=grad_clipper,
             criterion=criterion,
             config=config,
         )
@@ -424,6 +454,12 @@ def test_text_to_feat_with_pretrained_feat_to_wave_trainer(monkeypatch: MonkeyPa
         )
         optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
+
+        if "clip_gradient" in config.train:
+            grad_clipper = instantiate_grad_clipper(config.train.clip_gradient, model.parameters())
+        else:
+            grad_clipper = None
+
         criterion = instantiate_criterion(config.criterion)
         criterion = set_device(
             criterion,
@@ -436,6 +472,7 @@ def test_text_to_feat_with_pretrained_feat_to_wave_trainer(monkeypatch: MonkeyPa
             model,
             optimizer,
             lr_scheduler=lr_scheduler,
+            grad_clipper=grad_clipper,
             criterion=criterion,
             config=config,
         )
@@ -447,7 +484,17 @@ def test_text_to_feat_with_pretrained_feat_to_wave_trainer(monkeypatch: MonkeyPa
 
 @pytest.mark.parametrize("use_ema", [True, False])
 @pytest.mark.parametrize("use_lr_scheduler", [True, False])
-def test_feat_to_wave_trainer(monkeypatch: MonkeyPatch, use_ema: bool, use_lr_scheduler: bool):
+@pytest.mark.parametrize(
+    "is_legacy_grad_clipper, is_legacy_grad_clipper_recipe",
+    [(True, True), (True, False), (False, False)],
+)
+def test_feat_to_wave_trainer(
+    monkeypatch: MonkeyPatch,
+    use_ema: bool,
+    use_lr_scheduler: bool,
+    is_legacy_grad_clipper: bool,
+    is_legacy_grad_clipper_recipe: bool,
+):
     """Test FeatToWaveTrainer."""
     DATA_SIZE = 20
     BATCH_SIZE = 2
@@ -495,6 +542,18 @@ def test_feat_to_wave_trainer(monkeypatch: MonkeyPatch, use_ema: bool, use_lr_sc
                 return_hydra_config=True,
             )
 
+        if not is_legacy_grad_clipper:
+            assert config.train.clip_gradient._target_ == "torch.nn.utils.clip_grad_norm_"
+
+            config = OmegaConf.to_container(config)
+            config["train"]["clip_gradient"].update(
+                {
+                    "_target_": "audyn.utils.GradClipper",
+                    "mode": "norm",
+                }
+            )
+            config = OmegaConf.create(config)
+
         setup_system(config)
 
         train_dataset = hydra.utils.instantiate(config.train.dataset.train)
@@ -520,6 +579,12 @@ def test_feat_to_wave_trainer(monkeypatch: MonkeyPatch, use_ema: bool, use_lr_sc
         )
         optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
+
+        if is_legacy_grad_clipper and is_legacy_grad_clipper_recipe:
+            grad_clipper = None
+        else:
+            grad_clipper = instantiate_grad_clipper(config.train.clip_gradient, model.parameters())
+
         criterion = instantiate_criterion(config.criterion)
         criterion = set_device(
             criterion,
@@ -532,6 +597,7 @@ def test_feat_to_wave_trainer(monkeypatch: MonkeyPatch, use_ema: bool, use_lr_sc
             model,
             optimizer,
             lr_scheduler=lr_scheduler,
+            grad_clipper=grad_clipper,
             criterion=criterion,
             config=config,
         )
@@ -543,10 +609,16 @@ def test_feat_to_wave_trainer(monkeypatch: MonkeyPatch, use_ema: bool, use_lr_sc
 
 @pytest.mark.parametrize("use_ema_generator", [True, False])
 @pytest.mark.parametrize("use_ema_discriminator", [True, False])
+@pytest.mark.parametrize(
+    "is_legacy_grad_clipper, is_legacy_grad_clipper_recipe",
+    [(True, True), (True, False), (False, False)],
+)
 def test_gan_trainer(
     monkeypatch: MonkeyPatch,
     use_ema_generator: bool,
     use_ema_discriminator: bool,
+    is_legacy_grad_clipper: bool,
+    is_legacy_grad_clipper_recipe: bool,
 ):
     DATA_SIZE = 20
     BATCH_SIZE = 2
@@ -583,6 +655,40 @@ def test_gan_trainer(
                 ),
                 return_hydra_config=True,
             )
+
+        if is_legacy_grad_clipper:
+            if not is_legacy_grad_clipper_recipe:
+                assert config.train.clip_gradient._target_ == "torch.nn.utils.clip_grad_norm_"
+
+                max_norm = config.train.clip_gradient.max_norm
+                config = OmegaConf.to_container(config)
+                config["train"]["clip_gradient"].update(
+                    {
+                        "generator": {
+                            "_target_": "torch.nn.utils.clip_grad_norm_",
+                            "max_norm": max_norm,
+                        },
+                        "discriminator": "${.generator}",
+                    }
+                )
+
+                config = OmegaConf.create(config)
+        else:
+            assert config.train.clip_gradient._target_ == "torch.nn.utils.clip_grad_norm_"
+
+            max_norm = config.train.clip_gradient.max_norm
+            config = OmegaConf.to_container(config)
+            config["train"]["clip_gradient"].update(
+                {
+                    "generator": {
+                        "_target_": "audyn.utils.GradClipper",
+                        "mode": "norm",
+                        "max_norm": max_norm,
+                    },
+                    "discriminator": "${.generator}",
+                }
+            )
+            config = OmegaConf.create(config)
 
         setup_system(config)
 
@@ -630,6 +736,18 @@ def test_gan_trainer(
         discriminator_lr_scheduler = instantiate_lr_scheduler(
             config.lr_scheduler.discriminator, discriminator_optimizer
         )
+
+        if is_legacy_grad_clipper and is_legacy_grad_clipper_recipe:
+            grad_clipper = None
+        else:
+            generator_grad_clipper = instantiate_grad_clipper(
+                config.train.clip_gradient.generator, generator.parameters()
+            )
+            discriminator_grad_clipper = instantiate_grad_clipper(
+                config.train.clip_gradient.discriminator, discriminator.parameters()
+            )
+            grad_clipper = GANGradClipper(generator_grad_clipper, discriminator_grad_clipper)
+
         generator_criterion = instantiate_criterion(config.criterion.generator)
         discriminator_criterion = instantiate_criterion(config.criterion.discriminator)
         generator_criterion = set_device(
@@ -653,6 +771,7 @@ def test_gan_trainer(
             model,
             optimizer,
             lr_scheduler=lr_scheduler,
+            grad_clipper=grad_clipper,
             criterion=criterion,
             config=config,
         )
@@ -726,6 +845,12 @@ def test_cascade_text_to_wave(monkeypatch: MonkeyPatch) -> None:
         )
         optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
+
+        if "clip_gradient" in config.train:
+            grad_clipper = instantiate_grad_clipper(config.train.clip_gradient, model.parameters())
+        else:
+            grad_clipper = None
+
         criterion = instantiate_criterion(config.criterion)
         criterion = set_device(
             criterion,
@@ -738,6 +863,7 @@ def test_cascade_text_to_wave(monkeypatch: MonkeyPatch) -> None:
             model,
             optimizer,
             lr_scheduler=lr_scheduler,
+            grad_clipper=grad_clipper,
             criterion=criterion,
             config=config,
         )

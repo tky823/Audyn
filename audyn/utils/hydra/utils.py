@@ -14,6 +14,7 @@ from audyn.criterion.base import BaseCriterionWrapper, MultiCriteria
 from ...models.text_to_wave import CascadeTextToWave
 from ...modules.vqvae import VectorQuantizer
 from ...optim.optimizer import ExponentialMovingAverageCodebookOptimizer, MultiOptimizers
+from ..clip_grad import GradClipper
 from ..parallel import is_dp_or_ddp
 
 __all__ = [
@@ -21,9 +22,12 @@ __all__ = [
     "instantiate_cascade_text_to_wave",
     "instantiate_optimizer",
     "instantiate_lr_scheduler",
+    "instantiate_grad_clipper",
 ]
 
 IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
+
+TORCH_CLIP_GRAD_FN = ["torch.nn.utils.clip_grad_value_", "torch.nn.utils.clip_grad_norm_"]
 
 
 if IS_TORCH_LT_2_1:
@@ -37,6 +41,12 @@ if IS_TORCH_LT_2_1:
     ) -> Optimizer:
         ...
 
+    @overload
+    def instantiate_grad_clipper(
+        config: DictConfig, module_or_params: Iterable, *args, **kwargs
+    ) -> GradClipper:
+        ...
+
 else:
     from torch.optim.optimizer import params_t
 
@@ -47,6 +57,12 @@ else:
         *args,
         **kwargs,
     ) -> Optimizer:
+        ...
+
+    @overload
+    def instantiate_grad_clipper(
+        config: DictConfig, module_or_params: params_t, *args, **kwargs
+    ) -> GradClipper:
         ...
 
 
@@ -238,6 +254,33 @@ def instantiate_lr_scheduler(
         lr_scheduler = None
 
     return lr_scheduler
+
+
+def instantiate_grad_clipper(config, module_or_params, *args, **kwargs) -> GradClipper:
+    if hasattr(config, "_target_"):
+        if config._target_ in TORCH_CLIP_GRAD_FN:
+            # for backward compatibility
+            if config._target_ == "torch.nn.utils.clip_grad_value_":
+                mode = "value"
+            elif config._target_ == "torch.nn.utils.clip_grad_norm_":
+                mode = "norm"
+
+            overridden_config = OmegaConf.to_container(config)
+            overridden_config.update({"_target_": "audyn.utils.GradClipper", "mode": mode})
+            overridden_config = OmegaConf.create(overridden_config)
+        else:
+            overridden_config = config
+
+        grad_clipper = hydra.utils.instantiate(
+            overridden_config, module_or_params, *args, **kwargs
+        )
+
+        if isinstance(grad_clipper, DictConfig):
+            grad_clipper = None
+    else:
+        grad_clipper = None
+
+    return grad_clipper
 
 
 def instantiate_criterion(
