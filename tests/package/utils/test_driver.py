@@ -1,4 +1,3 @@
-import itertools
 import os
 import tempfile
 from os.path import dirname, join, realpath, relpath
@@ -25,6 +24,7 @@ from audyn.utils import (
     instantiate_optimizer,
     setup_system,
 )
+from audyn.utils.clip_grad import GANGradClipper
 from audyn.utils.data import BaseDataLoaders, default_collate_fn, make_noise
 from audyn.utils.driver import (
     BaseGenerator,
@@ -656,14 +656,36 @@ def test_gan_trainer(
                 return_hydra_config=True,
             )
 
-        if not is_legacy_grad_clipper:
+        if is_legacy_grad_clipper:
+            if not is_legacy_grad_clipper_recipe:
+                assert config.train.clip_gradient._target_ == "torch.nn.utils.clip_grad_norm_"
+
+                max_norm = config.train.clip_gradient.max_norm
+                config = OmegaConf.to_container(config)
+                config["train"]["clip_gradient"].update(
+                    {
+                        "generator": {
+                            "_target_": "torch.nn.utils.clip_grad_norm_",
+                            "max_norm": max_norm,
+                        },
+                        "discriminator": "${.generator}",
+                    }
+                )
+
+                config = OmegaConf.create(config)
+        else:
             assert config.train.clip_gradient._target_ == "torch.nn.utils.clip_grad_norm_"
 
+            max_norm = config.train.clip_gradient.max_norm
             config = OmegaConf.to_container(config)
             config["train"]["clip_gradient"].update(
                 {
-                    "_target_": "audyn.utils.GradClipper",
-                    "mode": "norm",
+                    "generator": {
+                        "_target_": "audyn.utils.GradClipper",
+                        "mode": "norm",
+                        "max_norm": max_norm,
+                    },
+                    "discriminator": "${.generator}",
                 }
             )
             config = OmegaConf.create(config)
@@ -718,10 +740,13 @@ def test_gan_trainer(
         if is_legacy_grad_clipper and is_legacy_grad_clipper_recipe:
             grad_clipper = None
         else:
-            grad_clipper = instantiate_grad_clipper(
-                config.train.clip_gradient,
-                itertools.chain(generator.parameters(), discriminator.parameters()),
+            generator_grad_clipper = instantiate_grad_clipper(
+                config.train.clip_gradient.generator, generator.parameters()
             )
+            discriminator_grad_clipper = instantiate_grad_clipper(
+                config.train.clip_gradient.discriminator, discriminator.parameters()
+            )
+            grad_clipper = GANGradClipper(generator_grad_clipper, discriminator_grad_clipper)
 
         generator_criterion = instantiate_criterion(config.criterion.generator)
         discriminator_criterion = instantiate_criterion(config.criterion.discriminator)
