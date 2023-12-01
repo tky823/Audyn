@@ -1,4 +1,5 @@
 import os
+import warnings
 from typing import Dict, Iterable, Optional, Union
 
 import hydra
@@ -6,7 +7,6 @@ import torch
 import torch.nn as nn
 from omegaconf import DictConfig, OmegaConf
 from torch.optim import Optimizer
-from torch.optim.lr_scheduler import _LRScheduler
 
 from ... import __version__ as _version
 from ...criterion.gan import GANCriterion
@@ -18,7 +18,7 @@ from ...optim.optimizer import (
     MovingAverageWrapper,
     MultiOptimizers,
 )
-from ..clip_grad import GradClipper
+from ..clip_grad import GANGradClipper
 from ..data import BaseDataLoaders
 from ..hydra.utils import TORCH_CLIP_GRAD_FN
 from .base import BaseTrainer
@@ -28,6 +28,7 @@ class GANTrainer(BaseTrainer):
     model: BaseGAN
     optimizer: GANOptimizer
     lr_scheduler: GANLRScheduler
+    grad_clipper: GANGradClipper
     criterion: GANCriterion
 
     def __init__(
@@ -35,8 +36,8 @@ class GANTrainer(BaseTrainer):
         loaders: BaseDataLoaders,
         model: BaseGAN,
         optimizer: GANOptimizer,
-        lr_scheduler: Optional[_LRScheduler] = None,
-        grad_clipper: Optional[GradClipper] = None,
+        lr_scheduler: Optional[GANLRScheduler] = None,
+        grad_clipper: Optional[GANGradClipper] = None,
         criterion: GANCriterion = None,
         config: DictConfig = None,
     ) -> None:
@@ -260,10 +261,17 @@ class GANTrainer(BaseTrainer):
 
             self.optimizer.discriminator.zero_grad()
             self.scaler.scale(total_discriminator_loss).backward()
-            self.clip_gradient_if_necessary(
-                self.unwrapped_model.discriminator.parameters(),
-                self.optimizer.discriminator,
-            )
+
+            if self.grad_clipper is None:
+                self.clip_gradient_if_necessary(
+                    self.unwrapped_model.discriminator.parameters(),
+                    self.optimizer.discriminator,
+                )
+            else:
+                self.clip_gradient_if_necessary(
+                    "discriminator",
+                    self.optimizer.discriminator,
+                )
             self.optimizer_step(self.optimizer.discriminator)
 
             if self.config.train.steps.lr_scheduler.discriminator == "iteration":
@@ -400,10 +408,18 @@ class GANTrainer(BaseTrainer):
 
             self.optimizer.generator.zero_grad()
             self.scaler.scale(total_generator_loss).backward()
-            self.clip_gradient_if_necessary(
-                self.unwrapped_model.generator.parameters(),
-                self.optimizer.generator,
-            )
+
+            if self.grad_clipper is None:
+                self.clip_gradient_if_necessary(
+                    self.unwrapped_model.generator.parameters(),
+                    self.optimizer.generator,
+                )
+            else:
+                self.clip_gradient_if_necessary(
+                    "generator",
+                    self.optimizer.generator,
+                )
+
             self.optimizer_step(self.optimizer.generator)
             self.scaler.update()
 
@@ -778,14 +794,16 @@ class GANTrainer(BaseTrainer):
 
     def clip_gradient_if_necessary(
         self,
-        parameters: Union[Iterable[torch.Tensor], torch.Tensor],
+        parameters_or_name: Union[Iterable[torch.Tensor], torch.Tensor, str],
         optimizer: Optional[Optimizer] = None,
         unscale_if_necessary: bool = True,
     ) -> None:
         """Clip gradient if self.grad_clipper is given.
 
         Args:
-            parameters (Iterable of torch.Tensor or torch.Tensor): Model parameters.
+            parameters_or_name (Iterable of torch.Tensor, torch.Tensor, or str):
+                Model parameters (legacy gradient clipping) or
+                name of module (generator or discriminator).
             optimizer (Optimizer, optional): Optimizer to be unscaled.
             unscale_if_necessary (bool): If ``True``, ``self.scaler.unscale_`` is
                 applied to ``optimizer`` before clipping gradient. This operation
@@ -842,11 +860,26 @@ class GANTrainer(BaseTrainer):
 
         if is_legacy:
             # for backward compatibility
+            parameters = parameters_or_name
             hydra.utils.instantiate(clip_gradient_config, parameters)
         else:
-            # If multiple models are used (e.g. generator and discriminator of GAN),
-            # the following operation may be redundant.
-            self.grad_clipper.step()
+            if isinstance(parameters_or_name, str):
+                name = parameters_or_name
+
+                if name == "generator":
+                    self.grad_clipper.generator.step()
+                elif name == "discriminator":
+                    self.grad_clipper.discriminator.step()
+                else:
+                    raise ValueError(f"Invalid name {name} is given.")
+            else:
+                # If multiple models are used (e.g. generator and discriminator of GAN),
+                # the following operation may be redundant.
+                warnings.warn(
+                    "If grad_clipper changes the internal state (e.g. training step, etc.), "
+                    "excessive calls to .step() can lead to inappropriate results."
+                )
+                self.grad_clipper.step()
 
     def load_checkpoint(self, path: str) -> None:
         generator_key, discriminator_key = "generator", "discriminator"
