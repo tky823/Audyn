@@ -8,6 +8,7 @@ from omegaconf import DictConfig
 import audyn
 from audyn.utils import (
     instantiate_criterion,
+    instantiate_grad_clipper,
     instantiate_lr_scheduler,
     instantiate_model,
     instantiate_optimizer,
@@ -66,7 +67,7 @@ def main(config: DictConfig) -> None:
 
     optimizer = instantiate_optimizer(config.optimizer, model)
     lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
-
+    grad_clipper = instantiate_grad_clipper(config.train.clip_gradient, model.parameters())
     criterion = instantiate_criterion(config.criterion)
     criterion = set_device(
         criterion,
@@ -79,6 +80,7 @@ def main(config: DictConfig) -> None:
         model,
         optimizer,
         lr_scheduler=lr_scheduler,
+        grad_clipper=grad_clipper,
         criterion=criterion,
         config=config,
     )
