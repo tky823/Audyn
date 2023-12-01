@@ -62,7 +62,7 @@ def main(config: DictConfig) -> None:
         config.lr_scheduler.generator, generator_optimizer
     )
     generator_grad_clipper = instantiate_grad_clipper(
-        config.clip_gradient.generator, generator.parameters()
+        config.train.clip_gradient.generator, generator.parameters()
     )
     generator_criterion = hydra.utils.instantiate(config.criterion.generator)
     generator_criterion = set_device(
@@ -84,7 +84,7 @@ def main(config: DictConfig) -> None:
         config.lr_scheduler.discriminator, discriminator_optimizer
     )
     discriminator_grad_clipper = instantiate_grad_clipper(
-        config.clip_gradient.discriminator, discriminator.parameters()
+        config.train.clip_gradient.discriminator, discriminator.parameters()
     )
     discriminator_criterion = hydra.utils.instantiate(config.criterion.discriminator)
     discriminator_criterion = set_device(
