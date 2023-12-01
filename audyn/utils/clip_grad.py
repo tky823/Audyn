@@ -127,3 +127,21 @@ class GradClipper:
             )
         else:
             raise ValueError(f"Clipping mode {self.mode} is not supported.")
+
+
+class GANGradClipper:
+    """Clip gradients of generator and discriminator.
+
+    Args:
+        generator (GradClipper): Gradient clipper for generator.
+        discriminator (GradClipper): Gradient clipper for discriminator.
+
+    """
+
+    def __init__(self, generator: GradClipper, discriminator: GradClipper) -> None:
+        self.generator = generator
+        self.discriminator = discriminator
+
+    def step(self) -> None:
+        self.generator.step()
+        self.discriminator.step()
