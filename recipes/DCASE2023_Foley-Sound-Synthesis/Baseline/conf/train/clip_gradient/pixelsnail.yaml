@@ -1,0 +1,3 @@
+_target_: audyn.utils.GradClipper
+mode: norm
+max_norm: 10

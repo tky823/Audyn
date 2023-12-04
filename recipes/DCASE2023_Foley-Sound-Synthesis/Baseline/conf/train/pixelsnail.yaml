@@ -1,5 +1,6 @@
 defaults:
   - record: pixelsnail
+  - clip_gradient: pixelsnail
   - _self_
 
 dataset:
@@ -36,11 +37,6 @@ key_mapping:
       height: height
       width: width
     output: estimated_indices
-
-clip_gradient:
-  _target_: audyn.utils.GradClipper
-  mode: norm
-  max_norm: 10
 
 resume:
   continue_from:
