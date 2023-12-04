@@ -1,0 +1,11 @@
+seed: 0
+distributed:
+  enable: true
+  backend: gloo
+  init_method:
+cudnn:
+  benchmark:
+  deterministic:
+amp:
+  enable: false
+accelerator: cpu
