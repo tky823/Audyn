@@ -6,6 +6,8 @@ from typing import Any, Dict, List, Optional
 import hydra
 import pytest
 import torch
+import torch.distributed as dist
+import torch.nn as nn
 from dummy import allclose
 from omegaconf import OmegaConf
 from pytest import MonkeyPatch
@@ -781,6 +783,198 @@ def test_gan_trainer(
         monkeypatch.undo()
 
 
+def test_gan_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
+    torch.manual_seed(0)
+
+    DATA_SIZE = 20
+    BATCH_SIZE = 2
+    INITIAL_ITERATION = 3
+
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
+        monkeypatch.chdir(temp_dir)
+
+        overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
+        exp_dir = "./exp"
+
+        train_name = "dummy_gan"
+        model_name = "dummy_gan"
+        criterion_name = "dummy_gan"
+
+        system_name = "cpu_ddp"
+
+        with hydra.initialize(
+            version_base="1.2",
+            config_path=relpath(config_template_path, dirname(realpath(__file__))),
+            job_name="test_driver",
+        ):
+            config = hydra.compose(
+                config_name="config",
+                overrides=create_dummy_gan_override(
+                    overrides_conf_dir=overrides_conf_dir,
+                    exp_dir=exp_dir,
+                    data_size=DATA_SIZE,
+                    batch_size=BATCH_SIZE,
+                    iterations=INITIAL_ITERATION,
+                    system=system_name,
+                    train=train_name,
+                    model=model_name,
+                    criterion=criterion_name,
+                ),
+                return_hydra_config=True,
+            )
+
+        config = OmegaConf.to_container(config)
+        config["train"].update(
+            {
+                "clip_gradient": "none",
+            }
+        )
+        config = OmegaConf.create(config)
+
+        os.environ["LOCAL_RANK"] = "0"
+        os.environ["RANK"] = "0"
+        os.environ["WORLD_SIZE"] = "1"
+        os.environ["MASTER_ADDR"] = "localhost"
+        os.environ["MASTER_PORT"] = str(torch.randint(0, 2**16, ()).item())
+        dist.init_process_group(backend="gloo")
+
+        train_dataset = hydra.utils.instantiate(
+            config.train.dataset.train,
+        )
+        validation_dataset = hydra.utils.instantiate(
+            config.train.dataset.validation,
+        )
+
+        train_loader = hydra.utils.instantiate(
+            config.train.dataloader.train,
+            train_dataset,
+            collate_fn=gan_collate_fn,
+        )
+        validation_loader = hydra.utils.instantiate(
+            config.train.dataloader.validation,
+            validation_dataset,
+            collate_fn=gan_collate_fn,
+        )
+        loaders = BaseDataLoaders(train_loader, validation_loader)
+
+        generator = instantiate_model(config.model.generator)
+        discriminator = instantiate_model(config.model.discriminator)
+        generator = nn.parallel.DistributedDataParallel(generator)
+        discriminator = nn.parallel.DistributedDataParallel(discriminator)
+
+        generator_optimizer = instantiate_optimizer(
+            config.optimizer.generator, generator.parameters()
+        )
+        discriminator_optimizer = instantiate_optimizer(
+            config.optimizer.discriminator, discriminator.parameters()
+        )
+        generator_lr_scheduler = instantiate_lr_scheduler(
+            config.lr_scheduler.generator, generator_optimizer
+        )
+        discriminator_lr_scheduler = instantiate_lr_scheduler(
+            config.lr_scheduler.discriminator, discriminator_optimizer
+        )
+        grad_clipper = None
+        generator_criterion = instantiate_criterion(config.criterion.generator)
+        discriminator_criterion = instantiate_criterion(config.criterion.discriminator)
+
+        model = BaseGAN(generator, discriminator)
+        optimizer = GANOptimizer(generator_optimizer, discriminator_optimizer)
+        lr_scheduler = GANLRScheduler(generator_lr_scheduler, discriminator_lr_scheduler)
+        criterion = GANCriterion(generator_criterion, discriminator_criterion)
+
+        trainer = GANTrainer(
+            loaders,
+            model,
+            optimizer,
+            lr_scheduler=lr_scheduler,
+            grad_clipper=grad_clipper,
+            criterion=criterion,
+            config=config,
+        )
+        trainer.run()
+        trainer.writer.flush()
+
+        system_name = "cpu"
+
+        with hydra.initialize(
+            version_base="1.2",
+            config_path=relpath(config_template_path, dirname(realpath(__file__))),
+            job_name="test_driver",
+        ):
+            config = hydra.compose(
+                config_name="config",
+                overrides=create_dummy_gan_override(
+                    overrides_conf_dir=overrides_conf_dir,
+                    exp_dir=exp_dir,
+                    data_size=DATA_SIZE,
+                    batch_size=BATCH_SIZE,
+                    iterations=INITIAL_ITERATION,
+                    system=system_name,
+                    train=train_name,
+                    model=model_name,
+                    criterion=criterion_name,
+                ),
+                return_hydra_config=True,
+            )
+
+        config = OmegaConf.to_container(config)
+        config["train"].update(
+            {
+                "resume": {
+                    "continue_from": os.path.join(exp_dir, "model/last.pth"),
+                },
+                "clip_gradient": "none",
+            }
+        )
+        config = OmegaConf.create(config)
+
+        train_dataset = hydra.utils.instantiate(
+            config.train.dataset.train,
+        )
+        validation_dataset = hydra.utils.instantiate(
+            config.train.dataset.validation,
+        )
+
+        generator = instantiate_model(config.model.generator)
+        discriminator = instantiate_model(config.model.discriminator)
+
+        generator_optimizer = instantiate_optimizer(
+            config.optimizer.generator, generator.parameters()
+        )
+        discriminator_optimizer = instantiate_optimizer(
+            config.optimizer.discriminator, discriminator.parameters()
+        )
+        generator_lr_scheduler = instantiate_lr_scheduler(
+            config.lr_scheduler.generator, generator_optimizer
+        )
+        discriminator_lr_scheduler = instantiate_lr_scheduler(
+            config.lr_scheduler.discriminator, discriminator_optimizer
+        )
+        grad_clipper = None
+        generator_criterion = instantiate_criterion(config.criterion.generator)
+        discriminator_criterion = instantiate_criterion(config.criterion.discriminator)
+
+        model = BaseGAN(generator, discriminator)
+        optimizer = GANOptimizer(generator_optimizer, discriminator_optimizer)
+        lr_scheduler = GANLRScheduler(generator_lr_scheduler, discriminator_lr_scheduler)
+        criterion = GANCriterion(generator_criterion, discriminator_criterion)
+
+        trainer = GANTrainer(
+            loaders,
+            model,
+            optimizer,
+            lr_scheduler=lr_scheduler,
+            grad_clipper=grad_clipper,
+            criterion=criterion,
+            config=config,
+        )
+        trainer.run()
+        trainer.writer.flush()
+
+        monkeypatch.undo()
+
+
 def test_cascade_text_to_wave(monkeypatch: MonkeyPatch) -> None:
     DATA_SIZE = 20
     BATCH_SIZE = 2
@@ -1120,6 +1314,7 @@ def create_dummy_gan_override(
     data_size: int,
     batch_size: int = 1,
     iterations: int = 1,
+    system: str = "defaults",
     train: str = "dummy_gan",
     model: str = "dummy_gan",
     criterion: str = "dummy_gan",
@@ -1151,6 +1346,7 @@ def create_dummy_gan_override(
         ]
 
     overridden_config = [
+        f"system={system}",
         f"train={train}",
         "test=dummy",
         f"model={model}",

@@ -21,6 +21,7 @@ from ...optim.optimizer import (
 from ..clip_grad import GANGradClipper
 from ..data import BaseDataLoaders
 from ..hydra.utils import TORCH_CLIP_GRAD_FN
+from ..model import unwrap
 from .base import BaseTrainer
 
 
@@ -886,12 +887,10 @@ class GANTrainer(BaseTrainer):
 
         state_dict = torch.load(path, map_location=self.device)
 
-        self.unwrapped_model.generator.load_state_dict(
-            state_dict["model"][generator_key],
-        )
-        self.unwrapped_model.discriminator.load_state_dict(
-            state_dict["model"][discriminator_key],
-        )
+        unwrapped_generator = unwrap(self.unwrapped_model.generator)
+        unwrapped_generator.load_state_dict(state_dict["model"][generator_key])
+        unwrapped_discriminator = unwrap(self.unwrapped_model.discriminator)
+        unwrapped_discriminator.load_state_dict(state_dict["model"][discriminator_key])
         self.optimizer.generator.load_state_dict(
             state_dict["optimizer"][generator_key],
         )
@@ -915,9 +914,11 @@ class GANTrainer(BaseTrainer):
         os.makedirs(save_dir, exist_ok=True)
 
         state_dict = {}
+        unwrapped_generator = unwrap(self.unwrapped_model.generator)
+        unwrapped_discriminator = unwrap(self.unwrapped_model.discriminator)
         state_dict["model"] = {
-            generator_key: self.unwrapped_model.generator.state_dict(),
-            discriminator_key: self.unwrapped_model.discriminator.state_dict(),
+            generator_key: unwrapped_generator.state_dict(),
+            discriminator_key: unwrapped_discriminator.state_dict(),
         }
         state_dict["optimizer"] = {
             generator_key: self.optimizer.generator.state_dict(),
@@ -951,18 +952,18 @@ class GANTrainer(BaseTrainer):
 
             if isinstance(self.optimizer.generator, MovingAverageWrapper):
                 self.optimizer.generator.set_moving_average_model()
-                state_dict[state_dict_key][
-                    generator_key
-                ] = self.unwrapped_model.generator.state_dict()
+                unwrapped_generator = unwrap(self.unwrapped_model.generator)
+                state_dict[state_dict_key][generator_key] = unwrapped_generator.state_dict()
                 self.optimizer.generator.remove_moving_average_model()
             else:
                 state_dict[state_dict_key][generator_key] = None
 
             if isinstance(self.optimizer.discriminator, MovingAverageWrapper):
                 self.optimizer.discriminator.set_moving_average_model()
+                unwrapped_discriminator = unwrap(self.unwrapped_model.discriminator)
                 state_dict[state_dict_key][
                     discriminator_key
-                ] = self.unwrapped_model.discriminator.state_dict()
+                ] = unwrapped_discriminator.state_dict()
                 self.optimizer.discriminator.remove_moving_average_model()
             else:
                 state_dict[state_dict_key][discriminator_key] = None
