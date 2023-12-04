@@ -1,5 +1,6 @@
 defaults:
   - record: vqvae+pretrained_hifigan
+  - clip_gradient: vqvae
   - _self_
 
 dataset:
@@ -45,11 +46,6 @@ key_mapping:
       output: reconstructed
     transform_middle: ${..validation.transform_middle}
     feat_to_wave: ${..validation.feat_to_wave}
-
-clip_gradient:
-  _target_: audyn.utils.GradClipper
-  mode: norm
-  max_norm: 10
 
 resume:
   continue_from:

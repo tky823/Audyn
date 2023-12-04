@@ -1,5 +1,6 @@
 defaults:
   - record: vqvae
+  - clip_gradient: vqvae
   - _self_
 
 dataset:
@@ -43,11 +44,6 @@ key_mapping:
     input:
       quantized: codebook_indices
     output: reconstructed
-
-clip_gradient:
-  _target_: audyn.utils.GradClipper
-  mode: norm
-  max_norm: 10
 
 resume:
   continue_from:
