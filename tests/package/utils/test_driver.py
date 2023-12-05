@@ -883,7 +883,8 @@ def test_gan_trainer(
         monkeypatch.undo()
 
 
-def test_gan_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
+@pytest.mark.parametrize("train_name", ["dummy_gan", "dummy_gan_ddp"])
+def test_gan_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str) -> None:
     DATA_SIZE = 20
     BATCH_SIZE = 2
     INITIAL_ITERATION = 3
@@ -894,7 +895,6 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
         overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
         exp_dir = "./exp"
 
-        train_name = "dummy_gan"
         model_name = "dummy_gan"
         criterion_name = "dummy_gan"
 
@@ -930,7 +930,14 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
         config = OmegaConf.create(config)
 
         assert config.system.distributed.enable
-        assert config.train.dataloader.train._target_ == "torch.utils.data.DataLoader"
+
+        if train_name == "dummy_gan":
+            assert config.train.dataloader.train._target_ == "torch.utils.data.DataLoader"
+        else:
+            assert (
+                config.train.dataloader.train._target_
+                == "audyn.utils.data.dataloader.DistributedDataLoader"
+            )
 
         os.environ["LOCAL_RANK"] = "0"
         os.environ["RANK"] = "0"
