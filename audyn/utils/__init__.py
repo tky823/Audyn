@@ -117,15 +117,16 @@ def convert_dataloader_to_ddp_if_possible(config: DictConfig) -> None:
                 if sampler is not None:
                     raise ValueError("Sampler cannot be automatically converted to DDP-supported.")
 
+            train_dataloader_config = OmegaConf.to_container(train_dataloader_config)
+
             if "seed" in train_dataloader_config.keys():
                 # NOTE: Since torch.utils.data.DataLoader does not support seed,
                 #       seed should not be defined in config.train.dataloader.train for proper use.
-                seed = train_dataloader_config.seed
+                seed = train_dataloader_config["seed"]
             else:
                 seed = "${system.seed}"
 
             # DataLoader -> DistributedDataLoader
-            train_dataloader_config = OmegaConf.to_container(train_dataloader_config)
             ddp_target = ".".join(
                 [DistributedDataLoader.__module__, DistributedDataLoader.__name__]
             )
@@ -151,15 +152,16 @@ def convert_dataloader_to_ddp_if_possible(config: DictConfig) -> None:
         )
 
         if cls is SequentialBatchDataLoader or cls is DynamicBatchDataLoader:
+            train_dataloader_config = OmegaConf.to_container(train_dataloader_config)
+
             if "seed" in train_dataloader_config.keys():
-                seed = train_dataloader_config.seed
+                seed = train_dataloader_config["seed"]
             else:
                 seed = "${system.seed}"
 
             # should be converted to distributed data loader
             # SequentialBatchDataLoader -> DistributedSequentialBatchDataLoader
             # DynamicBatchDataLoader -> DistributedDynamicBatchDataLoader
-            train_dataloader_config = OmegaConf.to_container(train_dataloader_config)
             ddp_target = ".".join([mod_name, "Distributed" + cls.__name__])
             additional_ddp_config = {
                 "_target_": ddp_target,
