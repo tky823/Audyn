@@ -27,7 +27,7 @@ data="baseline"
 ```sh
 system="defaults"  # "cuda", "cuda_ddp", "cuda_amp", "cuda_ddp_amp"
 data="baseline"
-train="hifigan"  # "hifigan_ddp"
+train="hifigan"
 model="hifigan_v1"
 optimizer="hifigan"
 lr_scheduler="hifigan"
@@ -75,7 +75,7 @@ If you choose `vqvae_ema` as `optimizer`, you cannot use mixed precision (`cuda_
 ```sh
 system="defaults"  # "cuda", "cuda_ddp"
 data="baseline"
-train="vqvae"  # "vqvae_ddp"
+train="vqvae"
 model="vqvae"
 optimizer="vqvae_ema"  # "vqvae"
 lr_scheduler="none"
@@ -94,7 +94,7 @@ criterion="vqvae"
 --criterion "${criterion}"
 ```
 
-If you want to use pretrained HiFi-GAN as a vocoder, please set `--train vqvae+pretrained_hifigan` or `--train vqvae+pretrained_hifigan_ddp`.
+If you want to use pretrained HiFi-GAN as a vocoder, please set `--train vqvae+pretrained_hifigan`.
 In addition, `hifigan_checkpoint` is required.
 In this setting, parameters in HiFi-GAN are not updated by the optimizer.
 
@@ -103,7 +103,7 @@ hifigan_checkpoint=<PATH/TO/PRETRAINED/HIFIGAN/CHECKPOINT>
 
 system="defaults"  # "cuda", "cuda_ddp"
 data="baseline"
-train="vqvae+pretrained_hifigan"  # "vqvae+pretrained_hifigan_ddp"
+train="vqvae+pretrained_hifigan"
 model="vqvae"
 optimizer="vqvae_ema"  # "vqvae"
 lr_scheduler="none"
@@ -151,7 +151,7 @@ You cannot use mixed precision (`cuda_amp` and `cuda_ddp_amp`) for training of P
 ```sh
 system="defaults"  # "cuda", "cuda_ddp"
 data="baseline"
-train="pixelsnail"  # "pixelsnail_ddp"
+train="pixelsnail"
 model="pixelsnail"
 optimizer="pixelsnail"
 lr_scheduler="none"
