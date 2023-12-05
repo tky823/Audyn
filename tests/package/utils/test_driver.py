@@ -930,6 +930,7 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
         config = OmegaConf.create(config)
 
         assert config.system.distributed.enable
+        assert config.train.dataloader.train._target_ == "torch.utils.data.DataLoader"
 
         os.environ["LOCAL_RANK"] = "0"
         os.environ["RANK"] = "0"
@@ -938,6 +939,11 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
         os.environ["MASTER_PORT"] = str(torch.randint(0, 2**16, ()).item())
 
         convert_dataloader_to_ddp_if_possible(config)
+
+        assert (
+            config.train.dataloader.train._target_
+            == "audyn.utils.data.dataloader.DistributedDataLoader"
+        )
 
         dist.init_process_group(backend=config.system.distributed.backend)
         torch.manual_seed(config.system.seed)
