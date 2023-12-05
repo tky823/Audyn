@@ -884,7 +884,8 @@ def test_gan_trainer(
 
 
 @pytest.mark.parametrize("train_name", ["dummy_gan", "dummy_gan_ddp"])
-def test_gan_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str) -> None:
+@pytest.mark.parametrize("dataloader_type", ["torch", "audyn_sequential"])
+def test_gan_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str, dataloader_type: str) -> None:
     DATA_SIZE = 20
     BATCH_SIZE = 2
     INITIAL_ITERATION = 3
@@ -927,17 +928,45 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str) -> None:
                 "clip_gradient": "none",
             }
         )
+
+        if dataloader_type == "audyn_sequential":
+            if train_name == "dummy_gan":
+                config["train"]["dataloader"]["train"].update(
+                    {
+                        "_target_": "audyn.utils.data.dataloader.SequentialBatchDataLoader",
+                    }
+                )
+            else:
+                config["train"]["dataloader"]["train"].update(
+                    {
+                        "_target_": "audyn.utils.data.dataloader."
+                        "DistributedSequentialBatchDataLoader",
+                    }
+                )
+
         config = OmegaConf.create(config)
 
         assert config.system.distributed.enable
 
-        if train_name == "dummy_gan":
-            assert config.train.dataloader.train._target_ == "torch.utils.data.DataLoader"
+        if dataloader_type == "audyn_sequential":
+            if train_name == "dummy_gan":
+                assert (
+                    config.train.dataloader.train._target_
+                    == "audyn.utils.data.dataloader.SequentialBatchDataLoader"
+                )
+            else:
+                assert (
+                    config.train.dataloader.train._target_
+                    == "audyn.utils.data.dataloader.DistributedSequentialBatchDataLoader"
+                )
         else:
-            assert (
-                config.train.dataloader.train._target_
-                == "audyn.utils.data.dataloader.DistributedDataLoader"
-            )
+            if train_name == "dummy_gan":
+                assert config.train.dataloader.train._target_ == "torch.utils.data.DataLoader"
+            else:
+                assert (
+                    config.train.dataloader.train._target_
+                    == "audyn.utils.data.dataloader.DistributedDataLoader"
+                )
 
         os.environ["LOCAL_RANK"] = "0"
         os.environ["RANK"] = "0"
@@ -947,10 +976,16 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str) -> None:
 
         convert_dataloader_to_ddp_if_possible(config)
 
-        assert (
-            config.train.dataloader.train._target_
-            == "audyn.utils.data.dataloader.DistributedDataLoader"
-        )
+        if dataloader_type == "audyn_sequential":
+            assert (
+                config.train.dataloader.train._target_
+                == "audyn.utils.data.dataloader.DistributedSequentialBatchDataLoader"
+            )
+        else:
+            assert (
+                config.train.dataloader.train._target_
+                == "audyn.utils.data.dataloader.DistributedDataLoader"
+            )
 
         dist.init_process_group(backend=config.system.distributed.backend)
         torch.manual_seed(config.system.seed)
