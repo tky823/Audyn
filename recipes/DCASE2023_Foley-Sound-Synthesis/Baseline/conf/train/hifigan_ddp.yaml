@@ -1,5 +1,6 @@
 defaults:
   - record: hifigan
+  - clip_gradient: hifigan
   - _self_
 
 dataset:
@@ -59,11 +60,6 @@ key_mapping:
       input:
         input: log_melspectrogram
       output: estimated_waveform
-
-clip_gradient:
-  _target_: audyn.utils.GradClipper
-  mode: norm
-  max_norm: 10
 
 resume:
   continue_from:

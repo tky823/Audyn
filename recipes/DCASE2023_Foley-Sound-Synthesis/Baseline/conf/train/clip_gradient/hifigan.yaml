@@ -1,0 +1,6 @@
+generator:
+  _target_: audyn.utils.GradClipper
+  mode: norm
+  max_norm: 10
+
+discriminator: ${.generator}
