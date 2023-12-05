@@ -125,7 +125,7 @@ def convert_dataloader_to_ddp_if_possible(config: DictConfig) -> None:
                 seed = "${system.seed}"
 
             # DataLoader -> DistributedDataLoader
-            train_dataloader_config = OmegaConf.to_object(train_dataloader_config)
+            train_dataloader_config = OmegaConf.to_container(train_dataloader_config)
             ddp_target = ".".join(
                 [DistributedDataLoader.__module__, DistributedDataLoader.__name__]
             )
@@ -159,7 +159,7 @@ def convert_dataloader_to_ddp_if_possible(config: DictConfig) -> None:
             # should be converted to distributed data loader
             # SequentialBatchDataLoader -> DistributedSequentialBatchDataLoader
             # DynamicBatchDataLoader -> DistributedDynamicBatchDataLoader
-            train_dataloader_config = OmegaConf.to_object(train_dataloader_config)
+            train_dataloader_config = OmegaConf.to_container(train_dataloader_config)
             ddp_target = ".".join([mod_name, "Distributed" + cls.__name__])
             additional_ddp_config = {
                 "_target_": ddp_target,
