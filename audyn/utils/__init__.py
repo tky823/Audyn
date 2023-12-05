@@ -117,6 +117,13 @@ def convert_dataloader_to_ddp_if_possible(config: DictConfig) -> None:
                 if sampler is not None:
                     raise ValueError("Sampler cannot be automatically converted to DDP-supported.")
 
+            if "seed" in train_dataloader_config.keys():
+                # NOTE: Since torch.utils.data.DataLoader does not support seed,
+                #       seed should not be defined in config.train.dataloader.train for proper use.
+                seed = train_dataloader_config.seed
+            else:
+                seed = "${system.seed}"
+
             # DataLoader -> DistributedDataLoader
             train_dataloader_config = OmegaConf.to_object(train_dataloader_config)
             ddp_target = ".".join(
@@ -126,6 +133,7 @@ def convert_dataloader_to_ddp_if_possible(config: DictConfig) -> None:
                 "_target_": ddp_target,
                 "num_replicas": int(os.environ["WORLD_SIZE"]),
                 "rank": int(os.environ["RANK"]),
+                "seed": seed,
             }
             train_dataloader_config.update(additional_ddp_config)
             OmegaConf.update(
@@ -143,6 +151,11 @@ def convert_dataloader_to_ddp_if_possible(config: DictConfig) -> None:
         )
 
         if cls is SequentialBatchDataLoader or cls is DynamicBatchDataLoader:
+            if "seed" in train_dataloader_config.keys():
+                seed = train_dataloader_config.seed
+            else:
+                seed = "${system.seed}"
+
             # should be converted to distributed data loader
             # SequentialBatchDataLoader -> DistributedSequentialBatchDataLoader
             # DynamicBatchDataLoader -> DistributedDynamicBatchDataLoader
@@ -152,6 +165,7 @@ def convert_dataloader_to_ddp_if_possible(config: DictConfig) -> None:
                 "_target_": ddp_target,
                 "num_replicas": int(os.environ["WORLD_SIZE"]),
                 "rank": int(os.environ["RANK"]),
+                "seed": seed,
             }
             train_dataloader_config.update(additional_ddp_config)
             OmegaConf.update(
