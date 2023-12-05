@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import torch
 from packaging import version
@@ -111,7 +111,7 @@ class DistributedDataLoader(DataLoader):
             drop_last=drop_last,
         )
 
-        self._validate_kwargs(kwargs)
+        _validate_dataloader_kwargs(kwargs)
 
         super().__init__(
             dataset,
@@ -128,18 +128,6 @@ class DistributedDataLoader(DataLoader):
             persistent_workers=persistent_workers,
             **kwargs,
         )
-
-    @staticmethod
-    def _validate_kwargs(kwargs) -> None:
-        """Validate given keyword arguments."""
-        valid_keys = {"prefetch_factor"}
-
-        if version.parse(torch.__version__) >= version.parse("1.12"):
-            valid_keys.add("pin_memory_device")
-
-        invalid_keys = set(kwargs.keys()) - valid_keys
-
-        assert invalid_keys == set(), f"Invalid keys {invalid_keys} are given."
 
 
 class DistributedSequentialBatchDataLoader(DataLoader):
@@ -172,7 +160,7 @@ class DistributedSequentialBatchDataLoader(DataLoader):
             drop_last=drop_last,
         )
 
-        self._validate_kwargs(kwargs)
+        _validate_dataloader_kwargs(kwargs)
 
         super().__init__(
             dataset,
@@ -187,18 +175,6 @@ class DistributedSequentialBatchDataLoader(DataLoader):
             persistent_workers=persistent_workers,
             **kwargs,
         )
-
-    @staticmethod
-    def _validate_kwargs(kwargs) -> None:
-        """Validate given keyword arguments."""
-        valid_keys = {"prefetch_factor"}
-
-        if version.parse(torch.__version__) >= version.parse("1.12"):
-            valid_keys.add("pin_memory_device")
-
-        invalid_keys = set(kwargs.keys()) - valid_keys
-
-        assert invalid_keys == set(), f"Invalid keys {invalid_keys} are given."
 
 
 class DynamicBatchDataLoader(DataLoader):
@@ -236,7 +212,7 @@ class DynamicBatchDataLoader(DataLoader):
             drop_last=drop_last,
         )
 
-        self._validate_kwargs(kwargs)
+        _validate_dataloader_kwargs(kwargs)
 
         super().__init__(
             dataset,
@@ -250,18 +226,6 @@ class DynamicBatchDataLoader(DataLoader):
             persistent_workers=persistent_workers,
             **kwargs,
         )
-
-    @staticmethod
-    def _validate_kwargs(kwargs) -> None:
-        """Validate given keyword arguments."""
-        valid_keys = {"prefetch_factor"}
-
-        if version.parse(torch.__version__) >= version.parse("1.12"):
-            valid_keys.add("pin_memory_device")
-
-        invalid_keys = set(kwargs.keys()) - valid_keys
-
-        assert invalid_keys == set(), f"Invalid keys {invalid_keys} are given."
 
 
 class DistributedDynamicBatchDataLoader(DataLoader):
@@ -298,7 +262,7 @@ class DistributedDynamicBatchDataLoader(DataLoader):
             drop_last=drop_last,
         )
 
-        self._validate_kwargs(kwargs)
+        _validate_dataloader_kwargs(kwargs)
 
         super().__init__(
             dataset,
@@ -314,14 +278,14 @@ class DistributedDynamicBatchDataLoader(DataLoader):
             **kwargs,
         )
 
-    @staticmethod
-    def _validate_kwargs(kwargs) -> None:
-        """Validate given keyword arguments."""
-        valid_keys = {"prefetch_factor"}
 
-        if version.parse(torch.__version__) >= version.parse("1.12"):
-            valid_keys.add("pin_memory_device")
+def _validate_dataloader_kwargs(kwargs: Dict[str, Any]) -> None:
+    """Validate given keyword arguments."""
+    valid_keys = {"prefetch_factor"}
 
-        invalid_keys = set(kwargs.keys()) - valid_keys
+    if version.parse(torch.__version__) >= version.parse("1.12"):
+        valid_keys.add("pin_memory_device")
 
-        assert invalid_keys == set(), f"Invalid keys {invalid_keys} are given."
+    invalid_keys = set(kwargs.keys()) - valid_keys
+
+    assert invalid_keys == set(), f"Invalid keys {invalid_keys} are given."

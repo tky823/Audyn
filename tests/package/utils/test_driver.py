@@ -18,6 +18,7 @@ from audyn.models.gan import BaseGAN
 from audyn.optim.lr_scheduler import GANLRScheduler
 from audyn.optim.optimizer import GANOptimizer
 from audyn.utils import (
+    convert_dataloader_to_ddp_if_possible,
     instantiate_cascade_text_to_wave,
     instantiate_criterion,
     instantiate_grad_clipper,
@@ -213,6 +214,105 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
             config=config,
         )
         generator.run()
+
+        monkeypatch.undo()
+
+
+def test_base_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
+    """Test BaseTrainer for DDP."""
+    DATA_SIZE = 20
+    BATCH_SIZE = 2
+    ITERATIONS = 3
+
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
+        monkeypatch.chdir(temp_dir)
+
+        overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
+        exp_dir = "./exp"
+
+        with hydra.initialize(
+            version_base="1.2",
+            config_path=relpath(config_template_path, dirname(realpath(__file__))),
+            job_name="test_driver",
+        ):
+            system_name = "cpu_ddp"
+            train_name = "dummy"
+            model_name = "dummy"
+            criterion_name = "dummy"
+            lr_scheduler_name = "dummy"
+            optimizer_name = "dummy"
+
+            config = hydra.compose(
+                config_name="config",
+                overrides=create_dummy_override(
+                    overrides_conf_dir=overrides_conf_dir,
+                    exp_dir=exp_dir,
+                    data_size=DATA_SIZE,
+                    batch_size=BATCH_SIZE,
+                    iterations=ITERATIONS,
+                    system=system_name,
+                    train=train_name,
+                    model=model_name,
+                    criterion=criterion_name,
+                    optimizer=optimizer_name,
+                    lr_scheduler=lr_scheduler_name,
+                ),
+                return_hydra_config=True,
+            )
+
+        assert config.system.distributed.enable
+        assert config.train.dataloader.train._target_ == "torch.utils.data.DataLoader"
+
+        # set environmental variables
+        os.environ["LOCAL_RANK"] = "0"
+        os.environ["RANK"] = "0"
+        os.environ["WORLD_SIZE"] = "1"
+        os.environ["MASTER_ADDR"] = "localhost"
+        os.environ["MASTER_PORT"] = str(torch.randint(0, 2**16, ()).item())
+
+        convert_dataloader_to_ddp_if_possible(config)
+
+        dist.init_process_group(backend=config.system.distributed.backend)
+        torch.manual_seed(config.system.seed)
+
+        assert config.system.distributed.enable
+        assert (
+            config.train.dataloader.train._target_
+            == "audyn.utils.data.dataloader.DistributedDataLoader"
+        )
+
+        train_dataset = hydra.utils.instantiate(config.train.dataset.train)
+        validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+        train_loader = hydra.utils.instantiate(
+            config.train.dataloader.train,
+            train_dataset,
+            collate_fn=default_collate_fn,
+        )
+        validation_loader = hydra.utils.instantiate(
+            config.train.dataloader.validation,
+            validation_dataset,
+            collate_fn=default_collate_fn,
+        )
+        loaders = BaseDataLoaders(train_loader, validation_loader)
+
+        model = instantiate_model(config.model)
+        model = nn.parallel.DistributedDataParallel(model)
+        optimizer = instantiate_optimizer(config.optimizer, model)
+        lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
+        criterion = instantiate_criterion(config.criterion)
+
+        trainer = BaseTrainer(
+            loaders,
+            model,
+            optimizer,
+            lr_scheduler=lr_scheduler,
+            criterion=criterion,
+            config=config,
+        )
+        trainer.run()
+        trainer.writer.flush()
+
+        dist.destroy_process_group()
 
         monkeypatch.undo()
 
@@ -783,9 +883,9 @@ def test_gan_trainer(
         monkeypatch.undo()
 
 
-def test_gan_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
-    torch.manual_seed(0)
-
+@pytest.mark.parametrize("train_name", ["dummy_gan", "dummy_gan_ddp"])
+@pytest.mark.parametrize("dataloader_type", ["torch", "audyn_sequential"])
+def test_gan_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str, dataloader_type: str) -> None:
     DATA_SIZE = 20
     BATCH_SIZE = 2
     INITIAL_ITERATION = 3
@@ -796,7 +896,6 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
         overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
         exp_dir = "./exp"
 
-        train_name = "dummy_gan"
         model_name = "dummy_gan"
         criterion_name = "dummy_gan"
 
@@ -829,14 +928,67 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
                 "clip_gradient": "none",
             }
         )
+
+        if dataloader_type == "audyn_sequential":
+            if train_name == "dummy_gan":
+                config["train"]["dataloader"]["train"].update(
+                    {
+                        "_target_": "audyn.utils.data.dataloader.SequentialBatchDataLoader",
+                    }
+                )
+            else:
+                config["train"]["dataloader"]["train"].update(
+                    {
+                        "_target_": "audyn.utils.data.dataloader."
+                        "DistributedSequentialBatchDataLoader",
+                    }
+                )
+
         config = OmegaConf.create(config)
+
+        assert config.system.distributed.enable
+
+        if dataloader_type == "audyn_sequential":
+            if train_name == "dummy_gan":
+                assert (
+                    config.train.dataloader.train._target_
+                    == "audyn.utils.data.dataloader.SequentialBatchDataLoader"
+                )
+            else:
+                assert (
+                    config.train.dataloader.train._target_
+                    == "audyn.utils.data.dataloader.DistributedSequentialBatchDataLoader"
+                )
+        else:
+            if train_name == "dummy_gan":
+                assert config.train.dataloader.train._target_ == "torch.utils.data.DataLoader"
+            else:
+                assert (
+                    config.train.dataloader.train._target_
+                    == "audyn.utils.data.dataloader.DistributedDataLoader"
+                )
 
         os.environ["LOCAL_RANK"] = "0"
         os.environ["RANK"] = "0"
         os.environ["WORLD_SIZE"] = "1"
         os.environ["MASTER_ADDR"] = "localhost"
         os.environ["MASTER_PORT"] = str(torch.randint(0, 2**16, ()).item())
-        dist.init_process_group(backend="gloo")
+
+        convert_dataloader_to_ddp_if_possible(config)
+
+        if dataloader_type == "audyn_sequential":
+            assert (
+                config.train.dataloader.train._target_
+                == "audyn.utils.data.dataloader.DistributedSequentialBatchDataLoader"
+            )
+        else:
+            assert (
+                config.train.dataloader.train._target_
+                == "audyn.utils.data.dataloader.DistributedDataLoader"
+            )
+
+        dist.init_process_group(backend=config.system.distributed.backend)
+        torch.manual_seed(config.system.seed)
 
         train_dataset = hydra.utils.instantiate(
             config.train.dataset.train,
@@ -895,6 +1047,8 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
         trainer.run()
         trainer.writer.flush()
 
+        dist.destroy_process_group()
+
         system_name = "cpu"
 
         with hydra.initialize(
@@ -928,6 +1082,10 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
             }
         )
         config = OmegaConf.create(config)
+
+        assert not config.system.distributed.enable
+
+        torch.manual_seed(config.system.seed)
 
         train_dataset = hydra.utils.instantiate(
             config.train.dataset.train,
@@ -1270,6 +1428,7 @@ def create_dummy_override(
     data_size: int,
     batch_size: int = 1,
     iterations: int = 1,
+    system: str = "defaults",
     train: str = "dummy",
     model: str = "dummy",
     criterion: str = "dummy",
@@ -1281,6 +1440,7 @@ def create_dummy_override(
     sample_rate = 16000
 
     override_list = [
+        f"system={system}",
         f"train={train}",
         "test=dummy",
         f"model={model}",

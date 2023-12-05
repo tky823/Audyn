@@ -1,4 +1,5 @@
 import os
+import warnings
 from typing import Optional
 
 import torch
@@ -63,9 +64,10 @@ def is_distributed(config: DictConfig) -> bool:
         ```
 
     """
+    availability = str(config.distributed.enable).lower()
+
     if torch.cuda.is_available():
         num_gpus = torch.cuda.device_count()
-        availability = str(config.distributed.enable).lower()
 
         if num_gpus > 1:
             if availability == "false":
@@ -80,6 +82,11 @@ def is_distributed(config: DictConfig) -> bool:
             else:
                 is_distributed = False
     else:
+        if availability == "true":
+            warnings.warn(
+                "config.system.distributed.enable is set to true, but CUDA is NOT available."
+            )
+
         is_distributed = False
 
     return is_distributed
