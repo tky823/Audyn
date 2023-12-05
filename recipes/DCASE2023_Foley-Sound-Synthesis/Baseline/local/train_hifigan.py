@@ -10,7 +10,8 @@ from audyn.criterion.gan import GANCriterion
 from audyn.models.gan import BaseGAN
 from audyn.optim.lr_scheduler import GANLRScheduler
 from audyn.optim.optimizer import GANOptimizer
-from audyn.utils import instantiate_model, setup_system
+from audyn.utils import instantiate_grad_clipper, instantiate_model, setup_system
+from audyn.utils.clip_grad import GANGradClipper
 from audyn.utils.data import (
     BaseDataLoaders,
     default_collate_fn,
@@ -60,6 +61,9 @@ def main(config: DictConfig) -> None:
     generator_lr_scheduler = hydra.utils.instantiate(
         config.lr_scheduler.generator, generator_optimizer
     )
+    generator_grad_clipper = instantiate_grad_clipper(
+        config.train.clip_gradient.generator, generator.parameters()
+    )
     generator_criterion = hydra.utils.instantiate(config.criterion.generator)
     generator_criterion = set_device(
         generator_criterion,
@@ -79,6 +83,9 @@ def main(config: DictConfig) -> None:
     discriminator_lr_scheduler = hydra.utils.instantiate(
         config.lr_scheduler.discriminator, discriminator_optimizer
     )
+    discriminator_grad_clipper = instantiate_grad_clipper(
+        config.train.clip_gradient.discriminator, discriminator.parameters()
+    )
     discriminator_criterion = hydra.utils.instantiate(config.criterion.discriminator)
     discriminator_criterion = set_device(
         discriminator_criterion,
@@ -89,6 +96,7 @@ def main(config: DictConfig) -> None:
     model = BaseGAN(generator, discriminator)
     optimizer = GANOptimizer(generator_optimizer, discriminator_optimizer)
     lr_scheduler = GANLRScheduler(generator_lr_scheduler, discriminator_lr_scheduler)
+    grad_clipper = GANGradClipper(generator_grad_clipper, discriminator_grad_clipper)
     criterion = GANCriterion(generator_criterion, discriminator_criterion)
 
     trainer = GANTrainer(
@@ -96,6 +104,7 @@ def main(config: DictConfig) -> None:
         model,
         optimizer,
         lr_scheduler=lr_scheduler,
+        grad_clipper=grad_clipper,
         criterion=criterion,
         config=config,
     )
