@@ -1,3 +1,5 @@
+import warnings
+
 import torch
 from omegaconf import DictConfig
 
@@ -35,6 +37,11 @@ def setup_system(config: DictConfig) -> None:
     if hasattr(config, "system"):
         system_config = config.system
     else:
+        warnings.warn(
+            "System config is given to setup_system. Full configuration is recommended.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         system_config = config
 
     accelerator = select_accelerator(system_config)
@@ -46,6 +53,12 @@ def setup_system(config: DictConfig) -> None:
         cudnn.deterministic = system_config.cudnn.deterministic
 
     if is_distributed(system_config):
+        warnings.warn(
+            "System config is given to setup_system. In that case, "
+            "training configuration is not converted to DDP.",
+            UserWarning,
+            stacklevel=2,
+        )
         setup_distributed(system_config)
 
     torch.manual_seed(system_config.seed)
