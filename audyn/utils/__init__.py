@@ -81,7 +81,15 @@ def setup_system(config: DictConfig) -> None:
 def convert_dataloader_to_ddp_if_possible(config: DictConfig) -> None:
     """Convert data loader in config.train.dataloader.train for DDP.
 
-    This function may overwrite config.train.dataloader.train.
+    .. note::
+
+        This function may overwrite config.train.dataloader.train.
+
+    .. note::
+
+        If conversion is required, you have to set environmental variables
+        ``WORLD_SIZE`` and ``RANK``.
+
     """
     train_dataloader_config = config.train.dataloader.train
 
@@ -116,8 +124,8 @@ def convert_dataloader_to_ddp_if_possible(config: DictConfig) -> None:
             )
             additional_ddp_config = {
                 "_target_": ddp_target,
-                "num_replicas": os.environ["WORLD_SIZE"],
-                "rank": os.environ["RANK"],
+                "num_replicas": int(os.environ["WORLD_SIZE"]),
+                "rank": int(os.environ["RANK"]),
             }
             train_dataloader_config.update(additional_ddp_config)
             OmegaConf.update(
@@ -142,8 +150,8 @@ def convert_dataloader_to_ddp_if_possible(config: DictConfig) -> None:
             ddp_target = ".".join([mod_name, "Distributed" + cls.__name__])
             additional_ddp_config = {
                 "_target_": ddp_target,
-                "num_replicas": os.environ["WORLD_SIZE"],
-                "rank": os.environ["RANK"],
+                "num_replicas": int(os.environ["WORLD_SIZE"]),
+                "rank": int(os.environ["RANK"]),
             }
             train_dataloader_config.update(additional_ddp_config)
             OmegaConf.update(
