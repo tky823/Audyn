@@ -884,8 +884,6 @@ def test_gan_trainer(
 
 
 def test_gan_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
-    torch.manual_seed(0)
-
     DATA_SIZE = 20
     BATCH_SIZE = 2
     INITIAL_ITERATION = 3
@@ -938,7 +936,11 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
         os.environ["WORLD_SIZE"] = "1"
         os.environ["MASTER_ADDR"] = "localhost"
         os.environ["MASTER_PORT"] = str(torch.randint(0, 2**16, ()).item())
+
+        convert_dataloader_to_ddp_if_possible(config)
+
         dist.init_process_group(backend=config.system.distributed.backend)
+        torch.manual_seed(config.system.seed)
 
         train_dataset = hydra.utils.instantiate(
             config.train.dataset.train,
@@ -1034,6 +1036,8 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
         config = OmegaConf.create(config)
 
         assert not config.system.distributed.enable
+
+        torch.manual_seed(config.system.seed)
 
         train_dataset = hydra.utils.instantiate(
             config.train.dataset.train,
