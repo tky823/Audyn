@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Iterable, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Union
 
 import torch
 import torch.nn as nn
@@ -127,5 +127,23 @@ def default_collate_fn(
             dict_batch[key] = torch.swapaxes(dict_batch[key], 1, -1)
         elif key in tensor_keys:
             dict_batch[key] = torch.stack(dict_batch[key], dim=0)
+
+    dict_batch = _rename_webdataset_keys(dict_batch)
+
+    return dict_batch
+
+
+def _rename_webdataset_keys(dict_batch: Dict[str, Any]) -> Dict[str, Any]:
+    keys = list(dict_batch.keys())
+
+    for key in keys:
+        if "." in key:
+            if len(key.split(".")) > 2:
+                raise NotImplementedError("Multiple dots in a key is not supported.")
+
+            # remove extension
+            webdataset_key, _ = key.split(".")
+
+            dict_batch[webdataset_key] = dict_batch.pop(key)
 
     return dict_batch
