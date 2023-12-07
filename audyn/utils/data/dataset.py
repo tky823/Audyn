@@ -1,10 +1,15 @@
+import glob
 import os
+import warnings
 from typing import Any, Dict
 
 import torch
+import webdataset as wds
 from torch.utils.data import Dataset
 
 __all__ = ["TorchObjectDataset", "SortableTorchObjectDataset"]
+
+available_dump_formats = ["torch", "webdataset"]
 
 
 class TorchObjectDataset(Dataset):
@@ -81,3 +86,58 @@ class SortableTorchObjectDataset(TorchObjectDataset):
             # longest is first
             lengths = sorted(lengths.items(), key=lambda x: x[1], reverse=True)
             self.filenames = [filename for filename, _ in lengths]
+
+
+class WebDatasetWrapper(wds.WebDataset):
+    """Wrapper class of WebDataset to call ``with_epoch``, ``with_length``,
+    and ``decode`` (and ``shuffle`` if necessary) for instantiation.
+
+    ``WebDatasetWrapper.instantiate_dataset`` is typically called for instantiation.
+    """
+
+    @classmethod
+    def instantiate_dataset(
+        cls,
+        list_path: str,
+        feature_dir: str,
+        *args,
+        detshuffle: bool = True,
+        shuffle_size: Any = None,
+        **kwargs,
+    ) -> "WebDatasetWrapper":
+        """Instantiate WebDatasetWrapper.
+
+        Args:
+            args: Positional arguments given to WebDataset.
+            kwargs: Keyword arguments given to WebDataset.
+            shuffle_size (any, optional): Shuffle size for training dataset.
+
+        Returns:
+            WebDatasetWrapper: Wrapper of WebDataset. ``with_epoch``, ``with_length``,
+                ``shuffle``, and ``decode`` are called if necessary.
+
+        """
+        template_path = os.path.join(feature_dir, "*.tar")
+        urls = []
+
+        for url in sorted(glob.glob(template_path)):
+            urls.append(url)
+
+        with open(list_path) as f:
+            length = sum(1 for _ in f)
+
+        dataset = cls(urls, feature_dir, *args, detshuffle=detshuffle, **kwargs)
+        dataset = dataset.with_epoch(length).with_length(length)
+
+        if shuffle_size is not None:
+            if not detshuffle:
+                warnings.warn(
+                    "detshuffle=True is highly recommended for training "
+                    "in terms of reproducibility."
+                )
+
+            dataset = dataset.shuffle(shuffle_size)
+
+        dataset = dataset.decode()
+
+        return dataset
