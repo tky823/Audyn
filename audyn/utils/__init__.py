@@ -5,9 +5,17 @@ from typing import Any
 
 import torch
 from omegaconf import DictConfig, OmegaConf
+from torch.utils.data import DataLoader
 
 from .clip_grad import GradClipper
 from .data import select_accelerator
+from .data.dataloader import (
+    DistributedDataLoader,
+    DistributedDynamicBatchDataLoader,
+    DistributedSequentialBatchDataLoader,
+    DynamicBatchDataLoader,
+    SequentialBatchDataLoader,
+)
 from .distributed import is_distributed, setup_distributed
 from .hydra.utils import (
     instantiate_cascade_text_to_wave,
@@ -104,10 +112,6 @@ def convert_dataloader_to_ddp_if_possible(config: DictConfig) -> None:
     cls = getattr(importlib.import_module(mod_name), var_name)
 
     if package_name == "torch":
-        from torch.utils.data import DataLoader
-
-        from audyn.utils.data.dataloader import DistributedDataLoader
-
         if cls is DataLoader:
             # may be converted to distributed data loader
             if "sampler" in train_dataloader_config.keys():
@@ -143,14 +147,6 @@ def convert_dataloader_to_ddp_if_possible(config: DictConfig) -> None:
         else:
             _warn_unexpected_data_loader(cls)
     elif package_name == "audyn":
-        from audyn.utils.data.dataloader import (
-            DistributedDataLoader,
-            DistributedDynamicBatchDataLoader,
-            DistributedSequentialBatchDataLoader,
-            DynamicBatchDataLoader,
-            SequentialBatchDataLoader,
-        )
-
         if cls is SequentialBatchDataLoader or cls is DynamicBatchDataLoader:
             train_dataloader_config = OmegaConf.to_container(train_dataloader_config)
 
