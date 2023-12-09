@@ -1,24 +1,8 @@
 defaults:
+  - dataset: defaults
+  - dataloader: defaults
   - record: defaults
   - _self_
-
-dataset:
-  train:
-    _target_: torch.utils.data.Dataset
-    dataset:
-  validation:
-    _target_: torch.utils.data.Dataset
-    dataset:
-
-dataloader:
-  train:
-    _target_: torch.utils.data.DataLoader
-    batch_size:
-    shuffle: true
-  validation:
-    _target_: torch.utils.data.DataLoader
-    batch_size: 1
-    shuffle: false
   
 key_mapping:
   train:
