@@ -10,6 +10,8 @@ data_root="../data"
 dump_root="./dump"
 log_dir="./log"
 
+dump_format="torch"
+
 preprocess="defaults"
 data="wavenet"
 
@@ -60,30 +62,15 @@ fi
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     echo "Preprocess stage 2: Save features"
 
-    dump_format=$(
-        python ../../_common/detect_dump_format.py \
-        --config-dir "./conf" \
-        hydra.run.dir="./log/$(date +"%Y%m%d-%H%M%S")" \
-        preprocess="${preprocess}"
-    )
-
     for subset in "train" "validation" "test"; do
-        if [ "${dump_format}" = "webdataset" ]; then
-            subset_feature_dir="${feature_dir}/${subset}"
-        elif [ "${dump_format}" = "torch" ]; then
-            subset_feature_dir="${feature_dir}"
-        else
-            echo "Invalid format ${dump_format} is detected."
-            exit 1;
-        fi
-
         python ./local/save_features.py \
         --config-dir "./conf" \
         hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
         preprocess="${preprocess}" \
         data="${data}" \
+        preprocess.dump_format="${dump_format}" \
         preprocess.list_path="${list_dir}/${subset}.txt" \
         preprocess.wav_dir="${wav_dir}" \
-        preprocess.feature_dir="${subset_feature_dir}"
+        preprocess.feature_dir="${feature_dir}/${subset}"
     done
 fi
