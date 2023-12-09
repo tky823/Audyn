@@ -1,0 +1,9 @@
+train:
+  _target_: audyn.utils.data.SequentialBatchDataLoader
+  batch_size:
+  shuffle: true
+  seed: ${system.seed}
+validation:
+  _target_: torch.utils.data.DataLoader
+  batch_size: 1
+  shuffle: false
