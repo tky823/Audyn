@@ -88,7 +88,7 @@ def test_webdataset_dataset() -> None:
 
         os.makedirs(feature_dir, exist_ok=True)
 
-        max_shard_size = 20
+        max_shard_size = 5000
 
         with wds.ShardWriter(template_path, maxsize=max_shard_size) as sink, open(list_path) as f:
             for line in f:
