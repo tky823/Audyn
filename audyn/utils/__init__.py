@@ -145,7 +145,7 @@ def convert_dataloader_to_ddp_if_possible(config: DictConfig) -> None:
                 config, "train.dataloader.train", train_dataloader_config, merge=False
             )
         else:
-            _warn_unexpected_data_loader(cls)
+            _warn_unexpected_dataloader_for_ddp(cls)
     elif package_name == "audyn":
         if cls is SequentialBatchDataLoader or cls is DynamicBatchDataLoader:
             train_dataloader_config = OmegaConf.to_container(train_dataloader_config)
@@ -177,12 +177,12 @@ def convert_dataloader_to_ddp_if_possible(config: DictConfig) -> None:
             # These data loaders support DDP.
             pass
         else:
-            _warn_unexpected_data_loader(cls)
+            _warn_unexpected_dataloader_for_ddp(cls)
     else:
-        _warn_unexpected_data_loader(cls)
+        _warn_unexpected_dataloader_for_ddp(cls)
 
 
-def _warn_unexpected_data_loader(module: Any) -> None:
+def _warn_unexpected_dataloader_for_ddp(module: Any) -> None:
     """Warn unexpected data loader that cannot be converted to DDP-supported one.
 
     Both torch's and audyn's data loaders are supported.
