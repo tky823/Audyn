@@ -6,7 +6,10 @@ exp_dir="./exp"
 tag=""
 continue_from=""
 
+dump_format="torch"
+
 system="defaults"
+preprocess="defaults"
 data="vqvae"
 train="pixelcnn"
 model="pixelcnn"
@@ -45,16 +48,18 @@ ${cmd} ./local/train_pixelcnn.py \
 --config-dir "./conf" \
 hydra.run.dir="${exp_dir}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
 system="${system}" \
+preprocess="${preprocess}" \
 data="${data}" \
 train="${train}" \
 model="${model}" \
 optimizer="${optimizer}" \
 lr_scheduler="${lr_scheduler}" \
 criterion="${criterion}" \
+preprocess.dump_format="${dump_format}" \
 train.dataset.train.list_path="${list_dir}/train.txt" \
-train.dataset.train.feature_dir="${feature_dir}" \
+train.dataset.train.feature_dir="${feature_dir}/train" \
 train.dataset.validation.list_path="${list_dir}/validation.txt" \
-train.dataset.validation.feature_dir="${feature_dir}" \
+train.dataset.validation.feature_dir="${feature_dir}/validation" \
 train.resume.continue_from="${continue_from}" \
 train.output.exp_dir="${exp_dir}/${tag}" \
 train.output.tensorboard_dir="tensorboard/${tag}/pixelcnn"
