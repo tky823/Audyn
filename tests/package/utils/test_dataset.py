@@ -111,4 +111,6 @@ def test_webdataset_dataset() -> None:
         loader = DataLoader(dataset, batch_size=batch_size, collate_fn=default_collate_fn)
 
         for idx, batch in enumerate(loader):
-            assert torch.equal(torch.tensor([[2 * idx + 1], [2 * (idx + 1)]]), batch[key])
+            assert torch.equal(
+                torch.tensor([[batch_size * idx + 1], [batch_size * (idx + 1)]]), batch[key]
+            )
