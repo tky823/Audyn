@@ -6,6 +6,8 @@ exp_dir="./exp"
 tag=""
 checkpoint=""
 
+dump_format="torch"
+
 system="defaults"
 preprocess="defaults"
 data="vqvae"
@@ -55,6 +57,7 @@ for subset in "train" "validation"; do
     data="${data}" \
     train="${train}" \
     model="${model}" \
+    preprocess.dump_format="${dump_format}" \
     preprocess.list_path="${list_path}" \
     preprocess.feature_dir="${feature_dir}" \
     train.dataset.root="${data_root}" \

@@ -7,6 +7,8 @@ tag=""
 pixelcnn_checkpoint=""
 vqvae_checkpoint=""
 
+dump_format="torch"
+
 system="defaults"
 data="vqvae"
 test="pixelcnn+vqvae"
@@ -22,9 +24,11 @@ python ./local/test.py \
 --config-dir "./conf" \
 hydra.run.dir="${exp_dir}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
 system="${system}" \
+preprocess="${preprocess}" \
 data="${data}" \
 test="${test}" \
 model="${model}" \
+preprocess.dump_format="${dump_format}" \
 test.dataset.test.root="${data_root}" \
 test.checkpoint.pixelcnn="${pixelcnn_checkpoint}" \
 test.checkpoint.vqvae="${vqvae_checkpoint}" \

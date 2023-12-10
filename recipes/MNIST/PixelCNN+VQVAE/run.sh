@@ -15,6 +15,8 @@ exp_dir="./exp"
 
 data_root="../data"
 
+dump_format="torch"
+
 system="defaults"
 preprocess="defaults"
 data="vqvae"
@@ -43,7 +45,9 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         --continue-from "${continue_from}" \
         --exp-dir "${exp_dir}" \
         --data-root "${data_root}" \
+        --dump-format "${dump_format}" \
         --system "${system}" \
+        --preprocess "${preprocess}" \
         --data "${data}" \
         --train "${train}" \
         --test "${test}" \
@@ -61,6 +65,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         . ./save_prior.sh \
         --tag "${tag}" \
         --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
         --exp-dir "${exp_dir}" \
         --checkpoint "${vqvae_checkpoint}" \
         --system "${system}" \
@@ -80,7 +85,9 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
         --continue-from "${continue_from}" \
         --exp-dir "${exp_dir}" \
         --data-root "${data_root}" \
+        --dump-format "${dump_format}" \
         --system "${system}" \
+        --preprocess "${preprocess}" \
         --data "${data}" \
         --train "${train}" \
         --test "${test}" \
@@ -101,7 +108,9 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
         --pixelcnn-checkpoint "${pixelcnn_checkpoint}" \
         --vqvae-checkpoint "${vqvae_checkpoint}" \
         --data-root "${data_root}" \
+        --dump-format "${dump_format}" \
         --system "${system}" \
+        --preprocess "${preprocess}" \
         --data "${data}" \
         --test "${test}" \
         --model "${model}"

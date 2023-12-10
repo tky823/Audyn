@@ -6,6 +6,8 @@ exp_dir="./exp"
 tag=""
 continue_from=""
 
+dump_format="torch"
+
 system="defaults"
 data="vqvae"
 train="vqvae"
@@ -41,6 +43,7 @@ ${cmd} ./local/train_vqvae.py \
 --config-dir "./conf" \
 hydra.run.dir="${exp_dir}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
 system="${system}" \
+preprocess="${preprocess}" \
 data="${data}" \
 train="${train}" \
 test="${test}" \
@@ -48,6 +51,7 @@ model="${model}" \
 optimizer="${optimizer}" \
 lr_scheduler="${lr_scheduler}" \
 criterion="${criterion}" \
+preprocess.dump_format="${dump_format}" \
 train.dataset.train.root="${data_root}" \
 train.resume.continue_from="${continue_from}" \
 train.output.exp_dir="${exp_dir}/${tag}" \

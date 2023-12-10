@@ -1,4 +1,5 @@
 defaults:
+  - dataloader: defaults
   - record: vqvae
   - _self_
 
@@ -23,13 +24,9 @@ dataset:
 
 dataloader:
   train:
-    _target_: torch.utils.data.DataLoader
     batch_size: 128
-    shuffle: true
   validation:
-    _target_: torch.utils.data.DataLoader
     batch_size: 128
-    shuffle: false
 
 key_mapping:
   train:
