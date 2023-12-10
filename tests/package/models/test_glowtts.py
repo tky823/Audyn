@@ -14,6 +14,7 @@ from audyn.models.glowtts import (
     PreNet,
     TextEncoder,
 )
+from audyn.models.text_to_wave import FastSpeechWaveNetBridge
 from audyn.modules.duration_predictor import FastSpeechDurationPredictor
 from audyn.modules.fastspeech import FFTrBlock
 from audyn.modules.glowtts import GlowTTSFFTrBlock
@@ -77,8 +78,15 @@ def test_glowtts() -> None:
         batch_first=batch_first,
     )
     length_regulator = LengthRegulator(batch_first=batch_first)
+    transform_middle = FastSpeechWaveNetBridge(take_exp=False)
 
-    model = GlowTTS(encoder, decoder, duration_predictor, length_regulator)
+    model = GlowTTS(
+        encoder,
+        decoder,
+        duration_predictor,
+        length_regulator,
+        transform_middle=transform_middle,
+    )
     latent, log_duration, padding_mask, logdet = model(
         src,
         tgt,
@@ -224,8 +232,15 @@ def test_official_glowtts(use_relative_position: bool) -> None:
         batch_first=batch_first,
     )
     length_regulator = LengthRegulator(batch_first=batch_first)
+    transform_middle = FastSpeechWaveNetBridge(take_exp=False)
 
-    model = GlowTTS(encoder, decoder, duration_predictor, length_regulator)
+    model = GlowTTS(
+        encoder,
+        decoder,
+        duration_predictor,
+        length_regulator,
+        transform_middle=transform_middle,
+    )
 
     num_parameters = 0
 
