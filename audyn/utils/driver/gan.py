@@ -843,10 +843,11 @@ class GANTrainer(BaseTrainer):
             elif clip_gradient_fn is GANGradClipper:
                 # for backward compatibility
                 generator_grad_clipper = instantiate_grad_clipper(
-                    clip_gradient_config.generator, self.model.generator.parameters()
+                    clip_gradient_config.generator, self.unwrapped_model.generator.parameters()
                 )
                 discriminator_grad_clipper = instantiate_grad_clipper(
-                    clip_gradient_config.discriminator, self.model.discriminator.parameters()
+                    clip_gradient_config.discriminator,
+                    self.unwrapped_model.discriminator.parameters(),
                 )
                 self.grad_clipper = GANGradClipper(
                     generator_grad_clipper, discriminator_grad_clipper

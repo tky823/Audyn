@@ -7,7 +7,7 @@ import torch
 from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader
 
-from .clip_grad import GradClipper
+from .clip_grad import GANGradClipper, GradClipper
 from .data import select_accelerator
 from .data.dataloader import (
     DistributedDataLoader,
@@ -39,6 +39,7 @@ __all__ = [
     "instantiate_grad_clipper",
     "instantiate_criterion",
     "GradClipper",
+    "GANGradClipper",
 ]
 
 

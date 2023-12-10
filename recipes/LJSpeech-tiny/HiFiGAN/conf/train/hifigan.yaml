@@ -2,6 +2,7 @@ defaults:
   - record: hifigan
   - dataset: sortable-torch
   - dataloader: sequential-batch
+  - clip_gradient: gan
   - _self_
 
 dataset:
@@ -46,8 +47,6 @@ key_mapping:
 
 clip_gradient:
   generator:
-    _target_: audyn.utils.GradClipper
-    mode: norm
     max_norm: 1
   discriminator: ${.generator}
 
