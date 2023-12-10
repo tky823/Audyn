@@ -13,7 +13,7 @@ dump_format="torch"
 --dump-format "${dump_format}"
 ```
 
-### Stage 1: Train HiFi-GAN
+### Stage 1: Train FastSpeech
 
 ```sh
 dump_format="torch"
@@ -33,7 +33,7 @@ If you resume training from a checkpoint,
 ```sh
 dump_format="torch"
 
-checkpoint=<PATH/TO/HIFIGAN/CHECKPOINT>  # e.g. exp/<TAG>/model/last.pth
+checkpoint=<PATH/TO/FASTSPEECH/CHECKPOINT>  # e.g. exp/<TAG>/model/last.pth
 
 model="fastspeech"
 
