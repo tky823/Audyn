@@ -1,3 +1,4 @@
+dump_format: webdataset
 list_path:
 category_list_path:
 category_path:

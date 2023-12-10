@@ -1,27 +1,15 @@
 defaults:
+  - dataset: torch
+  - dataloader: defaults
   - record: pixelsnail
   - clip_gradient: pixelsnail
   - _self_
 
-dataset:
-  train:
-    _target_: audyn.utils.data.dataset.TorchObjectDataset
-    list_path:
-    feature_dir:
-  validation:
-    _target_: audyn.utils.data.dataset.TorchObjectDataset
-    list_path:
-    feature_dir:
-
 dataloader:
   train:
-    _target_: torch.utils.data.DataLoader
     batch_size: 8
-    shuffle: true
   validation:
-    _target_: torch.utils.data.DataLoader
     batch_size: 8
-    shuffle: false
 
 key_mapping:
   train:
