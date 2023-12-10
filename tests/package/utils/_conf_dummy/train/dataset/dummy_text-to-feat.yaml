@@ -1,0 +1,14 @@
+train:
+  _target_: dummy.utils.data.DummyTextToFeatDataset
+  vocab_size:
+  n_mels:
+  up_scale:
+  length:
+  size:
+validation:
+  _target_: dummy.utils.data.DummyTextToFeatDataset
+  vocab_size: ${..train.vocab_size}
+  n_mels: ${..train.n_mels}
+  up_scale: ${..train.up_scale}
+  length: ${..train.length}
+  size:

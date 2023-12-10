@@ -1,29 +1,13 @@
 defaults:
+  - dataset: dummy_feat-to-wave
+  - dataloader: defaults
   - output: dummy
   - _self_
 
-dataset:
-  train:
-    _target_: dummy.utils.data.DummyFeatToWaveDataset
-    n_mels:
-    up_scale:
-    length:
-    size:
-  validation:
-    _target_: dummy.utils.data.DummyFeatToWaveDataset
-    n_mels: ${..train.n_mels}
-    up_scale: ${..train.up_scale}
-    length: ${..train.length}
-    size:
-
 dataloader:
   train:
-    _target_: torch.utils.data.DataLoader
-    batch_size:
     shuffle: false
   validation:
-    _target_: torch.utils.data.DataLoader
-    batch_size:
     shuffle: false
 
 key_mapping:

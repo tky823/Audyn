@@ -1,4 +1,5 @@
 defaults:
+  - dataloader: defaults
   - output: dummy
   - record: dummy_gan
   - _self_
@@ -14,16 +15,6 @@ dataset:
     size:
     min_length: 5
     max_length: 10
-
-dataloader:
-  train:
-    _target_: torch.utils.data.DataLoader
-    batch_size:
-    shuffle: true
-  validation:
-    _target_: torch.utils.data.DataLoader
-    batch_size: 1
-    shuffle: false
 
 key_mapping:
   train:
