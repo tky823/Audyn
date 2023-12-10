@@ -16,6 +16,7 @@ from .data.dataloader import (
     DynamicBatchDataLoader,
     SequentialBatchDataLoader,
 )
+from .data.dataset import SortableTorchObjectDataset, TorchObjectDataset, WebDatasetWrapper
 from .distributed import is_distributed, setup_distributed
 from .hydra.utils import (
     instantiate_cascade_text_to_wave,
@@ -28,6 +29,8 @@ from .hydra.utils import (
 
 __all__ = [
     "setup_system",
+    "convert_dataloader_to_ddp_if_possible",
+    "convert_dataset_and_dataloader_format_if_necessary",
     "instantiate_model",
     "instantiate_cascade_text_to_wave",
     "instantiate_optimizer",
@@ -64,6 +67,11 @@ def setup_system(config: DictConfig) -> None:
 
         cudnn.benchmark = system_config.cudnn.benchmark
         cudnn.deterministic = system_config.cudnn.deterministic
+
+    if full_config is not None:
+        # overwrite full_config
+        convert_dataset_and_dataloader_format_if_necessary(full_config)
+        system_config = full_config.system
 
     if is_distributed(system_config):
         if full_config is None:
@@ -180,6 +188,166 @@ def convert_dataloader_to_ddp_if_possible(config: DictConfig) -> None:
             _warn_unexpected_dataloader_for_ddp(cls)
     else:
         _warn_unexpected_dataloader_for_ddp(cls)
+
+
+def convert_dataset_and_dataloader_format_if_necessary(config: DictConfig) -> None:
+    """Convert dataset and data loader in config.train for torch or WebDataset if necessary.
+
+    The data format should be specified by config.preprocess.dump_format.
+
+    .. note::
+
+        This function may overwrite config.train.dataset and config.train.dataloader.
+
+    """
+    dump_format = config.preprocess.dump_format
+    dataset_config = config.train.dataset
+    dataloader_config = config.train.dataloader
+
+    if dump_format == "webdataset":
+        # dataset
+        train_dataset_target = _search_webdataset_format_dataset(dataset_config.train._target_)
+        validation_dataset_target = _search_webdataset_format_dataset(
+            dataset_config.validation._target_
+        )
+
+        # dataloader
+        train_dataloader_target = _search_webdataset_format_dataloader(
+            dataloader_config.train._target_
+        )
+        validation_dataloader_target = _search_webdataset_format_dataloader(
+            dataloader_config.validation._target_
+        )
+
+        OmegaConf.update(config, "train.dataset.train._target_", train_dataset_target, merge=False)
+        OmegaConf.update(
+            config,
+            "train.dataset.validation._target_",
+            validation_dataset_target,
+            merge=False,
+        )
+        OmegaConf.update(
+            config, "train.dataloader.train._target_", train_dataloader_target, merge=False
+        )
+        OmegaConf.update(
+            config,
+            "train.dataloader.validation._target_",
+            validation_dataloader_target,
+            merge=False,
+        )
+    else:
+        # TODO: torch
+        pass
+
+
+def _search_webdataset_format_dataset(target: str) -> str:
+    # split _target_ into names of package, module, variable
+    # e.g.
+    #     _target_: audyn.utils.data.TorchObjectDataset
+    # package_name: audyn
+    #     mod_name: audyn.utils.data
+    #     var_name: TorchObjectDataset
+    #
+    #     _target_: audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset
+    # package_name: audyn
+    #     mod_name: audyn.utils.data.dataset
+    #     var_name: WebDatasetWrapper
+    #      fn_name: instantiate_dataset
+    mod_name, var_name = target.rsplit(".", maxsplit=1)
+    package_name, *_ = mod_name.split(".", maxsplit=1)
+
+    try:
+        fn_name = None
+        imported_module = importlib.import_module(mod_name)
+    except ModuleNotFoundError:
+        fn_name = var_name
+        mod_name, var_name = mod_name.rsplit(".", maxsplit=1)
+        imported_module = importlib.import_module(mod_name)
+
+    cls = getattr(imported_module, var_name)
+
+    if package_name == "torch":
+        assert fn_name is None
+
+        _warn_unexpected_dataset_for_webdataset(cls)
+    elif package_name == "audyn":
+        # NOTE: WebDatasetWrapper.instantiate_dataset is not a class.
+        if cls is WebDatasetWrapper:
+            # WebDataset is supported by WebDatasetWrapper.
+            pass
+        elif cls is TorchObjectDataset:
+            # TorchObjectDataset is convertible to WebDatasetWrapper.
+            target = "audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset"
+        elif cls is SortableTorchObjectDataset:
+            raise NotImplementedError("SortableTorchObjectDataset cannot be converted")
+        else:
+            _warn_unexpected_dataset_for_webdataset(cls)
+    else:
+        _warn_unexpected_dataset_for_webdataset(cls)
+
+    return target
+
+
+def _search_webdataset_format_dataloader(target: str) -> str:
+    # split _target_ into names of package, module, variable
+    # e.g.
+    #     _target_: audyn.utils.data.SequentialBatchDataLoader
+    # package_name: audyn
+    #     mod_name: audyn.utils.data
+    #     var_name: SequentialBatchDataLoader
+    mod_name, var_name = target.rsplit(".", maxsplit=1)
+    package_name, *_ = mod_name.split(".", maxsplit=1)
+    cls = getattr(importlib.import_module(mod_name), var_name)
+
+    if package_name == "torch":
+        if cls is DataLoader:
+            # WebDataset is supported by DataLoader.
+            pass
+        else:
+            warnings.warn(
+                f"{cls.__name__} cannot be converted for WebDataset.",
+                UserWarning,
+                stacklevel=2,
+            )
+    elif package_name == "audyn":
+        if (
+            cls is DistributedDataLoader
+            or cls is SequentialBatchDataLoader
+            or cls is DistributedSequentialBatchDataLoader
+            or cls is DynamicBatchDataLoader
+            or cls is DistributedDynamicBatchDataLoader
+        ):
+            raise NotImplementedError(
+                f"Automatic conversion of {cls.__name__} to WebDataset is not supported now."
+            )
+        else:
+            warnings.warn(
+                f"{cls.__name__} cannot be converted for WebDataset.",
+                UserWarning,
+                stacklevel=2,
+            )
+    else:
+        _warn_unexpected_dataloader_for_webdataset(cls)
+
+    return target
+
+
+def _warn_unexpected_dataset_for_webdataset(module: Any) -> None:
+    """Warn unexpected dataset that cannot be converted to WebDataset-supported one."""
+    warnings.warn(
+        f"Dataset {module.__name__} cannot be converted for WebDataset.",
+        UserWarning,
+        stacklevel=2,
+    )
+
+
+def _warn_unexpected_dataloader_for_webdataset(module: Any) -> None:
+    """Warn unexpected dataloader that cannot be converted to WebDataset-supported one."""
+    warnings.warn(
+        f"Dataloader {module.__name__} cannot be converted for WebDataset.",
+        UserWarning,
+        stacklevel=2,
+    )
 
 
 def _warn_unexpected_dataloader_for_ddp(module: Any) -> None:
