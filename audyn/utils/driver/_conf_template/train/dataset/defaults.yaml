@@ -1,0 +1,6 @@
+train:
+  _target_: torch.utils.data.Dataset
+  dataset:
+validation:
+  _target_: torch.utils.data.Dataset
+  dataset:

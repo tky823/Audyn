@@ -6,6 +6,8 @@ exp_dir="./exp"
 tag=""
 checkpoint=""
 
+dump_format="torch"
+
 system="defaults"
 preprocess="defaults"
 data="baseline"
@@ -51,8 +53,9 @@ for subset in "train" "validation"; do
     data="${data}" \
     train="${train}" \
     model="${model}" \
-    preprocess.feature_dir="${save_dir}" \
+    preprocess.dump_format="${dump_format}" \
+    preprocess.feature_dir="${save_dir}/${subset}" \
     train.dataset.list_path="${list_path}" \
-    train.dataset.feature_dir="${feature_dir}" \
+    train.dataset.feature_dir="${feature_dir}/${subset}" \
     train.checkpoint="${checkpoint}"
 done

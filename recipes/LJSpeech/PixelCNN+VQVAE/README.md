@@ -5,14 +5,19 @@
 ### Stage 0: preprocess
 
 ```sh
+dump_format="torch"
+
 . ./run.sh \
 --stage 0 \
---stop-stage 0
+--stop-stage 0 \
+--dump-format "${dump_format}"
 ```
 
 ### Stage 1: train VQVAE
 
 ```sh
+dump_format="torch"
+
 train="vqvae"  # vqvae_ema
 model="vqvae"
 optimizer="vqvae"  # vqvae_ema
@@ -23,6 +28,7 @@ criterion="vqvae"
 --stage 1 \
 --stop-stage 1 \
 --tag <TAG> \
+--dump-format "${dump_format}" \
 --train "${train}" \
 --model "${model}" \
 --optimizer "${optimizer}" \
@@ -33,18 +39,22 @@ criterion="vqvae"
 If you resume training from a checkpoint,
 
 ```sh
+dump_format="torch"  # webdataset
+
+vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.pth
+
 train="vqvae"  # vqvae_ema
 model="vqvae"
 optimizer="vqvae"  # vqvae_ema
 lr_scheduler="vqvae"  # vqvae_ema
 criterion="vqvae"
-vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.pth
 
 . ./run.sh \
 --stage 1 \
 --stop-stage 1 \
 --tag <TAG> \
 --continue-from "${vqvae_checkpoint}" \
+--dump-format "${dump_format}" \
 --train "${train}" \
 --model "${model}" \
 --optimizer "${optimizer}" \
@@ -55,15 +65,19 @@ vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.p
 ### Stage 2: save priors in latent space
 
 ```sh
+dump_format="torch"  # webdataset
+
+vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.pth
+
 train="prior"
 model="vqvae"
-vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.pth
 
 . ./run.sh \
 --stage 2 \
 --stop-stage 2 \
 --tag <TAG> \
 --vqvae-checkpoint "${vqvae_checkpoint}" \
+--dump-format "${dump_format}" \
 --train "${train}" \
 --model "${model}"
 ```
@@ -71,6 +85,8 @@ vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.p
 ### Stage 3: train PixelCNN
 
 ```sh
+dump_format="torch"  # webdataset
+
 train="pixelcnn"
 model="pixelcnn"
 optimizer="pixelcnn"
@@ -81,6 +97,7 @@ criterion="pixelcnn"
 --stage 3 \
 --stop-stage 3 \
 --tag <TAG> \
+--dump-format "${dump_format}" \
 --train "${train}" \
 --model "${model}" \
 --optimizer "${optimizer}" \
@@ -91,10 +108,13 @@ criterion="pixelcnn"
 ### Stage 4: generate melspectrogram using PixelCNN + VQVAE
 
 ```sh
-test="pixelcnn+vqvae"
-model="pixelcnn+vqvae"
+dump_format="torch"  # webdataset
+
 pixelcnn_checkpoint=<PATH/TO/PIXELCNN/CHECKPOINT>  # e.g. exp/<TAG>/model/pixelcnn/last.pth
 vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.pth
+
+test="pixelcnn+vqvae"
+model="pixelcnn+vqvae"
 
 . ./run.sh \
 --stage 4 \
@@ -102,6 +122,7 @@ vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.p
 --pixelcnn-checkpoint "${pixelcnn_checkpoint}" \
 --vqvae-checkpoint "${vqvae_checkpoint}" \
 --tag <TAG> \
+--dump-format "${dump_format}" \
 --test "${test}" \
 --model "${model}"
 ```

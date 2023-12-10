@@ -1,3 +1,4 @@
+_target_: audyn.utils.GANGradClipper
 generator:
   _target_: audyn.utils.GradClipper
   mode: norm

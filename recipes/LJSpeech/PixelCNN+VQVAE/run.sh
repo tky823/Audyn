@@ -17,6 +17,8 @@ ljspeech_url="https://data.keithito.com/data/speech/LJSpeech-1.1.tar.bz2"
 data_root="../data"
 dump_root="dump"
 
+dump_format="torch"
+
 system="defaults"
 preprocess="defaults"
 data="vqvae"
@@ -58,6 +60,7 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
         --stop-stage 2 \
         --data-root "${data_root}" \
         --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
         --preprocess "${preprocess}" \
         --data "${data}" \
         --n-validation ${n_validation} \
@@ -72,9 +75,11 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         . ./train_vqvae.sh \
         --tag "${tag}" \
         --continue-from "${continue_from}" \
-        --dump-root "${dump_root}" \
         --exp-dir "${exp_dir}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
         --system "${system}" \
+        --preprocess "${preprocess}" \
         --data "${data}" \
         --train "${train}" \
         --model "${model}" \
@@ -90,9 +95,10 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     (
         . ./save_prior.sh \
         --tag "${tag}" \
-        --dump-root "${dump_root}" \
-        --exp-dir "${exp_dir}" \
         --checkpoint "${vqvae_checkpoint}" \
+        --exp-dir "${exp_dir}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
         --system "${system}" \
         --preprocess "${preprocess}" \
         --data "${data}" \
@@ -109,8 +115,10 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
         --tag "${tag}" \
         --continue-from "${continue_from}" \
         --exp-dir "${exp_dir}" \
-        --data-root "${data_root}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
         --system "${system}" \
+        --preprocess "${preprocess}" \
         --data "${data}" \
         --train "${train}" \
         --model "${model}" \
@@ -129,8 +137,10 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
         --exp-dir "${exp_dir}" \
         --pixelcnn-checkpoint "${pixelcnn_checkpoint}" \
         --vqvae-checkpoint "${vqvae_checkpoint}" \
-        --data-root "${data_root}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
         --system "${system}" \
+        --preprocess "${preprocess}" \
         --data "${data}" \
         --test "${test}" \
         --model "${model}"

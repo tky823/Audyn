@@ -1,0 +1,8 @@
+train:
+  _target_: audyn.utils.data.dataset.TorchObjectDataset
+  list_path:
+  feature_dir:
+validation:
+  _target_: audyn.utils.data.dataset.TorchObjectDataset
+  list_path:
+  feature_dir:

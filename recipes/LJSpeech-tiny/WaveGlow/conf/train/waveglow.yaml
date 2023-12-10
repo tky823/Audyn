@@ -1,28 +1,18 @@
 defaults:
   - record: waveglow
+  - dataset: sortable-torch
+  - dataloader: sequential-batch
   - _self_
 
 dataset:
   train:
-    _target_: audyn.utils.data.dataset.SortableTorchObjectDataset
-    list_path:
-    feature_dir:
     sort_key: waveform
-  validation:
-    _target_: audyn.utils.data.dataset.TorchObjectDataset
-    list_path:
-    feature_dir:
 
 dataloader:
   train:
-    _target_: audyn.utils.data.SequentialBatchDataLoader
     batch_size: 4
-    shuffle: true
-    seed: ${system.seed}
   validation:
-    _target_: torch.utils.data.DataLoader
     batch_size: 1
-    shuffle: false
 
 key_mapping:
   train:

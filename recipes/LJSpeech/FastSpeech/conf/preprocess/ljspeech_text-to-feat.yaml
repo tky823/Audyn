@@ -1,6 +1,8 @@
+dump_format: webdataset
 list_path:
 wav_dir:
 textgrid_dir:
 feature_dir:
 symbols_path:
 max_workers: 16
+max_shard_size: 100000000

@@ -15,6 +15,8 @@ ljspeech_url="https://data.keithito.com/data/speech/LJSpeech-1.1.tar.bz2"
 data_root="../data"
 dump_root="dump"
 
+dump_format="torch"
+
 system="defaults"
 preprocess="defaults"
 data="waveglow"
@@ -50,6 +52,7 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
         --stop-stage 2 \
         --data-root "${data_root}" \
         --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
         --preprocess "${preprocess}" \
         --data "${data}" \
         --n-validation ${n_validation} \
@@ -66,6 +69,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         --continue-from "${continue_from}" \
         --exp-dir "${exp_dir}" \
         --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
         --system "${system}" \
         --preprocess "${preprocess}" \
         --data "${data}" \
@@ -86,6 +90,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         --checkpoint "${checkpoint}" \
         --exp-dir "${exp_dir}" \
         --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
         --system "${system}" \
         --data "${data}" \
         --test "${test}" \

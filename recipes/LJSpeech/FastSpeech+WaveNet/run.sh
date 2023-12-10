@@ -14,7 +14,10 @@ exp_dir="./exp"
 
 dump_root="dump"
 
+dump_format="torch"
+
 system="defaults"
+preprocess="defaults"
 data="ljspeech_text-to-wave"
 test="fastspeech+wavenet"
 model="fastspeech+wavenet"
@@ -41,7 +44,9 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         --feat-to-wave-checkpoint "${feat_to_wave_checkpoint}" \
         --exp-dir "${exp_dir}" \
         --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
         --system "${system}" \
+        --preprocess "${preprocess}" \
         --data "${data}" \
         --test "${test}" \
         --model "${model}"

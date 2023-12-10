@@ -19,6 +19,8 @@ official_data_root="../data"
 urbansound8k_data_root="../../UrbanSound8K/data"
 dump_root="./dump"
 
+dump_format="torch"
+
 system="defaults"
 preprocess="baseline"
 data="baseline"
@@ -64,6 +66,7 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
         --stop-stage 2 \
         --data-root "${urbansound8k_data_root}" \
         --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
         --preprocess "${preprocess}" \
         --data "${data}" \
         --n-validation ${n_validation}
@@ -79,6 +82,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         --continue-from "${continue_from}" \
         --exp-dir "${exp_dir}" \
         --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
         --system "${system}" \
         --preprocess "${preprocess}" \
         --data "${data}" \
@@ -99,6 +103,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         --stop-stage 2 \
         --data-root "${official_data_root}" \
         --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
         --preprocess "${preprocess}" \
         --data "${data}" \
         --n-validation ${n_validation}
@@ -114,6 +119,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
         --stop-stage 2 \
         --data-root "${official_data_root}" \
         --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
         --preprocess "${preprocess}" \
         --data "${data}" \
         --n-test "${n_test}"
@@ -129,8 +135,10 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
         --continue-from "${continue_from}" \
         --hifigan-checkpoint "${hifigan_checkpoint}" \
         --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
         --exp-dir "${exp_dir}" \
         --system "${system}" \
+        --preprocess "${preprocess}" \
         --data "${data}" \
         --train "${train}" \
         --model "${model}" \
@@ -147,6 +155,7 @@ if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
         . ./save_prior.sh \
         --tag "${tag}" \
         --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
         --exp-dir "${exp_dir}" \
         --checkpoint "${vqvae_checkpoint}" \
         --system "${system}" \
@@ -166,6 +175,7 @@ if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
         --continue-from "${continue_from}" \
         --exp-dir "${exp_dir}" \
         --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
         --system "${system}" \
         --preprocess "${preprocess}" \
         --data "${data}" \
@@ -184,6 +194,7 @@ if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ]; then
         . ./test.sh \
         --tag "${tag}" \
         --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
         --exp-dir "${exp_dir}" \
         --pixelsnail-checkpoint "${pixelsnail_checkpoint}" \
         --vqvae-checkpoint "${vqvae_checkpoint}" \

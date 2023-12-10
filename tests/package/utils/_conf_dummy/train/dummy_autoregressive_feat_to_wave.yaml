@@ -1,4 +1,5 @@
 defaults:
+  - dataloader: defaults
   - output: dummy
   - _self_
 
@@ -16,12 +17,8 @@ dataset:
 
 dataloader:
   train:
-    _target_: torch.utils.data.DataLoader
-    batch_size:
     shuffle: false
   validation:
-    _target_: torch.utils.data.DataLoader
-    batch_size:
     shuffle: false
 
 key_mapping:

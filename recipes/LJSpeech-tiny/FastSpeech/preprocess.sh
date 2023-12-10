@@ -10,6 +10,8 @@ data_root="../data"
 dump_root="./dump"
 log_dir="./log"
 
+dump_format="torch"
+
 preprocess="ljspeech_text-to-feat"
 data="ljspeech_text-to-feat"
 
@@ -108,10 +110,11 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
         hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
         preprocess="${preprocess}" \
         data="${data}" \
+        preprocess.dump_format="${dump_format}" \
         preprocess.list_path="${list_dir}/${subset}.txt" \
         preprocess.wav_dir="${wav_dir}" \
         preprocess.textgrid_dir="${textgrid_dir}" \
-        preprocess.feature_dir="${feature_dir}" \
+        preprocess.feature_dir="${feature_dir}/${subset}" \
         preprocess.symbols_path="${symbols_path}"
     done
 fi

@@ -1,15 +1,17 @@
+import importlib
 import os
 import tempfile
 from os.path import dirname, join, realpath, relpath
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import hydra
 import pytest
 import torch
 import torch.distributed as dist
 import torch.nn as nn
+import webdataset as wds
 from dummy import allclose
-from omegaconf import OmegaConf
+from omegaconf import DictConfig, OmegaConf
 from pytest import MonkeyPatch
 
 import audyn
@@ -28,7 +30,8 @@ from audyn.utils import (
     setup_system,
 )
 from audyn.utils.clip_grad import GANGradClipper
-from audyn.utils.data import BaseDataLoaders, default_collate_fn, make_noise
+from audyn.utils.data import BaseDataLoaders, TorchObjectDataset, default_collate_fn, make_noise
+from audyn.utils.data.dataset import WebDatasetWrapper
 from audyn.utils.driver import (
     BaseGenerator,
     BaseTrainer,
@@ -1422,6 +1425,219 @@ def test_trainer_for_dataloader(monkeypatch: MonkeyPatch, dataloader: str) -> No
         monkeypatch.undo()
 
 
+@pytest.mark.parametrize("train_dump_format", ["torch", "webdataset"])
+@pytest.mark.parametrize("preprocess_dump_format", ["torch", "webdataset"])
+def test_trainer_for_dump_format_conversion(
+    monkeypatch: MonkeyPatch, train_dump_format: str, preprocess_dump_format: str
+) -> None:
+    """Test BaseTrainer for conversion of dump_format."""
+    MAX_SHARD_SIZE = 10000
+    DATA_SIZE = 20
+    BATCH_SIZE = 2
+    ITERATIONS = 3
+
+    if train_dump_format == "webdataset" and preprocess_dump_format == "torch":
+        pytest.skip(
+            "Pair of train_dump_format=webdataset and preprocess_dump_format=torch "
+            "is not supported."
+        )
+
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
+        monkeypatch.chdir(temp_dir)
+
+        overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
+        list_dir = "./dump/list"
+        feature_dir = "./dump/feature"
+        exp_dir = "./exp"
+
+        # set as torch dataset
+        with hydra.initialize(
+            version_base="1.2",
+            config_path=relpath(config_template_path, dirname(realpath(__file__))),
+            job_name="test_driver",
+        ):
+            config = hydra.compose(
+                config_name="config",
+                overrides=create_dummy_for_dump_format_conversion(
+                    overrides_conf_dir=overrides_conf_dir,
+                    feature_dir=feature_dir,
+                    list_dir=list_dir,
+                    exp_dir=exp_dir,
+                    batch_size=BATCH_SIZE,
+                    iterations=ITERATIONS,
+                    dump_format=preprocess_dump_format,
+                ),
+                return_hydra_config=True,
+            )
+
+        os.makedirs(feature_dir, exist_ok=True)
+        os.makedirs(list_dir, exist_ok=True)
+
+        train_dataset_cls, _ = _parse_dataset_class(config.train.dataset.train._target_)
+        validation_dataset_cls, _ = _parse_dataset_class(config.train.dataset.validation._target_)
+        num_features = config.model.in_channels
+
+        if train_dump_format == "torch":
+            if train_dataset_cls is WebDatasetWrapper:
+                assert validation_dataset_cls is WebDatasetWrapper
+
+                target_dataset = "audyn.utils.data.TorchObjectDataset"
+                config = OmegaConf.to_container(config)
+                config["train"]["dataset"]["train"].update(
+                    {
+                        "_target_": target_dataset,
+                    }
+                )
+                config["train"]["dataset"]["validation"].update(
+                    {
+                        "_target_": target_dataset,
+                    }
+                )
+                config = OmegaConf.create(config)
+        elif train_dump_format == "webdataset":
+            if train_dataset_cls is TorchObjectDataset:
+                assert validation_dataset_cls is TorchObjectDataset
+
+                target_dataset = "audyn.utils.data.WebDatasetWrapper.instantiate_dataset"
+                config = OmegaConf.to_container(config)
+                config["train"]["dataset"]["train"].update(
+                    {
+                        "_target_": target_dataset,
+                    }
+                )
+                config["train"]["dataset"]["validation"].update(
+                    {
+                        "_target_": target_dataset,
+                    }
+                )
+                config = OmegaConf.create(config)
+        else:
+            raise NotImplementedError(f"{train_dump_format} is not supported.")
+
+        if preprocess_dump_format == "torch":
+            for subset in ["train", "validation"]:
+                subset_feature_dir = os.path.join(feature_dir, subset)
+                paths = []
+
+                os.makedirs(subset_feature_dir, exist_ok=True)
+
+                for idx in range(DATA_SIZE):
+                    min_length = config.model.kernel_size + 1 + idx + 1
+
+                    shape = (num_features, min_length + idx + 1)
+                    input = torch.full(shape, fill_value=idx, dtype=torch.float)
+                    target = torch.tensor(idx, dtype=torch.float)
+                    feature = {
+                        "input": input,
+                        "target": target,
+                    }
+
+                    path = os.path.join(subset_feature_dir, f"{idx}.pth")
+                    paths.append(path)
+
+                    torch.save(feature, path)
+
+                list_path = os.path.join(list_dir, f"{subset}.txt")
+
+                with open(list_path, mode="w") as f:
+                    for path in paths:
+                        path = os.path.relpath(path, subset_feature_dir)
+                        identifier = path.replace(".pth", "")
+                        f.write(f"{identifier}\n")
+        elif preprocess_dump_format == "webdataset":
+            for subset in ["train", "validation"]:
+                subset_feature_dir = os.path.join(feature_dir, subset)
+                template_path = os.path.join(subset_feature_dir, "%d.tar")
+                identifiers = []
+
+                os.makedirs(subset_feature_dir, exist_ok=True)
+
+                with wds.ShardWriter(template_path, maxsize=MAX_SHARD_SIZE) as sink:
+                    for idx in range(DATA_SIZE):
+                        min_length = config.model.kernel_size + 1 + idx + 1
+
+                        shape = (num_features, min_length + idx + 1)
+                        input = torch.full(shape, fill_value=idx, dtype=torch.float)
+                        target = torch.tensor(idx, dtype=torch.float)
+                        identifier = f"{idx}"
+                        feature = {
+                            "__key__": identifier,
+                            "input.pth": input,
+                            "target.pth": target,
+                        }
+                        identifiers.append(identifier)
+
+                        sink.write(feature)
+
+                list_path = os.path.join(list_dir, f"{subset}.txt")
+
+                with open(list_path, mode="w") as f:
+                    for identifier in identifiers:
+                        f.write(f"{identifier}\n")
+        else:
+            raise NotImplementedError(f"{preprocess_dump_format} is not supported.")
+
+        _validate_dataset_class_by_dump_format(
+            config.train.dataset.train, dump_format=train_dump_format
+        )
+        _validate_dataset_class_by_dump_format(
+            config.train.dataset.validation, dump_format=train_dump_format
+        )
+
+        # overwrite config.train.dataset and dataloader
+        setup_system(config)
+
+        _validate_dataset_class_by_dump_format(
+            config.train.dataset.train, dump_format=preprocess_dump_format
+        )
+        _validate_dataset_class_by_dump_format(
+            config.train.dataset.validation, dump_format=preprocess_dump_format
+        )
+
+        train_dataset = hydra.utils.instantiate(config.train.dataset.train)
+        validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+
+        train_loader = hydra.utils.instantiate(
+            config.train.dataloader.train,
+            train_dataset,
+            collate_fn=default_collate_fn,
+        )
+        validation_loader = hydra.utils.instantiate(
+            config.train.dataloader.validation,
+            validation_dataset,
+            collate_fn=default_collate_fn,
+        )
+        loaders = BaseDataLoaders(train_loader, validation_loader)
+
+        model = instantiate_model(config.model)
+        model = set_device(
+            model,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
+        optimizer = instantiate_optimizer(config.optimizer, model)
+        lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
+        criterion = instantiate_criterion(config.criterion)
+        criterion = set_device(
+            criterion,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
+
+        trainer = BaseTrainer(
+            loaders,
+            model,
+            optimizer,
+            lr_scheduler=lr_scheduler,
+            criterion=criterion,
+            config=config,
+        )
+        trainer.run()
+        trainer.writer.flush()
+
+        monkeypatch.undo()
+
+
 def create_dummy_override(
     overrides_conf_dir: str,
     exp_dir: str,
@@ -1703,6 +1919,7 @@ def create_dummy_for_dataloader_override(
         f"hydra.searchpath=[{overrides_conf_dir}]",
         "hydra.job.num=1",
         f"hydra.runtime.output_dir={exp_dir}/log",
+        "preprocess.dump_format=torch",
         f"data.audio.sample_rate={sample_rate}",
         f"train.dataset.train.size={data_size}",
         f"train.dataset.validation.size={data_size}",
@@ -1718,6 +1935,52 @@ def create_dummy_for_dataloader_override(
     ]
 
     return override_list + additional_override
+
+
+def create_dummy_for_dump_format_conversion(
+    overrides_conf_dir: str,
+    list_dir: str,
+    feature_dir: str,
+    exp_dir: str,
+    batch_size: int = 1,
+    iterations: int = 1,
+    dump_format: str = None,
+) -> List[str]:
+    sample_rate = 16000
+    in_channels, out_channels = 3, 2
+    kernel_size = 3
+
+    train_list_path = os.path.join(list_dir, "train.txt")
+    validation_list_path = os.path.join(list_dir, "validation.txt")
+    train_feature_dir = os.path.join(feature_dir, "train")
+    validation_feature_dir = os.path.join(feature_dir, "validation")
+
+    override_list = [
+        "train=dump_dump-format_conversion",
+        "test=dummy",
+        "model=dummy_cnn",
+        "optimizer=dummy",
+        "lr_scheduler=dummy",
+        "criterion=dummy",
+        f"hydra.searchpath=[{overrides_conf_dir}]",
+        "hydra.job.num=1",
+        f"hydra.runtime.output_dir={exp_dir}/log",
+        f"data.audio.sample_rate={sample_rate}",
+        f"preprocess.dump_format={dump_format}",
+        f"train.dataset.train.list_path={train_list_path}",
+        f"train.dataset.train.feature_dir={train_feature_dir}",
+        f"train.dataset.validation.list_path={validation_list_path}",
+        f"train.dataset.validation.feature_dir={validation_feature_dir}",
+        f"train.dataloader.train.batch_size={batch_size}",
+        "train.dataloader.validation.batch_size=1",
+        f"train.output.exp_dir={exp_dir}",
+        f"train.steps.iterations={iterations}",
+        f"model.in_channels={in_channels}",
+        f"model.out_channels={out_channels}",
+        f"model.kernel_size={kernel_size}",
+    ]
+
+    return override_list
 
 
 def pad_collate_fn(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -1739,3 +2002,32 @@ def gan_collate_fn(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
     dict_batch = make_noise(dict_batch, key_mapping={"input": "noise"})
 
     return dict_batch
+
+
+def _parse_dataset_class(target: str) -> Tuple[Any, Any]:
+    mod_name, var_name = target.rsplit(".", maxsplit=1)
+
+    try:
+        fn_name = None
+        imported_module = importlib.import_module(mod_name)
+    except ModuleNotFoundError:
+        fn_name = var_name
+        mod_name, var_name = mod_name.rsplit(".", maxsplit=1)
+        imported_module = importlib.import_module(mod_name)
+
+    train_dataset_cls = getattr(imported_module, var_name)
+
+    return train_dataset_cls, fn_name
+
+
+def _validate_dataset_class_by_dump_format(config: DictConfig, dump_format) -> None:
+    train_dataset_cls, fn_name = _parse_dataset_class(config._target_)
+
+    if dump_format == "torch":
+        assert train_dataset_cls is TorchObjectDataset
+        assert fn_name is None
+    elif dump_format == "webdataset":
+        assert train_dataset_cls is WebDatasetWrapper
+        assert fn_name == "instantiate_dataset"
+    else:
+        raise NotImplementedError(f"{dump_format} is not supported.")

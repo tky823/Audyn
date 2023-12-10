@@ -3,8 +3,15 @@ import tempfile
 
 import pytest
 import torch
+import webdataset as wds
+from torch.utils.data import DataLoader
 
-from audyn.utils.data.dataset import SortableTorchObjectDataset, TorchObjectDataset
+from audyn.utils.data import default_collate_fn
+from audyn.utils.data.dataset import (
+    SortableTorchObjectDataset,
+    TorchObjectDataset,
+    WebDatasetWrapper,
+)
 
 keys = ["input", "scalar"]
 
@@ -71,3 +78,39 @@ def test_sortable_torch_object_dataset(sort_key: str) -> None:
                 min_scalar = min(min_scalar, scalar)
             else:
                 raise ValueError(f"Invalid {sort_key} is detected.")
+
+
+def test_webdataset_dataset() -> None:
+    key = "input"
+    list_path = "tests/mock/dataset/torch_object/sample.txt"
+    batch_size = 2
+
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
+        feature_dir = os.path.join(temp_dir, "feature")
+        template_path = os.path.join(feature_dir, "%d.tar")
+
+        os.makedirs(feature_dir, exist_ok=True)
+
+        max_shard_size = 5000
+
+        with wds.ShardWriter(template_path, maxsize=max_shard_size) as sink, open(list_path) as f:
+            for line in f:
+                idx = int(line.strip())
+                feature = {
+                    "__key__": str(idx),
+                    f"{key}.pth": torch.tensor([idx]),
+                }
+
+                sink.write(feature)
+
+        dataset = WebDatasetWrapper.instantiate_dataset(list_path, feature_dir)
+
+        for idx, sample in enumerate(dataset):
+            assert torch.equal(torch.tensor([idx + 1]), sample[f"{key}.pth"])
+
+        loader = DataLoader(dataset, batch_size=batch_size, collate_fn=default_collate_fn)
+
+        for idx, batch in enumerate(loader):
+            assert torch.equal(
+                torch.tensor([[batch_size * idx + 1], [batch_size * (idx + 1)]]), batch[key]
+            )

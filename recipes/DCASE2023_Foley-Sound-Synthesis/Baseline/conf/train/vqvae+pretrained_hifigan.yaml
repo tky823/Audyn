@@ -1,27 +1,15 @@
 defaults:
+  - dataset: torch
+  - dataloader: defaults
   - record: vqvae+pretrained_hifigan
   - clip_gradient: vqvae
   - _self_
 
-dataset:
-  train:
-    _target_: audyn.utils.data.dataset.TorchObjectDataset
-    list_path:
-    feature_dir:
-  validation:
-    _target_: audyn.utils.data.dataset.TorchObjectDataset
-    list_path:
-    feature_dir:
-
 dataloader:
   train:
-    _target_: torch.utils.data.DataLoader
     batch_size: 64
-    shuffle: true
   validation:
-    _target_: torch.utils.data.DataLoader
     batch_size: 64
-    shuffle: false
 
 key_mapping:
   train:
