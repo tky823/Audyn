@@ -1,7 +1,7 @@
 import importlib
 import os
 import warnings
-from typing import Any
+from typing import Any, Dict, Tuple
 
 import torch
 from omegaconf import DictConfig, OmegaConf
@@ -26,6 +26,7 @@ from .hydra.utils import (
     instantiate_model,
     instantiate_optimizer,
 )
+from .logging import get_logger
 
 __all__ = [
     "setup_system",
@@ -206,33 +207,45 @@ def convert_dataset_and_dataloader_format_if_necessary(config: DictConfig) -> No
 
     if dump_format == "webdataset":
         # dataset
-        train_dataset_target = _search_webdataset_format_dataset(dataset_config.train._target_)
-        validation_dataset_target = _search_webdataset_format_dataset(
-            dataset_config.validation._target_
+        train_dataset_target, train_dataset_kwargs = _search_webdataset_format_dataset(
+            dataset_config.train
+        )
+        validation_dataset_target, validation_dataset_kwargs = _search_webdataset_format_dataset(
+            dataset_config.validation
         )
 
         # dataloader
-        train_dataloader_target = _search_webdataset_format_dataloader(
-            dataloader_config.train._target_
-        )
-        validation_dataloader_target = _search_webdataset_format_dataloader(
-            dataloader_config.validation._target_
-        )
+        (
+            train_dataloader_target,
+            train_dataloader_kwargs,
+        ) = _search_webdataset_format_dataloader(dataloader_config.train)
+        (
+            validation_dataloader_target,
+            validation_dataloader_kwargs,
+        ) = _search_webdataset_format_dataloader(dataloader_config.validation)
 
-        OmegaConf.update(config, "train.dataset.train._target_", train_dataset_target, merge=False)
         OmegaConf.update(
             config,
-            "train.dataset.validation._target_",
-            validation_dataset_target,
+            "train.dataset.train",
+            {"_target_": train_dataset_target, **train_dataset_kwargs},
             merge=False,
         )
         OmegaConf.update(
-            config, "train.dataloader.train._target_", train_dataloader_target, merge=False
+            config,
+            "train.dataset.validation",
+            {"_target_": validation_dataset_target, **validation_dataset_kwargs},
+            merge=False,
         )
         OmegaConf.update(
             config,
-            "train.dataloader.validation._target_",
-            validation_dataloader_target,
+            "train.dataloader.train",
+            {"_target_": train_dataloader_target, **train_dataloader_kwargs},
+            merge=False,
+        )
+        OmegaConf.update(
+            config,
+            "train.dataloader.validation",
+            {"_target_": validation_dataloader_target, **validation_dataloader_kwargs},
             merge=False,
         )
     else:
@@ -240,7 +253,7 @@ def convert_dataset_and_dataloader_format_if_necessary(config: DictConfig) -> No
         pass
 
 
-def _search_webdataset_format_dataset(target: str) -> str:
+def _search_webdataset_format_dataset(config: DictConfig) -> Tuple[str, Dict[str, Any]]:
     # split _target_ into names of package, module, variable
     # e.g.
     #     _target_: audyn.utils.data.TorchObjectDataset
@@ -253,6 +266,8 @@ def _search_webdataset_format_dataset(target: str) -> str:
     #     mod_name: audyn.utils.data.dataset
     #     var_name: WebDatasetWrapper
     #      fn_name: instantiate_dataset
+    config = OmegaConf.to_container(config)
+    target = config.pop("_target_")
     mod_name, var_name = target.rsplit(".", maxsplit=1)
     package_name, *_ = mod_name.split(".", maxsplit=1)
 
@@ -277,7 +292,7 @@ def _search_webdataset_format_dataset(target: str) -> str:
             pass
         elif cls is TorchObjectDataset:
             # TorchObjectDataset is convertible to WebDatasetWrapper.
-            target = "audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset"
+            target = "audyn.utils.data.WebDatasetWrapper.instantiate_dataset"
         elif cls is SortableTorchObjectDataset:
             raise NotImplementedError("SortableTorchObjectDataset cannot be converted")
         else:
@@ -285,16 +300,20 @@ def _search_webdataset_format_dataset(target: str) -> str:
     else:
         _warn_unexpected_dataset_for_webdataset(cls)
 
-    return target
+    return target, config
 
 
-def _search_webdataset_format_dataloader(target: str) -> str:
+def _search_webdataset_format_dataloader(config: DictConfig) -> Tuple[str, Dict[str, Any]]:
+    logger = get_logger(_search_webdataset_format_dataloader.__name__)
+
     # split _target_ into names of package, module, variable
     # e.g.
     #     _target_: audyn.utils.data.SequentialBatchDataLoader
     # package_name: audyn
     #     mod_name: audyn.utils.data
     #     var_name: SequentialBatchDataLoader
+    config = OmegaConf.to_container(config)
+    target = config.pop("_target_")
     mod_name, var_name = target.rsplit(".", maxsplit=1)
     package_name, *_ = mod_name.split(".", maxsplit=1)
     cls = getattr(importlib.import_module(mod_name), var_name)
@@ -302,7 +321,11 @@ def _search_webdataset_format_dataloader(target: str) -> str:
     if package_name == "torch":
         if cls is DataLoader:
             # WebDataset is supported by DataLoader.
-            pass
+            if "shuffle" in config and config["shuffle"]:
+                config["shuffle"] = False
+                logger.info(
+                    "shuffle=True is replaced with shuffle=False in config of data loader."
+                )
         else:
             warnings.warn(
                 f"{cls.__name__} cannot be converted for WebDataset.",
@@ -329,7 +352,7 @@ def _search_webdataset_format_dataloader(target: str) -> str:
     else:
         _warn_unexpected_dataloader_for_webdataset(cls)
 
-    return target
+    return target, config
 
 
 def _warn_unexpected_dataset_for_webdataset(module: Any) -> None:
