@@ -1,3 +1,4 @@
+import importlib
 import os
 import subprocess
 import warnings
@@ -763,15 +764,27 @@ class BaseTrainer(BaseDriver):
             # clip_gradient is not used.
             return
 
-        if clip_gradient_config._target_ is None or clip_gradient_config._target_ == "":
+        clip_gradient_target = clip_gradient_config._target_
+
+        if clip_gradient_target is None or clip_gradient_target == "":
             return
 
         if self.grad_clipper is not None:
             is_legacy = False
-        elif clip_gradient_config._target_ in TORCH_CLIP_GRAD_FN:
-            is_legacy = True
         else:
-            raise ValueError("Invalid condition is detected.")
+            mod_name, var_name = clip_gradient_target.rsplit(".", maxsplit=1)
+            clip_gradient_fn = getattr(importlib.import_module(mod_name), var_name)
+
+            if _is_audyn_clip_gradient(clip_gradient_fn):
+                # for backward compatibility
+                self.grad_clipper = hydra.utils.instantiate(
+                    clip_gradient_config, self.model.parameters()
+                )
+                is_legacy = False
+            elif _is_torch_clip_gradient(clip_gradient_fn):
+                is_legacy = True
+            else:
+                raise ValueError("Invalid condition is detected.")
 
         if unscale_if_necessary:
             if isinstance(self.optimizer, MultiOptimizers):
@@ -1911,3 +1924,20 @@ class BaseGenerator(BaseDriver):
             self.unwrapped_model.remove_weight_norm_
         ):
             self.unwrapped_model.remove_weight_norm_()
+
+
+def _is_torch_clip_gradient(cls: type) -> bool:
+    for clip_gradient_fn in TORCH_CLIP_GRAD_FN:
+        mod_name, var_name = clip_gradient_fn.rsplit(".", maxsplit=1)
+
+        if cls is getattr(importlib.import_module(mod_name), var_name):
+            return True
+
+    return False
+
+
+def _is_audyn_clip_gradient(cls: type) -> bool:
+    if cls is GradClipper:
+        return True
+
+    return False
