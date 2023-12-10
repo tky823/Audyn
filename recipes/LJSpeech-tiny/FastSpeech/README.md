@@ -1,4 +1,4 @@
-# HiFi-GAN
+# FastSpeech
 
 ## Stages
 
@@ -18,7 +18,7 @@ dump_format="torch"
 ```sh
 dump_format="torch"
 
-model="hifigan_tiny"
+model="fastspeech"
 
 . ./run.sh \
 --stage 1 \
@@ -35,7 +35,7 @@ dump_format="torch"
 
 checkpoint=<PATH/TO/HIFIGAN/CHECKPOINT>  # e.g. exp/<TAG>/model/last.pth
 
-model="hifigan_tiny"
+model="fastspeech"
 
 . ./run.sh \
 --stage 1 \
