@@ -95,6 +95,11 @@ class WebDatasetWrapper(wds.WebDataset):
     ``WebDatasetWrapper.instantiate_dataset`` is typically called for instantiation.
     """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        warnings.warn("WebDatasetWrapper is not fully supported.", UserWarning)
+
     @classmethod
     def instantiate_dataset(
         cls,
