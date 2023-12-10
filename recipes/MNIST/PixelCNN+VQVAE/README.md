@@ -35,7 +35,7 @@ model="vqvae"
 optimizer="vqvae_ema"  # vqvae
 lr_scheduler="vqvae_ema"  # vqvae
 criterion="vqvae"
-vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae_ema/last.pth
+vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.pth
 
 . ./run.sh \
 --stage 1 \
@@ -57,7 +57,7 @@ dump_format="torch"
 
 train="prior"
 model="vqvae"
-vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae_ema/last.pth
+vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.pth
 
 . ./run.sh \
 --stage 2 \
@@ -101,7 +101,7 @@ dump_format="torch"
 test="pixelcnn+vqvae"
 model="pixelcnn+vqvae"
 pixelcnn_checkpoint=<PATH/TO/PIXELCNN/CHECKPOINT>  # e.g. exp/<TAG>/model/pixelcnn/last.pth
-vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae_ema/last.pth
+vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.pth
 
 . ./run.sh \
 --stage 4 \
