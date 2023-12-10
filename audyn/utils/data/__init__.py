@@ -13,12 +13,13 @@ from .dataloader import (
     DynamicBatchDataLoader,
     SequentialBatchDataLoader,
 )
-from .dataset import SortableTorchObjectDataset, TorchObjectDataset
+from .dataset import SortableTorchObjectDataset, TorchObjectDataset, WebDatasetWrapper
 from .postprocess import make_noise, slice_feautures, take_log_features
 
 __all__ = [
     "TorchObjectDataset",
     "SortableTorchObjectDataset",
+    "WebDatasetWrapper",
     "SequentialBatchDataLoader",
     "DistributedDataLoader",
     "DistributedSequentialBatchDataLoader",
