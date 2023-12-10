@@ -64,7 +64,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     (
         . ./save_prior.sh \
         --tag "${tag}" \
-        --dump-root "${dump_root}" \
+        --data-root "${data_root}" \
         --dump-format "${dump_format}" \
         --exp-dir "${exp_dir}" \
         --checkpoint "${vqvae_checkpoint}" \
