@@ -35,12 +35,14 @@ class GlowTTS(nn.Module):
         decoder: BaseFlow,
         duration_predictor: nn.Module,
         length_regulator: nn.Module,
+        transform_middle: Optional[nn.Module] = None,
     ) -> None:
         super().__init__()
 
         self.encoder = encoder
         self.duration_predictor = duration_predictor
         self.length_regulator = length_regulator
+        self.transform_middle = transform_middle
         self.decoder = decoder
 
     def forward(
@@ -49,7 +51,6 @@ class GlowTTS(nn.Module):
         tgt: torch.Tensor,
         src_length: Optional[torch.LongTensor] = None,
         tgt_length: Optional[torch.LongTensor] = None,
-        max_length: Optional[int] = None,
     ) -> Tuple[
         Tuple[torch.Tensor, torch.Tensor],
         Tuple[torch.Tensor, torch.Tensor],
@@ -64,8 +65,6 @@ class GlowTTS(nn.Module):
             tgt (torch.Tensor): Target feature of shape (batch_size, in_channels, src_length).
             src_length (torch.LongTensor): Source feature lengths of shape (batch_size,).
             tgt_length (torch.LongTensor): Target feature lengths of shape (batch_size,).
-            max_length (int, optional): Maximum length of source duration.
-                The output length is up to max_length * src_length.
 
         Returns:
             tuple: Tuple of tensors containing:
@@ -135,8 +134,9 @@ class GlowTTS(nn.Module):
 
         mas_padding_mask = src_padding_mask.unsqueeze(dim=-2) | tgt_padding_mask.unsqueeze(dim=-1)
 
-        # TODO: explicit permutation
-        tgt_latent = tgt_latent.permute(0, 2, 1).contiguous()
+        if self.transform_middle is not None:
+            tgt_latent = self.transform_middle(tgt_latent)
+
         log_prob_z, ml_duration = self.search_gaussian_monotonic_alignment(
             tgt_latent,
             normal,
@@ -232,8 +232,8 @@ class GlowTTS(nn.Module):
         max_tgt_length = torch.max(tgt_length).item()
         tgt_padding_mask = self.create_length_padding_mask(tgt_length, max_length=max_tgt_length)
 
-        # TODO: explicit permutation
-        tgt_latent = tgt_latent.permute(0, 2, 1).contiguous()
+        if self.transform_middle is not None:
+            tgt_latent = self.transform_middle(tgt_latent)
 
         # tgt_latent: Latent variables of (batch_size, max_length, num_features),
         #    where num_features is typically number of bins in MelSpectrogram.
