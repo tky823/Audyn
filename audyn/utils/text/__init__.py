@@ -68,7 +68,7 @@ class TextPreprocessor(nn.Module):
         self.phonemizer = phonemizer
         self.indexer = indexer
 
-    def __call__(
+    def forward(
         self, text: str, return_type: Union[str, type] = "tensor"
     ) -> Union[List[str], torch.Tensor]:
         """Transform text to index sequence.
