@@ -34,6 +34,22 @@ def search_monotonic_alignment_by_viterbi(
             # Set log(p(x)) as -inf.
             probs = probs.masked_fill(padding_mask, -float("inf"))
 
-    hard_alignment = monotonic_align_cpp.search_monotonic_alignment_by_viterbi(probs, take_log)
+        non_padding_mask = torch.logical_not(padding_mask).long()
+
+        sum_non_padding_mask = torch.sum(non_padding_mask, dim=2)
+        tgt_length = torch.count_nonzero(sum_non_padding_mask, dim=1)
+
+        sum_non_padding_mask = torch.sum(non_padding_mask, dim=1)
+        src_length = torch.count_nonzero(sum_non_padding_mask, dim=1)
+    else:
+        batch_size, max_tgt_length, max_src_length = probs.size()
+        factory_kwargs = {"device": probs.device, "dtype": torch.long}
+
+        tgt_length = torch.full((batch_size,), max_tgt_length, **factory_kwargs)
+        src_length = torch.full((batch_size,), max_src_length, **factory_kwargs)
+
+    hard_alignment = monotonic_align_cpp.search_monotonic_alignment_by_viterbi(
+        probs, tgt_length, src_length, take_log
+    )
 
     return hard_alignment
