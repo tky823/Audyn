@@ -6,7 +6,10 @@ exp_dir="./exp"
 tag=""
 continue_from=""
 
+dump_format="torch"
+
 system="defaults"
+preprocess="ljspeech_text-to-feat"
 data="ljspeech_text-to-feat"
 train="glowtts"
 model="glowtts"
