@@ -2,35 +2,33 @@ import os
 from concurrent.futures import ProcessPoolExecutor
 from typing import Dict, List
 
+import hydra
 import torch
 import torchaudio
 import torchaudio.functional as aF
 import torchaudio.transforms as aT
-import torchtext
 from omegaconf import DictConfig
 from tqdm import tqdm
 
 import audyn
 from audyn.utils.data.cmudict import BOS_SYMBOL, BREAK_SYMBOLS, EOS_SYMBOL
-from audyn.utils.textgrid import load_textgrid
+from audyn.utils.text import TextPreprocessor, load_text
 
 
 @audyn.main()
 def main(config: DictConfig) -> None:
     list_path = config.preprocess.list_path
     wav_dir = config.preprocess.wav_dir
-    textgrid_dir = config.preprocess.textgrid_dir
+    text_dir = config.preprocess.text_dir
     feature_dir = config.preprocess.feature_dir
-    symbols_path = config.preprocess.symbols_path
 
     assert list_path is not None, "Specify preprocess.list_path."
     assert wav_dir is not None, "Specify preprocess.wav_dir."
-    assert textgrid_dir is not None, "Specify preprocess.textgrid_dir."
+    assert text_dir is not None, "Specify preprocess.text_dir."
     assert feature_dir is not None, "Specify preprocess.feature_dir."
-    assert symbols_path is not None, "Specify preprocess.symbols_path."
 
     melspectrogram_transform = aT.MelSpectrogram(**config.data.melspectrogram)
-    vocab = torch.load(symbols_path, map_location=lambda storage, loc: storage)
+    text_preprocessor = hydra.utils.instantiate(config.data.text.preprocessor)
 
     os.makedirs(feature_dir, exist_ok=True)
 
@@ -44,17 +42,17 @@ def main(config: DictConfig) -> None:
                 for line in f:
                     filename = line.strip()
                     wav_path = os.path.join(wav_dir, f"{filename}.wav")
-                    textgrid_path = os.path.join(textgrid_dir, f"{filename}.TextGrid")
+                    text_path = os.path.join(text_dir, f"{filename}.txt")
                     feature_path = os.path.join(feature_dir, f"{filename}.pth")
 
                     future = executor.submit(
                         process,
                         filename=filename,
                         wav_path=wav_path,
-                        textgrid_path=textgrid_path,
+                        text_path=text_path,
                         feature_path=feature_path,
                         melspectrogram_transform=melspectrogram_transform,
-                        vocab=vocab,
+                        text_preprocessor=text_preprocessor,
                     )
                     futures.append(future)
 
@@ -65,33 +63,33 @@ def main(config: DictConfig) -> None:
             for line in tqdm(f):
                 filename = line.strip()
                 wav_path = os.path.join(wav_dir, f"{filename}.wav")
-                textgrid_path = os.path.join(textgrid_dir, f"{filename}.TextGrid")
+                text_path = os.path.join(text_dir, f"{filename}.txt")
                 feature_path = os.path.join(feature_dir, f"{filename}.pth")
 
                 process(
                     filename=filename,
                     wav_path=wav_path,
-                    textgrid_path=textgrid_path,
+                    text_path=text_path,
                     feature_path=feature_path,
                     melspectrogram_transform=melspectrogram_transform,
-                    vocab=vocab,
+                    text_preprocessor=text_preprocessor,
                 )
 
 
 def process(
     filename: str,
     wav_path: str,
-    textgrid_path: str,
+    text_path: str,
     feature_path: str,
-    melspectrogram_transform: torchaudio.transforms.MelSpectrogram = None,
-    vocab: torchtext.vocab.Vocab = None,
+    melspectrogram_transform: aT.MelSpectrogram = None,
+    text_preprocessor: TextPreprocessor = None,
 ) -> None:
     feature = {}
 
     waveform, sample_rate = torchaudio.load(wav_path)
 
     if sample_rate != melspectrogram_transform.sample_rate:
-        # TODO: torchaudio.transforms.Resample
+        # TODO: aT.Resample
         waveform = aF.resample(waveform, sample_rate, melspectrogram_transform.sample_rate)
         sample_rate = melspectrogram_transform.sample_rate
 
@@ -103,22 +101,12 @@ def process(
     feature["waveform_length"] = torch.tensor(waveform.size(-1), dtype=torch.long)
     feature["melspectrogram_length"] = torch.tensor(melspectrogram.size(-1), dtype=torch.long)
 
-    alignment = load_textgrid(textgrid_path)
-    alignment = postprocess_alignment(alignment)
+    # Text normalization should be applied in advance.
+    normalized_sentence = load_text(text_path)
+    phones = text_preprocessor.index_normalized_text(normalized_sentence, return_type="tensor")
 
-    phones = []
-
-    for data in alignment["phones"]:
-        phones.append(data["text"])
-
-    if phones[-1] in BREAK_SYMBOLS:
-        phones[-1] = EOS_SYMBOL
-    else:
-        phones.append(EOS_SYMBOL)
-
-    phones = vocab(phones)
-    feature["phones"] = torch.tensor(phones, dtype=torch.long)
-    feature["phones_length"] = torch.tensor(feature["phones"].size(-1), dtype=torch.long)
+    feature["phones"] = phones
+    feature["phones_length"] = torch.tensor(phones.size(-1), dtype=torch.long)
     feature["filename"] = filename
 
     feature_dir = os.path.dirname(feature_path)
