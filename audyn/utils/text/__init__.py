@@ -63,6 +63,8 @@ class TextPreprocessor(nn.Module):
         phonemizer: Optional[nn.Module] = None,
         indexer: Optional[nn.Module] = None,
     ) -> None:
+        super().__init__()
+
         self.normalizer = normalizer
         self.tokenizer = tokenizer
         self.phonemizer = phonemizer
@@ -156,7 +158,7 @@ class TextPreprocessor(nn.Module):
         if self.indexer is None:
             indices = phonemes
         else:
-            indices = self.phonemizer(phonemes)
+            indices = self.indexer(phonemes)
 
         if return_type == int or return_type == "int":
             pass
