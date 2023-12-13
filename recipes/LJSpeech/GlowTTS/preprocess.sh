@@ -28,7 +28,6 @@ dump_dir="${dump_root}/${data}"
 list_dir="${dump_dir}/list"
 text_dir="${dump_dir}/text"
 feature_dir="${dump_dir}/feature"
-symbols_path="${dump_dir}/symbols.pth"
 
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     echo "Preprocess stage 1: Split data into training/validation/test"

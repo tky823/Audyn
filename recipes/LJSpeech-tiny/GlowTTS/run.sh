@@ -16,7 +16,7 @@ data_root="../data"
 dump_root="dump"
 
 system="defaults"
-preprocess="glowtts"
+preprocess="ljspeech_text-to-feat"
 data="ljspeech_text-to-feat"
 train="glowtts"
 model="glowtts"
@@ -47,7 +47,7 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
     (
         . ./preprocess.sh \
         --stage 0 \
-        --stop-stage 4 \
+        --stop-stage 3 \
         --data-root "${data_root}" \
         --dump-root "${dump_root}" \
         --preprocess "${preprocess}" \

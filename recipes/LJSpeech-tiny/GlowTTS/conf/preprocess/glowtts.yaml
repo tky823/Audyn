@@ -1,6 +1,0 @@
-list_path:
-wav_dir:
-textgrid_dir:
-feature_dir:
-symbols_path:
-max_workers: 16
