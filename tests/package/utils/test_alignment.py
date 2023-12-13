@@ -56,7 +56,9 @@ def test_search_monotonic_alignment_by_viterbi(take_log: bool) -> None:
     if not take_log:
         probs = torch.log(probs)
 
-    hard_alignments = search_monotonic_alignment_by_viterbi(probs, take_log=take_log)
+    hard_alignments = search_monotonic_alignment_by_viterbi(
+        probs, padding_mask=padding_mask, take_log=take_log
+    )
 
     for hard_alignment, tgt_length, src_length in zip(hard_alignments, tgt_lengths, src_lengths):
         hard_alignment = F.pad(
