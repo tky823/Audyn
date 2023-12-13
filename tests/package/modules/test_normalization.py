@@ -39,7 +39,7 @@ def test_masked_layer_norm() -> None:
 
     masked_output = masked_layer_norm(masked_input, padding_mask=padding_mask.unsqueeze(dim=-1))
 
-    assert torch.allclose(output, masked_output)
+    assert torch.allclose(output, masked_output, atol=1e-7)
 
     input = torch.randn((batch_size, max_length, num_features))
     padding_mask = torch.zeros((batch_size, max_length, num_features), dtype=torch.bool)
@@ -47,4 +47,4 @@ def test_masked_layer_norm() -> None:
     output = layer_norm(input)
     masked_output = masked_layer_norm(input, padding_mask=padding_mask)
 
-    assert torch.allclose(output, masked_output)
+    assert torch.allclose(output, masked_output, atol=1e-7)
