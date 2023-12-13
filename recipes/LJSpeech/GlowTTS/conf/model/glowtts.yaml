@@ -57,3 +57,5 @@ duration_predictor:
 length_regulator:
   _target_: audyn.models.fastspeech.LengthRegulator
   batch_first: ${..encoder.backbone.batch_first}
+transform_middle:
+  _target_: audyn.models.text_to_wave.FastSpeechWaveNetBridge
