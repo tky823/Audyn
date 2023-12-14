@@ -1,0 +1,77 @@
+defaults:
+  - record: glowtts
+  - _self_
+
+dataset:
+  train:
+    _target_: audyn.utils.data.dataset.SortableTorchObjectDataset
+    list_path:
+    feature_dir:
+    sort_key: waveform
+  validation:
+    _target_: audyn.utils.data.dataset.TorchObjectDataset
+    list_path:
+    feature_dir:
+
+dataloader:
+  train:
+    _target_: audyn.utils.data.SequentialBatchDataLoader
+    batch_size: 32
+    shuffle: true
+    seed: ${system.seed}
+  validation:
+    _target_: torch.utils.data.DataLoader
+    batch_size: 1
+    shuffle: false
+
+key_mapping:
+  train:
+    input:
+      src: phones
+      tgt: melspectrogram
+      src_length: phones_length
+      tgt_length: melspectrogram_length
+    output:
+      - - src_latent
+        - tgt_latent
+      - - log_est_duration
+        - ml_duration
+      - - src_padding_mask
+        - tgt_padding_mask
+      - logdet
+  validation: ${.train}
+  inference:
+    input:
+      src: phones
+      src_length: phones_length
+    output:
+      - estimated_melspectrogram
+      - estimated_duration
+
+clip_gradient:
+  _target_: audyn.utils.GradClipper
+  mode: norm
+  max_norm: 1
+
+resume:
+  continue_from:
+
+output:
+  exp_dir: "./exp"
+  tensorboard_dir: "./tensorboard"
+  save_checkpoint:
+    iteration:
+      every: 200000
+      path: ${...exp_dir}/model/iteration{iteration}.pth
+    epoch:
+      every: 2000
+      path: ${...exp_dir}/model/epoch{epoch}.pth
+    last:
+      path: ${...exp_dir}/model/last.pth
+    best_epoch:
+      path: ${...exp_dir}/model/best_epoch.pth
+
+steps:
+  epochs: 10000
+  iterations:
+  lr_scheduler:

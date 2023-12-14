@@ -5,7 +5,7 @@ from omegaconf import DictConfig
 from torchtext.vocab import build_vocab_from_iterator
 
 import audyn
-from audyn.utils.data.cmudict import BREAK_SYMBOLS, SPECIALS, symbols
+from audyn.utils.data.cmudict import SPECIALS, full_symbols
 
 
 @audyn.main()
@@ -17,7 +17,7 @@ def main(config: DictConfig) -> None:
     symbols_dir = os.path.dirname(symbols_path)
     os.makedirs(symbols_dir, exist_ok=True)
 
-    vocab = build_vocab_from_iterator([symbols + BREAK_SYMBOLS], specials=SPECIALS)
+    vocab = build_vocab_from_iterator([full_symbols], specials=SPECIALS)
 
     assert (
         len(vocab) == config.data.text.vocab_size

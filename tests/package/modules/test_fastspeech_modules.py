@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from audyn.modules.fastspeech import ConvBlock, FFTrBlock, MultiheadAttentionBlock
+from audyn.modules.fastspeech import ConvBlock, FFTrBlock, MultiheadSelfAttentionBlock
 
 parameters_batch_first = [True, False]
 
@@ -83,7 +83,7 @@ def test_mha_block():
     key_padding_mask = time_seq >= length.unsqueeze(dim=-1)
     causal_mask = time_seq > time_seq.unsqueeze(dim=-1)
 
-    module = MultiheadAttentionBlock(embed_dim, num_heads=num_heads, batch_first=True)
+    module = MultiheadSelfAttentionBlock(embed_dim, num_heads=num_heads, batch_first=True)
     output, attn_weights = module(input)
 
     assert output.size() == (batch_size, max_length, embed_dim)

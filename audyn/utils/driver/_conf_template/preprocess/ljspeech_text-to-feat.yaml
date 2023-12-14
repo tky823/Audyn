@@ -1,0 +1,6 @@
+defaults:
+  - text-to-feat
+  - _self_
+
+metadata_path:
+text_dir:

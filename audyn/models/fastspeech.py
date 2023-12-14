@@ -6,21 +6,38 @@ import torch.nn as nn
 
 from ..modules.fastspeech import FFTrBlock
 from ..utils.alignment import expand_by_duration
+from ..utils.duration import transform_log_duration
 
 __all__ = ["FastSpeech", "MultiSpeakerFastSpeech", "LengthRegulator"]
 
 
 class FastSpeech(nn.Module):
+    """FastSpeech proposed in 'FastSpeech: Fast, robust and controllable text to speech.'
+
+    Args:
+        encoder (nn.Module): Encoder to transform text embeddings to
+            token-lavel latent representations.
+        decoder (nn.Module): Decoder to transform frame-level latent representations.
+        duration_predictor (nn.Module): Duration predictor to predict duration
+            from token-level latent representations.
+        length_regulator (nn.Module): Length regulator to control scale of length.
+        batch_first (bool): If ``True``, tensors are treated as (batch_size, length, num_features).
+            Otherwise, treated as (length, batch_size, num_features). Default: ``False``.
+
+    """
+
     def __init__(
         self,
         encoder: nn.Module,
         decoder: nn.Module,
+        duration_predictor: nn.Module,
         length_regulator: nn.Module,
         batch_first: bool = False,
     ):
         super().__init__()
 
         self.encoder = encoder
+        self.duration_predictor = duration_predictor
         self.length_regulator = length_regulator
         self.decoder = decoder
 
@@ -53,13 +70,10 @@ class FastSpeech(nn.Module):
             src_key_padding_mask = duration == 0
 
         h_src = self.encoder(src, src_key_padding_mask=src_key_padding_mask)
-        h_tgt, log_est_duration = self.length_regulator(
-            h_src,
-            duration=duration,
-            max_length=max_length,
-        )
+        log_est_duration = self.duration_predictor(h_src)
 
         if duration is None:
+            # Estimated duration is used.
             if hasattr(self.length_regulator, "min_duration"):
                 min_duration = self.length_regulator.min_duration
             else:
@@ -70,14 +84,22 @@ class FastSpeech(nn.Module):
             else:
                 max_duration = None
 
-            linear_est_duration = _transform_log_duration(
-                log_est_duration, min_duration=min_duration, max_duration=max_duration
+            linear_est_duration = transform_log_duration(
+                log_est_duration,
+                min_duration=min_duration,
+                max_duration=max_duration,
             )
 
             if src_key_padding_mask is not None:
                 linear_est_duration = linear_est_duration.masked_fill(src_key_padding_mask, 0)
         else:
             linear_est_duration = duration
+
+        h_tgt, _ = self.length_regulator(
+            h_src,
+            duration=linear_est_duration,
+            max_length=max_length,
+        )
 
         tgt_duration = linear_est_duration.sum(dim=1)
         max_tgt_duration = torch.max(tgt_duration)
@@ -129,6 +151,7 @@ class MultiSpeakerFastSpeech(FastSpeech):
         self,
         encoder: nn.Module,
         decoder: nn.Module,
+        duration_predictor: nn.Module,
         length_regulator: nn.Module,
         speaker_encoder: nn.Module,
         blend_type: str = "add",
@@ -140,6 +163,7 @@ class MultiSpeakerFastSpeech(FastSpeech):
 
         self.speaker_encoder = speaker_encoder
         self.encoder = encoder
+        self.duration_predictor = duration_predictor
         self.length_regulator = length_regulator
         self.decoder = decoder
 
@@ -177,13 +201,10 @@ class MultiSpeakerFastSpeech(FastSpeech):
         spk_emb = self.speaker_encoder(speaker)
         h_src = self.encoder(src, src_key_padding_mask=src_key_padding_mask)
         h_src = self.blend_embeddings(h_src, spk_emb)
-        h_tgt, log_est_duration = self.length_regulator(
-            h_src,
-            duration=duration,
-            max_length=max_length,
-        )
+        log_est_duration = self.duration_predictor(h_src)
 
         if duration is None:
+            # Estimated duration is used.
             if hasattr(self.length_regulator, "min_duration"):
                 min_duration = self.length_regulator.min_duration
             else:
@@ -194,14 +215,22 @@ class MultiSpeakerFastSpeech(FastSpeech):
             else:
                 max_duration = None
 
-            linear_est_duration = _transform_log_duration(
-                log_est_duration, min_duration=min_duration, max_duration=max_duration
+            linear_est_duration = transform_log_duration(
+                log_est_duration,
+                min_duration=min_duration,
+                max_duration=max_duration,
             )
 
             if src_key_padding_mask is not None:
                 linear_est_duration = linear_est_duration.masked_fill(src_key_padding_mask, 0)
         else:
             linear_est_duration = duration
+
+        h_tgt, _ = self.length_regulator(
+            h_src,
+            duration=linear_est_duration,
+            max_length=max_length,
+        )
 
         tgt_duration = linear_est_duration.sum(dim=1)
         max_tgt_duration = torch.max(tgt_duration)
@@ -452,15 +481,12 @@ class Decoder(nn.Module):
 class LengthRegulator(nn.Module):
     def __init__(
         self,
-        duration_predictor: nn.Module,
         pad_value: float = 0,
         batch_first: bool = False,
         min_duration: int = 1,
         max_duration: Optional[int] = None,
     ) -> None:
         super().__init__()
-
-        self.duration_predictor = duration_predictor
 
         self.pad_value = pad_value
         self.batch_first = batch_first
@@ -471,63 +497,65 @@ class LengthRegulator(nn.Module):
         self,
         sequence: torch.Tensor,
         duration: Optional[torch.LongTensor] = None,
-        expand_ratio: float = 1,
+        expand_scale: float = 1,
         padding_mask: Optional[torch.BoolTensor] = None,
         max_length: Optional[int] = None,
-    ):
+    ) -> Tuple[torch.Tensor, torch.LongTensor]:
+        """Forward pass of length regulator.
+
+        Args:
+            sequence (torch.Tensor): Input sequence of shape (batch_size, length, *)
+                if ``self.batch_first=True``. Otherwise, (length, batch_size, *).
+            duration (torch.LongTensor): Duration of each input token
+                of shape (batch_size, length).
+            expand_scale (float): Parameter to control scale of duration. Default: ``1``.
+            padding_mask (torch.BoolTensor, optional): Padding mask
+                of shape (batch_size, length).
+            max_length (int, optional): Maximum length of output sequence
+                to avoid out-of-memory.
+
+        Returns:
+            tuple: Tuple of tensors containing
+
+                - torch.Tensor: Expanded sequence.
+                - torch.Tensor: Scaled duration.
+
+        """
         pad_value = self.pad_value
         batch_first = self.batch_first
 
-        log_est_duration = self.duration_predictor(sequence, padding_mask=padding_mask)
+        scaled_duration = expand_scale * duration
+        scaled_duration = scaled_duration.float()
+        scaled_duration = torch.clip(
+            scaled_duration,
+            min=self.min_duration,
+            max=self.max_duration,
+        )
+        scaled_duration = torch.round(scaled_duration)
+        scaled_duration = scaled_duration.long()
 
-        if duration is None:
-            linear_est_duration = _transform_log_duration(
-                log_est_duration, min_duration=self.min_duration, max_duration=self.max_duration
-            )
+        # set 0 to cancel out self.min_duration
+        zero_padding_mask = duration == 0
+        scaled_duration = scaled_duration.masked_fill(zero_padding_mask, 0)
 
-            if padding_mask is not None:
-                linear_est_duration = linear_est_duration.masked_fill(padding_mask, 0)
+        if padding_mask is not None:
+            # Unsqueeze padding mask
+            padding_mask_shape = sequence.size()[:2]
+            num_feature_dims = sequence.dim() - len(padding_mask_shape)
+            unsqueezed_padding_mask_shape = padding_mask_shape + (1,) * num_feature_dims
+            unsqueezed_padding_mask = padding_mask.view(*unsqueezed_padding_mask_shape)
+            sequence = sequence.masked_fill(unsqueezed_padding_mask, value=self.pad_value)
 
-            alignment = expand_by_duration(
-                sequence,
-                linear_est_duration.long(),
-                pad_value=pad_value,
-                batch_first=batch_first,
-                max_length=max_length,
-            )
-        else:
-            duration = torch.round(expand_ratio * duration.float())
-            alignment = expand_by_duration(
-                sequence,
-                duration.long(),
-                pad_value=pad_value,
-                batch_first=batch_first,
-                max_length=max_length,
-            )
+        expanded_sequence = expand_by_duration(
+            sequence,
+            scaled_duration,
+            pad_value=pad_value,
+            batch_first=batch_first,
+            max_length=max_length,
+        )
 
-        return alignment, log_est_duration
+        return expanded_sequence, scaled_duration
 
 
 def _get_clones(module, N) -> nn.ModuleList:
     return nn.ModuleList([copy.deepcopy(module) for _ in range(N)])
-
-
-def _transform_log_duration(
-    log_duration: torch.Tensor, min_duration: int = 1, max_duration: Optional[int] = None
-) -> torch.Tensor:
-    """Transform log-duration to linear-duration.
-
-    Args:
-        log_duration (torch.Tensor): Duration in log-domain.
-        min_duration (int): Min duration in linear domain. Default: ``1``.
-        max_duration (int, optional): Max duration in linear domain. Default: ``None``.
-
-    Returns:
-        torch.Tensor: Duration in linear-domain.
-
-    """
-    linear_duration = torch.exp(log_duration)
-    linear_duration = torch.round(linear_duration.detach())
-    linear_duration = torch.clip(linear_duration, min=min_duration, max=max_duration)
-
-    return linear_duration

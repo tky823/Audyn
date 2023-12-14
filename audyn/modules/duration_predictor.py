@@ -95,7 +95,10 @@ class ConvBlock(nn.Module):
         assert kernel_size % 2 == 1, "Kernel size should be odd."
 
         self.conv1d = nn.Conv1d(
-            in_channels, out_channels, kernel_size=kernel_size, stride=1, bias=False
+            in_channels,
+            out_channels,
+            kernel_size=kernel_size,
+            stride=1,
         )
         self.activation1d = nn.ReLU()
         self.norm1d = nn.LayerNorm(out_channels)

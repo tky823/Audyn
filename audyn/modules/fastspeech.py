@@ -5,6 +5,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from packaging import version
 
+from .activation import MultiheadSelfAttention
+from .normalization import MaskedLayerNorm
+
 IS_TORCH_LT_1_11 = version.parse(torch.__version__) < version.parse("1.11")
 
 
@@ -19,8 +22,6 @@ class FFTrBlock(nn.Module):
         bias: bool = True,
         add_bias_kv: bool = False,
         add_zero_attn: bool = False,
-        kdim: Optional[int] = None,
-        vdim: Optional[int] = None,
         batch_first: bool = False,
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
@@ -32,15 +33,13 @@ class FFTrBlock(nn.Module):
             "dtype": dtype,
         }
 
-        self.mha = MultiheadAttentionBlock(
+        self.mha = MultiheadSelfAttentionBlock(
             d_model,
             num_heads,
             dropout=dropout,
             bias=bias,
             add_bias_kv=add_bias_kv,
             add_zero_attn=add_zero_attn,
-            kdim=kdim,
-            vdim=vdim,
             batch_first=batch_first,
             **factory_kwargs,
         )
@@ -167,10 +166,9 @@ class ConvBlock(nn.Module):
             num_features,
             kernel_size=k2,
             stride=1,
-            bias=False,
             **factory_kwargs,
         )
-        self.layer_norm = nn.LayerNorm(num_features, **factory_kwargs)
+        self.layer_norm = MaskedLayerNorm(num_features, **factory_kwargs)
         self.dropout = nn.Dropout(dropout)
 
         self.kernel_size = kernel_size
@@ -221,7 +219,12 @@ class ConvBlock(nn.Module):
         x = self.dropout(x)
         x = x + residual
         x = x.permute(0, 2, 1)
-        x = self.layer_norm(x)
+
+        if padding_mask is None:
+            x = self.layer_norm(x)
+        else:
+            x = self.layer_norm(x, padding_mask=padding_mask.permute(0, 2, 1))
+
         x = x.permute(0, 2, 1)
         output = self._apply_mask(x, padding_mask=padding_mask)
 
@@ -239,7 +242,7 @@ class ConvBlock(nn.Module):
         return output
 
 
-class MultiheadAttentionBlock(nn.Module):
+class MultiheadSelfAttentionBlock(nn.Module):
     def __init__(
         self,
         embed_dim: int,
@@ -248,8 +251,6 @@ class MultiheadAttentionBlock(nn.Module):
         bias: bool = True,
         add_bias_kv: bool = False,
         add_zero_attn: bool = False,
-        kdim: Optional[int] = None,
-        vdim: Optional[int] = None,
         batch_first: bool = False,
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
@@ -261,20 +262,18 @@ class MultiheadAttentionBlock(nn.Module):
             "dtype": dtype,
         }
 
-        self.mha = nn.MultiheadAttention(
+        self.mha = MultiheadSelfAttention(
             embed_dim,
             num_heads,
             dropout=dropout,
             bias=bias,
             add_bias_kv=add_bias_kv,
             add_zero_attn=add_zero_attn,
-            kdim=kdim,
-            vdim=vdim,
             batch_first=batch_first,
             **factory_kwargs,
         )
 
-        self.layer_norm = nn.LayerNorm(embed_dim)
+        self.layer_norm = MaskedLayerNorm(embed_dim, **factory_kwargs)
         self.dropout = nn.Dropout(dropout)
 
         self.batch_first = batch_first
@@ -341,18 +340,22 @@ class MultiheadAttentionBlock(nn.Module):
         else:
             kwargs = {"average_attn_weights": average_attn_weights}
 
+        # TODO: version-dependent kwargs
         attn_output, attn_weights = self.mha(
             x,
-            x,
-            x,
-            key_padding_mask=key_padding_mask,
+            padding_mask=key_padding_mask,
             need_weights=True,
             attn_mask=attn_mask,
             **kwargs,
         )
         attn_output = self._apply_mask(attn_output, padding_mask=padding_mask)
         x = self.dropout(attn_output)
-        x = self.layer_norm(x + residual)
+
+        if padding_mask is None:
+            x = self.layer_norm(x + residual)
+        else:
+            x = self.layer_norm(x + residual, padding_mask=padding_mask.unsqueeze(dim=-1))
+
         output = self._apply_mask(x, padding_mask=padding_mask)
 
         if need_weights:

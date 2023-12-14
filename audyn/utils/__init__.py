@@ -29,6 +29,7 @@ from .hydra.utils import (
 from .logging import get_logger
 
 __all__ = [
+    "audyn_cache_dir",
     "setup_system",
     "convert_dataloader_to_ddp_if_possible",
     "convert_dataset_and_dataloader_format_if_necessary",
@@ -41,6 +42,9 @@ __all__ = [
     "GradClipper",
     "GANGradClipper",
 ]
+
+
+audyn_cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "audyn")
 
 
 def setup_system(config: DictConfig) -> None:

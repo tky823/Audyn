@@ -28,21 +28,12 @@ fi
 
 feature_dir="${exp_dir}/${tag}/prior"
 
-is_distributed=$(
-    python ../../_common/is_distributed.py \
+cmd=$(
+    python ../../_common/parse_run_command.py \
     --config-dir "./conf" \
     hydra.run.dir="./log/$(date +"%Y%m%d-%H%M%S")" \
     system="${system}"
 )
-
-if [ "${is_distributed}" = "true" ]; then
-    nproc_per_node=$(
-        python -c "import torch; print(torch.cuda.device_count())"
-    )
-    cmd="torchrun --standalone --nnodes=1 --nproc_per_node=${nproc_per_node}"
-else
-    cmd="python"
-fi
 
 ${cmd} ./local/train_pixelcnn.py \
 --config-dir "./conf" \

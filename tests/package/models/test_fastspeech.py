@@ -12,6 +12,7 @@ from audyn.models.fastspeech import (
 from audyn.modules.duration_predictor import FastSpeechDurationPredictor
 from audyn.modules.fastspeech import FFTrBlock
 from audyn.modules.positional_encoding import AbsolutePositionalEncoding
+from audyn.utils.duration import transform_log_duration
 
 parameters_batch_first = [True, False]
 
@@ -80,8 +81,14 @@ def test_fastspeech(batch_first: bool):
     duration_predictor = FastSpeechDurationPredictor(
         num_features, kernel_size=kernel_size, batch_first=batch_first
     )
-    length_regulator = LengthRegulator(duration_predictor, batch_first=batch_first)
-    model = FastSpeech(encoder, decoder, length_regulator, batch_first=batch_first)
+    length_regulator = LengthRegulator(batch_first=batch_first)
+    model = FastSpeech(
+        encoder,
+        decoder,
+        duration_predictor,
+        length_regulator,
+        batch_first=batch_first,
+    )
 
     # w/o duration
     output, log_est_duration = model(input)
@@ -174,13 +181,14 @@ def test_multispk_fastspeech(batch_first: bool):
     duration_predictor = FastSpeechDurationPredictor(
         num_features, kernel_size=kernel_size, batch_first=batch_first
     )
-    length_regulator = LengthRegulator(duration_predictor, batch_first=batch_first)
+    length_regulator = LengthRegulator(batch_first=batch_first)
     speaker_encoder = nn.Embedding(
         num_embeddings=num_speakers, embedding_dim=d_model, padding_idx=padding_idx
     )
     model = MultiSpeakerFastSpeech(
         encoder,
         decoder,
+        duration_predictor,
         length_regulator,
         speaker_encoder=speaker_encoder,
         batch_first=batch_first,
@@ -354,8 +362,12 @@ def test_length_regulator(batch_first: bool):
     duration_predictor = FastSpeechDurationPredictor(
         num_features, kernel_size=kernel_size, batch_first=batch_first
     )
-    length_regulator = LengthRegulator(duration_predictor, batch_first=batch_first)
-    output, log_est_duration = length_regulator(input, padding_mask=padding_mask)
+    length_regulator = LengthRegulator(batch_first=batch_first)
+    log_est_diration = duration_predictor(input)
+    linear_est_diration = transform_log_duration(log_est_diration)
+    output, log_est_duration = length_regulator(
+        input, linear_est_diration, padding_mask=padding_mask
+    )
 
     if batch_first:
         assert output.size(0) == batch_size

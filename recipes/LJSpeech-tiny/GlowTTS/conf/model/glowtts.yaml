@@ -1,0 +1,59 @@
+_target_: audyn.models.glowtts.GlowTTS
+encoder:
+  _target_: audyn.models.glowtts.TextEncoder
+  word_embedding:
+    _target_: torch.nn.Embedding
+    num_embeddings: ${data.text.vocab_size}
+    embedding_dim: 8
+    padding_idx: 0
+  backbone:
+    _target_: audyn.models.glowtts.GlowTTSTransformerEncoder
+    encoder_layer:
+      _target_: audyn.modules.fastspeech.FFTrBlock
+      d_model: ${...word_embedding.embedding_dim}
+      hidden_channels: 8
+      num_heads: 2
+      kernel_size:
+        - 3
+        - 3
+      dropout: 1.0e-1
+      batch_first: ${..batch_first}
+    num_layers: 2
+    batch_first: true
+  proj_mean:
+    _target_: torch.nn.Linear
+    in_features: ${..backbone.encoder_layer.d_model}
+    out_features: ${data.melspectrogram.n_mels}
+  proj_std:
+    _target_: torch.nn.Linear
+    in_features: ${..backbone.encoder_layer.d_model}
+    out_features: ${data.melspectrogram.n_mels}
+decoder:
+  _target_: audyn.models.glowtts.Decoder
+  in_channels: ${data.melspectrogram.n_mels}
+  hidden_channels: 16
+  skip_channels: 8
+  num_flows: 2
+  num_layers: 3
+  num_splits: 2
+  down_scale: 2
+  kernel_size: 3
+  bias: true
+  causal: false
+  conv: gated
+  weight_norm: true
+duration_predictor:
+  _target_: audyn.modules.duration_predictor.FastSpeechDurationPredictor
+  num_features:
+    - ${...encoder.word_embedding.embedding_dim}
+    - 2
+    - 2
+  kernel_size: 3
+  dropout: 1.0e-1
+  stop_gradient: true
+  batch_first: ${..encoder.backbone.batch_first}
+length_regulator:
+  _target_: audyn.models.fastspeech.LengthRegulator
+  batch_first: ${..encoder.backbone.batch_first}
+transform_middle:
+  _target_: audyn.models.text_to_wave.FastSpeechWaveNetBridge

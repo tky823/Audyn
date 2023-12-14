@@ -3,7 +3,7 @@ import torch
 import torch.nn.functional as F
 
 from audyn.utils.alignment import expand_by_duration
-from audyn.utils.alignment.monotonic_align import viterbi_monotonic_alignment
+from audyn.utils.alignment.monotonic_align import search_monotonic_alignment_by_viterbi
 
 
 def test_expand_by_duration():
@@ -36,7 +36,7 @@ def test_expand_by_duration():
 
 
 @pytest.mark.parametrize("take_log", [True, False])
-def test_viterbi_monotonic_alignment(take_log: bool) -> None:
+def test_search_monotonic_alignment_by_viterbi(take_log: bool) -> None:
     torch.manual_seed(0)
 
     batch_size = 4
@@ -56,7 +56,9 @@ def test_viterbi_monotonic_alignment(take_log: bool) -> None:
     if not take_log:
         probs = torch.log(probs)
 
-    hard_alignments = viterbi_monotonic_alignment(probs, take_log=take_log)
+    hard_alignments = search_monotonic_alignment_by_viterbi(
+        probs, padding_mask=padding_mask, take_log=take_log
+    )
 
     for hard_alignment, tgt_length, src_length in zip(hard_alignments, tgt_lengths, src_lengths):
         hard_alignment = F.pad(
