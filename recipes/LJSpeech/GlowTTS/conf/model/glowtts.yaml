@@ -47,7 +47,7 @@ decoder:
 duration_predictor:
   _target_: audyn.modules.duration_predictor.FastSpeechDurationPredictor
   num_features:
-    - ${....encoder.word_embedding.embedding_dim}
+    - ${...encoder.word_embedding.embedding_dim}
     - 256
     - 256
   kernel_size: 3
