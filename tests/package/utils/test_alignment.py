@@ -6,7 +6,8 @@ from audyn.utils.alignment import expand_by_duration
 from audyn.utils.alignment.monotonic_align import search_monotonic_alignment_by_viterbi
 
 
-def test_expand_by_duration():
+@pytest.mark.parametrize("feature_dim", [0, 1])
+def test_expand_by_duration(feature_dim: int) -> None:
     src = torch.tensor(
         [
             [[1, -1], [2, -2], [3, -3], [0, 0]],
@@ -23,12 +24,25 @@ def test_expand_by_duration():
             [[6, -6], [7, -7], [8, -8], [8, -8], [8, -8], [9, -9], [9, -9], [0, 0], [0, 0]],
         ]
     )
+
+    if feature_dim > 0:
+        # to test (batch_size, src_length, *shape) as sequence
+        pass
+    else:
+        # to test (batch_size, src_length) as sequence
+        src = src[..., 0]
+        tgt = tgt[..., 0]
+
     est = expand_by_duration(src, duration, batch_first=True)
 
     assert torch.all(est == tgt)
 
     max_length = tgt.size(1) + 1
-    tgt = F.pad(tgt, (0, 0, 0, 1))
+
+    if feature_dim > 0:
+        tgt = F.pad(tgt, (0, 0, 0, 1))
+    else:
+        tgt = F.pad(tgt, (0, 1))
 
     est = expand_by_duration(src, duration, batch_first=True, max_length=max_length)
 
