@@ -14,6 +14,7 @@ from ..modules.glowtts import (
     MaskedWaveNetAffineCoupling,
 )
 from ..modules.normalization import MaskedLayerNorm
+from ..utils.alignment import expand_by_duration
 from ..utils.alignment.monotonic_align import search_monotonic_alignment_by_viterbi
 from ..utils.duration import transform_log_duration
 from .fastspeech import _get_clones
@@ -60,6 +61,10 @@ class GlowTTS(nn.Module):
     ]:
         """Forward pass of GlowTTS.
 
+        .. note::
+
+            Only ``batch_first=True`` is supported.
+
         Args:
             src (torch.Tensor): Source feature of shape (batch_size, src_length).
             tgt (torch.Tensor): Target feature of shape (batch_size, in_channels, src_length).
@@ -82,6 +87,7 @@ class GlowTTS(nn.Module):
         """
         # Log-determinant is required for forward pass.
         logdet = 0
+        batch_first = True
 
         if src_length is None:
             src_padding_mask = None
@@ -142,6 +148,9 @@ class GlowTTS(nn.Module):
             normal,
             padding_mask=mas_padding_mask,
         )
+        # NOTE: self.length_regulator may apply clipping of ml_duration,
+        #       so use expand_by_duration here.
+        log_prob_z = expand_by_duration(log_prob_z, ml_duration, batch_first=batch_first)
         logdet = log_prob_z.sum(dim=-1) + z_logdet
 
         latent = src_latent, tgt_latent
@@ -271,7 +280,7 @@ class GlowTTS(nn.Module):
             tuple: Tuple of tensors containing
 
                 - torch.Tensor: Maximum log-likelihood of p(z) of
-                    shape (batch_size, tgt_length, src_length).
+                    shape (batch_size, src_length).
                 - torch.LongTensor: Duration in linear-domain of
                     shape (batch_size, src_length).
 
