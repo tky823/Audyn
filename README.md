@@ -23,6 +23,14 @@ pip install -e ".[recipes]"
 
 If you use MacOS, you may need to set `MACOSX_DEPLOYMENT_TARGET` during installation to build C++ related modules.
 
+We use [C++ extension](https://pytorch.org/tutorials/advanced/cpp_extension.html) to search monotonic alignment in some models (e.g. GlowTTS).
+To take full advantage of computational efficiency, set appropriate value of `OMP_NUM_THREADS` during installation:
+
+```shell
+# In Audyn/
+OMP_NUM_THREADS=<SUITABLE/VALUE/FOR/ENVIRONMENT> pip install -e "."
+```
+
 ## Development
 ```shell
 # In Audyn/
