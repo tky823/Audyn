@@ -96,6 +96,8 @@ def collate_fn(
         },
     )
 
+    return dict_batch
+
 
 if __name__ == "__main__":
     main()
