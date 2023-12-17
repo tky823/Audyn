@@ -149,9 +149,6 @@ class MaskedActNorm1d(ActNorm1d):
             output, logdet = super()._forward(input, logdet=logdet)
         else:
             expanded_padding_mask = _expand_padding_mask(padding_mask, input)
-            expanded_non_padding_mask = torch.logical_not(expanded_padding_mask)
-            # count elements per batch dimension
-            num_elements = expanded_non_padding_mask.sum(dim=(1, 2))
 
             log_std = self.log_std.unsqueeze(dim=-1)
             std = torch.exp(log_std)
@@ -162,7 +159,7 @@ class MaskedActNorm1d(ActNorm1d):
             if logdet is not None:
                 log_std = log_std.expand(input.size())
                 log_std = log_std.masked_fill(expanded_padding_mask, 0)
-                logdet = logdet - num_elements * log_std.sum(dim=(1, 2))
+                logdet = logdet - log_std.sum(dim=(1, 2))
 
         return output, logdet
 
@@ -176,9 +173,6 @@ class MaskedActNorm1d(ActNorm1d):
             output, logdet = super()._reverse(input, logdet=logdet)
         else:
             expanded_padding_mask = _expand_padding_mask(padding_mask, input)
-            expanded_non_padding_mask = torch.logical_not(expanded_padding_mask)
-            # count elements per batch dimension
-            num_elements = expanded_non_padding_mask.sum(dim=(1, 2))
 
             log_std = self.log_std.unsqueeze(dim=-1)
             std = torch.exp(log_std)
@@ -189,7 +183,7 @@ class MaskedActNorm1d(ActNorm1d):
             if logdet is not None:
                 log_std = log_std.expand(input.size())
                 log_std = log_std.masked_fill(expanded_padding_mask, 0)
-                logdet = logdet + num_elements * log_std.sum(dim=(1, 2))
+                logdet = logdet + log_std.sum(dim=(1, 2))
 
         return output, logdet
 
