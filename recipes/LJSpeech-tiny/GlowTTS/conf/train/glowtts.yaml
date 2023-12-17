@@ -28,7 +28,7 @@ key_mapping:
   train:
     input:
       src: phones
-      tgt: melspectrogram
+      tgt: log_melspectrogram
       src_length: phones_length
       tgt_length: melspectrogram_length
     output:
@@ -45,7 +45,7 @@ key_mapping:
       src: phones
       src_length: phones_length
     output:
-      - estimated_melspectrogram
+      - estimated_log_melspectrogram
       - estimated_duration
 
 clip_gradient:

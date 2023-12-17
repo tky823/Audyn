@@ -5,7 +5,7 @@ spectrogram:
     key_mapping:
       output:
       reference:
-        melspectrogram: "Melspectrogram (iteration)"
+        log_melspectrogram: "Melspectrogram (iteration)"
     transforms:
       output:
       reference:
@@ -16,12 +16,12 @@ spectrogram:
       validation:
         output:
         reference:
-          melspectrogram: "Melspectrogram (epoch)"
+          log_melspectrogram: "Melspectrogram (epoch)"
       inference:
         output:
-          estimated_melspectrogram: "Estimated Melspectrogram of inference (epoch)"
+          estimated_log_melspectrogram: "Estimated Melspectrogram of inference (epoch)"
         reference:
-          melspectrogram: "Melspectrogram of inference (epoch)"
+          log_melspectrogram: "Melspectrogram of inference (epoch)"
     transforms:
       validation: ${...iteration.transforms}
       inference: ${...iteration.transforms}
