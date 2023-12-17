@@ -53,6 +53,8 @@ def test_masked_act_norm1d() -> None:
         logdet=z_logdet,
         reverse=True,
     )
+    mean = z.sum(dim=(0, 2)) / num_elements_per_channel
+    std = torch.sum(z**2, dim=(0, 2)) / num_elements_per_channel
 
     assert output.size() == input.size()
     assert logdet.size() == (batch_size,)
@@ -60,6 +62,8 @@ def test_masked_act_norm1d() -> None:
     assert z_logdet.size() == (batch_size,)
     allclose(output, input)
     allclose(logdet, zeros)
+    allclose(mean, torch.zeros(()), atol=1e-7)
+    allclose(std, torch.ones(()), atol=1e-7)
 
     # w/ 3D padding mask
     batch_size = 4
@@ -108,6 +112,8 @@ def test_masked_act_norm1d() -> None:
         logdet=z_logdet,
         reverse=True,
     )
+    mean = z.sum(dim=(0, 2)) / num_elements_per_channel
+    std = torch.sum(z**2, dim=(0, 2)) / num_elements_per_channel
 
     assert output.size() == input.size()
     assert logdet.size() == (batch_size,)
@@ -115,6 +121,8 @@ def test_masked_act_norm1d() -> None:
     assert z_logdet.size() == (batch_size,)
     allclose(output, input)
     allclose(logdet, zeros)
+    allclose(mean, torch.zeros(()), atol=1e-7)
+    allclose(std, torch.ones(()), atol=1e-7)
 
     # w/o padding mask
     batch_size = 2
@@ -164,6 +172,41 @@ def test_masked_act_norm1d() -> None:
     allclose(masked_z, non_masked_z)
     allclose(masked_output, non_masked_output)
     allclose(masked_logdet, non_masked_logdet)
+    allclose(mean, torch.zeros(()), atol=1e-7)
+    allclose(std, torch.ones(()), atol=1e-7)
+
+    # w/ 2D padding mask, but all False (identical to w/o padding mask)
+    masked_model = MaskedActNorm1d(num_features)
+    non_masked_model = ActNorm1d(num_features)
+
+    input = torch.randn(batch_size, num_features, max_length)
+    padding_mask = torch.full((batch_size, max_length), fill_value=False)
+
+    masked_z = masked_model(input, padding_mask=padding_mask)
+    non_masked_z = non_masked_model(input)
+    mean = masked_z.sum(dim=(0, 2)) / (batch_size * max_length)
+    std = torch.sum(masked_z**2, dim=(0, 2)) / (batch_size * max_length)
+
+    allclose(masked_z, non_masked_z)
+    allclose(mean, torch.zeros(()), atol=1e-7)
+    allclose(std, torch.ones(()), atol=1e-7)
+
+    zeros = torch.zeros((batch_size,))
+
+    masked_z, masked_z_logdet = masked_model(
+        input,
+        padding_mask=padding_mask,
+        logdet=zeros,
+    )
+    non_masked_z, non_masked_z_logdet = non_masked_model(
+        input,
+        logdet=zeros,
+    )
+    mean = masked_z.sum(dim=(0, 2)) / (batch_size * max_length)
+    std = torch.sum(masked_z**2, dim=(0, 2)) / (batch_size * max_length)
+
+    allclose(masked_z, non_masked_z)
+    allclose(masked_z_logdet, non_masked_z_logdet)
     allclose(mean, torch.zeros(()), atol=1e-7)
     allclose(std, torch.ones(()), atol=1e-7)
 
