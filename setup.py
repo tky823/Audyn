@@ -13,7 +13,7 @@ def is_openmp_supported() -> bool:
     is_supported = None
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".cpp", dir=temp_dir) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".cpp", dir=temp_dir, delete=False) as f:
             cpp_text = """
             #include <omp.h>
 
@@ -22,13 +22,14 @@ def is_openmp_supported() -> bool:
             }
             """
             f.write(cpp_text)
-            obj_name = f.name.replace(".cpp", ".out")
 
-            try:
-                subprocess.check_output([compiler, "-fopenmp", f.name, "-o", obj_name])
-                is_supported = True
-            except subprocess.CalledProcessError:
-                is_supported = False
+        obj_name = f.name.replace(".cpp", ".out")
+
+        try:
+            subprocess.check_output([compiler, f.name, "-o", obj_name, "-fopenmp"])
+            is_supported = True
+        except subprocess.CalledProcessError:
+            is_supported = False
 
     if is_supported is None:
         raise RuntimeError("Unexpected error happened while checking if OpenMP is available.")
