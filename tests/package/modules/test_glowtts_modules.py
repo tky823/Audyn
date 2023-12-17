@@ -9,6 +9,7 @@ from audyn.modules.glowtts import (
     MaskedStackedResidualConvBlock1d,
     MaskedWaveNetAffineCoupling,
 )
+from audyn.modules.waveglow import WaveNetAffineCoupling
 
 
 def test_masked_act_norm1d() -> None:
@@ -296,6 +297,51 @@ def test_masked_invertible_pointwise_conv1d() -> None:
     )
 
     allclose(masked_z, non_masked_z)
+    allclose(masked_z_logdet, non_masked_z_logdet)
+    allclose(masked_output, non_masked_output)
+    allclose(masked_logdet, non_masked_logdet)
+
+    # w/ 2D padding mask, but all False (identical to w/o padding mask)
+    masked_model = MaskedInvertiblePointwiseConv1d(num_splits)
+    non_masked_model = InvertiblePointwiseConv1d(num_features)
+    non_masked_model.weight.data.copy_(masked_model.weight.data.detach())
+
+    input = torch.randn(batch_size, num_features, max_length)
+    padding_mask = torch.full((batch_size, max_length), fill_value=False)
+
+    masked_z = masked_model(input, padding_mask=padding_mask)
+    masked_output = masked_model(masked_z, padding_mask=padding_mask, reverse=True)
+    non_masked_z = non_masked_model(input)
+    non_masked_output = non_masked_model(non_masked_z, reverse=True)
+
+    allclose(masked_z, non_masked_z)
+    allclose(masked_output, non_masked_output)
+
+    zeros = torch.zeros((batch_size,))
+
+    masked_z, masked_z_logdet = masked_model(
+        input,
+        padding_mask=padding_mask,
+        logdet=zeros,
+    )
+    masked_output, masked_logdet = masked_model(
+        masked_z,
+        padding_mask=padding_mask,
+        logdet=masked_z_logdet,
+        reverse=True,
+    )
+    non_masked_z, non_masked_z_logdet = non_masked_model(
+        input,
+        logdet=zeros,
+    )
+    non_masked_output, non_masked_logdet = non_masked_model(
+        non_masked_z,
+        logdet=non_masked_z_logdet,
+        reverse=True,
+    )
+
+    allclose(masked_z, non_masked_z)
+    allclose(masked_z_logdet, non_masked_z_logdet)
     allclose(masked_output, non_masked_output)
     allclose(masked_logdet, non_masked_logdet)
 
@@ -387,6 +433,71 @@ def test_masked_wavenet_affine_coupling() -> None:
     assert z_logdet.size() == (batch_size,)
     allclose(output, input)
     allclose(logdet, zeros)
+
+    # w/ 2D padding mask, but all False (identical to w/o padding mask)
+    kernel_size = 3
+    dilation_rate = 2  # default of WaveNetAffineCoupling
+
+    masked_model = MaskedWaveNetAffineCoupling(
+        coupling_channels,
+        hidden_channels,
+        num_layers=num_layers,
+        kernel_size=kernel_size,
+        dilation_rate=dilation_rate,
+    )
+    non_masked_model = WaveNetAffineCoupling(
+        coupling_channels,
+        hidden_channels,
+        num_layers=num_layers,
+        kernel_size=kernel_size,
+    )
+
+    nn.init.normal_(masked_model.coupling.bottleneck_conv1d_out.weight.data)
+    nn.init.normal_(masked_model.coupling.bottleneck_conv1d_out.bias.data)
+
+    for p_masked, p_non_masked in zip(
+        masked_model.coupling.parameters(), non_masked_model.coupling.parameters()
+    ):
+        p_non_masked.data.copy_(p_masked.data)
+
+    input = torch.randn(batch_size, 2 * coupling_channels, max_length)
+    padding_mask = torch.full((batch_size, max_length), fill_value=False)
+
+    masked_z = masked_model(input, padding_mask=padding_mask)
+    masked_output = masked_model(masked_z, padding_mask=padding_mask, reverse=True)
+    non_masked_z = non_masked_model(input)
+    non_masked_output = non_masked_model(non_masked_z, reverse=True)
+
+    allclose(masked_z, non_masked_z)
+    allclose(masked_output, non_masked_output)
+
+    zeros = torch.zeros((batch_size,))
+
+    masked_z, masked_z_logdet = masked_model(
+        input,
+        padding_mask=padding_mask,
+        logdet=zeros,
+    )
+    masked_output, masked_logdet = masked_model(
+        masked_z,
+        padding_mask=padding_mask,
+        logdet=masked_z_logdet,
+        reverse=True,
+    )
+    non_masked_z, non_masked_z_logdet = non_masked_model(
+        input,
+        logdet=zeros,
+    )
+    non_masked_output, non_masked_logdet = non_masked_model(
+        non_masked_z,
+        logdet=non_masked_z_logdet,
+        reverse=True,
+    )
+
+    allclose(masked_z, non_masked_z)
+    allclose(masked_z_logdet, non_masked_z_logdet)
+    allclose(masked_output, non_masked_output)
+    allclose(masked_logdet, non_masked_logdet)
 
 
 def test_stacked_residual_conv_block():
