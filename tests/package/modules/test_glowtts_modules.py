@@ -130,9 +130,13 @@ def test_masked_act_norm1d() -> None:
     masked_output = masked_model(masked_z, reverse=True)
     non_masked_z = non_masked_model(input)
     non_masked_output = non_masked_model(non_masked_z, reverse=True)
+    mean = masked_z.sum(dim=(0, 2)) / (batch_size * max_length)
+    std = torch.sum(masked_z**2, dim=(0, 2)) / (batch_size * max_length)
 
     allclose(masked_z, non_masked_z)
     allclose(masked_output, non_masked_output)
+    allclose(mean, torch.zeros(()), atol=1e-7)
+    allclose(std, torch.ones(()), atol=1e-7)
 
     zeros = torch.zeros((batch_size,))
 
@@ -154,10 +158,14 @@ def test_masked_act_norm1d() -> None:
         logdet=non_masked_z_logdet,
         reverse=True,
     )
+    mean = masked_z.sum(dim=(0, 2)) / (batch_size * max_length)
+    std = torch.sum(masked_z**2, dim=(0, 2)) / (batch_size * max_length)
 
     allclose(masked_z, non_masked_z)
     allclose(masked_output, non_masked_output)
     allclose(masked_logdet, non_masked_logdet)
+    allclose(mean, torch.zeros(()), atol=1e-7)
+    allclose(std, torch.ones(()), atol=1e-7)
 
 
 def test_masked_invertible_pointwise_conv1d() -> None:
