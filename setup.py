@@ -37,6 +37,34 @@ def is_openmp_supported() -> bool:
     return is_supported
 
 
+def is_flag_accepted(flag: str) -> bool:
+    """Check if flag is available."""
+    compiler = get_cxx_compiler()
+    is_accepted = None
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".cpp", dir=temp_dir, delete=False) as f:
+            cpp_text = """
+            int main() {
+                return 0;
+            }
+            """
+            f.write(cpp_text)
+
+        obj_name = f.name.replace(".cpp", ".out")
+
+        try:
+            subprocess.check_output([compiler, f.name, "-o", obj_name, flag])
+            is_accepted = True
+        except subprocess.CalledProcessError:
+            is_accepted = False
+
+    if is_accepted is None:
+        raise RuntimeError(f"Unexpected error happened while checking if {flag} is available.")
+
+    return is_accepted
+
+
 class BuildExtension(_BuildExtension):
     cpp_extensions = [
         {
@@ -49,6 +77,16 @@ class BuildExtension(_BuildExtension):
             "extra_link_args": [],
         },
     ]
+
+    if is_flag_accepted("-O3"):
+        for cpp_extension in cpp_extensions:
+            if cpp_extension["name"] == "audyn._cpp_extensions.monotonic_align":
+                cpp_extension["extra_compile_args"].append("-O3")
+
+    if is_flag_accepted("-march=native"):
+        for cpp_extension in cpp_extensions:
+            if cpp_extension["name"] == "audyn._cpp_extensions.monotonic_align":
+                cpp_extension["extra_compile_args"].append("-march=native")
 
     if is_openmp_supported():
         for cpp_extension in cpp_extensions:
