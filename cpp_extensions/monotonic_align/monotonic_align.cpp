@@ -9,6 +9,9 @@ torch::Tensor search_monotonic_alignment_by_viterbi(
     int64_t max_tgt_length = probs.size(1);
     int64_t max_src_length = probs.size(2);
 
+    int64_t num_threads = torch::get_num_threads();
+    int64_t grain_size = std::ceil((batch_size - 1) / num_threads) + 1;
+
     double_t inf = std::numeric_limits<double_t>::infinity();
     torch::TensorOptions float32options = probs.options();
     torch::TensorOptions int64options = torch::TensorOptions().dtype(torch::kInt64).device(probs.device());
@@ -27,7 +30,7 @@ torch::Tensor search_monotonic_alignment_by_viterbi(
     }
 
     torch::parallel_for(
-        0, batch_size, torch::internal::GRAIN_SIZE,
+        0, batch_size, grain_size,
         [&](int64_t start, int64_t end)
         {
             for (int64_t batch_idx = start; batch_idx < end; batch_idx++)
