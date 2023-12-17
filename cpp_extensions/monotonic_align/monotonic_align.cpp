@@ -13,7 +13,18 @@ torch::Tensor search_monotonic_alignment_by_viterbi(
     torch::TensorOptions float32options = probs.options();
     torch::TensorOptions int64options = torch::TensorOptions().dtype(torch::kInt64).device(probs.device());
 
+    torch::Tensor log_probs;
+
     torch::Tensor hard_align = torch::zeros({batch_size, max_tgt_length, max_src_length}, int64options);
+
+    if (take_log)
+    {
+        log_probs = torch::log(probs);
+    }
+    else
+    {
+        log_probs = probs;
+    }
 
     torch::parallel_for(
         0, batch_size, torch::internal::GRAIN_SIZE,
@@ -21,23 +32,13 @@ torch::Tensor search_monotonic_alignment_by_viterbi(
         {
             for (int64_t batch_idx = start; batch_idx < end; batch_idx++)
             {
-                torch::Tensor prob = probs.index({batch_idx});
-                torch::Tensor log_prob;
+                torch::Tensor log_prob = log_probs.index({batch_idx});
                 torch::Tensor log_seq_prob, prev_log_seq_prob, log_p;
 
                 int64_t tgt_length, src_length;
                 int64_t tgt_idx, src_idx;
                 int64_t start_src_idx, end_src_idx, min_src_idx, max_src_idx;
                 torch::indexing::Slice slice;
-
-                if (take_log)
-                {
-                    log_prob = torch::log(prob);
-                }
-                else
-                {
-                    log_prob = prob;
-                }
 
                 tgt_length = tgt_lengths.index({batch_idx}).item<int64_t>();
                 src_length = src_lengths.index({batch_idx}).item<int64_t>();
