@@ -549,7 +549,6 @@ class Decoder(BaseFlow):
                 (batch_size, length) or (batch_size, num_features, length).
             other (torch.Tensor): Tensor of shape (batch_size, num_features, length).
 
-
         Returns:
             torch.BoolTensor: Expanded padding mask of shape (batch_size, num_features, length).
 
