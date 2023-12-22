@@ -1,6 +1,7 @@
 from typing import List, Optional, Tuple, Union
 
 import torch
+import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -116,6 +117,7 @@ class MaskedActNorm1d(ActNorm1d):
     This module takes variable-length input.
     """
 
+    @torch.no_grad()
     def _initialize_parameters(
         self,
         input: torch.Tensor,
@@ -124,15 +126,49 @@ class MaskedActNorm1d(ActNorm1d):
         if padding_mask is None:
             super()._initialize_parameters(input)
         else:
+            is_distributed = dist.is_available() and dist.is_initialized()
+
+            # obtain world size for DDP
+            if is_distributed:
+                world_size = dist.get_world_size()
+            else:
+                world_size = 1
+
             expanded_padding_mask = _expand_padding_mask(padding_mask, input)
             expanded_non_padding_mask = torch.logical_not(expanded_padding_mask)
             num_elements = expanded_non_padding_mask.sum(dim=(0, 2))
             masked_input = input.masked_fill(expanded_padding_mask, 0)
-            mean = masked_input.sum(dim=(0, 2)) / num_elements
+            sum_input = torch.sum(masked_input, dim=(0, 2))
 
-            zero_mean_input = masked_input - mean.unsqueeze(dim=-1)
-            squared_input = torch.masked_fill(zero_mean_input**2, expanded_padding_mask, 0)
-            log_std = 0.5 * (torch.log(squared_input.sum(dim=(0, 2))) - torch.log(num_elements))
+            if is_distributed:
+                # gather statistics
+                # sum_input:
+                #  (num_features,) -> (num_gpus, num_features) -> (num_features,)
+                # num_elements:
+                #  (num_features,) -> (num_gpus, num_features) -> (num_features,)
+                gathered_sum_input = [torch.zeros_like(sum_input) for _ in range(world_size)]
+                gathered_num_elements = [torch.zeros_like(num_elements) for _ in range(world_size)]
+                dist.all_gather(gathered_sum_input, sum_input)
+                dist.all_gather(gathered_num_elements, num_elements)
+                gathered_sum_input = torch.stack(gathered_sum_input, dim=0)
+                gathered_num_elements = torch.stack(gathered_num_elements, dim=0)
+                sum_input = torch.sum(gathered_sum_input, dim=0)
+                num_elements = torch.sum(gathered_num_elements, dim=0)
+
+            mean = sum_input / num_elements
+            zero_mean_input = input - mean.unsqueeze(dim=-1)
+            masked_zero_mean_input = torch.masked_fill(zero_mean_input, expanded_padding_mask, 0)
+            sum_input = torch.sum(masked_zero_mean_input**2, dim=(0, 2))
+
+            if is_distributed:
+                # gather sum_input
+                # (num_features,) -> (world_size, num_features)
+                gathered_sum_input = [torch.zeros_like(sum_input) for _ in range(world_size)]
+                dist.all_gather(gathered_sum_input, sum_input)
+                gathered_sum_input = torch.cat(gathered_sum_input, dim=0)
+                sum_input = torch.sum(gathered_sum_input, dim=0)
+
+            log_std = 0.5 * (torch.log(sum_input) - torch.log(num_elements))
 
             self.log_std.data.copy_(log_std)
             self.mean.data.copy_(mean)
