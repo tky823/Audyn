@@ -396,7 +396,7 @@ class MaskedWaveNetAffineCoupling(WaveNetAffineCoupling):
         split: Optional[nn.Module] = None,
         concat: Optional[nn.Module] = None,
         scaling: bool = False,
-        in_channels: Optional[int] = None,
+        scaling_channels: Optional[int] = None,
     ) -> None:
         coupling = MaskedStackedResidualConvBlock1d(
             coupling_channels,
@@ -418,7 +418,7 @@ class MaskedWaveNetAffineCoupling(WaveNetAffineCoupling):
             split=split,
             concat=concat,
             scaling=scaling,
-            in_channels=in_channels,
+            in_channels=scaling_channels,
         )
 
     def forward(
@@ -472,6 +472,7 @@ class MaskedWaveNetAffineCoupling(WaveNetAffineCoupling):
 
             if self.scaling_factor is not None:
                 scale = torch.exp(self.scaling_factor)
+                scale = scale.unsqueeze(dim=-1)
                 log_s = torch.tanh(log_s / scale) * scale
 
             x1 = y1
@@ -500,6 +501,7 @@ class MaskedWaveNetAffineCoupling(WaveNetAffineCoupling):
 
             if self.scaling_factor is not None:
                 scale = torch.exp(self.scaling_factor)
+                scale = scale.unsqueeze(dim=-1)
                 log_s = torch.tanh(log_s / scale) * scale
 
             y1 = x1
