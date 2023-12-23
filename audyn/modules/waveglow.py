@@ -19,6 +19,7 @@ class WaveNetAffineCoupling(AffineCoupling):
         skip_channels: Optional[int] = None,
         num_layers: int = 8,
         kernel_size: int = 3,
+        dilation_rate: int = 2,
         bias: bool = True,
         causal: bool = False,
         conv: str = "gated",
@@ -40,7 +41,7 @@ class WaveNetAffineCoupling(AffineCoupling):
             num_layers=num_layers,
             kernel_size=kernel_size,
             stride=1,
-            dilated=True,
+            dilation_rate=dilation_rate,
             bias=bias,
             causal=causal,
             conv=conv,
@@ -149,7 +150,7 @@ class StackedResidualConvBlock1d(nn.Module):
         num_layers: int = 8,
         kernel_size: int = 3,
         stride: int = 1,
-        dilated: bool = True,
+        dilation_rate: int = 2,
         bias: bool = True,
         causal: bool = False,
         conv: str = "gated",
@@ -175,15 +176,16 @@ class StackedResidualConvBlock1d(nn.Module):
         backbone = []
 
         for layer_idx in range(num_layers):
-            if dilated:
-                dilation = 2**layer_idx
-            else:
-                dilation = 1
+            if dilation_rate > 1:
+                dilation = dilation_rate**layer_idx
+
                 assert (
                     stride == 1
                 ), "When dilated convolution, stride is expected to be 1, but {} is given.".format(
                     stride
                 )
+            else:
+                dilation = 1
 
             if layer_idx < num_layers - 1:
                 dual_head = True
