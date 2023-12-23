@@ -61,11 +61,14 @@ def test_search_monotonic_alignment_by_viterbi(take_log: bool) -> None:
     max_tgt_length, max_src_length = torch.max(tgt_lengths), torch.max(src_lengths)
     log_probs = torch.randn((batch_size, max_tgt_length, max_src_length))
     tgt_indices, src_indices = torch.arange(max_tgt_length), torch.arange(max_src_length)
-    padding_mask = src_indices >= src_lengths.unsqueeze(dim=-1).unsqueeze(dim=-1)
-    log_probs = log_probs.masked_fill(padding_mask, -float("inf"))
+    src_padding_mask = src_indices >= src_lengths.unsqueeze(dim=-1).unsqueeze(dim=-1)
+    log_probs = log_probs.masked_fill(src_padding_mask, -float("inf"))
     probs = torch.softmax(log_probs, dim=-1)
-    padding_mask = tgt_indices.unsqueeze(dim=-1) >= tgt_lengths.unsqueeze(dim=-1).unsqueeze(dim=-1)
-    probs = probs.masked_fill(padding_mask, 0)
+    tgt_padding_mask = tgt_indices.unsqueeze(dim=-1) >= tgt_lengths.unsqueeze(dim=-1).unsqueeze(
+        dim=-1
+    )
+    probs = probs.masked_fill(tgt_padding_mask, 0)
+    padding_mask = src_padding_mask | tgt_padding_mask
 
     if not take_log:
         probs = torch.log(probs)
