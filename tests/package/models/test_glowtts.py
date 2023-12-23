@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 import pytest
 import torch
@@ -22,7 +22,9 @@ from audyn.modules.glowtts import GlowTTSFFTrBlock
 parameters_batch_first = [True, False]
 
 
-def test_glowtts() -> None:
+@pytest.mark.parametrize("scaling", [True, False])
+@pytest.mark.parametrize("channel_dependent_scaling", [True, False])
+def test_glowtts(scaling: bool, channel_dependent_scaling: bool) -> None:
     torch.manual_seed(0)
 
     batch_first = True
@@ -39,6 +41,11 @@ def test_glowtts() -> None:
     hidden_channels = 3
     num_flows, num_dec_layers, num_splits = 3, 2, 2
     down_scale = 2
+
+    if channel_dependent_scaling:
+        scaling_channels = (n_mels * down_scale) // 2
+    else:
+        scaling_channels = None
 
     # Duration Predictor
     kernel_size = 3
@@ -71,6 +78,8 @@ def test_glowtts() -> None:
         num_layers=num_dec_layers,
         num_splits=num_splits,
         down_scale=down_scale,
+        scaling=scaling,
+        scaling_channels=scaling_channels,
     )
     duration_predictor = FastSpeechDurationPredictor(
         [embedding_dim, 2],
@@ -582,6 +591,8 @@ def build_decoder(
     num_layers: int,
     num_splits: int = 2,
     down_scale: int = 2,
+    scaling: bool = False,
+    scaling_channels: Optional[int] = None,
 ) -> Decoder:
     model = Decoder(
         in_channels,
@@ -590,6 +601,8 @@ def build_decoder(
         num_layers=num_layers,
         num_splits=num_splits,
         down_scale=down_scale,
+        scaling=scaling,
+        scaling_channels=scaling_channels,
     )
 
     return model
