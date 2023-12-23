@@ -450,6 +450,7 @@ def test_masked_wavenet_affine_coupling() -> None:
         hidden_channels,
         num_layers=num_layers,
         kernel_size=kernel_size,
+        dilation_rate=dilation_rate,
     )
 
     nn.init.normal_(masked_model.coupling.bottleneck_conv1d_out.weight.data)
