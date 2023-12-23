@@ -1,14 +1,5 @@
 spectrogram:
   iteration:
-    every: 1
-    sample_size: 1
-    key_mapping:
-      output:
-      reference:
-        log_melspectrogram: "Melspectrogram (iteration)"
-    transforms:
-      output:
-      reference:
   epoch:
     every: 1
     sample_size: 1
@@ -23,5 +14,5 @@ spectrogram:
         reference:
           log_melspectrogram: "Melspectrogram of inference (epoch)"
     transforms:
-      validation: ${...iteration.transforms}
-      inference: ${...iteration.transforms}
+      validation:
+      inference:
