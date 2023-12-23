@@ -429,8 +429,12 @@ class Decoder(BaseFlow):
         split: Optional[nn.Module] = None,
         concat: Optional[nn.Module] = None,
         scaling: bool = False,
+        scaling_channels: Optional[int] = None,
     ) -> None:
         super().__init__()
+
+        if isinstance(in_channels, list):
+            raise NotImplementedError("List is not supported as in_channels now.")
 
         self.in_channels = in_channels
         self.num_flows = num_flows
@@ -456,6 +460,7 @@ class Decoder(BaseFlow):
                     split=split,
                     concat=concat,
                     scaling=scaling,
+                    scaling_channels=scaling_channels,
                 )
             )
 
@@ -937,6 +942,19 @@ class TransformerEncoder(GlowTTSTransformerEncoder):
 
 
 class GlowBlock(BaseFlow):
+    """Glow block for GlowTTS.
+
+    Args:
+        scaling (bool): Whether to use scaling factor. Default: ``False``.
+        scaling_channels (int, optional): Number of channels of scaling factor.
+            If ``scaling=True``, this parameter is activated. In that case,
+            ``scaling_channels`` is expected ``None`` or ``coupling_channels``.
+            ``coupling_channels`` is typically ``in_channels[0]`` or ``in_channels // 2``.
+
+    """
+
+    # TODO: improve docs
+
     def __init__(
         self,
         in_channels: Union[int, List[int]],
@@ -954,6 +972,7 @@ class GlowBlock(BaseFlow):
         split: Optional[nn.Module] = None,
         concat: Optional[nn.Module] = None,
         scaling: bool = False,
+        scaling_channels: Optional[int] = None,
     ) -> None:
         super().__init__()
 
@@ -982,7 +1001,7 @@ class GlowBlock(BaseFlow):
             split=split,
             concat=concat,
             scaling=scaling,
-            in_channels=in_channels,
+            scaling_channels=scaling_channels,
         )
 
     def forward(
