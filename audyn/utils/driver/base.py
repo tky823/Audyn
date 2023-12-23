@@ -581,6 +581,7 @@ class BaseTrainer(BaseDriver):
 
             self.optimizer.zero_grad()
             self.scaler.scale(total_loss).backward()
+            self.unscale_optimizer_if_necessary()
             self.clip_gradient_if_necessary()
             self.optimizer_step()
             self.scaler.update()
@@ -745,15 +746,44 @@ class BaseTrainer(BaseDriver):
             # Process only first batch.
             break
 
-    def clip_gradient_if_necessary(self, unscale_if_necessary: bool = True) -> None:
-        """Clip gradient if self.grad_clipper is given.
+    def unscale_optimizer_if_necessary(self, enable: bool = True) -> None:
+        """Unscale optimizer containing values if necessary.
 
         Args:
-            unscale_if_necessary (bool): If ``True``, ``self.scaler.unscale_`` is
-                applied to ``self.optimizer`` before clipping gradient. This operation
+            enable (bool): If ``True``, ``self.scaler.unscale_`` is
+                applied to ``self.optimizer``. This operation
                 doesn't anything when ``self.scaler.is_enabled()`` is ``False``.
 
         """
+        if enable:
+            if isinstance(self.optimizer, MultiOptimizers):
+                for optimizer in self.optimizer.optimizers.values():
+                    if (
+                        isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
+                        and self.scaler.is_enabled()
+                    ):
+                        # TODO: address numerical instability
+                        raise NotImplementedError(
+                            "ExponentialMovingAverageCodebookOptimizer and AMP "
+                            "cannot be used simultaneously."
+                        )
+                    else:
+                        self.scaler.unscale_(optimizer)
+            else:
+                if (
+                    isinstance(self.optimizer, ExponentialMovingAverageCodebookOptimizer)
+                    and self.scaler.is_enabled()
+                ):
+                    # TODO: address numerical instability
+                    raise NotImplementedError(
+                        "ExponentialMovingAverageCodebookOptimizer and AMP "
+                        "cannot be used simultaneously."
+                    )
+                else:
+                    self.scaler.unscale_(self.optimizer)
+
+    def clip_gradient_if_necessary(self) -> None:
+        """Clip gradient if self.grad_clipper is given."""
         if not hasattr(self.config.train, "clip_gradient"):
             # clip_gradient is not defined.
             return
@@ -785,33 +815,6 @@ class BaseTrainer(BaseDriver):
                 is_legacy = True
             else:
                 raise ValueError("Invalid condition is detected.")
-
-        if unscale_if_necessary:
-            if isinstance(self.optimizer, MultiOptimizers):
-                for optimizer in self.optimizer.optimizers.values():
-                    if (
-                        isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
-                        and self.scaler.is_enabled()
-                    ):
-                        # TODO: address numerical instability
-                        raise NotImplementedError(
-                            "ExponentialMovingAverageCodebookOptimizer and AMP "
-                            "cannot be used simultaneously."
-                        )
-                    else:
-                        self.scaler.unscale_(optimizer)
-            else:
-                if (
-                    isinstance(self.optimizer, ExponentialMovingAverageCodebookOptimizer)
-                    and self.scaler.is_enabled()
-                ):
-                    # TODO: address numerical instability
-                    raise NotImplementedError(
-                        "ExponentialMovingAverageCodebookOptimizer and AMP "
-                        "cannot be used simultaneously."
-                    )
-                else:
-                    self.scaler.unscale_(self.optimizer)
 
         if is_legacy:
             # for backward compatibility

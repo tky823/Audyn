@@ -263,17 +263,13 @@ class GANTrainer(BaseTrainer):
 
             self.optimizer.discriminator.zero_grad()
             self.scaler.scale(total_discriminator_loss).backward()
+            self.unscale_optimizer_if_necessary(self.optimizer.discriminator)
 
             if self.grad_clipper is None:
-                self.clip_gradient_if_necessary(
-                    self.unwrapped_model.discriminator.parameters(),
-                    self.optimizer.discriminator,
-                )
+                self.clip_gradient_if_necessary(self.unwrapped_model.discriminator.parameters())
             else:
-                self.clip_gradient_if_necessary(
-                    "discriminator",
-                    self.optimizer.discriminator,
-                )
+                self.clip_gradient_if_necessary("discriminator")
+
             self.optimizer_step(self.optimizer.discriminator)
 
             if self.config.train.steps.lr_scheduler.discriminator == "iteration":
@@ -410,17 +406,12 @@ class GANTrainer(BaseTrainer):
 
             self.optimizer.generator.zero_grad()
             self.scaler.scale(total_generator_loss).backward()
+            self.unscale_optimizer_if_necessary(self.optimizer.generator)
 
             if self.grad_clipper is None:
-                self.clip_gradient_if_necessary(
-                    self.unwrapped_model.generator.parameters(),
-                    self.optimizer.generator,
-                )
+                self.clip_gradient_if_necessary(self.unwrapped_model.generator.parameters())
             else:
-                self.clip_gradient_if_necessary(
-                    "generator",
-                    self.optimizer.generator,
-                )
+                self.clip_gradient_if_necessary("generator")
 
             self.optimizer_step(self.optimizer.generator)
             self.scaler.update()
@@ -794,11 +785,49 @@ class GANTrainer(BaseTrainer):
 
         return total_loss
 
+    def unscale_optimizer_if_necessary(
+        self, optimizer: Optional[Optimizer] = None, enable: bool = True
+    ) -> None:
+        """Unscale optimizer containing values if necessary.
+
+        Args:
+            optimizer (Optimizer, optional): Optimizer to be unscaled.
+            enable (bool): If ``True``, ``self.scaler.unscale_`` is
+                applied to ``optimizer`` before clipping gradient. This operation
+                doesn't anything when ``self.scaler.is_enabled()`` is ``False``.
+
+        """
+        if enable:
+            if self.scaler.is_enabled() and optimizer is None:
+                raise ValueError("optimizer is not given.")
+
+            if isinstance(optimizer, MultiOptimizers):
+                for _optimizer in optimizer.optimizers.values():
+                    if (
+                        isinstance(_optimizer, ExponentialMovingAverageCodebookOptimizer)
+                        and self.scaler.is_enabled()
+                    ):
+                        raise NotImplementedError(
+                            "ExponentialMovingAverageCodebookOptimizer and AMP "
+                            "cannot be used simultaneously."
+                        )
+                    else:
+                        self.scaler.unscale_(_optimizer)
+            else:
+                if (
+                    isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
+                    and self.scaler.is_enabled()
+                ):
+                    raise NotImplementedError(
+                        "ExponentialMovingAverageCodebookOptimizer and AMP "
+                        "cannot be used simultaneously."
+                    )
+                else:
+                    self.scaler.unscale_(optimizer)
+
     def clip_gradient_if_necessary(
         self,
         parameters_or_name: Union[Iterable[torch.Tensor], torch.Tensor, str],
-        optimizer: Optional[Optimizer] = None,
-        unscale_if_necessary: bool = True,
     ) -> None:
         """Clip gradient if self.grad_clipper is given.
 
@@ -806,10 +835,6 @@ class GANTrainer(BaseTrainer):
             parameters_or_name (Iterable of torch.Tensor, torch.Tensor, or str):
                 Model parameters (legacy gradient clipping) or
                 name of module (generator or discriminator).
-            optimizer (Optimizer, optional): Optimizer to be unscaled.
-            unscale_if_necessary (bool): If ``True``, ``self.scaler.unscale_`` is
-                applied to ``optimizer`` before clipping gradient. This operation
-                doesn't anything when ``self.scaler.is_enabled()`` is ``False``.
 
         """
         if not hasattr(self.config.train, "clip_gradient"):
@@ -857,34 +882,6 @@ class GANTrainer(BaseTrainer):
                 is_legacy = True
             else:
                 raise ValueError("Invalid condition is detected.")
-
-        if unscale_if_necessary:
-            if self.scaler.is_enabled() and optimizer is None:
-                raise ValueError("optimizer is not given.")
-
-            if isinstance(optimizer, MultiOptimizers):
-                for _optimizer in optimizer.optimizers.values():
-                    if (
-                        isinstance(_optimizer, ExponentialMovingAverageCodebookOptimizer)
-                        and self.scaler.is_enabled()
-                    ):
-                        raise NotImplementedError(
-                            "ExponentialMovingAverageCodebookOptimizer and AMP "
-                            "cannot be used simultaneously."
-                        )
-                    else:
-                        self.scaler.unscale_(_optimizer)
-            else:
-                if (
-                    isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
-                    and self.scaler.is_enabled()
-                ):
-                    raise NotImplementedError(
-                        "ExponentialMovingAverageCodebookOptimizer and AMP "
-                        "cannot be used simultaneously."
-                    )
-                else:
-                    self.scaler.unscale_(optimizer)
 
         if is_legacy:
             # for backward compatibility
