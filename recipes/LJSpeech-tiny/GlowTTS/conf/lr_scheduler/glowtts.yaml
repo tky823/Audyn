@@ -1,1 +1,3 @@
-../../../../LJSpeech/GlowTTS/conf/lr_scheduler/glowtts.yaml
+_target_: audyn.optim.lr_scheduler.TransformerLRScheduler
+d_model: ${model.encoder.word_embedding.embedding_dim}
+warmup_steps: 5
