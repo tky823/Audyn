@@ -12,7 +12,6 @@ def search_monotonic_alignment_by_viterbi(
     probs: torch.Tensor,
     padding_mask: Optional[torch.BoolTensor] = None,
     take_log: bool = False,
-    device: torch.device = "cpu",
 ) -> torch.LongTensor:
     """Search monotonic alignment by Viterbi algorithm.
 
@@ -22,18 +21,20 @@ def search_monotonic_alignment_by_viterbi(
             The shape is (batch_size, tgt_length, src_length).
         take_log (bool): If ``True``, log of ``probs`` is treated as log probability.
             Otherwise, ``probs`` is treated as log probability. Default: ``False``.
-        device (torch.device): Device to search monotonic alignment. Highly recommended to use
-            CPU even when device of ``probs`` is CUDA. Default: ``cpu``.
 
     Returns:
         torch.LongTensor: Hard alignment matrix of shape (batch_size, tgt_length, src_length).
 
+    .. note::
+
+        Monotonic alignment search is always computed on CPU.
+
     """
     src_device = probs.device
-    probs = probs.to(device)
+    probs = probs.cpu()
 
     if padding_mask is not None:
-        padding_mask = padding_mask.to(device)
+        padding_mask = padding_mask.cpu()
 
     if padding_mask is not None:
         if take_log:
