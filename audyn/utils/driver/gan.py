@@ -327,6 +327,21 @@ class GANTrainer(BaseTrainer):
                 total_generator_loss,
                 global_step=self.iteration_idx + 1,
             )
+
+            if hasattr(self.config.train.record, "duration"):
+                duration_config = self.config.train.record.duration.iteration
+                global_step = self.iteration_idx + 1
+
+                if duration_config is not None and global_step % duration_config.every == 0:
+                    self.write_duration_if_necessary(
+                        named_output,
+                        named_batch,
+                        sample_size=duration_config.sample_size,
+                        key_mapping=duration_config.key_mapping,
+                        transforms=duration_config.transforms,
+                        global_step=global_step,
+                    )
+
             if hasattr(self.config.train.record, "spectrogram"):
                 spectrogram_config = self.config.train.record.spectrogram.iteration
                 global_step = self.iteration_idx + 1
@@ -561,6 +576,12 @@ class GANTrainer(BaseTrainer):
                     generator_loss[criterion_name].item()
                 )
 
+            self.write_validation_duration_if_necessary(
+                named_output,
+                named_batch,
+                config=self.config.train.record,
+                batch_idx=n_batch,
+            )
             self.write_validation_spectrogram_if_necessary(
                 named_output,
                 named_batch,
@@ -636,6 +657,12 @@ class GANTrainer(BaseTrainer):
                 key_mapping=inference_key_mapping,
             )
 
+            self.write_inference_duration_if_necessary(
+                named_output,
+                named_batch,
+                config=self.config.train.record,
+                batch_idx=n_batch,
+            )
             self.write_inference_spectrogram_if_necessary(
                 named_output,
                 named_batch,

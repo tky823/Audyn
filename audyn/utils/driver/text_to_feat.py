@@ -175,6 +175,12 @@ class TextToFeatTrainer(BaseTrainer):
                 )
                 mean_metrics[criterion_name].update(loss[criterion_name].item())
 
+            self.write_validation_duration_if_necessary(
+                named_output,
+                named_data,
+                config=self.config.train.record,
+                batch_idx=n_batch,
+            )
             self.write_validation_spectrogram_if_necessary(
                 named_output,
                 named_data,
@@ -276,6 +282,12 @@ class TextToFeatTrainer(BaseTrainer):
                 named_output.update(named_transform_middle_output)
                 named_output.update(named_feat_to_wave_output)
 
+            self.write_inference_duration_if_necessary(
+                named_output,
+                named_data,
+                config=self.config.train.record,
+                batch_idx=n_batch,
+            )
             self.write_inference_spectrogram_if_necessary(
                 named_output,
                 named_data,
