@@ -1,0 +1,13 @@
+defaults:
+  - audio: baseline
+  - spectrogram: baseline
+  - melspectrogram: baseline
+
+codebook:
+  num_layers: 4
+  size: 16
+  shape:
+    - 20  # ${...melspectrogram.n_mels} // (${model.encoder.stride} ** ${model.encoder.num_stacks})
+    - 86  # ${...audio.length} // ${...melspectrogram.hop_length} // (${model.encoder.stride} ** ${model.encoder.num_stacks})
+
+num_categories: 8  # 7 category + unknown
