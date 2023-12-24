@@ -1,14 +1,15 @@
-from typing import Tuple
+from typing import Tuple, Union
 
 import torch
 import torch.nn as nn
 
 from ..modules.vqvae import VectorQuantizer
+from .vae import BaseVAE
 
 __all__ = ["VQVAE"]
 
 
-class VQVAE(nn.Module):
+class VQVAE(BaseVAE):
     """Vector quantized-variational autoencoder.
 
     Args:
@@ -57,16 +58,61 @@ class VQVAE(nn.Module):
             Gradient from decoder does not back propagate to codebook.
 
         """
-        encoded = self.encoder(input)
+        encoded = self.encode(input, quantization=False)
         quantized, indices = self.vector_quantizer(encoded)
         quantized_straight_through = encoded + torch.detach(quantized - encoded)
-        output = self.decoder(quantized_straight_through)
+        output = self.decode(quantized_straight_through)
 
         return output, encoded, quantized, indices
 
     @torch.no_grad()
     def inference(self, quantized: torch.Tensor) -> torch.Tensor:
         """Inference of VQVAE.
+
+        Args:
+            quantized (torch.Tensor): Following two types are supported.
+                1. Quantized latent feature (torch.FloatTensor).
+                2. Indices of quantized latent feature (torch.LongTensor).
+
+        Returns:
+            torch.Tensor: Reconstructed feature.
+
+        """
+        output = self.decode(quantized)
+
+        return output
+
+    def encode(
+        self,
+        input: torch.Tensor,
+        quantization: bool = True,
+    ) -> Union[Tuple[torch.Tensor, torch.LongTensor], torch.Tensor]:
+        """Encode input.
+
+        Args:
+            input (torch.Tensor): Input feature of shape (batch_size, *input_shape).
+            quantization (bool): If ``True``, quantization is applied.
+
+        Returns:
+            Output depends on ``quantization`` flag.
+            If ``quantization=True``, tuple of quantized feature
+            (batch_size, embedding_dim, *latent_shape) and its indices
+            (batch_size, embedding_dim, *latent_shape) are returned.
+            Otherwise, encoded feature (batch_size, embedding_dim, *latent_shape)
+            is returned.
+
+        """
+        encoded = self.encoder(input)
+
+        if quantization:
+            quantized, indices = self.vector_quantizer(encoded)
+
+            return quantized, indices
+        else:
+            return encoded
+
+    def decode(self, quantized: torch.Tensor) -> torch.Tensor:
+        """Decode quantized latent feature.
 
         Args:
             quantized (torch.Tensor): Following two types are supported.
