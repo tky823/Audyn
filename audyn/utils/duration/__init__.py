@@ -2,7 +2,7 @@ from typing import Optional
 
 import torch
 
-__all__ = ["transform_log_duration"]
+__all__ = ["transform_log_duration", "to_long"]
 
 
 def transform_log_duration(
@@ -31,3 +31,8 @@ def transform_log_duration(
         linear_duration = linear_duration.to(dtype)
 
     return linear_duration
+
+
+def to_long(duration: torch.Tensor) -> torch.LongTensor:
+    """Convert duration to long type."""
+    return duration.long()
