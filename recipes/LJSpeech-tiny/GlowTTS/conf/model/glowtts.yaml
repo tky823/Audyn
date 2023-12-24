@@ -42,7 +42,7 @@ decoder:
   causal: false
   conv: gated
   weight_norm: true
-  scaling: true
+  scaling: false
   scaling_channels:
 duration_predictor:
   _target_: audyn.modules.duration_predictor.FastSpeechDurationPredictor
