@@ -32,4 +32,4 @@ def test_vqvae():
     output_by_quantized = model.inference(quantized)
     output_by_indices = model.inference(indices)
 
-    assert output_by_indices.size() == output_by_quantized.size()
+    assert torch.allclose(output_by_indices, output_by_quantized)
