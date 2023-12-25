@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
@@ -60,15 +60,21 @@ class MultiLRSchedulers:
 
     def step(self, *args, **kwargs) -> None:
         for lr_scheduler in self.lr_schedulers.values():
-            lr_scheduler: LRScheduler
-            lr_scheduler.step(*args, **kwargs)
+            lr_scheduler: Optional[LRScheduler]
+
+            if lr_scheduler is not None:
+                lr_scheduler.step(*args, **kwargs)
 
     def state_dict(self, *args, **kwargs) -> Dict[str, Dict[str, Any]]:
         state_dict = {}
 
         for name, lr_scheduler in self.lr_schedulers.items():
-            lr_scheduler: LRScheduler
-            state_dict[name] = lr_scheduler.state_dict(*args, **kwargs)
+            lr_scheduler: Optional[LRScheduler]
+
+            if lr_scheduler is None:
+                state_dict[name] = {}
+            else:
+                state_dict[name] = lr_scheduler.state_dict(*args, **kwargs)
 
         return state_dict
 
@@ -82,8 +88,12 @@ class MultiLRSchedulers:
         """
 
         for name, lr_scheduler in self.lr_schedulers.items():
-            lr_scheduler: LRScheduler
-            lr_scheduler.load_state_dict(state_dict[name])
+            lr_scheduler: Optional[LRScheduler]
+
+            if lr_scheduler is None:
+                assert len(state_dict[name]) == 0
+            else:
+                lr_scheduler.load_state_dict(state_dict[name])
 
 
 class GANLRScheduler:
