@@ -469,11 +469,12 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
 
             for param in param_group["params"]:
                 weight: torch.Tensor = param.data
+                device = weight.device
 
                 # We assume each codebook is used at least once,
                 # which is helpful to avoid zero division in updates of codebooks.
                 _num_samples_tracked = torch.ones(
-                    weight.size(0), device=weight.device, dtype=weight.dtype
+                    weight.size(0), device=device, dtype=weight.dtype
                 )
                 num_samples_tracked.append(_num_samples_tracked)
 
@@ -481,15 +482,13 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
                 _momentum.data.copy_(weight.data)
                 momentum.append(_momentum)
 
-                one_hot_sum = torch.zeros(weight.size(0), device=weight.device, dtype=torch.long)
+                one_hot_sum = torch.zeros(weight.size(0), device=device, dtype=torch.long)
                 one_hot_sum_group.append(one_hot_sum)
                 z_e_sum = torch.zeros_like(weight)
                 z_e_sum_group.append(z_e_sum)
 
                 if codebook_reset:
-                    _num_accumulated = torch.zeros(
-                        weight.size(0), device=weight.device, dtype=torch.long
-                    )
+                    _num_accumulated = torch.zeros(weight.size(0), device=device, dtype=torch.long)
                 else:
                     _num_accumulated = None
 
