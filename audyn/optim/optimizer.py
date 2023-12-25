@@ -812,9 +812,9 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
 class MultiOptimizers:
     """Module to manage multiple optimizers.
 
-    .. warning::
+    .. note::
 
-        We cannot apply learning rate scheduler now.
+        To use this class with learning scheduler, you have to choose MultiLRSchedulers.
 
     """
 
