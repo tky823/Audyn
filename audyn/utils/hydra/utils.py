@@ -13,6 +13,7 @@ from audyn.criterion.base import BaseCriterionWrapper, MultiCriteria
 
 from ...models.text_to_wave import CascadeTextToWave
 from ...modules.vqvae import VectorQuantizer
+from ...optim.lr_scheduler import MultiLRSchedulers, _DummyLRScheduler
 from ...optim.optimizer import ExponentialMovingAverageCodebookOptimizer, MultiOptimizers
 from ..clip_grad import GradClipper
 from ..parallel import is_dp_or_ddp
@@ -238,7 +239,7 @@ def instantiate_optimizer(
 
 
 def instantiate_lr_scheduler(
-    config: DictConfig, optimizer: Optimizer, *args, **kwargs
+    config: DictConfig, optimizer: Union[Optimizer, MultiOptimizers], *args, **kwargs
 ) -> Optional[_LRScheduler]:
     """Instantiate learning rate scheduler.
 
@@ -248,7 +249,34 @@ def instantiate_lr_scheduler(
         unlike ``hydra.utils.instantiate``.
 
     """
-    lr_scheduler = hydra.utils.instantiate(config, optimizer, *args, **kwargs)
+    if isinstance(config, ListConfig):
+        lr_schedulers = []
+
+        if not isinstance(optimizer, MultiOptimizers):
+            raise ValueError(
+                f"MultiOptimizers are expected, but {type(optimizer)} is given as optimizer."
+            )
+
+        for idx, _config in enumerate(config):
+            if "name" in _config:
+                optim_name = _config["name"]
+                _config = _config["lr_scheduler"]
+            else:
+                optim_name = idx
+
+            _optimizer = optimizer.optimizers[optim_name]
+            _lr_scheduler = hydra.utils.instantiate(_config, _optimizer, *args, **kwargs)
+
+            if isinstance(_lr_scheduler, DictConfig):
+                _lr_scheduler = _DummyLRScheduler()
+
+            lr_schedulers.append({"name": optim_name, "lr_scheduler": _lr_scheduler})
+
+        lr_schedulers = MultiLRSchedulers(lr_schedulers)
+
+        return lr_schedulers
+    else:
+        lr_scheduler = hydra.utils.instantiate(config, optimizer, *args, **kwargs)
 
     if isinstance(lr_scheduler, DictConfig):
         lr_scheduler = None
