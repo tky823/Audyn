@@ -6,6 +6,11 @@ from torch.optim.lr_scheduler import LRScheduler
 __all__ = ["TransformerLRScheduler", "GANLRScheduler"]
 
 
+class _DummyLRScheduler(LRScheduler):
+    def __init__(self, optimizer: Optimizer, last_epoch: int = -1, verbose: bool = False) -> None:
+        super().__init__(optimizer, last_epoch=last_epoch, verbose=verbose)
+
+
 class TransformerLRScheduler(LRScheduler):
     def __init__(
         self,
