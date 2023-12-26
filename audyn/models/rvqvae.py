@@ -1,4 +1,4 @@
-from typing import Tuple, Union
+from typing import Tuple
 
 import torch
 import torch.nn as nn
@@ -64,8 +64,8 @@ class RVQVAE(BaseVAE):
             Gradient from decoder does not back propagate to codebook.
 
         """
-        encoded = self.encode(input, quantization=False)
-        hierarchical_quantized, indices = self.vector_quantizer(encoded)
+        encoded = self.encode(input)
+        hierarchical_quantized, indices = self.quantize(encoded)
         quantized = hierarchical_quantized.sum(dim=1)
         quantized_straight_through = encoded + torch.detach(quantized - encoded)
         output = self.decode(quantized_straight_through, layer_wise=False)
@@ -92,34 +92,20 @@ class RVQVAE(BaseVAE):
 
         return output
 
-    def encode(
-        self,
-        input: torch.Tensor,
-        quantization: bool = True,
-    ) -> Union[Tuple[torch.Tensor, torch.LongTensor], torch.Tensor]:
+    def encode(self, input: torch.Tensor) -> torch.Tensor:
         """Encode input.
 
         Args:
             input (torch.Tensor): Input feature of shape (batch_size, *input_shape).
-            quantization (bool): If ``True``, quantization is applied.
 
         Returns:
-            Output depends on ``quantization`` flag.
-            If ``quantization=True``, tuple of quantized feature
-            (batch_size, num_layers, embedding_dim, *latent_shape) and its indices
-            (batch_size, num_layers, embedding_dim, *latent_shape) are returned.
-            Otherwise, encoded feature (batch_size, num_layers, embedding_dim, *latent_shape)
-            is returned.
+            torch.Tensor: Encoded feature of shape
+                (batch_size, num_layers, embedding_dim, *latent_shape).
 
         """
-        encoded = self.encoder(input)
+        output = self.encoder(input)
 
-        if quantization:
-            quantized, indices = self.vector_quantizer(encoded)
-
-            return quantized, indices
-        else:
-            return encoded
+        return output
 
     def decode(self, quantized: torch.Tensor, layer_wise: bool = True) -> torch.Tensor:
         """Decode quantized latent feature.
@@ -166,3 +152,55 @@ class RVQVAE(BaseVAE):
         output = self.decoder(quantized)
 
         return output
+
+    @torch.no_grad()
+    def sample(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.LongTensor]:
+        """Non-differentiable sampling.
+
+        Args:
+            input (torch.Tensor): Input feature of shape (batch_size, *input_shape).
+
+        .. note::
+
+            This method does not use reparametrization trick.
+
+        """
+        encoded = self.encode(input)
+        quantized, indices = self.quantize(encoded)
+
+        return quantized, indices
+
+    def rsample(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.LongTensor]:
+        """Differentiable sampling with straight through estimator.
+
+        Args:
+            input (torch.Tensor): Input feature of shape (batch_size, *input_shape).
+
+        .. note::
+
+            This method does not use reparametrization trick.
+
+        """
+        encoded = self.encode(input)
+        quantized, indices = self.quantize(encoded)
+        quantized_straight_through = encoded + torch.detach(quantized - encoded)
+
+        return quantized_straight_through, indices
+
+    def quantize(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.LongTensor]:
+        """Apply vector_quantizer.
+
+        Args:
+            input (torch.Tensor): Latent feature of shape (batch_size, embedding_dim, *).
+
+        Returns:
+            tuple: Tuple of tensors containing:
+
+                - torch.Tensor: Selected embeddings of shape
+                    (batch_size, num_layers, embedding_dim, *).
+                - torch.LongTensor: Indices of indices in codebook of shape (batch_size, *).
+
+        """
+        quantized, indices = self.vector_quantizer(input)
+
+        return quantized, indices

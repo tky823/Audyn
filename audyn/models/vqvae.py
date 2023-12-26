@@ -82,12 +82,11 @@ class VQVAE(BaseVAE):
 
         return output
 
-    def encode(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.LongTensor]:
+    def encode(self, input: torch.Tensor) -> torch.Tensor:
         """Encode input.
 
         Args:
             input (torch.Tensor): Input feature of shape (batch_size, *input_shape).
-            quantization (bool): If ``True``, quantization is applied.
 
         Returns:
             torch.Tensor: Encoded feature of shape (batch_size, embedding_dim, *latent_shape).
