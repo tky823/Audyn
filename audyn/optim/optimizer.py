@@ -588,6 +588,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             is specified. If usage of least used codebook is
             less than ``reset_rate``, position will be reset. If ``None``,
             0.03 is used by default.
+        seed (int): Seed to synchronize states among devices when DDP is used.
 
     .. note::
 
