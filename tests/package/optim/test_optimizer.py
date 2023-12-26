@@ -191,7 +191,7 @@ def test_exponential_moving_average_codebook_optimizer(codebook_reset: bool) -> 
                 else:
                     # list
                     assert v_sequential == v_resume
-            elif k_sequential == "smooth":
+            elif k_sequential in ["smooth", "seed", "iteration"]:
                 assert v_sequential == v_resume
             else:
                 raise ValueError(f"Invalid key {k_sequential} is found.")
