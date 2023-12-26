@@ -13,6 +13,7 @@ from packaging import version
 from torch.optim import Optimizer
 from torch.utils.hooks import RemovableHandle
 
+from ..modules.rvq import ResidualVectorQuantizer
 from ..modules.vqvae import VectorQuantizer
 
 __all__ = [
@@ -712,9 +713,16 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
 
         self.num_accumulated_groups = num_accumulated_groups
 
-    def store_current_stats(self, module: VectorQuantizer, input: Any, output: Any) -> None:
+    def store_current_stats(
+        self, module: Union[VectorQuantizer, ResidualVectorQuantizer], input: Any, output: Any
+    ) -> None:
         # TODO: generalize
-        assert isinstance(module, VectorQuantizer)
+        if isinstance(module, VectorQuantizer):
+            is_rvq = False
+        elif isinstance(module, ResidualVectorQuantizer):
+            is_rvq = True
+        else:
+            raise ValueError("Only VectorQuantizer and ResidualVectorQuantizer are supported.")
 
         codebook_reset = self.codebook_reset
         is_distributed = dist.is_available() and dist.is_initialized()
@@ -731,17 +739,26 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
         (dequantized_input,) = input
         _, indices = output
 
+        if is_rvq:
+            # indices: (batch_size, num_layers, embedding_dim, *)
+            stacked_indices = indices.transpose(1, 0)
+        else:
+            # indices: (batch_size, embedding_dim, *)
+            stacked_indices = indices.unsqueeze(dim=0)
+
         if len(param_groups) != len(tracking_param_groups):
             # param_groups should be identical to tracking_param_groups
             raise ValueError("Given parameter groups do not match tracking ones.")
 
         for (
+            indices,
             param_group,
             tracking_param_group,
             one_hot_sum_group,
             z_e_sum_group,
             num_accumulated,
         ) in zip(
+            stacked_indices,
             param_groups,
             tracking_param_groups,
             one_hot_sum_groups,
