@@ -12,6 +12,7 @@ from torch.optim.lr_scheduler import _LRScheduler
 from audyn.criterion.base import BaseCriterionWrapper, MultiCriteria
 
 from ...models.text_to_wave import CascadeTextToWave
+from ...modules.rvq import ResidualVectorQuantizer
 from ...modules.vqvae import VectorQuantizer
 from ...optim.lr_scheduler import MultiLRSchedulers, _DummyLRScheduler
 from ...optim.optimizer import ExponentialMovingAverageCodebookOptimizer, MultiOptimizers
@@ -169,12 +170,13 @@ def instantiate_optimizer(
     """Instantiate optimizer."""
 
     def _register_forward_hook_for_ema_codebook_optim(module: nn.Module, optimizer: Optimizer):
-        assert isinstance(module, VectorQuantizer), (
-            "Only VectorQuantizer is supported " "for ExponentialMovingAverageCodebookOptimizer."
+        assert isinstance(module, (VectorQuantizer, ResidualVectorQuantizer)), (
+            "Only VectorQuantizer and ResidualVectorQuantizer are supported "
+            "for ExponentialMovingAverageCodebookOptimizer."
         )
         assert isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
 
-        module: VectorQuantizer
+        module: Union[VectorQuantizer, ResidualVectorQuantizer]
         optimizer: ExponentialMovingAverageCodebookOptimizer
         module.register_forward_hook(optimizer.store_current_stats)
 
