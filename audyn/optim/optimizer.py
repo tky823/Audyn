@@ -607,9 +607,34 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                 [-1.0845, -1.3986,  0.4033,  0.8380],
                 [-0.2900,  0.1278, -0.2841, -0.0953]], requires_grad=True)
 
-    .. [#williams2020hierarchical]
-        W. Williams et al., "Hierarchical quantized autoencoders,"
-        in *NeurIPS*, 2020, pp.4524-4535,
+        >>> import torch
+        >>> from audyn.modules.rvq import ResidualVectorQuantizer
+        >>> from audyn.optim.optimizer import ExponentialMovingAverageCodebookOptimizer
+        >>> torch.manual_seed(0)
+        >>> num_layers, codebook_size, embedding_dim = 6, 3, 4
+        >>> batch_size, length = 2, 5
+        >>> model = ResidualVectorQuantizer(codebook_size, embedding_dim, num_layers=num_layers)
+        >>> # w/o codebook reset
+        >>> optimizer = ExponentialMovingAverageCodebookOptimizer(model.parameters())
+        >>> model.register_forward_hook(optimizer.store_current_stats)
+        >>> model.codebooks[0].weight
+        Parameter containing:
+        tensor([[ 1.5410, -0.2934, -2.1788,  0.5684],
+                [-1.0845, -1.3986,  0.4033,  0.8380],
+                [-0.7193, -0.4033, -0.5966,  0.1820]], requires_grad=True)
+        >>> input = torch.randn((batch_size, embedding_dim, length))
+        >>> output, indices = model(input)
+        >>> optimizer.step()
+        >>> model.codebooks[0].weight
+        Parameter containing:
+        tensor([[ 1.5410, -0.2934, -2.1788,  0.5684],
+                [-1.0824, -1.3987,  0.4036,  0.8382],
+                [-0.7094, -0.4002, -0.5933,  0.1820]], requires_grad=True)
+
+
+        .. [#williams2020hierarchical]
+            W. Williams et al., "Hierarchical quantized autoencoders,"
+            in *NeurIPS*, 2020, pp.4524-4535,
     """
 
     if IS_TORCH_LT_2_1:
