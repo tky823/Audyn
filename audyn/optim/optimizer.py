@@ -918,10 +918,12 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
 
                     if least_usage < self.reset_rate * most_usage:
                         # to ensure synchronization in DDP, use random number generator
-                        g = torch.Generator()
-                        g.manual_seed(self.seed + self.iteration)
                         most_used = param.data[max_idx]
-                        replaced = most_used + std * g.randn_like(most_used)
+                        g = torch.Generator(device=most_used.device)
+                        g.manual_seed(self.seed + self.iteration)
+                        replaced = most_used + std * torch.randn(
+                            most_used.size(), generator=g, dtype=most_used.dtype
+                        )
                         param.data[min_idx].copy_(replaced)
 
                         # reset statistics
