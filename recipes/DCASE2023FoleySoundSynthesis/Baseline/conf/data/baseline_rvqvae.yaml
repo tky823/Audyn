@@ -4,7 +4,7 @@ defaults:
   - melspectrogram: baseline
 
 codebook:
-  num_layers: 4
+  num_layers: 3
   size: 16
   shape:
     - 20  # ${...melspectrogram.n_mels} // (${model.encoder.stride} ** ${model.encoder.num_stacks})
