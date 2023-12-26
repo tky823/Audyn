@@ -160,13 +160,22 @@ class RVQVAE(BaseVAE):
         Args:
             input (torch.Tensor): Input feature of shape (batch_size, *input_shape).
 
+        Returns:
+            tuple: Tuple of tensors containing
+
+                - torch.Tensor: Quantized feature of shape \
+                    (batch_size, embedding_dim, *input_shape).
+                - torch.LongTensor: Quantization indices of shape \
+                    (batch_size, num_layers, *input_shape).
+
         .. note::
 
             This method does not use reparametrization trick.
 
         """
         encoded = self.encode(input)
-        quantized, indices = self.quantize(encoded)
+        hierarchical_quantized, indices = self.quantize(encoded)
+        quantized = hierarchical_quantized.sum(dim=1)
 
         return quantized, indices
 
@@ -176,13 +185,22 @@ class RVQVAE(BaseVAE):
         Args:
             input (torch.Tensor): Input feature of shape (batch_size, *input_shape).
 
+        Returns:
+            tuple: Tuple of tensors containing
+
+                - torch.Tensor: Quantized feature of shape \
+                    (batch_size, embedding_dim, *input_shape).
+                - torch.LongTensor: Quantization indices of shape \
+                    (batch_size, num_layers, *input_shape).
+
         .. note::
 
             This method does not use reparametrization trick.
 
         """
         encoded = self.encode(input)
-        quantized, indices = self.quantize(encoded)
+        hierarchical_quantized, indices = self.quantize(encoded)
+        quantized = hierarchical_quantized.sum(dim=1)
         quantized_straight_through = encoded + torch.detach(quantized - encoded)
 
         return quantized_straight_through, indices
