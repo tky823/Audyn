@@ -342,6 +342,7 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
             reset_step: Optional[int] = None,
             reset_var: Optional[float] = None,
             reset_rate: Optional[float] = None,
+            seed: int = 0,
         ) -> None:
             ...
 
@@ -356,6 +357,7 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
             reset_step: Optional[int] = None,
             reset_var: Optional[float] = None,
             reset_rate: Optional[float] = None,
+            seed: int = 0,
         ) -> None:
             ...
 
@@ -366,6 +368,7 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
         reset_step=None,
         reset_var=None,
         reset_rate=None,
+        seed=0,
     ) -> None:
         defaults = {}
         super().__init__(params, defaults)
@@ -410,6 +413,10 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
         self.reset_var = reset_var
         self.reset_rate = reset_rate
 
+        # for DDP and codebook reset
+        self.seed = seed
+        self.iteration = 0
+
     def state_dict(self) -> Dict[str, Any]:
         """Returns the state of the optimizer as a ``dict``.
 
@@ -448,6 +455,15 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
             "z_e_sum_groups": z_e_sum_groups,
             "smooth": self.smooth,
         }
+
+        # Though seed and iteration are used only for codebook reset,
+        # we always save them.
+        state_dict.update(
+            {
+                "seed": self.seed,
+                "iteration": self.iteration,
+            }
+        )
 
         if self.codebook_reset:
             num_accumulated_groups, num_accumulated_mappings = _pack_groups(
@@ -538,6 +554,10 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
 
         # In older version, smooth parameter is not saved.
         self.smooth = state_dict.get("smooth", self.smooth)
+
+        # In older version, seed and iteration are not saved.
+        self.seed = state_dict.get("seed", self.seed)
+        self.iteration = state_dict.get("iteration", self.iteration)
 
         if self.codebook_reset:
             num_accumulated_groups = self.num_accumulated_groups
@@ -847,6 +867,8 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
         smooth = self.smooth
         codebook_reset = self.codebook_reset
 
+        self.iteration += 1
+
         if codebook_reset:
             self.accumulated_steps += 1
 
@@ -894,8 +916,11 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                     most_usage, max_idx = torch.max(num_accumulated, dim=0)
 
                     if least_usage < self.reset_rate * most_usage:
+                        # to ensure synchronization in DDP, use random number generator
+                        g = torch.Generator()
+                        g.manual_seed(self.seed + self.iteration)
                         most_used = param.data[max_idx]
-                        replaced = most_used + std * torch.randn_like(most_used)
+                        replaced = most_used + std * g.randn_like(most_used)
                         param.data[min_idx].copy_(replaced)
 
                         # reset statistics
