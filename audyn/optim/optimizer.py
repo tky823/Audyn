@@ -330,7 +330,229 @@ class ExponentialMovingAverageWrapper(MovingAverageWrapper):
                 )
 
 
-class ExponentialMovingAverageCodebookOptimizer(Optimizer):
+class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
+    if IS_TORCH_LT_2_1:
+
+        @overload
+        def __init__(
+            self,
+            params: Iterable,
+            smooth: float = 0.999,
+            reset_step: Optional[int] = None,
+            reset_var: Optional[float] = None,
+            reset_rate: Optional[float] = None,
+        ) -> None:
+            ...
+
+    else:
+        from torch.optim.optimizer import params_t
+
+        @overload
+        def __init__(
+            self,
+            params: params_t,
+            smooth: float = 0.999,
+            reset_step: Optional[int] = None,
+            reset_var: Optional[float] = None,
+            reset_rate: Optional[float] = None,
+        ) -> None:
+            ...
+
+    def __init__(
+        self,
+        params,
+        smooth=0.999,
+        reset_step=None,
+        reset_var=None,
+        reset_rate=None,
+    ) -> None:
+        defaults = {}
+        super().__init__(params, defaults)
+
+        if reset_step is None:
+            if reset_var is not None:
+                raise ValueError("reset_var is specified, but reset_step is not defined.")
+
+            if reset_rate is not None:
+                raise ValueError("reset_rate is specified, but reset_step is not defined.")
+
+            codebook_reset = False
+        else:
+            codebook_reset = True
+
+        if codebook_reset:
+            accumulated_steps = 0
+
+            if reset_var is None:
+                reset_var = 0.01
+
+            if reset_rate is None:
+                reset_rate = 0.03
+        else:
+            accumulated_steps = None
+
+        self.smooth = smooth
+
+        # running stats
+        self.num_samples_tracked_groups: List[List[torch.Tensor]]
+        self.momentum_groups: List[List[torch.Tensor]]
+
+        # current stats
+        self.one_hot_sum_groups: List[List[torch.Tensor]]
+        self.z_e_sum_groups: List[List[torch.Tensor]]
+
+        # codebook reset
+        self.num_accumulated_groups: Optional[List[List[torch.LongTensor]]]
+        self.codebook_reset = codebook_reset
+        self.accumulated_steps = accumulated_steps
+        self.reset_step = reset_step
+        self.reset_var = reset_var
+        self.reset_rate = reset_rate
+
+    def state_dict(self) -> Dict[str, Any]:
+        """Returns the state of the optimizer as a ``dict``.
+
+        Returns:
+            dict: State dict of optimizer and moving average parameters.
+
+        """
+        state_dict = {}
+
+        param_groups, param_mappings = _pack_param_groups(self.param_groups)
+        num_samples_tracked_groups, num_samples_tracked_mappings = _pack_groups(
+            self.num_samples_tracked_groups
+        )
+        momentum_groups, momentum_mappings = _pack_groups(self.momentum_groups)
+        one_hot_sum_groups, one_hot_sum_mappings = _pack_groups(self.one_hot_sum_groups)
+        z_e_sum_groups, z_e_sum_mappings = _pack_groups(self.z_e_sum_groups)
+
+        packed_param_state = _pack_param_state(self.param_groups, param_mappings)
+        packed_num_samples_tracked_state = _pack_state(
+            self.num_samples_tracked_groups, num_samples_tracked_mappings
+        )
+        packed_momentum_state = _pack_state(self.momentum_groups, momentum_mappings)
+        packed_one_hot_sum_state = _pack_state(self.one_hot_sum_groups, one_hot_sum_mappings)
+        packed_z_e_sum_state = _pack_state(self.z_e_sum_groups, z_e_sum_mappings)
+
+        state_dict = {
+            "param_state": packed_param_state,
+            "param_groups": param_groups,
+            "num_samples_tracked_state": packed_num_samples_tracked_state,
+            "num_samples_tracked_groups": num_samples_tracked_groups,
+            "momentum_state": packed_momentum_state,
+            "momentum_groups": momentum_groups,
+            "one_hot_sum_state": packed_one_hot_sum_state,
+            "one_hot_sum_groups": one_hot_sum_groups,
+            "z_e_sum_state": packed_z_e_sum_state,
+            "z_e_sum_groups": z_e_sum_groups,
+            "smooth": self.smooth,
+        }
+
+        if self.codebook_reset:
+            num_accumulated_groups, num_accumulated_mappings = _pack_groups(
+                self.num_accumulated_groups
+            )
+            packed_num_accumulated_state = _pack_state(
+                self.num_accumulated_groups, num_accumulated_mappings
+            )
+
+            state_dict.update(
+                {
+                    "num_accumulated_state": packed_num_accumulated_state,
+                    "num_accumulated_groups": num_accumulated_groups,
+                    "accumulated_steps": self.accumulated_steps,
+                    "reset_step": self.reset_step,
+                    "reset_var": self.reset_var,
+                    "reset_rate": self.reset_rate,
+                }
+            )
+
+        return state_dict
+
+    def load_state_dict(self, state_dict: Dict[str, Any]) -> None:
+        r"""Loads the optimizer state.
+
+        Args:
+            state_dict (dict): optimizer state. Should be an object returned
+                from a call to ``state_dict``.
+
+        """
+
+        def _validate_groups(groups, saved_groups, keys: Optional[List[str]] = None) -> None:
+            if len(groups) != len(saved_groups):
+                raise ValueError("Loaded state dict has a different number of parameter groups.")
+
+            if keys is None:
+                containing_lens = (len(group) for group in groups)
+                saved_lens = (len(saved_group) for saved_group in saved_groups)
+
+                if any(c_len != s_len for c_len, s_len in zip(containing_lens, saved_lens)):
+                    raise ValueError(
+                        "Loaded state dict contains a parameter group "
+                        "that doesn't match the size of optimizer's group."
+                    )
+            else:
+                for k in keys:
+                    containing_lens = (len(group[k]) for group in groups)
+                    saved_lens = (len(saved_group[k]) for saved_group in saved_groups)
+
+                    if any(c_len != s_len for c_len, s_len in zip(containing_lens, saved_lens)):
+                        raise ValueError(
+                            "Loaded state dict contains a parameter group "
+                            "that doesn't match the size of optimizer's group."
+                        )
+
+        # deepcopy, to be consistent with module API
+        state_dict = copy.deepcopy(state_dict)
+
+        param_groups = self.param_groups
+        saved_packed_param_groups = state_dict["param_groups"]
+        packed_param_state = state_dict["param_state"]
+
+        num_samples_tracked_groups = self.num_samples_tracked_groups
+        saved_packed_num_samples_tracked_groups = state_dict["num_samples_tracked_groups"]
+        packed_num_samples_tracked_state = state_dict["num_samples_tracked_state"]
+        momentum_groups = self.momentum_groups
+        saved_packed_momentum_groups = state_dict["momentum_groups"]
+        packed_momentum_state = state_dict["momentum_state"]
+        one_hot_sum_groups = self.one_hot_sum_groups
+        saved_packed_one_hot_sum_groups = state_dict["one_hot_sum_groups"]
+        packed_one_hot_sum_state = state_dict["one_hot_sum_state"]
+        z_e_sum_groups = self.z_e_sum_groups
+        saved_packed_z_e_sum_groups = state_dict["z_e_sum_groups"]
+        packed_z_e_sum_state = state_dict["z_e_sum_state"]
+
+        # validate state_dict
+        _validate_groups(param_groups, saved_packed_param_groups, keys=["params"])
+        _validate_groups(num_samples_tracked_groups, saved_packed_num_samples_tracked_groups)
+        _validate_groups(momentum_groups, saved_packed_momentum_groups)
+        _validate_groups(one_hot_sum_groups, saved_packed_one_hot_sum_groups)
+        _validate_groups(z_e_sum_groups, saved_packed_z_e_sum_groups)
+
+        _load_param_groups(param_groups, packed_param_state)
+        _load_groups(num_samples_tracked_groups, packed_num_samples_tracked_state)
+        _load_groups(momentum_groups, packed_momentum_state)
+        _load_groups(one_hot_sum_groups, packed_one_hot_sum_state)
+        _load_groups(z_e_sum_groups, packed_z_e_sum_state)
+
+        # In older version, smooth parameter is not saved.
+        self.smooth = state_dict.get("smooth", self.smooth)
+
+        if self.codebook_reset:
+            num_accumulated_groups = self.num_accumulated_groups
+            saved_packed_num_samples_tracked_groups = state_dict["num_accumulated_groups"]
+            packed_num_accumulated_state = state_dict["num_accumulated_state"]
+
+            _validate_groups(num_accumulated_groups, saved_packed_num_samples_tracked_groups)
+            _load_groups(num_accumulated_groups, packed_num_accumulated_state)
+
+            self.accumulated_steps = state_dict["accumulated_steps"]
+            self.reset_step = state_dict["reset_step"]
+            self.reset_var = state_dict["reset_var"]
+            self.reset_rate = state_dict["reset_rate"]
+
+
+class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodebookOptimizer):
     """Optimizer to update codebook using exponential moving average.
 
     Args:
@@ -399,7 +621,7 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
             reset_step: Optional[int] = None,
             reset_var: Optional[float] = None,
             reset_rate: Optional[float] = None,
-        ) -> Optimizer:
+        ) -> None:
             ...
 
     else:
@@ -413,7 +635,7 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
             reset_step: Optional[int] = None,
             reset_var: Optional[float] = None,
             reset_rate: Optional[float] = None,
-        ) -> Optimizer:
+        ) -> None:
             ...
 
     def __init__(
@@ -424,19 +646,13 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
         reset_var=None,
         reset_rate=None,
     ) -> None:
-        defaults = {}
-        super().__init__(params, defaults)
-
-        if reset_step is None:
-            if reset_var is not None:
-                raise ValueError("reset_var is specified, but reset_step is not defined.")
-
-            if reset_rate is not None:
-                raise ValueError("reset_rate is specified, but reset_step is not defined.")
-
-            codebook_reset = False
-        else:
-            codebook_reset = True
+        super().__init__(
+            params,
+            smooth=smooth,
+            reset_step=reset_step,
+            reset_var=reset_var,
+            reset_rate=reset_rate,
+        )
 
         # running stats
         num_samples_tracked_groups = []
@@ -448,17 +664,6 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
 
         # codebook reset
         num_accumulated_groups = []
-
-        if codebook_reset:
-            accumulated_steps = 0
-
-            if reset_var is None:
-                reset_var = 0.01
-
-            if reset_rate is None:
-                reset_rate = 0.03
-        else:
-            accumulated_steps = None
 
         for param_group in self.param_groups:
             num_samples_tracked = []
@@ -487,7 +692,7 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
                 z_e_sum = torch.zeros_like(weight)
                 z_e_sum_group.append(z_e_sum)
 
-                if codebook_reset:
+                if self.codebook_reset:
                     _num_accumulated = torch.zeros(weight.size(0), device=device, dtype=torch.long)
                 else:
                     _num_accumulated = None
@@ -500,21 +705,12 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
             z_e_sum_groups.append(z_e_sum_group)
             num_accumulated_groups.append(num_accumulated)
 
-        self.num_samples_tracked_groups: List[List[torch.Tensor]] = num_samples_tracked_groups
-        self.momentum_groups: List[List[torch.Tensor]] = momentum_groups
-        self.one_hot_sum_groups: List[List[torch.Tensor]] = one_hot_sum_groups
-        self.z_e_sum_groups: List[List[torch.Tensor]] = z_e_sum_groups
+        self.num_samples_tracked_groups = num_samples_tracked_groups
+        self.momentum_groups = momentum_groups
+        self.one_hot_sum_groups = one_hot_sum_groups
+        self.z_e_sum_groups = z_e_sum_groups
 
-        self.smooth = smooth
-
-        self.codebook_reset = codebook_reset
-        self.accumulated_steps = accumulated_steps
-        self.num_accumulated_groups: Optional[
-            List[List[torch.LongTensor]]
-        ] = num_accumulated_groups
-        self.reset_step = reset_step
-        self.reset_var = reset_var
-        self.reset_rate = reset_rate
+        self.num_accumulated_groups = num_accumulated_groups
 
     def store_current_stats(self, module: VectorQuantizer, input: Any, output: Any) -> None:
         # TODO: generalize
@@ -664,148 +860,6 @@ class ExponentialMovingAverageCodebookOptimizer(Optimizer):
                         momentum.data[min_idx].copy_(replaced)
                         num_samples_tracked.data[min_idx].fill_(1)
                         num_accumulated.data.zero_()
-
-    def state_dict(self) -> Dict[str, Any]:
-        """Returns the state of the optimizer as a ``dict``.
-
-        Returns:
-            dict: State dict of optimizer and moving average parameters.
-
-        """
-        state_dict = {}
-
-        param_groups, param_mappings = _pack_param_groups(self.param_groups)
-        num_samples_tracked_groups, num_samples_tracked_mappings = _pack_groups(
-            self.num_samples_tracked_groups
-        )
-        momentum_groups, momentum_mappings = _pack_groups(self.momentum_groups)
-        one_hot_sum_groups, one_hot_sum_mappings = _pack_groups(self.one_hot_sum_groups)
-        z_e_sum_groups, z_e_sum_mappings = _pack_groups(self.z_e_sum_groups)
-
-        packed_param_state = _pack_param_state(self.param_groups, param_mappings)
-        packed_num_samples_tracked_state = _pack_state(
-            self.num_samples_tracked_groups, num_samples_tracked_mappings
-        )
-        packed_momentum_state = _pack_state(self.momentum_groups, momentum_mappings)
-        packed_one_hot_sum_state = _pack_state(self.one_hot_sum_groups, one_hot_sum_mappings)
-        packed_z_e_sum_state = _pack_state(self.z_e_sum_groups, z_e_sum_mappings)
-
-        state_dict = {
-            "param_state": packed_param_state,
-            "param_groups": param_groups,
-            "num_samples_tracked_state": packed_num_samples_tracked_state,
-            "num_samples_tracked_groups": num_samples_tracked_groups,
-            "momentum_state": packed_momentum_state,
-            "momentum_groups": momentum_groups,
-            "one_hot_sum_state": packed_one_hot_sum_state,
-            "one_hot_sum_groups": one_hot_sum_groups,
-            "z_e_sum_state": packed_z_e_sum_state,
-            "z_e_sum_groups": z_e_sum_groups,
-            "smooth": self.smooth,
-        }
-
-        if self.codebook_reset:
-            num_accumulated_groups, num_accumulated_mappings = _pack_groups(
-                self.num_accumulated_groups
-            )
-            packed_num_accumulated_state = _pack_state(
-                self.num_accumulated_groups, num_accumulated_mappings
-            )
-
-            state_dict.update(
-                {
-                    "num_accumulated_state": packed_num_accumulated_state,
-                    "num_accumulated_groups": num_accumulated_groups,
-                    "accumulated_steps": self.accumulated_steps,
-                    "reset_step": self.reset_step,
-                    "reset_var": self.reset_var,
-                    "reset_rate": self.reset_rate,
-                }
-            )
-
-        return state_dict
-
-    def load_state_dict(self, state_dict: Dict[str, Any]) -> None:
-        r"""Loads the optimizer state.
-
-        Args:
-            state_dict (dict): optimizer state. Should be an object returned
-                from a call to ``state_dict``.
-
-        """
-
-        def _validate_groups(groups, saved_groups, keys: Optional[List[str]] = None) -> None:
-            if len(groups) != len(saved_groups):
-                raise ValueError("Loaded state dict has a different number of parameter groups.")
-
-            if keys is None:
-                containing_lens = (len(group) for group in groups)
-                saved_lens = (len(saved_group) for saved_group in saved_groups)
-
-                if any(c_len != s_len for c_len, s_len in zip(containing_lens, saved_lens)):
-                    raise ValueError(
-                        "Loaded state dict contains a parameter group "
-                        "that doesn't match the size of optimizer's group."
-                    )
-            else:
-                for k in keys:
-                    containing_lens = (len(group[k]) for group in groups)
-                    saved_lens = (len(saved_group[k]) for saved_group in saved_groups)
-
-                    if any(c_len != s_len for c_len, s_len in zip(containing_lens, saved_lens)):
-                        raise ValueError(
-                            "Loaded state dict contains a parameter group "
-                            "that doesn't match the size of optimizer's group."
-                        )
-
-        # deepcopy, to be consistent with module API
-        state_dict = copy.deepcopy(state_dict)
-
-        param_groups = self.param_groups
-        saved_packed_param_groups = state_dict["param_groups"]
-        packed_param_state = state_dict["param_state"]
-
-        num_samples_tracked_groups = self.num_samples_tracked_groups
-        saved_packed_num_samples_tracked_groups = state_dict["num_samples_tracked_groups"]
-        packed_num_samples_tracked_state = state_dict["num_samples_tracked_state"]
-        momentum_groups = self.momentum_groups
-        saved_packed_momentum_groups = state_dict["momentum_groups"]
-        packed_momentum_state = state_dict["momentum_state"]
-        one_hot_sum_groups = self.one_hot_sum_groups
-        saved_packed_one_hot_sum_groups = state_dict["one_hot_sum_groups"]
-        packed_one_hot_sum_state = state_dict["one_hot_sum_state"]
-        z_e_sum_groups = self.z_e_sum_groups
-        saved_packed_z_e_sum_groups = state_dict["z_e_sum_groups"]
-        packed_z_e_sum_state = state_dict["z_e_sum_state"]
-
-        # validate state_dict
-        _validate_groups(param_groups, saved_packed_param_groups, keys=["params"])
-        _validate_groups(num_samples_tracked_groups, saved_packed_num_samples_tracked_groups)
-        _validate_groups(momentum_groups, saved_packed_momentum_groups)
-        _validate_groups(one_hot_sum_groups, saved_packed_one_hot_sum_groups)
-        _validate_groups(z_e_sum_groups, saved_packed_z_e_sum_groups)
-
-        _load_param_groups(param_groups, packed_param_state)
-        _load_groups(num_samples_tracked_groups, packed_num_samples_tracked_state)
-        _load_groups(momentum_groups, packed_momentum_state)
-        _load_groups(one_hot_sum_groups, packed_one_hot_sum_state)
-        _load_groups(z_e_sum_groups, packed_z_e_sum_state)
-
-        # In older version, smooth parameter is not saved.
-        self.smooth = state_dict.get("smooth", self.smooth)
-
-        if self.codebook_reset:
-            num_accumulated_groups = self.num_accumulated_groups
-            saved_packed_num_samples_tracked_groups = state_dict["num_accumulated_groups"]
-            packed_num_accumulated_state = state_dict["num_accumulated_state"]
-
-            _validate_groups(num_accumulated_groups, saved_packed_num_samples_tracked_groups)
-            _load_groups(num_accumulated_groups, packed_num_accumulated_state)
-
-            self.accumulated_steps = state_dict["accumulated_steps"]
-            self.reset_step = state_dict["reset_step"]
-            self.reset_var = state_dict["reset_var"]
-            self.reset_rate = state_dict["reset_rate"]
 
 
 class MultiOptimizers:
