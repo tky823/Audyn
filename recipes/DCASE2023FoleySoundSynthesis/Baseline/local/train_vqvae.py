@@ -33,7 +33,7 @@ def main(config: DictConfig) -> None:
     if hasattr(config.data.codebook, "num_layers"):
         num_layers = config.data.codebook.num_layers
     else:
-        num_layers = num_layers
+        num_layers = None
 
     train_loader = hydra.utils.instantiate(
         config.train.dataloader.train,
