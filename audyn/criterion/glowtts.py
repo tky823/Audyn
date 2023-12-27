@@ -67,7 +67,30 @@ class GlowTTSDurationLoss(FastSpeechMSELoss):
         input: torch.Tensor,
         target: torch.Tensor,
     ) -> torch.Tensor:
-        length = torch.count_nonzero(target, dim=-1)
+        r"""Forward pass of duration MSE loss used in paper of GlowTTS.
+
+        Args:
+            input (torch.Tensor): Estimated feature of shape (batch_size, length)
+                if ``batch_first=True``, otherwise (length, batch_size).
+            target (torch.Tensor): Target feature of shape (batch_size, length)
+                if ``batch_first=True``, otherwise (length, batch_size).
+
+        Returns:
+            torch.Tensor: Mean squared error. If ``reduction=None``, shape is same as input.
+                If ``reduction=mean``, shape is ().
+
+        .. note::
+
+            Different from duration loss used in FastSpeech, maximum duration of target
+            feature (e.g. Melspectrogram) might be modified by GlowTTS decoder.
+            The modified duration is judged by ``torch.count_nonzero`` of ``target``.
+
+        """
+        if self.batch_first:
+            length = torch.count_nonzero(target, dim=-1)
+        else:
+            length = torch.count_nonzero(target, dim=0)
+
         loss = super().forward(input, target, length=length)
 
         return loss
