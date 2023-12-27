@@ -14,7 +14,7 @@ nll:
 duration:
   _target_: audyn.criterion.base.BaseCriterionWrapper
   criterion:
-    _target_: audyn.criterion.fastspeech.FastSpeechMSELoss
+    _target_: audyn.criterion.glowtts.GlowTTSDurationLoss
     take_log:
       input: false
       target: true
