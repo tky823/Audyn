@@ -11,7 +11,7 @@ train="vqvae_ema"  # vqvae
 model="vqvae"
 optimizer="vqvae_ema"  # vqvae
 lr_scheduler="vqvae_ema"  # vqvae
-criterion="vqvae"
+criterion="vqvae_melspectrogram"
 
 . ./run.sh \
 --stage 1 \
@@ -34,7 +34,7 @@ train="vqvae_ema"  # vqvae
 model="vqvae"
 optimizer="vqvae_ema"  # vqvae
 lr_scheduler="vqvae_ema"  # vqvae
-criterion="vqvae"
+criterion="vqvae_melspectrogram"
 vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.pth
 
 . ./run.sh \
