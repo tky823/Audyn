@@ -14,7 +14,7 @@ from torch.optim import Optimizer
 from torch.utils.hooks import RemovableHandle
 
 from ..modules.rvq import ResidualVectorQuantizer
-from ..modules.vqvae import VectorQuantizer
+from ..modules.vq import VectorQuantizer
 
 __all__ = [
     "ExponentialMovingAverageWrapper",
@@ -652,10 +652,10 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                 [-1.0824, -1.3987,  0.4036,  0.8382],
                 [-0.7094, -0.4002, -0.5933,  0.1820]], requires_grad=True)
 
+    .. [#williams2020hierarchical]
+        W. Williams et al., "Hierarchical quantized autoencoders,"
+        in *NeurIPS*, 2020, pp.4524-4535,
 
-        .. [#williams2020hierarchical]
-            W. Williams et al., "Hierarchical quantized autoencoders,"
-            in *NeurIPS*, 2020, pp.4524-4535,
     """
 
     if IS_TORCH_LT_2_1:
