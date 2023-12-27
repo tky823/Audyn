@@ -4,7 +4,7 @@ from dummy.modules.vqvae import Decoder, Encoder
 from audyn.models.rvqvae import RVQVAE
 
 
-def test_vqvae():
+def test_rvqvae():
     torch.manual_seed(0)
 
     batch_size = 4
@@ -44,3 +44,19 @@ def test_vqvae():
 
     assert torch.allclose(output_by_indices, output_by_hierarchical_quantized)
     assert torch.allclose(output_by_indices, output_by_quantized)
+
+    hierarchical_quantized, indices = model.sample(input)
+
+    assert hierarchical_quantized.size(0) == indices.size(0)
+    assert hierarchical_quantized.size(1) == num_rvq_layers
+    assert hierarchical_quantized.size(2) == hidden_channels
+    assert hierarchical_quantized.size()[3:] == latent_size
+    assert indices.size()[2:] == latent_size
+
+    hierarchical_quantized, indices = model.rsample(input)
+
+    assert hierarchical_quantized.size(0) == indices.size(0)
+    assert hierarchical_quantized.size(1) == num_rvq_layers
+    assert hierarchical_quantized.size(2) == hidden_channels
+    assert hierarchical_quantized.size()[3:] == latent_size
+    assert indices.size()[2:] == latent_size
