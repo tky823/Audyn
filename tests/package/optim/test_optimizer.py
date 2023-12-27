@@ -9,7 +9,8 @@ import torch.nn as nn
 from dummy import allclose
 from torch.optim import SGD, Adam
 
-from audyn.modules.vqvae import VectorQuantizer
+from audyn.modules.rvq import ResidualVectorQuantizer
+from audyn.modules.vq import VectorQuantizer
 from audyn.optim.optimizer import (
     ExponentialMovingAverageCodebookOptimizer,
     ExponentialMovingAverageWrapper,
@@ -82,17 +83,22 @@ def test_exponential_moving_average_wrapper(build_from_optim_class: bool):
     optimizer_wrapper.load_state_dict(state_dict["optimizer"])
 
 
+@pytest.mark.parametrize("is_rvq", [True, False])
 @pytest.mark.parametrize("codebook_reset", [True, False])
-def test_exponential_moving_average_codebook_optimizer(codebook_reset: bool) -> None:
+def test_exponential_moving_average_codebook_optimizer(is_rvq: bool, codebook_reset: bool) -> None:
     torch.manual_seed(0)
 
+    num_layers = 6
     codebook_size, embedding_dim = 3, 4
     batch_size, length = 2, 5
     num_initial_steps, num_total_steps = 5, 10
     reset_step, reset_var = 3, 0.1
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        model = VectorQuantizer(codebook_size, embedding_dim)
+        if is_rvq:
+            model = ResidualVectorQuantizer(codebook_size, embedding_dim, num_layers=num_layers)
+        else:
+            model = VectorQuantizer(codebook_size, embedding_dim)
 
         if codebook_reset:
             optimizer = ExponentialMovingAverageCodebookOptimizer(
@@ -191,7 +197,7 @@ def test_exponential_moving_average_codebook_optimizer(codebook_reset: bool) -> 
                 else:
                     # list
                     assert v_sequential == v_resume
-            elif k_sequential == "smooth":
+            elif k_sequential in ["smooth", "seed", "iteration"]:
                 assert v_sequential == v_resume
             else:
                 raise ValueError(f"Invalid key {k_sequential} is found.")

@@ -7,9 +7,9 @@ reconstruction_loss:
   weight: 1
   key_mapping:
     estimated:
-      input: reconstructed
+      input: ???
     target:
-      target: input
+      target: ???
 codebook_loss:
   _target_: audyn.criterion.base.BaseCriterionWrapper
   criterion:
@@ -18,8 +18,8 @@ codebook_loss:
   weight: 1
   key_mapping:
     estimated:
-      encoded: encoded
-      quantized: quantized
+      encoded: ???
+      quantized: ???
     target:
 commitment_loss:
   _target_: audyn.criterion.base.BaseCriterionWrapper
@@ -29,6 +29,6 @@ commitment_loss:
   weight: 0.25
   key_mapping:
     estimated:
-      encoded: encoded
-      quantized: quantized
+      encoded: ???
+      quantized: ???
     target:

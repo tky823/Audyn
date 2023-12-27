@@ -30,6 +30,11 @@ def main(config: DictConfig) -> None:
     codebook_size = config.data.codebook.size
     down_scale = config.model.encoder.stride**config.model.encoder.num_stacks
 
+    if hasattr(config.data.codebook, "num_layers"):
+        num_layers = config.data.codebook.num_layers
+    else:
+        num_layers = None
+
     train_loader = hydra.utils.instantiate(
         config.train.dataloader.train,
         train_dataset,
@@ -37,6 +42,7 @@ def main(config: DictConfig) -> None:
             collate_fn,
             codebook_size=codebook_size,
             down_scale=down_scale,
+            num_layers=num_layers,
         ),
     )
     validation_loader = hydra.utils.instantiate(
@@ -46,6 +52,7 @@ def main(config: DictConfig) -> None:
             collate_fn,
             codebook_size=codebook_size,
             down_scale=down_scale,
+            num_layers=num_layers,
         ),
     )
     loaders = BaseDataLoaders(train_loader, validation_loader)
@@ -83,6 +90,7 @@ def collate_fn(
     list_batch: List[Dict[str, Any]],
     codebook_size: int,
     down_scale: int,
+    num_layers: Optional[int] = None,
     keys: Optional[Iterable[str]] = None,
 ) -> Dict[str, torch.Tensor]:
     """Generate dict-based batch.
@@ -118,12 +126,12 @@ def collate_fn(
         flooring_fn=lambda x: torch.clamp(x, min=1e-10),
     )
 
-    dict_batch["codebook_indices"] = torch.randint(
-        0,
-        codebook_size,
-        (batch_size, n_mels // down_scale, n_frames // down_scale),
-        dtype=torch.long,
-    )
+    if num_layers is None:
+        shape = (batch_size, n_mels // down_scale, n_frames // down_scale)
+    else:
+        shape = (batch_size, num_layers, n_mels // down_scale, n_frames // down_scale)
+
+    dict_batch["codebook_indices"] = torch.randint(0, codebook_size, shape, dtype=torch.long)
 
     return dict_batch
 

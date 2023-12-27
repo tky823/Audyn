@@ -4,7 +4,8 @@ defaults:
   - melspectrogram: baseline
 
 codebook:
-  size: 512
+  num_layers: 3
+  size: 16
   shape:
     - 20  # ${...melspectrogram.n_mels} // (${model.encoder.stride} ** ${model.encoder.num_stacks})
     - 86  # ${...audio.length} // ${...melspectrogram.hop_length} // (${model.encoder.stride} ** ${model.encoder.num_stacks})

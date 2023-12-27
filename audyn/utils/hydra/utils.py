@@ -12,7 +12,9 @@ from torch.optim.lr_scheduler import _LRScheduler
 from audyn.criterion.base import BaseCriterionWrapper, MultiCriteria
 
 from ...models.text_to_wave import CascadeTextToWave
+from ...modules.rvq import ResidualVectorQuantizer
 from ...modules.vqvae import VectorQuantizer
+from ...optim.lr_scheduler import MultiLRSchedulers, _DummyLRScheduler
 from ...optim.optimizer import ExponentialMovingAverageCodebookOptimizer, MultiOptimizers
 from ..clip_grad import GradClipper
 from ..parallel import is_dp_or_ddp
@@ -168,12 +170,13 @@ def instantiate_optimizer(
     """Instantiate optimizer."""
 
     def _register_forward_hook_for_ema_codebook_optim(module: nn.Module, optimizer: Optimizer):
-        assert isinstance(module, VectorQuantizer), (
-            "Only VectorQuantizer is supported " "for ExponentialMovingAverageCodebookOptimizer."
+        assert isinstance(module, (VectorQuantizer, ResidualVectorQuantizer)), (
+            "Only VectorQuantizer and ResidualVectorQuantizer are supported "
+            "for ExponentialMovingAverageCodebookOptimizer."
         )
         assert isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
 
-        module: VectorQuantizer
+        module: Union[VectorQuantizer, ResidualVectorQuantizer]
         optimizer: ExponentialMovingAverageCodebookOptimizer
         module.register_forward_hook(optimizer.store_current_stats)
 
@@ -238,7 +241,7 @@ def instantiate_optimizer(
 
 
 def instantiate_lr_scheduler(
-    config: DictConfig, optimizer: Optimizer, *args, **kwargs
+    config: DictConfig, optimizer: Union[Optimizer, MultiOptimizers], *args, **kwargs
 ) -> Optional[_LRScheduler]:
     """Instantiate learning rate scheduler.
 
@@ -248,7 +251,34 @@ def instantiate_lr_scheduler(
         unlike ``hydra.utils.instantiate``.
 
     """
-    lr_scheduler = hydra.utils.instantiate(config, optimizer, *args, **kwargs)
+    if isinstance(config, ListConfig):
+        lr_schedulers = []
+
+        if not isinstance(optimizer, MultiOptimizers):
+            raise ValueError(
+                f"MultiOptimizers are expected, but {type(optimizer)} is given as optimizer."
+            )
+
+        for idx, _config in enumerate(config):
+            if "name" in _config:
+                optim_name = _config["name"]
+                _config = _config["lr_scheduler"]
+            else:
+                optim_name = idx
+
+            _optimizer = optimizer.optimizers[optim_name]
+            _lr_scheduler = hydra.utils.instantiate(_config, _optimizer, *args, **kwargs)
+
+            if isinstance(_lr_scheduler, DictConfig):
+                _lr_scheduler = _DummyLRScheduler()
+
+            lr_schedulers.append({"name": optim_name, "lr_scheduler": _lr_scheduler})
+
+        lr_schedulers = MultiLRSchedulers(lr_schedulers)
+
+        return lr_schedulers
+    else:
+        lr_scheduler = hydra.utils.instantiate(config, optimizer, *args, **kwargs)
 
     if isinstance(lr_scheduler, DictConfig):
         lr_scheduler = None

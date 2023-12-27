@@ -22,7 +22,7 @@ train="vqvae"  # vqvae_ema
 model="vqvae"
 optimizer="vqvae"  # vqvae_ema
 lr_scheduler="vqvae"  # vqvae_ema
-criterion="vqvae"
+criterion="vqvae_melspectrogram"
 
 . ./run.sh \
 --stage 1 \
@@ -47,7 +47,7 @@ train="vqvae"  # vqvae_ema
 model="vqvae"
 optimizer="vqvae"  # vqvae_ema
 lr_scheduler="vqvae"  # vqvae_ema
-criterion="vqvae"
+criterion="vqvae_melspectrogram"
 
 . ./run.sh \
 --stage 1 \
