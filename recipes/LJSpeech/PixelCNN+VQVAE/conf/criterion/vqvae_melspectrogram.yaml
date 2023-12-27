@@ -1,0 +1,22 @@
+defaults:
+  - vqvae
+  - _self_
+
+reconstruction_loss:
+  key_mapping:
+    estimated:
+      input: reconstructed
+    target:
+      target: log_melspectrogram_slice
+codebook_loss:
+  key_mapping:
+    estimated:
+      encoded: encoded
+      quantized: quantized
+    target:
+commitment_loss:
+  key_mapping:
+    estimated:
+      encoded: encoded
+      quantized: quantized
+    target:
