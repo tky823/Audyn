@@ -15,7 +15,7 @@ train="vqvae"
 model="vqvae"
 optimizer="vqvae_ema"
 lr_scheduler="none"
-criterion="vqvae"
+criterion="vqvae_melspectrogram"
 
 . ../../_common/parse_options.sh || exit 1;
 
