@@ -5,6 +5,8 @@ import torch
 from .fastspeech import FastSpeechMSELoss
 from .flow import NLLLoss
 
+__all__ = ["GlowTTSNLLLoss", "GlowTTSDurationLoss"]
+
 
 class GlowTTSNLLLoss(NLLLoss):
     """NLLLoss for GlowTTS."""
