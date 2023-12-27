@@ -1,10 +1,13 @@
 import os
 import subprocess
+import sys
 import tempfile
 
 from setuptools import setup
 from torch.utils.cpp_extension import BuildExtension as _BuildExtension
-from torch.utils.cpp_extension import CppExtension, get_cxx_compiler
+from torch.utils.cpp_extension import CppExtension
+
+IS_WINDOWS = sys.platform == "win32"
 
 
 def is_openmp_supported() -> bool:
@@ -63,6 +66,20 @@ def is_flag_accepted(flag: str) -> bool:
         raise RuntimeError(f"Unexpected error happened while checking if {flag} is available.")
 
     return is_accepted
+
+
+def get_cxx_compiler() -> str:
+    try:
+        from torch.utils.cpp_extension import get_cxx_compiler as _get_cxx_compiler
+
+        compiler = _get_cxx_compiler()
+    except ImportError:
+        if IS_WINDOWS:
+            compiler = os.environ.get("CXX", "cl")
+        else:
+            compiler = os.environ.get("CXX", "c++")
+
+    return compiler
 
 
 class BuildExtension(_BuildExtension):
