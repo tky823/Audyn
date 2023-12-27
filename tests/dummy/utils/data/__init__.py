@@ -222,3 +222,42 @@ class DummySequentialDataset(Dataset):
 
     def __len__(self) -> int:
         return self.size
+
+
+class DummyVQVAEDataset(Dataset):
+    def __init__(
+        self,
+        num_features: int,
+        height: int,
+        width: int,
+        down_scale: int,
+        size: int = 20,
+        codebook_size: int = None,
+    ) -> None:
+        super().__init__()
+
+        self.num_features = num_features
+        self.height, self.width = height, width
+        self.down_scale = down_scale
+        self.size = size
+
+    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
+        num_features = self.num_features
+        height, width = self.height, self.width
+        down_scale = self.down_scale
+
+        input = torch.randn((num_features, height, width), dtype=torch.float)
+        codebook_indices = torch.zeros(
+            (height // down_scale, width // down_scale), dtype=torch.long
+        )
+        output = {
+            "input": input,
+            "codebook_indices": codebook_indices,
+            "filename": f"utterance-{idx}",
+            "subset": f"subset-{idx}",
+        }
+
+        return output
+
+    def __len__(self) -> int:
+        return self.size
