@@ -95,7 +95,7 @@ train="vqvae"
 model="vqvae"
 optimizer="vqvae_ema"  # "vqvae"
 lr_scheduler="none"
-criterion="vqvae"
+criterion="vqvae_melspectrogram"
 
 . ./run.sh \
 --stage 4 \
@@ -126,7 +126,7 @@ train="vqvae+pretrained_hifigan"
 model="vqvae"
 optimizer="vqvae_ema"  # "vqvae"
 lr_scheduler="none"
-criterion="vqvae"
+criterion="vqvae_melspectrogram"
 
 . ./run.sh \
 --stage 4 \
