@@ -42,7 +42,7 @@ class RVQVAE(BaseVAE):
     def forward(
         self, input: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.LongTensor]:
-        """Forward pass of VQVAE.
+        """Forward pass of RVQVAE.
 
         Args:
             input (torch.Tensor): Input feature of shape (batch_size, *input_shape).
@@ -74,7 +74,7 @@ class RVQVAE(BaseVAE):
 
     @torch.no_grad()
     def inference(self, quantized: torch.Tensor, layer_wise: bool = True) -> torch.Tensor:
-        """Inference of VQVAE.
+        """Inference of RVQVAE.
 
         Args:
             quantized (torch.Tensor): Following two types are supported.
