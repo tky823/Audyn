@@ -33,3 +33,17 @@ def test_vqvae():
     output_by_indices = model.inference(indices)
 
     assert torch.allclose(output_by_indices, output_by_quantized)
+
+    quantized, indices = model.sample(input)
+
+    assert quantized.size(0) == indices.size(0)
+    assert quantized.size(1) == hidden_channels
+    assert quantized.size()[2:] == latent_size
+    assert indices.size()[1:] == latent_size
+
+    quantized, indices = model.rsample(input)
+
+    assert quantized.size(0) == indices.size(0)
+    assert quantized.size(1) == hidden_channels
+    assert quantized.size()[2:] == latent_size
+    assert indices.size()[1:] == latent_size
