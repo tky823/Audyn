@@ -1,7 +1,8 @@
-from typing import Optional
+from typing import Dict, Optional, Union
 
 import torch
 
+from .fastspeech import FastSpeechMSELoss
 from .flow import NLLLoss
 
 
@@ -38,5 +39,33 @@ class GlowTTSNLLLoss(NLLLoss):
         num_elements = tgt_non_padding_mask.sum(dim=(1, 2))
 
         loss = super().forward(logdet / num_elements)
+
+        return loss
+
+
+class GlowTTSDurationLoss(FastSpeechMSELoss):
+    def __init__(
+        self,
+        take_log: Union[bool, Dict[str, bool]] = False,
+        reduction: Optional[str] = None,
+        batch_first: bool = False,
+        min: Optional[float] = None,
+        max: Optional[float] = None,
+    ) -> None:
+        super().__init__(
+            take_log=take_log,
+            reduction=reduction,
+            batch_first=batch_first,
+            min=min,
+            max=max,
+        )
+
+    def forward(
+        self,
+        input: torch.Tensor,
+        target: torch.Tensor,
+    ) -> torch.Tensor:
+        length = torch.count_nonzero(target, dim=-1)
+        loss = super().forward(input, target, length=length)
 
         return loss
