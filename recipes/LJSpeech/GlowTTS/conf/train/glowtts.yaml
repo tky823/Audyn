@@ -51,7 +51,7 @@ key_mapping:
 clip_gradient:
   _target_: audyn.utils.GradClipper
   mode: norm
-  max_norm: 1
+  max_norm: 5
 
 resume:
   continue_from:
