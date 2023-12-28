@@ -32,7 +32,12 @@ def is_openmp_supported(compiler: str) -> bool:
             f.write(cpp_text)
 
             try:
-                subprocess.check_output([compiler, f.name, "-fopenmp"])
+                if compiler == "cl":
+                    flag = "/openmp"
+                else:
+                    flag = "-fopenmp"
+
+                subprocess.check_output([compiler, f.name, flag])
                 is_supported = True
             except subprocess.CalledProcessError:
                 is_supported = False
@@ -117,13 +122,23 @@ class BuildExtension(_BuildExtension):
             compiler = os.path.realpath(which.decode(*SUBPROCESS_DECODE_ARGS).strip())
 
         if ext.name == "audyn._cpp_extensions.monotonic_align":
-            if is_flag_accepted(compiler, "-O3"):
-                ext.extra_compile_args.append("-O3")
+            # optimization
+            if compiler == "cl":
+                if is_flag_accepted(compiler, "/Ox"):
+                    ext.extra_compile_args.append("/Ox")
+            else:
+                if is_flag_accepted(compiler, "-O3"):
+                    ext.extra_compile_args.append("-O3")
 
-            if is_flag_accepted(compiler, "-march=native"):
-                # ext.extra_compile_args.append("-march=native")
+            # environment-dependent optimization
+            if compiler == "cl":
                 pass
+            else:
+                if is_flag_accepted(compiler, "-march=native"):
+                    # ext.extra_compile_args.append("-march=native")
+                    pass
 
+            # availability of OpenMP
             if is_openmp_supported(compiler):
                 ext.extra_compile_args.append("-fopenmp")
                 ext.extra_link_args.append("-fopenmp")
