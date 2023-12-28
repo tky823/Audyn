@@ -51,12 +51,14 @@ record:
           ml_duration: "Extracted alignment (iteration)"
           log_est_duration: "Estimated alignment (iteration)"
         reference:
+          text_duration: "Target alignment (iteration)"
       transforms:
         output:
           log_est_duration:
             _target_: audyn.utils.duration.transform_log_duration
             _partial_: true
             dtype: ${const:torch.long}
+        reference:
     epoch:
       every: 1
       sample_size: 1
@@ -70,6 +72,7 @@ record:
           output:
             estimated_duration: "Estimated alignment of inference (epoch)"
           reference:
+            text_duration: "Target alignment of inference (epoch)"
       transforms:
         validation: ${...iteration.transforms}
         inference:
