@@ -85,6 +85,9 @@ def get_cxx_compiler() -> str:
         else:
             compiler = os.environ.get("CXX", "c++")
 
+    if compiler is None:
+        raise RuntimeError("Unexpected error happened while checking cxx compiler.")
+
     return compiler
 
 
