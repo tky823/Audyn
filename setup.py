@@ -122,7 +122,10 @@ class BuildExtension(_BuildExtension):
             compiler = get_cxx_compiler()
 
         if IS_WINDOWS:
-            raise ValueError(self.compiler.compiler_type)
+            where = subprocess.check_output(["where", "cl"], stderr=subprocess.STDOUT)
+            raise ValueError(
+                self.compiler.compiler_type, where.decode(*SUBPROCESS_DECODE_ARGS).strip()
+            )
         else:
             which = subprocess.check_output(["which", compiler], stderr=subprocess.STDOUT)
             compiler = os.path.realpath(which.decode(*SUBPROCESS_DECODE_ARGS).strip())
