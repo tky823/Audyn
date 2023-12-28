@@ -8,6 +8,8 @@ from torch.utils.cpp_extension import BuildExtension as _BuildExtension
 from torch.utils.cpp_extension import CppExtension
 
 IS_WINDOWS = sys.platform == "win32"
+IS_MACOS = sys.platform.startswith("darwin")
+IS_LINUX = sys.platform.startswith("linux")
 
 
 def is_openmp_supported(compiler: str) -> bool:
@@ -72,13 +74,29 @@ def get_cxx_compiler() -> str:
 
         compiler = _get_cxx_compiler()
     except ImportError:
+        compiler = None
+
         if IS_WINDOWS:
             compiler = os.environ.get("CXX", "cl")
         else:
             compiler = os.environ.get("CXX", "c++")
 
-        if is_compilier_available(compiler):
-            raise RuntimeError(f"{compiler} is not supported on your platform.")
+            if not is_compilier_available(compiler):
+                compiler = None
+
+                if IS_MACOS:
+                    for _compiler in ["clang++", "clang"]:
+                        if is_compilier_available(_compiler):
+                            compiler = _compiler
+                            break
+                else:
+                    for _compiler in ["g++", "gcc", "gnu-c++", "gnu-cc", "clang++", "clang"]:
+                        if is_compilier_available(_compiler):
+                            compiler = _compiler
+                            break
+
+            if compiler is None:
+                raise RuntimeError("Supported compiler is not found on your platform.")
 
     return compiler
 
