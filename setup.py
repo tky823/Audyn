@@ -77,7 +77,18 @@ def get_cxx_compiler() -> str:
         else:
             compiler = os.environ.get("CXX", "c++")
 
+        if is_compilier_available(compiler):
+            raise RuntimeError(f"{compiler} is not supported on your platform.")
+
     return compiler
+
+
+def is_compilier_available(compiler: str) -> bool:
+    try:
+        subprocess.check_output(["which", compiler])
+        return True
+    except subprocess.CalledProcessError:
+        return False
 
 
 class BuildExtension(_BuildExtension):
