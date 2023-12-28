@@ -10,9 +10,8 @@ from torch.utils.cpp_extension import CppExtension
 IS_WINDOWS = sys.platform == "win32"
 
 
-def is_openmp_supported() -> bool:
+def is_openmp_supported(compiler: str) -> bool:
     """Check if OpenMP is available."""
-    compiler = get_cxx_compiler()
     is_supported = None
 
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -40,9 +39,8 @@ def is_openmp_supported() -> bool:
     return is_supported
 
 
-def is_flag_accepted(flag: str) -> bool:
+def is_flag_accepted(compiler: str, flag: str) -> bool:
     """Check if flag is available."""
-    compiler = get_cxx_compiler()
     is_accepted = None
 
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -94,22 +92,25 @@ class BuildExtension(_BuildExtension):
             "extra_link_args": [],
         },
     ]
+    compiler = get_cxx_compiler()
 
-    if is_flag_accepted("-O3"):
+    if is_flag_accepted(compiler, "-O3"):
         for cpp_extension in cpp_extensions:
             if cpp_extension["name"] == "audyn._cpp_extensions.monotonic_align":
                 cpp_extension["extra_compile_args"].append("-O3")
 
-    if is_flag_accepted("-march=native"):
+    if is_flag_accepted(compiler, "-march=native"):
         for cpp_extension in cpp_extensions:
             if cpp_extension["name"] == "audyn._cpp_extensions.monotonic_align":
                 cpp_extension["extra_compile_args"].append("-march=native")
 
-    if is_openmp_supported():
+    if is_openmp_supported(compiler):
         for cpp_extension in cpp_extensions:
             if cpp_extension["name"] == "audyn._cpp_extensions.monotonic_align":
                 cpp_extension["extra_compile_args"].append("-fopenmp")
                 cpp_extension["extra_link_args"].append("-fopenmp")
+
+    del compiler
 
     def run(self) -> None:
         if self.editable_mode:
