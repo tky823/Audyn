@@ -99,6 +99,8 @@ class BuildExtension(_BuildExtension):
         which = subprocess.check_output(["which", compiler], stderr=subprocess.STDOUT)
         compiler_path = os.path.realpath(which.decode(*SUBPROCESS_DECODE_ARGS).strip())
 
+        raise ValueError(ext.extra_compile_args, ext.extra_link_args)
+
         if ext.name == "audyn._cpp_extensions.monotonic_align":
             if is_flag_accepted(compiler_path, "-O3"):
                 ext.extra_compile_args.append("-O3")
@@ -109,7 +111,6 @@ class BuildExtension(_BuildExtension):
             if is_openmp_supported(compiler_path):
                 ext.extra_compile_args.append("-fopenmp")
                 ext.extra_link_args.append("-fopenmp")
-                raise ValueError("OpenMP is supported.")
 
         return super().build_extension(ext)
 
