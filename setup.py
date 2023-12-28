@@ -72,6 +72,22 @@ def is_flag_accepted(compiler: str, flag: str) -> bool:
     return is_accepted
 
 
+def get_cxx_compiler() -> str:
+    compiler = None
+
+    try:
+        from torch.utils.cpp_extension import get_cxx_compiler as _get_cxx_compiler
+
+        compiler = _get_cxx_compiler()
+    except ImportError:
+        if IS_WINDOWS:
+            compiler = os.environ.get("CXX", "cl")
+        else:
+            compiler = os.environ.get("CXX", "c++")
+
+    return compiler
+
+
 class BuildExtension(_BuildExtension):
     cpp_extensions = [
         {
@@ -92,7 +108,11 @@ class BuildExtension(_BuildExtension):
         super().run()
 
     def build_extension(self, ext: Extension) -> None:
-        compiler = self.compiler.compiler[0]
+        if hasattr(self.compiler, "compiler_cxx"):
+            compiler = self.compiler.compiler_cxx[0]
+        else:
+            compiler = get_cxx_compiler()
+
         which = subprocess.check_output(["which", compiler], stderr=subprocess.STDOUT)
         compiler_path = os.path.realpath(which.decode(*SUBPROCESS_DECODE_ARGS).strip())
 
