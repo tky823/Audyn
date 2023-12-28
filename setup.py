@@ -13,6 +13,9 @@ IS_MACOS = sys.platform.startswith("darwin")
 IS_LINUX = sys.platform.startswith("linux")
 
 
+SUBPROCESS_DECODE_ARGS = ("oem",) if IS_WINDOWS else ()
+
+
 def is_openmp_supported(compiler: str) -> bool:
     """Check if OpenMP is available."""
     is_supported = None
@@ -30,9 +33,16 @@ def is_openmp_supported(compiler: str) -> bool:
 
         obj_name = f.name.replace(".cpp", ".out")
 
+        compile = subprocess.check_output(
+            [compiler, f.name, "-o", obj_name, "-fopenmp"], stderr=subprocess.STDOUT
+        )
+        decoded = compile.decode(*SUBPROCESS_DECODE_ARGS).strip()
+        raise ValueError(decoded)
+
         try:
             subprocess.check_output([compiler, f.name, "-o", obj_name, "-fopenmp"])
             is_supported = True
+            raise ValueError("OpenMP is supported.")
         except subprocess.CalledProcessError:
             is_supported = False
 
@@ -93,15 +103,17 @@ class BuildExtension(_BuildExtension):
 
     def build_extension(self, ext: Extension) -> None:
         compiler = self.compiler.compiler[0]
+        which = subprocess.check_output(["which", compiler], stderr=subprocess.STDOUT)
+        compiler_path = os.path.realpath(which.decode(*SUBPROCESS_DECODE_ARGS).strip())
 
         if ext.name == "audyn._cpp_extensions.monotonic_align":
-            if is_flag_accepted(compiler, "-O3"):
+            if is_flag_accepted(compiler_path, "-O3"):
                 ext.extra_compile_args.append("-O3")
 
-            if is_flag_accepted(compiler, "-march=native"):
+            if is_flag_accepted(compiler_path, "-march=native"):
                 ext.extra_compile_args.append("-march=native")
 
-            if is_openmp_supported(compiler):
+            if is_openmp_supported(compiler_path):
                 ext.extra_compile_args.append("-fopenmp")
                 ext.extra_link_args.append("-fopenmp")
 
