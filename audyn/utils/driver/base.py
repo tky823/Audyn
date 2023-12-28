@@ -1452,10 +1452,10 @@ class BaseTrainer(BaseDriver):
             # remove pseudo batch dimension
             alignment = alignment.squeeze(dim=0)
             alignment = alignment.permute(1, 0).contiguous()
-            tgt_length = torch.count_nonzero(alignment, dim=0)
-            tgt_length = torch.count_nonzero(tgt_length)
-            src_length = torch.count_nonzero(alignment, dim=1)
-            src_length = torch.count_nonzero(src_length)
+            tgt_length = torch.count_nonzero(alignment, dim=1)
+            tgt_length = torch.count_nonzero(tgt_length).item()
+            src_length = torch.count_nonzero(alignment, dim=0)
+            src_length = torch.count_nonzero(src_length).item()
         else:
             # TODO: permute dims if necessary
             raise NotImplementedError("2D input is not supported now.")
