@@ -1,0 +1,49 @@
+defaults:
+  - dataset: dummy_text-to-feat
+  - dataloader: defaults
+  - output: dummy
+  - _self_
+
+dataloader:
+  train:
+    shuffle: false
+  validation:
+    shuffle: false
+
+key_mapping:
+  train:
+    input:
+      src: text
+      tgt: melspectrogram
+      src_length: text_length
+      tgt_length: melspectrogram_length
+    output:
+      - - src_latent
+        - tgt_latent
+      - - log_est_duration
+        - ml_duration
+      - - src_padding_mask
+        - tgt_padding_mask
+      - logdet
+  validation: ${.train}
+  inference:
+    input:
+      src: text
+      src_length: text_length
+    output:
+      - estimated_log_melspectrogram
+      - estimated_duration
+
+clip_gradient:
+  _target_: torch.nn.utils.clip_grad_norm_
+  max_norm: 10
+
+resume:
+  continue_from:
+
+record:
+
+steps:
+  epochs:
+  iterations:
+  lr_scheduler: iteration

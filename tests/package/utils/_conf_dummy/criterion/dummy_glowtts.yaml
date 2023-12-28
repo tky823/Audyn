@@ -1,0 +1,29 @@
+_target_: audyn.criterion.base.MultiCriteria
+nll:
+  _target_: audyn.criterion.base.BaseCriterionWrapper
+  criterion:
+    _target_: audyn.criterion.glowtts.GlowTTSNLLLoss
+    reduction: mean
+  weight: 1
+  key_mapping:
+    estimated:
+      logdet: logdet
+      tgt_padding_mask: tgt_padding_mask
+    target:
+      tgt: melspectrogram
+duration:
+  _target_: audyn.criterion.base.BaseCriterionWrapper
+  criterion:
+    _target_: audyn.criterion.glowtts.GlowTTSDurationLoss
+    take_log:
+      input: false
+      target: true
+    reduction: mean
+    batch_first: ${model.encoder.backbone.batch_first}
+    min: 1
+  weight: 1
+  key_mapping:
+    estimated:
+      input: log_est_duration
+      target: ml_duration
+    target:
