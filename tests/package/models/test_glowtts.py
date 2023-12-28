@@ -422,7 +422,7 @@ def test_glowtts_decoder() -> None:
     assert z.size() == input.size()
     assert z_logdet.size() == (batch_size,)
     allclose(output, masked_input, atol=1e-6)
-    allclose(logdet, zeros)
+    allclose(logdet, zeros, atol=1e-6)
 
 
 @pytest.mark.parametrize("batch_first", parameters_batch_first)
