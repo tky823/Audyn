@@ -5,6 +5,7 @@ train:
   up_scale:
   length:
   size:
+  channels_last: true
 validation:
   _target_: dummy.utils.data.DummyTextToFeatDataset
   vocab_size: ${..train.vocab_size}
@@ -12,3 +13,4 @@ validation:
   up_scale: ${..train.up_scale}
   length: ${..train.length}
   size:
+  channels_last: ${..train.channels_last}
