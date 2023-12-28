@@ -36,10 +36,8 @@ def is_openmp_supported(compiler: str) -> bool:
         try:
             subprocess.check_output([compiler, f.name, "-o", obj_name, "-fopenmp"])
             is_supported = True
-            raise ValueError("OpenMP is supported.")
         except subprocess.CalledProcessError:
             is_supported = False
-            raise ValueError("OpenMP is not supported.")
 
     if is_supported is None:
         raise RuntimeError("Unexpected error happened while checking if OpenMP is available.")
@@ -111,6 +109,7 @@ class BuildExtension(_BuildExtension):
             if is_openmp_supported(compiler_path):
                 ext.extra_compile_args.append("-fopenmp")
                 ext.extra_link_args.append("-fopenmp")
+                raise ValueError("OpenMP is supported.")
 
         return super().build_extension(ext)
 
