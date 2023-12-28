@@ -132,8 +132,7 @@ class BuildExtension(_BuildExtension):
 
             # environment-dependent optimization
             if is_flag_accepted(compiler, "-march=native"):
-                # ext.extra_compile_args.append("-march=native")
-                pass
+                ext.extra_compile_args.append("-march=native")
 
             # availability of OpenMP
             if is_openmp_supported(compiler):
