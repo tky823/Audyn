@@ -62,7 +62,11 @@ def is_flag_accepted(compiler: str, flag: str) -> bool:
             f.write(cpp_text)
 
             try:
-                subprocess.check_output([compiler, f.name, flag])
+                if compiler == "cl":
+                    subprocess.check_output([compiler])
+                else:
+                    subprocess.check_output([compiler, f.name, flag])
+
                 is_accepted = True
             except subprocess.CalledProcessError:
                 is_accepted = False
