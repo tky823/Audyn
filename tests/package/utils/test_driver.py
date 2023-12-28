@@ -330,12 +330,14 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
         monkeypatch.undo()
 
 
+@pytest.mark.parametrize("model_name", ["dummy_text-to-feat", "dummy_glowtts"])
 @pytest.mark.parametrize(
     "is_legacy_grad_clipper, is_legacy_grad_clipper_recipe",
     [(True, True), (True, False), (False, False)],
 )
 def test_text_to_feat_trainer(
     monkeypatch: MonkeyPatch,
+    model_name: str,
     is_legacy_grad_clipper: bool,
     is_legacy_grad_clipper_recipe: bool,
 ) -> None:
@@ -346,6 +348,11 @@ def test_text_to_feat_trainer(
     VOCAB_SIZE = 10
     N_MELS = 5
     TEXT_TO_FEAT_UP_SCALE = 2
+
+    if model_name == "dummy_glowtts":
+        train_name = "dummy_glowtts"
+    else:
+        train_name = "dummy_text-to-feat"
 
     with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         monkeypatch.chdir(temp_dir)
@@ -369,6 +376,8 @@ def test_text_to_feat_trainer(
                     vocab_size=VOCAB_SIZE,
                     n_mels=N_MELS,
                     up_scale=TEXT_TO_FEAT_UP_SCALE,
+                    train=train_name,
+                    model=model_name,
                     pretrained_feat_to_wave=None,
                 ),
                 return_hydra_config=True,
@@ -1862,26 +1871,31 @@ def create_dummy_text_to_feat_override(
     vocab_size: int = 10,
     n_mels: int = 5,
     up_scale: int = 2,
+    train: str = "dummy_text-to-feat",
+    model: str = "dummy_text-to-feat",
     pretrained_feat_to_wave: Optional[str] = None,
 ) -> List[str]:
     sample_rate = 16000
-    length = 10
+    length = 30
 
     output_dir, *_, tag = exp_dir.rsplit("/", maxsplit=2)
     tensorboard_dir = os.path.join(output_dir, "tensorboard", tag)
 
-    if pretrained_feat_to_wave is None:
-        train = "dummy_text-to-feat"
+    if pretrained_feat_to_wave is not None:
+        train = f"{train}+pretrained_feat-to-wave"
+
+    if model == "dummy_glowtts":
+        criterion = "dummy_glowtts"
     else:
-        train = "dummy_text-to-feat+pretrained_feat-to-wave"
+        criterion = "dummy"
 
     override_list = [
         f"train={train}",
         "test=dummy",
-        "model=dummy_text-to-feat",
+        f"model={model}",
         "optimizer=dummy",
         "lr_scheduler=dummy",
-        "criterion=dummy",
+        f"criterion={criterion}",
         f"hydra.searchpath=[{overrides_conf_dir}]",
         "hydra.job.num=1",
         f"hydra.runtime.output_dir={exp_dir}/log",
@@ -1897,11 +1911,21 @@ def create_dummy_text_to_feat_override(
         f"train.output.exp_dir={exp_dir}",
         f"train.output.tensorboard_dir={tensorboard_dir}",
         f"train.steps.iterations={iterations}",
-        f"model.vocab_size={vocab_size}",
-        f"model.num_features={n_mels}",
-        "criterion.criterion_name.key_mapping.estimated.input=estimated_melspectrogram",
-        "criterion.criterion_name.key_mapping.target.target=melspectrogram",
     ]
+
+    if model == "dummy_glowtts":
+        override_list += [
+            "train.dataset.train.channels_last=false",
+            f"model.encoder.word_embedding.num_embeddings={vocab_size}",
+            f"model.decoder.in_channels={n_mels}",
+        ]
+    else:
+        override_list += [
+            f"model.vocab_size={vocab_size}",
+            f"model.num_features={n_mels}",
+            "criterion.criterion_name.key_mapping.estimated.input=estimated_melspectrogram",
+            "criterion.criterion_name.key_mapping.target.target=melspectrogram",
+        ]
 
     if pretrained_feat_to_wave is not None:
         override_list += [f"train.pretrained_feat_to_wave.path={pretrained_feat_to_wave}"]
