@@ -101,7 +101,8 @@ class BuildExtension(_BuildExtension):
                 ext.extra_compile_args.append("-O3")
 
             if is_flag_accepted(compiler_path, "-march=native"):
-                ext.extra_compile_args.append("-march=native")
+                # ext.extra_compile_args.append("-march=native")
+                pass
 
             if is_openmp_supported(compiler_path):
                 ext.extra_compile_args.append("-fopenmp")
