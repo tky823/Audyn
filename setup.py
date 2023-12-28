@@ -79,9 +79,6 @@ class BuildExtension(_BuildExtension):
             "sources": [
                 "cpp_extensions/monotonic_align/monotonic_align.cpp",
             ],
-            # add extra_compile_args and extra_link_args
-            "extra_compile_args": [],
-            "extra_link_args": [],
         },
     ]
 
@@ -98,8 +95,6 @@ class BuildExtension(_BuildExtension):
         compiler = self.compiler.compiler[0]
         which = subprocess.check_output(["which", compiler], stderr=subprocess.STDOUT)
         compiler_path = os.path.realpath(which.decode(*SUBPROCESS_DECODE_ARGS).strip())
-
-        raise ValueError(ext.extra_compile_args, ext.extra_link_args)
 
         if ext.name == "audyn._cpp_extensions.monotonic_align":
             if is_flag_accepted(compiler_path, "-O3"):
