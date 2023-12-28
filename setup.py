@@ -113,18 +113,19 @@ class BuildExtension(_BuildExtension):
         else:
             compiler = get_cxx_compiler()
 
-        which = subprocess.check_output(["which", compiler], stderr=subprocess.STDOUT)
-        compiler_path = os.path.realpath(which.decode(*SUBPROCESS_DECODE_ARGS).strip())
+        if not IS_WINDOWS:
+            which = subprocess.check_output(["which", compiler], stderr=subprocess.STDOUT)
+            compiler = os.path.realpath(which.decode(*SUBPROCESS_DECODE_ARGS).strip())
 
         if ext.name == "audyn._cpp_extensions.monotonic_align":
-            if is_flag_accepted(compiler_path, "-O3"):
+            if is_flag_accepted(compiler, "-O3"):
                 ext.extra_compile_args.append("-O3")
 
-            if is_flag_accepted(compiler_path, "-march=native"):
+            if is_flag_accepted(compiler, "-march=native"):
                 # ext.extra_compile_args.append("-march=native")
                 pass
 
-            if is_openmp_supported(compiler_path):
+            if is_openmp_supported(compiler):
                 ext.extra_compile_args.append("-fopenmp")
                 ext.extra_link_args.append("-fopenmp")
 
