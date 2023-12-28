@@ -140,8 +140,12 @@ class BuildExtension(_BuildExtension):
 
             # availability of OpenMP
             if is_openmp_supported(compiler):
-                ext.extra_compile_args.append("-fopenmp")
-                ext.extra_link_args.append("-fopenmp")
+                if compiler == "cl":
+                    ext.extra_compile_args.append("/openmp")
+                    ext.extra_link_args.append("/openmp")
+                else:
+                    ext.extra_compile_args.append("-fopenmp")
+                    ext.extra_link_args.append("-fopenmp")
 
         return super().build_extension(ext)
 
