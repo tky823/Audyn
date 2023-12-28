@@ -4,6 +4,7 @@ import sys
 import tempfile
 
 from setuptools import setup
+from setuptools.extension import Extension
 from torch.utils.cpp_extension import BuildExtension as _BuildExtension
 from torch.utils.cpp_extension import CppExtension
 
@@ -68,47 +69,6 @@ def is_flag_accepted(compiler: str, flag: str) -> bool:
     return is_accepted
 
 
-def get_cxx_compiler() -> str:
-    try:
-        from torch.utils.cpp_extension import get_cxx_compiler as _get_cxx_compiler
-
-        compiler = _get_cxx_compiler()
-    except ImportError:
-        compiler = None
-
-        if IS_WINDOWS:
-            compiler = os.environ.get("CXX", "cl")
-        else:
-            compiler = os.environ.get("CXX", "c++")
-
-            if not is_compilier_available(compiler):
-                compiler = None
-
-                if IS_MACOS:
-                    for _compiler in ["clang++", "clang"]:
-                        if is_compilier_available(_compiler):
-                            compiler = _compiler
-                            break
-                else:
-                    for _compiler in ["g++", "gcc", "gnu-c++", "gnu-cc", "clang++", "clang"]:
-                        if is_compilier_available(_compiler):
-                            compiler = _compiler
-                            break
-
-            if compiler is None:
-                raise RuntimeError("Supported compiler is not found on your platform.")
-
-    return compiler
-
-
-def is_compilier_available(compiler: str) -> bool:
-    try:
-        subprocess.check_output(["which", compiler])
-        return True
-    except subprocess.CalledProcessError:
-        return False
-
-
 class BuildExtension(_BuildExtension):
     cpp_extensions = [
         {
@@ -121,25 +81,6 @@ class BuildExtension(_BuildExtension):
             "extra_link_args": [],
         },
     ]
-    compiler = get_cxx_compiler()
-
-    if is_flag_accepted(compiler, "-O3"):
-        for cpp_extension in cpp_extensions:
-            if cpp_extension["name"] == "audyn._cpp_extensions.monotonic_align":
-                cpp_extension["extra_compile_args"].append("-O3")
-
-    if is_flag_accepted(compiler, "-march=native"):
-        for cpp_extension in cpp_extensions:
-            if cpp_extension["name"] == "audyn._cpp_extensions.monotonic_align":
-                cpp_extension["extra_compile_args"].append("-march=native")
-
-    if is_openmp_supported(compiler):
-        for cpp_extension in cpp_extensions:
-            if cpp_extension["name"] == "audyn._cpp_extensions.monotonic_align":
-                cpp_extension["extra_compile_args"].append("-fopenmp")
-                cpp_extension["extra_link_args"].append("-fopenmp")
-
-    del compiler
 
     def run(self) -> None:
         if self.editable_mode:
@@ -149,6 +90,22 @@ class BuildExtension(_BuildExtension):
                 os.makedirs("/".join(pkg_names), exist_ok=True)
 
         super().run()
+
+    def build_extension(self, ext: Extension) -> None:
+        compiler = self.compiler.compiler[0]
+
+        if ext.name == "audyn._cpp_extensions.monotonic_align":
+            if is_flag_accepted(compiler, "-O3"):
+                ext.extra_compile_args.append("-O3")
+
+            if is_flag_accepted(compiler, "-march=native"):
+                ext.extra_compile_args.append("-march=native")
+
+            if is_openmp_supported(compiler):
+                ext.extra_compile_args.append("-fopenmp")
+                ext.extra_link_args.append("-fopenmp")
+
+        return super().build_extension(ext)
 
 
 # NOTE: Basic settings are written in pyproject.toml.
