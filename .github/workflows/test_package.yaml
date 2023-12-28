@@ -49,11 +49,7 @@ jobs:
           TORCH_VERSION: ${{ matrix.torch-version }}
         run: |
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${env:TORCH_VERSION}
-      - name: Display path to cl (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
           where cl
-          cl /version
       - name: Overwrite torch version in pyproject.toml (Ubuntu & MacOS)
         if: steps.windows_torch_installation.conclusion == 'skipped'
         env:
