@@ -13,6 +13,7 @@ duration:
           _target_: audyn.utils.duration.transform_log_duration
           _partial_: true
           dtype: ${const:torch.long}
+      reference:
   epoch:
     every: 1
     sample_size: 1
