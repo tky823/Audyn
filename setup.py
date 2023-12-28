@@ -121,7 +121,9 @@ class BuildExtension(_BuildExtension):
         else:
             compiler = get_cxx_compiler()
 
-        if not IS_WINDOWS:
+        if IS_WINDOWS:
+            raise ValueError(self.compiler.compiler_type)
+        else:
             which = subprocess.check_output(["which", compiler], stderr=subprocess.STDOUT)
             compiler = os.path.realpath(which.decode(*SUBPROCESS_DECODE_ARGS).strip())
 
