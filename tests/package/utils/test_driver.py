@@ -1876,7 +1876,7 @@ def create_dummy_text_to_feat_override(
     pretrained_feat_to_wave: Optional[str] = None,
 ) -> List[str]:
     sample_rate = 16000
-    length = 30
+    length = 10
 
     output_dir, *_, tag = exp_dir.rsplit("/", maxsplit=2)
     tensorboard_dir = os.path.join(output_dir, "tensorboard", tag)

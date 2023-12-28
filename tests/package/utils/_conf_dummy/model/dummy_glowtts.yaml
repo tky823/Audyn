@@ -4,14 +4,14 @@ encoder:
   word_embedding:
     _target_: torch.nn.Embedding
     num_embeddings: ???
-    embedding_dim: 8
+    embedding_dim: 4
     padding_idx: 0
   backbone:
     _target_: audyn.models.glowtts.GlowTTSTransformerEncoder
     encoder_layer:
       _target_: audyn.modules.fastspeech.FFTrBlock
       d_model: ${...word_embedding.embedding_dim}
-      hidden_channels: 8
+      hidden_channels: 4
       num_heads: 2
       kernel_size:
         - 3
@@ -31,10 +31,10 @@ encoder:
 decoder:
   _target_: audyn.models.glowtts.Decoder
   in_channels: ???
-  hidden_channels: 16
-  skip_channels: 8
+  hidden_channels: 4
+  skip_channels: 4
   num_flows: 2
-  num_layers: 3
+  num_layers: 2
   num_splits: 2
   down_scale: 2
   kernel_size: 3
@@ -48,7 +48,6 @@ duration_predictor:
   _target_: audyn.modules.duration_predictor.FastSpeechDurationPredictor
   num_features:
     - ${...encoder.word_embedding.embedding_dim}
-    - 2
     - 2
   kernel_size: 3
   dropout: 1.0e-1
