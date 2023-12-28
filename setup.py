@@ -21,7 +21,7 @@ def is_openmp_supported(compiler: str) -> bool:
     is_supported = None
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".cpp", dir=temp_dir, delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".cpp", dir=temp_dir) as f:
             cpp_text = """
             #include <omp.h>
 
@@ -31,13 +31,13 @@ def is_openmp_supported(compiler: str) -> bool:
             """
             f.write(cpp_text)
 
-        obj_name = f.name.replace(".cpp", ".out")
+            obj_name = f.name.replace(".cpp", ".out")
 
-        try:
-            subprocess.check_output([compiler, f.name, "-o", obj_name, "-fopenmp"])
-            is_supported = True
-        except subprocess.CalledProcessError:
-            is_supported = False
+            try:
+                subprocess.check_output([compiler, f.name, "-o", obj_name, "-fopenmp"])
+                is_supported = True
+            except subprocess.CalledProcessError:
+                is_supported = False
 
     if is_supported is None:
         raise RuntimeError("Unexpected error happened while checking if OpenMP is available.")
@@ -50,7 +50,7 @@ def is_flag_accepted(compiler: str, flag: str) -> bool:
     is_accepted = None
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".cpp", dir=temp_dir, delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".cpp", dir=temp_dir) as f:
             cpp_text = """
             int main() {
                 return 0;
@@ -58,13 +58,13 @@ def is_flag_accepted(compiler: str, flag: str) -> bool:
             """
             f.write(cpp_text)
 
-        obj_name = f.name.replace(".cpp", ".out")
+            obj_name = f.name.replace(".cpp", ".out")
 
-        try:
-            subprocess.check_output([compiler, f.name, "-o", obj_name, flag])
-            is_accepted = True
-        except subprocess.CalledProcessError:
-            is_accepted = False
+            try:
+                subprocess.check_output([compiler, f.name, "-o", obj_name, flag])
+                is_accepted = True
+            except subprocess.CalledProcessError:
+                is_accepted = False
 
     if is_accepted is None:
         raise RuntimeError(f"Unexpected error happened while checking if {flag} is available.")
