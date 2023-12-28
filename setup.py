@@ -31,10 +31,8 @@ def is_openmp_supported(compiler: str) -> bool:
             """
             f.write(cpp_text)
 
-            obj_name = f.name.replace(".cpp", ".out")
-
             try:
-                subprocess.check_output([compiler, f.name, "-o", obj_name, "-fopenmp"])
+                subprocess.check_output([compiler, f.name, "-fopenmp"])
                 is_supported = True
             except subprocess.CalledProcessError:
                 is_supported = False
@@ -58,10 +56,8 @@ def is_flag_accepted(compiler: str, flag: str) -> bool:
             """
             f.write(cpp_text)
 
-            obj_name = f.name.replace(".cpp", ".out")
-
             try:
-                subprocess.check_output([compiler, f.name, "-o", obj_name, flag])
+                subprocess.check_output([compiler, f.name, flag])
                 is_accepted = True
             except subprocess.CalledProcessError:
                 is_accepted = False
