@@ -33,18 +33,13 @@ def is_openmp_supported(compiler: str) -> bool:
 
         obj_name = f.name.replace(".cpp", ".out")
 
-        compile = subprocess.check_output(
-            [compiler, f.name, "-o", obj_name, "-fopenmp"], stderr=subprocess.STDOUT
-        )
-        decoded = compile.decode(*SUBPROCESS_DECODE_ARGS).strip()
-        raise ValueError(decoded)
-
         try:
             subprocess.check_output([compiler, f.name, "-o", obj_name, "-fopenmp"])
             is_supported = True
             raise ValueError("OpenMP is supported.")
         except subprocess.CalledProcessError:
             is_supported = False
+            raise ValueError("OpenMP is not supported.")
 
     if is_supported is None:
         raise RuntimeError("Unexpected error happened while checking if OpenMP is available.")
