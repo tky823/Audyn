@@ -171,7 +171,7 @@ class BaseDriver:
 
             if _named_data is None:
                 if strict:
-                    raise ValueError("data_key is not found in named_data.")
+                    raise ValueError(f"{data_key} is not found in named_data.")
             else:
                 named_input[model_key] = _named_data
 
@@ -245,7 +245,7 @@ class BaseDriver:
                     assert set(named_output.keys()) & set(_named_output.keys()) == set()
                     named_output.update(_named_output)
             else:
-                raise ValueError("Invalid key type {} is found.".format(key_type))
+                raise ValueError(f"Invalid key type {key_type} is found.")
 
             return named_output
 
