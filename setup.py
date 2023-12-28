@@ -121,40 +121,24 @@ class BuildExtension(_BuildExtension):
         else:
             compiler = get_cxx_compiler()
 
-        if IS_WINDOWS:
-            where = subprocess.check_output(["where", "cl"], stderr=subprocess.STDOUT)
-            raise ValueError(
-                self.compiler.compiler_type, where.decode(*SUBPROCESS_DECODE_ARGS).strip()
-            )
-        else:
+        if ext.name == "audyn._cpp_extensions.monotonic_align" and not IS_WINDOWS:
+            # TODO: support Windows
             which = subprocess.check_output(["which", compiler], stderr=subprocess.STDOUT)
             compiler = os.path.realpath(which.decode(*SUBPROCESS_DECODE_ARGS).strip())
 
-        if ext.name == "audyn._cpp_extensions.monotonic_align":
             # optimization
-            if compiler == "cl":
-                if is_flag_accepted(compiler, "/Ox"):
-                    ext.extra_compile_args.append("/Ox")
-            else:
-                if is_flag_accepted(compiler, "-O3"):
-                    ext.extra_compile_args.append("-O3")
+            if is_flag_accepted(compiler, "-O3"):
+                ext.extra_compile_args.append("-O3")
 
             # environment-dependent optimization
-            if compiler == "cl":
+            if is_flag_accepted(compiler, "-march=native"):
+                # ext.extra_compile_args.append("-march=native")
                 pass
-            else:
-                if is_flag_accepted(compiler, "-march=native"):
-                    # ext.extra_compile_args.append("-march=native")
-                    pass
 
             # availability of OpenMP
             if is_openmp_supported(compiler):
-                if compiler == "cl":
-                    ext.extra_compile_args.append("/openmp")
-                    ext.extra_link_args.append("/openmp")
-                else:
-                    ext.extra_compile_args.append("-fopenmp")
-                    ext.extra_link_args.append("-fopenmp")
+                ext.extra_compile_args.append("-fopenmp")
+                ext.extra_link_args.append("-fopenmp")
 
         return super().build_extension(ext)
 
