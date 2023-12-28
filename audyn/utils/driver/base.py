@@ -9,6 +9,7 @@ import hydra
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torchaudio
 from omegaconf import DictConfig, OmegaConf
 from packaging import version
@@ -1451,11 +1452,19 @@ class BaseTrainer(BaseDriver):
             # remove pseudo batch dimension
             alignment = alignment.squeeze(dim=0)
             alignment = alignment.permute(1, 0).contiguous()
+            tgt_length = torch.count_nonzero(alignment, dim=0)
+            tgt_length = torch.count_nonzero(tgt_length)
+            src_length = torch.count_nonzero(alignment, dim=1)
+            src_length = torch.count_nonzero(src_length)
         else:
             # TODO: permute dims if necessary
             raise NotImplementedError("2D input is not supported now.")
 
         alignment = alignment.detach().cpu()
+        max_tgt_length, max_src_length = alignment.size()
+        alignment = F.pad(
+            alignment, (0, src_length - max_src_length, 0, tgt_length - max_tgt_length)
+        )
 
         fig, axis = plt.subplots(figsize=(16, 10))
         im = axis.pcolormesh(alignment)
