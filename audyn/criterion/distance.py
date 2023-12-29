@@ -14,6 +14,7 @@ class MultiScaleSpectralLoss(nn.Module):
     def __init__(
         self,
         n_fft: List[int],
+        win_length: Optional[List[int]] = None,
         hop_length: Optional[List[int]] = None,
         weights: Optional[List[int]] = None,
         transform: Optional[Union[nn.ModuleList, nn.Sequential, bool]] = True,
@@ -22,23 +23,31 @@ class MultiScaleSpectralLoss(nn.Module):
         super().__init__()
 
         self.n_fft = n_fft
+        self.win_length = win_length
         self.hop_length = hop_length
         self.weights = weights
         self.eps = eps
+
+        if win_length is None:
+            self.win_length = []
+
+            for idx in range(len(self.n_fft)):
+                _n_fft = self.n_fft[idx]
+                _win_length = _n_fft
+                self.win_length.append(_win_length)
 
         if hop_length is None:
             self.hop_length = []
 
             for idx in range(len(self.n_fft)):
-                n_fft = self.n_fft[idx]
-                _hop_length = n_fft // 4
+                _win_length = self.win_length[idx]
+                _hop_length = _win_length // 4
                 self.hop_length.append(_hop_length)
 
         if weights is None:
             self.weights = []
 
             for idx in range(len(self.n_fft)):
-                n_fft = self.n_fft[idx]
                 _hop_length = self.hop_length[idx]
                 self.weights.append(math.sqrt(_hop_length / 2))
 
@@ -51,10 +60,11 @@ class MultiScaleSpectralLoss(nn.Module):
             transform_modules = []
 
             for idx in range(len(self.n_fft)):
-                n_fft = self.n_fft[idx]
-                hop_length = self.hop_length[idx]
+                _n_fft = self.n_fft[idx]
+                _win_length = self.win_length[idx]
+                _hop_length = self.hop_length[idx]
 
-                _transform = aT.Spectrogram(n_fft, hop_length=_hop_length)
+                _transform = aT.Spectrogram(_n_fft, win_length=_win_length, hop_length=_hop_length)
                 transform_modules.append(_transform)
 
             transform = nn.ModuleList(transform_modules)
