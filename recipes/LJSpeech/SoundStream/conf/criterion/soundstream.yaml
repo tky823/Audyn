@@ -1,36 +1,64 @@
-_target_: audyn.criterion.base.MultiCriteria
-reconstruction_loss:
-  _target_: audyn.criterion.base.BaseCriterionWrapper
-  criterion:
-    _target_: torch.nn.MSELoss
-    reduction: mean
-  weight: 1
-  key_mapping:
-    estimated:
-      input: estimated_waveform_slice
-    target:
-      target: waveform_slice
-codebook_loss:
-  _target_: audyn.criterion.base.BaseCriterionWrapper
-  criterion:
-    _target_: audyn.criterion.rvqvae.CodebookLoss
-    layer_wise: true
-    reduction: mean
-  weight: 1
-  key_mapping:
-    estimated:
-      encoded: encoded
-      quantized: quantized
-    target:
-commitment_loss:
-  _target_: audyn.criterion.base.BaseCriterionWrapper
-  criterion:
-    _target_: audyn.criterion.rvqvae.CommitmentLoss
-    layer_wise: true
-    reduction: mean
-  weight: 0.25
-  key_mapping:
-    estimated:
-      encoded: encoded
-      quantized: quantized
-    target:
+generator:
+  _target_: audyn.criterion.base.MultiCriteria
+  codebook_loss:
+    _target_: audyn.criterion.base.BaseCriterionWrapper
+    criterion:
+      _target_: audyn.criterion.rvqvae.CodebookLoss
+      layer_wise: true
+      reduction: mean
+    weight: 1
+    key_mapping:
+      estimated:
+        encoded: encoded
+        quantized: quantized
+      target:
+  commitment_loss:
+    _target_: audyn.criterion.base.BaseCriterionWrapper
+    criterion:
+      _target_: audyn.criterion.rvqvae.CommitmentLoss
+      layer_wise: true
+      reduction: mean
+    weight: 0.25
+    key_mapping:
+      estimated:
+        encoded: encoded
+        quantized: quantized
+      target:
+  adversarial:
+    _target_: audyn.criterion.base.BaseCriterionWrapper
+    criterion:
+      _target_: audyn.criterion.hifigan.DiscriminatorHingeLoss
+      minimize: false
+      margin: 1
+      reduction: mean
+    weight: 1
+    key_mapping:
+      estimated:
+        input: fake_prob
+      target:
+discriminator:
+  _target_: audyn.criterion.base.MultiCriteria
+  discriminator_fake:
+    _target_: audyn.criterion.base.BaseCriterionWrapper
+    criterion:
+      _target_: audyn.criterion.hifigan.DiscriminatorHingeLoss
+      minimize: true
+      margin: ${....generator.adversarial.criterion.margin}
+      reduction: mean
+    weight: 1
+    key_mapping:
+      estimated:
+        input: fake_prob
+      target:
+  discriminator_real:
+    _target_: audyn.criterion.base.BaseCriterionWrapper
+    criterion:
+      _target_: audyn.criterion.hifigan.DiscriminatorHingeLoss
+      minimize: false
+      margin: ${....generator.adversarial.criterion.margin}
+      reduction: mean
+    weight: 1
+    key_mapping:
+      estimated:
+        input: real_prob
+      target:

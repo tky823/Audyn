@@ -12,23 +12,40 @@ dataloader:
 
 key_mapping:
   train:
-    input:
-      input: waveform_slice
-    output:
-      - estimated_waveform_slice
-      - encoded
-      - quantized
-      - codebook_indices
+    generator:
+      input:
+        input: waveform_slice
+      output:
+        - estimated_waveform_slice
+        - encoded
+        - quantized
+        - codebook_indices
+    discriminator:
+      real:
+        input:
+          input: waveform_slice
+        output:
+          - real_prob
+          - real_feature_map
+      fake:
+        input:
+          input: ${....generator.output.0}
+        output:
+          - fake_prob
+          - fake_feature_map
   validation: ${.train}
   inference:
-    input:
-      quantized: codebook_indices
-    output: estimated_waveform_slice
+    generator:
+      input:
+        quantized: codebook_indices
+      output: estimated_waveform_slice
 
 clip_gradient:
-  _target_: audyn.utils.GradClipper
-  mode: norm
-  max_norm: 10
+  generator:
+    _target_: audyn.utils.GradClipper
+    mode: norm
+    max_norm: 10
+  discriminator: ${.generator}
 
 resume:
   continue_from:
@@ -52,3 +69,5 @@ steps:
   epochs: 10
   iterations:
   lr_scheduler:
+    generator:
+    discriminator:
