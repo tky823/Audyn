@@ -24,7 +24,27 @@ generator:
         encoded: encoded
         quantized: quantized
       target:
-  adversarial:
+  waveform_fm:
+    _target_: audyn.criterion.base.BaseCriterionWrapper
+    criterion:
+      _target_: audyn.criterion.hifigan.FeatureMatchingLoss
+    weight: 2
+    key_mapping:
+      estimated:
+        input: waveform_fake_feature_map
+        target: waveform_real_feature_map
+      target:
+  spectrogram_fm:
+    _target_: audyn.criterion.base.BaseCriterionWrapper
+    criterion:
+      _target_: audyn.criterion.hifigan.FeatureMatchingLoss
+    weight: 2
+    key_mapping:
+      estimated:
+        input: spectrogram_fake_feature_map
+        target: spectrogram_real_feature_map
+      target:
+  waveform_adversarial:
     _target_: audyn.criterion.base.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.hifigan.DiscriminatorHingeLoss
@@ -34,31 +54,67 @@ generator:
     weight: 1
     key_mapping:
       estimated:
-        input: fake_prob
+        input: waveform_fake_prob
       target:
-discriminator:
-  _target_: audyn.criterion.base.MultiCriteria
-  discriminator_fake:
-    _target_: audyn.criterion.base.BaseCriterionWrapper
-    criterion:
-      _target_: audyn.criterion.hifigan.DiscriminatorHingeLoss
-      minimize: true
-      margin: ${....generator.adversarial.criterion.margin}
-      reduction: mean
-    weight: 1
-    key_mapping:
-      estimated:
-        input: fake_prob
-      target:
-  discriminator_real:
+  spectrogram_adversarial:
     _target_: audyn.criterion.base.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.hifigan.DiscriminatorHingeLoss
       minimize: false
-      margin: ${....generator.adversarial.criterion.margin}
+      margin: 1
       reduction: mean
     weight: 1
     key_mapping:
       estimated:
-        input: real_prob
+        input: spectrogram_fake_prob
+      target:
+discriminator:
+  _target_: audyn.criterion.base.MultiCriteria
+  waveform_discriminator_fake:
+    _target_: audyn.criterion.base.BaseCriterionWrapper
+    criterion:
+      _target_: audyn.criterion.hifigan.DiscriminatorHingeLoss
+      minimize: true
+      margin: ${....generator.waveform_adversarial.criterion.margin}
+      reduction: mean
+    weight: 1
+    key_mapping:
+      estimated:
+        input: waveform_fake_prob
+      target:
+  waveform_discriminator_real:
+    _target_: audyn.criterion.base.BaseCriterionWrapper
+    criterion:
+      _target_: audyn.criterion.hifigan.DiscriminatorHingeLoss
+      minimize: false
+      margin: ${....generator.waveform_adversarial.criterion.margin}
+      reduction: mean
+    weight: 1
+    key_mapping:
+      estimated:
+        input: waveform_real_prob
+      target:
+  spectrogram_discriminator_fake:
+    _target_: audyn.criterion.base.BaseCriterionWrapper
+    criterion:
+      _target_: audyn.criterion.hifigan.DiscriminatorHingeLoss
+      minimize: true
+      margin: ${....generator.spectrogram_adversarial.criterion.margin}
+      reduction: mean
+    weight: 1
+    key_mapping:
+      estimated:
+        input: spectrogram_fake_prob
+      target:
+  spectrogram_discriminator_real:
+    _target_: audyn.criterion.base.BaseCriterionWrapper
+    criterion:
+      _target_: audyn.criterion.hifigan.DiscriminatorHingeLoss
+      minimize: false
+      margin: ${....generator.spectrogram_adversarial.criterion.margin}
+      reduction: mean
+    weight: 1
+    key_mapping:
+      estimated:
+        input: spectrogram_real_prob
       target:
