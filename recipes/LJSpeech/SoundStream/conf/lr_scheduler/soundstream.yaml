@@ -1,6 +1,10 @@
 generator:
-  _target_: torch.optim.lr_scheduler.ExponentialLR
-  gamma: 0.999
+  - name: adamw
+    lr_scheduler:
+      _target_: torch.optim.lr_scheduler.ExponentialLR
+      gamma: 0.999
+  - name: ema
+    lr_scheduler:
 discriminator:
   _target_: torch.optim.lr_scheduler.ExponentialLR
   gamma: 0.999
