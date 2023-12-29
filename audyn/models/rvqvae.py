@@ -20,6 +20,7 @@ class RVQVAE(BaseVAE):
         codebook_size (int): Size of codebook.
         embedding_dim (int): Number of embedding dimension.
         num_layers (int): Number of layers of RVQ.
+        dropout (bool): Dropout of RVQ. Default: ``True``.
 
     """
 
@@ -30,12 +31,16 @@ class RVQVAE(BaseVAE):
         codebook_size: int,
         embedding_dim: int,
         num_layers: int,
+        dropout: bool = True,
     ) -> None:
         super().__init__()
 
         self.encoder = encoder
         self.vector_quantizer = ResidualVectorQuantizer(
-            codebook_size, embedding_dim, num_layers=num_layers
+            codebook_size,
+            embedding_dim,
+            num_layers=num_layers,
+            dropout=dropout,
         )
         self.decoder = decoder
 
