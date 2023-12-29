@@ -6,9 +6,10 @@ import torch.nn.functional as F
 from torch.nn.common_types import _size_1_t, _size_2_t
 
 from ..modules.soundstream import DecoderBlock, EncoderBlock, ResidualUnit2d
+from .hifigan import MultiScaleDiscriminator
 from .rvqvae import RVQVAE
 
-__all__ = ["SoundStream", "Encoder", "Decoder", "SpectrogramDiscriminator"]
+__all__ = ["SoundStream", "Discriminator", "Encoder", "Decoder", "SpectrogramDiscriminator"]
 
 
 class SoundStream(RVQVAE):
@@ -92,6 +93,39 @@ class SoundStream(RVQVAE):
         output = self.decode(quantized, layer_wise=layer_wise)
 
         return output
+
+
+class Discriminator(nn.Module):
+    """Discriminator for SoundStream."""
+
+    def __init__(
+        self,
+        waveform_discriminator: MultiScaleDiscriminator,
+        spectrogram_discriminator: "SpectrogramDiscriminator",
+    ) -> None:
+        super().__init__()
+
+        self.waveform_discriminator = waveform_discriminator
+        self.spectrogram_discriminator = spectrogram_discriminator
+
+    def forward(self, input: torch.Tensor) -> Tuple[Any, Any]:
+        """Forward pass of Discriminator.
+
+        Args:
+            input (torch.Tensor): Waveform of shape (batch_size, length) or
+                (batch_size, in_channels, length).
+
+        Returns:
+            tuple: Tuple of tensors containing
+
+                - Output of ``waveform_discriminator``.
+                - Output of ``spectrogram_discriminator``.
+
+        """
+        waveform_output = self.waveform_discriminator(input)
+        spectrogram_output = self.spectrogram_discriminator(input)
+
+        return waveform_output, spectrogram_output
 
 
 class Encoder(nn.Module):
@@ -278,11 +312,11 @@ class SpectrogramDiscriminator(nn.Module):
             )
             backbone.append(unit)
 
-        self.backbone = nn.Sequential(*backbone)
+        self.backbone = nn.ModuleList(backbone)
         self.conv2d_out = nn.Conv2d(num_features[-1], 1, kernel_size=kernel_size_out, stride=1)
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
-        """
+    def forward(self, input: torch.Tensor) -> Tuple[torch.Tensor, List[torch.Tensor]]:
+        """Forward pass of SpectrogramDiscriminator.
 
         Args:
             input (torch.Tensor): Input feature. The following two features are supported.
@@ -290,7 +324,10 @@ class SpectrogramDiscriminator(nn.Module):
                 - spectrogram: (batch_size, 2, n_bins, n_frames).
 
         Returns:
-            torch.Tensor: Downsampled feature of shape (batch_size, 1, length').
+            tuple: Tuple of tensors containing:
+
+                - torch.Tensor: Downsampled feature of shape (batch_size, 1, length').
+                - list: Feature maps of length ``len(num_features) - 1``.
 
         """
         if self.transform is None:
@@ -299,7 +336,12 @@ class SpectrogramDiscriminator(nn.Module):
             x = self.transform(input)
 
         x = self.conv2d_in(x)
-        x = self.backbone(x)
+        feature_map = []
+
+        for unit in self.backbone:
+            x = unit(x)
+            feature_map.append(x)
+
         x = self.conv2d_out(x)
 
         if x.size(2) != 1:
@@ -310,7 +352,7 @@ class SpectrogramDiscriminator(nn.Module):
         batch_size, _, _, n_frames = x.size()
         output = x.view(batch_size, 1, n_frames)
 
-        return output
+        return output, feature_map
 
 
 class _Spectrogram(nn.Module):
