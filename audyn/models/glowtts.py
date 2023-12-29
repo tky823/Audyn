@@ -29,6 +29,22 @@ __all__ = [
 
 
 class GlowTTS(nn.Module):
+    """GlowTTS proposed by https://arxiv.org/abs/2005.11129.
+
+    Args:
+        encoder (nn.Module): Module to transform text tokens into latent features. The module
+            takes positional argument of text tokens (batch_size, src_length) and keyword argument
+            ``padding_mask`` (batch_size, src_length).
+        decoder (audyn.modules.flow.BaseFlow): Flow to transform spectrograms into latent features
+            in forward pass. The module takes positional argument of target features
+            (batch_size, tgt_length, num_tgt_features) and keyword arguments ``padding_mask``
+            (batch_size, tgt_length), ``logdet`` (batch_size,), and ``reverse`` (bool).
+        duration_predictor (nn.Module): Duration predictor which takes positional argument of
+            text features (batch_size, src_length, num_src_features) and keyword argument
+            ``padding_mask`` (batch_size, src_length).
+
+    """
+
     def __init__(
         self,
         encoder: nn.Module,
@@ -115,7 +131,7 @@ class GlowTTS(nn.Module):
             raise ValueError(f"{type(normal)} is not supported.")
 
         # NOTE: "est_duration" might be taken log.
-        log_est_duration = self.duration_predictor(src_latent)
+        log_est_duration = self.duration_predictor(src_latent, padding_mask=src_padding_mask)
 
         if src_padding_mask is not None:
             log_est_duration = log_est_duration.masked_fill(src_padding_mask, -float("inf"))
@@ -198,7 +214,7 @@ class GlowTTS(nn.Module):
         src_latent, normal = self.encoder(src, padding_mask=src_padding_mask)
 
         # NOTE: "est_duration" might be taken log.
-        log_est_duration = self.duration_predictor(src_latent)
+        log_est_duration = self.duration_predictor(src_latent, padding_mask=src_padding_mask)
 
         # NOTE: transform_log_duration may apply flooring.
         linear_est_duration = transform_log_duration(log_est_duration)
