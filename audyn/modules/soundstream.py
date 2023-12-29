@@ -125,6 +125,7 @@ class ResidualUnit1d(nn.Module):
         self.conv1d_in = nn.Conv1d(
             num_features, num_features, kernel_size=kernel_size, dilation=dilation
         )
+        self.nonlinear1d = nn.ELU()
         self.conv1d_out = nn.Conv1d(num_features, num_features, kernel_size=1)
 
         self.kernel_size = kernel_size
@@ -139,6 +140,7 @@ class ResidualUnit1d(nn.Module):
 
         x = F.pad(input, (padding, padding))
         x = self.conv1d_in(x)
+        x = self.nonlinear1d(x)
         x = self.conv1d_out(x)
         output = x + input
 
