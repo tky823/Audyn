@@ -34,7 +34,7 @@ generator:
 discriminator:
   _target_: audyn.models.soundstream.Discriminator
   waveform_discriminator:
-    _target_: audyn.models.hifigan.MultiScaleDiscriminator.build_from_default_config
+    _target_: audyn.models.soundstream.MultiScaleDiscriminator.build_from_default_config
   spectrogram_discriminator:
     _target_: audyn.models.soundstream.SpectrogramDiscriminator
     num_features:
