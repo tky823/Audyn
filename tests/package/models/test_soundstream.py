@@ -10,8 +10,7 @@ def test_soundstream() -> None:
     depth_rate = 2
     kernel_size_out = kernel_size_in = 3
     kernel_size = 3
-    stride = [2, 4, 5]
-    dilation_rate = 2
+    stride, dilation_rate = [2, 4, 5], 2
     num_enc_layers = 2
     codebook_size = 16
     num_rvq_layers = 4
@@ -75,8 +74,7 @@ def test_soundstream_encoder() -> None:
     depth_rate = 2
     kernel_size_out = kernel_size_in = 3
     kernel_size = 3
-    stride = [2, 4, 5]
-    dilation_rate = 2
+    stride, dilation_rate = [2, 4, 5], 2
     num_layers = 2
 
     batch_size, output_length = 3, 8
@@ -111,8 +109,7 @@ def test_soundstream_decoder() -> None:
     depth_rate = 2
     kernel_size_out = kernel_size_in = 3
     kernel_size = 3
-    stride = [5, 4, 2]
-    dilation_rate = 2
+    stride, dilation_rate = [5, 4, 2], 2
     num_layers = 2
 
     batch_size, input_length = 3, 8
