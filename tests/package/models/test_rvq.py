@@ -23,6 +23,7 @@ def test_rvqvae():
         codebook_size=codebook_size,
         embedding_dim=hidden_channels,
         num_layers=num_rvq_layers,
+        dropout=False,
     )
 
     input = torch.randn((batch_size, in_channels, height, width))

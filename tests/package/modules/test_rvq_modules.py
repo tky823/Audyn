@@ -13,7 +13,12 @@ def test_residual_vector_quantizer() -> None:
 
     input = torch.randn((batch_size, embedding_dim, length))
 
-    rvq = ResidualVectorQuantizer(codebook_size, embedding_dim, num_layers=num_layers)
+    rvq = ResidualVectorQuantizer(
+        codebook_size,
+        embedding_dim,
+        num_layers=num_layers,
+        dropout=False,
+    )
     quantized, indices = rvq(input)
 
     assert quantized.size() == (batch_size, num_layers, embedding_dim, length)
