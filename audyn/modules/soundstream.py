@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.common_types import _size_1_t
-from torch.nn.modules.utils import _single
+from torch.nn.common_types import _size_1_t, _size_2_t
+from torch.nn.modules.utils import _pair, _single
 
-__all__ = ["EncoderBlock", "DecoderBlock", "ResidualUnit1d"]
+__all__ = ["EncoderBlock", "DecoderBlock", "ResidualUnit1d", "ResidualUnit2d"]
 
 
 class EncoderBlock(nn.Module):
@@ -143,5 +143,83 @@ class ResidualUnit1d(nn.Module):
         x = self.nonlinear1d(x)
         x = self.conv1d_out(x)
         output = x + input
+
+        return output
+
+
+class ResidualUnit2d(nn.Module):
+    """Residual unit to process 2D features used in discriminator of SoundStream."""
+
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: _size_2_t,
+        down_scale: _size_2_t,
+    ) -> None:
+        super().__init__()
+
+        kernel_size = _pair(kernel_size)
+        down_scale = _pair(down_scale)
+
+        # not sure of implementation of bottleneck_conv2d
+        self.bottleneck_conv2d = nn.Conv2d(
+            in_channels, out_channels, kernel_size=1, stride=down_scale
+        )
+
+        kh, kw = down_scale
+        kh, kw = kh + 2, kw + 2
+        self.conv2d_in = nn.Conv2d(
+            in_channels,
+            in_channels,
+            kernel_size=(kh, kw),
+            stride=1,
+        )
+        self.nonlinear2d = nn.ELU()
+        self.conv2d_out = nn.Conv2d(
+            in_channels,
+            out_channels,
+            kernel_size=kernel_size,
+            stride=down_scale,
+        )
+
+        self.kernel_size = kernel_size
+        self.down_scale = down_scale
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of ResidualUnit2d.
+
+        Args:
+            input (torch.Tensor): Feature map of shape (batch_size, in_channels, height, width).
+
+        Returns:
+            torch.Tensor: Output of shape (batch_size, out_channels, height', width'), where
+                height' and width' are defined as ``height // down_scale[0]`` and
+                ``width // down_scale[1]``, respectively.
+
+        """
+        kernel_size = self.kernel_size
+        down_scale = self.down_scale
+
+        x_in = self.bottleneck_conv2d(input)
+        x = self._pad2d(input, kernel_size=(down_scale[0] + 2, down_scale[1] + 2))
+        x = self.conv2d_in(x)
+        x = self.nonlinear2d(x)
+        x = self._pad2d(x, kernel_size=kernel_size)
+        output = x_in + self.conv2d_out(x)
+
+        return output
+
+    def _pad2d(self, input: torch.Tensor, kernel_size: _size_2_t) -> torch.Tensor:
+        kernel_size = _pair(kernel_size)
+
+        kh, kw = kernel_size
+        ph, pw = kh - 1, kw - 1
+        padding_top = ph // 2
+        padding_left = pw // 2
+        padding_bottom = ph - padding_top
+        padding_right = pw - padding_left
+
+        output = F.pad(input, (padding_left, padding_right, padding_top, padding_bottom))
 
         return output
