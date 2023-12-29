@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 import torch
 import torch.nn as nn
@@ -24,6 +24,74 @@ class SoundStream(RVQVAE):
         num_layers (int): Number of layers of RVQ.
 
     """
+
+    def forward(
+        self,
+        input: torch.Tensor,
+        denoise: bool = False,
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.LongTensor]:
+        """Forward pass of RVQVAE.
+
+        Args:
+            input (torch.Tensor): Input feature of shape (batch_size, *input_shape).
+            denoise (bool): If ``True``, denoising is applied.
+
+        Returns:
+            tuple: Tuple of tensors containing
+
+                - torch.Tensor: Reconstructed feature of same shape as input.
+                - torch.Tensor: Latent feature of shape \
+                    (batch_size, embedding_dim, *latent_shape). In most cases, latent_shape is \
+                    smaller than input_shape.
+                - torch.Tensor: Quantized latent feature of shape \
+                    (batch_size, num_layers, embedding_dim, *latent_shape).
+                - torch.Tensor: Indices of embeddings in codebook of shape \
+                    (batch_size, num_layers, *latent_shape).
+
+        .. note::
+
+            Gradient from decoder does not back propagate to codebook.
+
+        """
+        if denoise:
+            raise NotImplementedError("Denoising is not supported now.")
+
+        encoded = self.encode(input)
+        hierarchical_quantized, indices = self.quantize(encoded)
+        quantized = hierarchical_quantized.sum(dim=1)
+        quantized_straight_through = encoded + torch.detach(quantized - encoded)
+        output = self.decode(quantized_straight_through, layer_wise=False)
+
+        return output, encoded, hierarchical_quantized, indices
+
+    @torch.no_grad()
+    def inference(
+        self,
+        quantized: torch.Tensor,
+        denoise: bool = False,
+        layer_wise: bool = True,
+    ) -> torch.Tensor:
+        """Inference of RVQVAE.
+
+        Args:
+            quantized (torch.Tensor): Following two types are supported.
+                1. Quantized latent feature of shape (batch_size, num_layers, *latent_shape)
+                    or (batch_size, *latent_shape). dtype is torch.FloatTensor.
+                2. Indices of quantized latent feature of shape
+                    (batch_size, num_layers, *latent_shape). dtype is torch.LongTensor.
+            denoise (bool): If ``True``, denoising is applied.
+            layer_wise (bool): If ``True``, ``quantized`` has ``num_layers`` dimension at axis = 1.
+
+        Returns:
+            torch.Tensor: Reconstructed feature.
+
+        """
+        if denoise:
+            raise NotImplementedError("Denoising is not supported now.")
+
+        output = self.decode(quantized, layer_wise=layer_wise)
+
+        return output
 
 
 class Encoder(nn.Module):
