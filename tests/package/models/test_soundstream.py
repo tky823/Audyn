@@ -1,6 +1,6 @@
 import torch
 
-from audyn.models.soundstream import Decoder, Encoder, SoundStream
+from audyn.models.soundstream import Decoder, Encoder, SoundStream, SpectrogramDiscriminator
 
 
 def test_soundstream() -> None:
@@ -51,6 +51,7 @@ def test_soundstream() -> None:
         codebook_size=codebook_size,
         embedding_dim=embedding_dim,
         num_layers=num_rvq_layers,
+        dropout=False,
     )
 
     input = torch.randn((batch_size, in_channels, input_length))
@@ -135,3 +136,39 @@ def test_soundstream_decoder() -> None:
     output = decoder(input)
 
     assert output.size() == (batch_size, out_channels, output_length)
+
+
+def test_soundstream_spectrogram_discriminator() -> None:
+    torch.manual_seed(0)
+
+    num_features = [4, 4, 8, 8]
+    kernel_size_in, kernel_size = (3, 5), 3
+    down_scale = [2, 4, 8]
+    n_fft, hop_length = 1024, 256
+    kernel_size_out = n_fft // 2
+
+    for s in down_scale:
+        kernel_size_out //= s
+
+    kernel_size_out = (kernel_size_out, 1)
+
+    discriminator = SpectrogramDiscriminator(
+        num_features,
+        kernel_size_in=kernel_size_in,
+        kernel_size_out=kernel_size_out,
+        kernel_size=kernel_size,
+        down_scale=down_scale,
+        transform=True,
+        transform_kwargs={"n_fft": n_fft, "hop_length": hop_length, "return_complex": True},
+    )
+
+    batch_size, in_channels, length = 4, 1, 40000
+
+    input = torch.randn((batch_size, in_channels, length))
+    output, feature_map = discriminator(input)
+
+    assert output.size(0) == batch_size
+    assert output.size(1) == 1
+
+    for _feature_map in feature_map:
+        assert _feature_map.size(0) == batch_size
