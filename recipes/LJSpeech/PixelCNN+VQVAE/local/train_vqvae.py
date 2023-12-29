@@ -102,7 +102,7 @@ def collate_fn(
             Type of each data is expected ``Dict[str, torch.Tensor]``.
         data_config (DictConfig): Config of data.
         codebook_size (int): Size of codebook used in VQVAE.
-        downscale (int): Scale of downsampling in VQVAE.
+        down_scale (int): Scale of downsampling in VQVAE.
         keys (iterable, optional): Keys to generate batch.
             If ``None`` is given, all keys detected in ``batch`` are used.
             Default: ``None``.
