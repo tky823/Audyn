@@ -50,8 +50,10 @@ class EncoderBlock(nn.Module):
         (kernel_size_out,) = self.kernel_size_out
         (stride,) = self.stride
         padding = kernel_size_out - stride
+        padding_left = padding // 2
+        padding_right = padding - padding_left
 
-        x = F.pad(input, (padding // 2, padding - padding // 2))
+        x = F.pad(input, (padding_left, padding_right))
         x = self.backbone(x)
         output = self.conv1d(x)
 
@@ -101,9 +103,11 @@ class DecoderBlock(nn.Module):
         (kernel_size_in,) = self.kernel_size_in
         (stride,) = self.stride
         padding = kernel_size_in - stride
+        padding_left = padding // 2
+        padding_right = padding - padding_left
 
         x = self.conv1d(input)
-        x = F.pad(x, (-padding // 2, padding // 2 - padding))
+        x = F.pad(x, (-padding_left, -padding_right))
         output = self.backbone(x)
 
         return output
