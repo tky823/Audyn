@@ -60,7 +60,21 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
 fi
 
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
-    echo "Preprocess stage 2: Save features"
+    echo "Preprocess stage 2: Remove short samples"
+
+    for subset in "train" "validation" "test"; do
+        python ./local/remove_short_samples.py \
+        --config-dir "./conf" \
+        hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
+        preprocess="${preprocess}" \
+        data="${data}" \
+        preprocess.list_path="${list_dir}/${subset}.txt" \
+        preprocess.wav_dir="${wav_dir}"
+    done
+fi
+
+if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
+    echo "Preprocess stage 3: Save features"
 
     for subset in "train" "validation" "test"; do
         python ./local/save_features.py \
