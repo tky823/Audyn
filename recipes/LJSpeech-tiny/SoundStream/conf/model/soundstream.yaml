@@ -1,0 +1,58 @@
+generator:
+  _target_: audyn.models.soundstream.SoundStream
+  encoder:
+    _target_: audyn.models.soundstream.Encoder
+    in_channels: 1
+    out_channels: ${..embedding_dim}
+    hidden_channels: 4
+    depth_rate: 2
+    kernel_size_in: 3
+    kernel_size_out: 3
+    kernel_size: 3
+    stride:
+      - 2
+      - 4
+    dilation_rate: 3
+    num_layers: 3
+  decoder:
+    _target_: audyn.models.soundstream.Decoder
+    in_channels: ${..embedding_dim}
+    out_channels: ${..encoder.in_channels}
+    hidden_channels: 4
+    depth_rate: ${..encoder.depth_rate}
+    kernel_size_in: 3
+    kernel_size_out: 3
+    kernel_size: ${..encoder.kernel_size}
+    stride:
+      - 4
+      - 2
+    dilation_rate: ${..encoder.dilation_rate}
+    num_layers: ${..encoder.num_layers}
+  codebook_size: ${data.codebook.size}
+  embedding_dim: 4
+  num_layers: 2
+discriminator:
+  _target_: audyn.models.soundstream.Discriminator
+  waveform_discriminator:
+    _target_: audyn.models.hifigan.MultiScaleDiscriminator.build_from_default_config
+  spectrogram_discriminator:
+    _target_: audyn.models.soundstream.SpectrogramDiscriminator
+    num_features:
+      - 4
+      - 3
+      - 2
+      - 2
+    kernel_size_in: 3
+    kernel_size_out:
+      - 8
+      - 3
+    kernel_size: 3
+    down_scale:
+      - 2
+      - 2
+      - 4
+    transform: true
+    transform_kwargs:
+      n_fft: 256
+      hop_length: 64
+      return_complex: true
