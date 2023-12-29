@@ -44,6 +44,77 @@ generator:
       estimated:
         input: spectrogram_fake_prob
       target:
+  reconstruction:
+    _target_: audyn.criterion.base.BaseCriterionWrapper
+    criterion:
+      _target_: audyn.criterion.distance.MultiScaleSpectralLoss
+      n_fft:
+        # You can change values.
+        - 512
+        - 512
+        - 1024
+        - 1024
+        - 2048
+        - 2048
+      win_length:
+        - 64
+        - 128
+        - 256
+        - 512
+        - 1024
+        - 2048
+      hop_length:
+        - 16
+        - 32
+        - 64
+        - 128
+        - 256
+        - 512
+      transform:
+        _target_: torch.nn.ModuleList
+        _args_:
+          - - _target_: torchaudio.transforms.MelSpectrogram
+              sample_rate: ${data.audio.sample_rate}
+              n_mels: 64
+              n_fft: ${.....n_fft.0}
+              win_length: ${.....win_length.0}
+              hop_length: ${.....hop_length.0}
+            - _target_: torchaudio.transforms.MelSpectrogram
+              sample_rate: ${data.audio.sample_rate}
+              n_mels: ${..0.n_mels}
+              n_fft: ${.....n_fft.1}
+              win_length: ${.....win_length.1}
+              hop_length: ${.....hop_length.1}
+            - _target_: torchaudio.transforms.MelSpectrogram
+              sample_rate: ${data.audio.sample_rate}
+              n_mels: ${..0.n_mels}
+              n_fft: ${.....n_fft.2}
+              win_length: ${.....win_length.2}
+              hop_length: ${.....hop_length.2}
+            - _target_: torchaudio.transforms.MelSpectrogram
+              sample_rate: ${data.audio.sample_rate}
+              n_mels: ${..0.n_mels}
+              n_fft: ${.....n_fft.3}
+              win_length: ${.....win_length.3}
+              hop_length: ${.....hop_length.3}
+            - _target_: torchaudio.transforms.MelSpectrogram
+              sample_rate: ${data.audio.sample_rate}
+              n_mels: ${..0.n_mels}
+              n_fft: ${.....n_fft.4}
+              win_length: ${.....win_length.4}
+              hop_length: ${.....hop_length.4}
+            - _target_: torchaudio.transforms.MelSpectrogram
+              sample_rate: ${data.audio.sample_rate}
+              n_mels: ${..0.n_mels}
+              n_fft: ${.....n_fft.5}
+              win_length: ${.....win_length.5}
+              hop_length: ${.....hop_length.5}
+    weight: 1
+    key_mapping:
+      estimated:
+        input: estimated_waveform_slice
+      target:
+        target: waveform_slice
 discriminator:
   _target_: audyn.criterion.base.MultiCriteria
   waveform_discriminator_fake:
