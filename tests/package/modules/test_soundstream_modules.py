@@ -1,6 +1,6 @@
 import torch
 
-from audyn.modules.soundstream import DecoderBlock, EncoderBlock, ResidualUnit1d
+from audyn.modules.soundstream import DecoderBlock, EncoderBlock, ResidualUnit1d, ResidualUnit2d
 
 
 def test_soundstream_encoder_block() -> None:
@@ -45,7 +45,7 @@ def test_soundstream_decoder_block() -> None:
     assert output.size() == (batch_size, out_channels, stride * length)
 
 
-def test_soundstream_residual_unit() -> None:
+def test_soundstream_residual_unit1d() -> None:
     batch_size = 2
     length = 20
     in_channels = 3
@@ -57,3 +57,29 @@ def test_soundstream_residual_unit() -> None:
     output = model(input)
 
     assert output.size() == input.size()
+
+
+def test_soundstream_residual_unit2d() -> None:
+    torch.manual_seed(0)
+
+    batch_size = 2
+    height, width = 20, 30
+    in_channels, out_channels = 3, 5
+    kernel_size, down_scale = (3, 3), (2, 1)
+
+    model = ResidualUnit2d(
+        in_channels,
+        out_channels,
+        kernel_size=kernel_size,
+        down_scale=down_scale,
+    )
+
+    input = torch.randn((batch_size, in_channels, height, width))
+    output = model(input)
+
+    assert output.size() == (
+        batch_size,
+        out_channels,
+        height // down_scale[0],
+        width // down_scale[1],
+    )
