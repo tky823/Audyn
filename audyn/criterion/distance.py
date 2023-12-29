@@ -35,6 +35,8 @@ class MultiScaleSpectralLoss(nn.Module):
                 _n_fft = self.n_fft[idx]
                 _win_length = _n_fft
                 self.win_length.append(_win_length)
+        else:
+            assert len(self.win_length) == len(self.n_fft)
 
         if hop_length is None:
             self.hop_length = []
@@ -43,6 +45,8 @@ class MultiScaleSpectralLoss(nn.Module):
                 _win_length = self.win_length[idx]
                 _hop_length = _win_length // 4
                 self.hop_length.append(_hop_length)
+        else:
+            assert len(self.hop_length) == len(self.n_fft)
 
         if weights is None:
             self.weights = []
@@ -50,6 +54,8 @@ class MultiScaleSpectralLoss(nn.Module):
             for idx in range(len(self.n_fft)):
                 _hop_length = self.hop_length[idx]
                 self.weights.append(math.sqrt(_hop_length / 2))
+        else:
+            assert len(self.weights) == len(self.n_fft)
 
         if type(transform) is bool:
             if not transform:
