@@ -1,0 +1,28 @@
+train:
+  generator:
+    input:
+      input: waveform_slice
+    output:
+      - estimated_waveform_slice
+      - encoded
+      - quantized
+      - codebook_indices
+  discriminator:
+    real:
+      input:
+        input: waveform_slice
+      output:
+        - real_prob
+        - real_feature_map
+    fake:
+      input:
+        input: ${....generator.output.0}
+      output:
+        - fake_prob
+        - fake_feature_map
+validation: ${.train}
+inference:
+  generator:
+    input:
+      quantized: codebook_indices
+    output: estimated_waveform_slice
