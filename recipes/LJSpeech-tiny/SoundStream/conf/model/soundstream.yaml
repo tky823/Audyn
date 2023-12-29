@@ -45,12 +45,15 @@ discriminator:
     kernel_size_in: 3
     kernel_size_out:
       - 8
-      - 3
+      - 1
     kernel_size: 3
     down_scale:
-      - 2
-      - 2
-      - 4
+      - - 2
+        - 2
+      - - 2
+        - 2
+      - - 4
+        - 2
     transform: true
     transform_kwargs:
       n_fft: 256

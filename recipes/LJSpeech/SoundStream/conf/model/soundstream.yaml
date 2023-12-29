@@ -36,4 +36,41 @@ generator:
   embedding_dim: 4  # not sure
   num_layers: 2
 discriminator:
-  _target_: audyn.models.hifigan.MultiScaleDiscriminator.build_from_default_config
+  _target_: audyn.models.soundstream.Discriminator
+  waveform_discriminator:
+    _target_: audyn.models.hifigan.MultiScaleDiscriminator.build_from_default_config
+  spectrogram_discriminator:
+    _target_: audyn.models.soundstream.SpectrogramDiscriminator
+    num_features:
+      - 32
+      - 32
+      - 64
+      - 128
+      - 128
+      - 256
+      - 256
+    kernel_size_in:
+      - 7
+      - 7
+    kernel_size_out:
+      - 8
+      - 1
+    kernel_size: 3
+    down_scale:
+      - - 2
+        - 1
+      - - 2
+        - 2
+      - - 2
+        - 1
+      - - 2
+        - 2
+      - - 2
+        - 1
+      - - 2
+        - 2
+    transform: true
+    transform_kwargs:
+      n_fft: 1024
+      hop_length: 256
+      return_complex: true
