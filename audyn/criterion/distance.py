@@ -16,13 +16,15 @@ class MultiScaleSpectralLoss(nn.Module):
         n_fft: List[int],
         hop_length: Optional[List[int]] = None,
         weights: Optional[List[int]] = None,
-        transform: Optional[Union[nn.Module, bool]] = True,
+        transform: Optional[Union[nn.ModuleList, nn.Sequential, bool]] = True,
+        eps: float = 1e-8,
     ) -> None:
         super().__init__()
 
         self.n_fft = n_fft
         self.hop_length = hop_length
         self.weights = weights
+        self.eps = eps
 
         if hop_length is None:
             self.hop_length = []
@@ -56,6 +58,10 @@ class MultiScaleSpectralLoss(nn.Module):
                 transform_modules.append(_transform)
 
             transform = nn.ModuleList(transform_modules)
+        elif isinstance(transform, (nn.ModuleList, nn.Sequential)):
+            pass
+        else:
+            raise ValueError("Use nn.ModuleList or nn.Sequential as custom transform.")
 
         self.transform = transform
 
@@ -69,6 +75,7 @@ class MultiScaleSpectralLoss(nn.Module):
                 or (batch_size, in_channels, length).
 
         """
+        eps = self.eps
         loss = 0
 
         for idx in range(len(self.transform)):
@@ -82,7 +89,7 @@ class MultiScaleSpectralLoss(nn.Module):
             l1 = torch.sum(l1, dim=-2)
             l1 = l1.sum()
 
-            l2 = torch.log(_target) - torch.log(_input)
+            l2 = torch.log(_target + eps) - torch.log(_input + eps)
             l2 = torch.linalg.vector_norm(l2, ord=2, dim=-2)
             l2 = l2.sum()
 
