@@ -1,0 +1,36 @@
+_target_: audyn.criterion.base.MultiCriteria
+reconstruction_loss:
+  _target_: audyn.criterion.base.BaseCriterionWrapper
+  criterion:
+    _target_: torch.nn.MSELoss
+    reduction: mean
+  weight: 1
+  key_mapping:
+    estimated:
+      input: estimated_waveform_slice
+    target:
+      target: waveform_slice
+codebook_loss:
+  _target_: audyn.criterion.base.BaseCriterionWrapper
+  criterion:
+    _target_: audyn.criterion.rvqvae.CodebookLoss
+    layer_wise: true
+    reduction: mean
+  weight: 1
+  key_mapping:
+    estimated:
+      encoded: encoded
+      quantized: quantized
+    target:
+commitment_loss:
+  _target_: audyn.criterion.base.BaseCriterionWrapper
+  criterion:
+    _target_: audyn.criterion.rvqvae.CommitmentLoss
+    layer_wise: true
+    reduction: mean
+  weight: 0.25
+  key_mapping:
+    estimated:
+      encoded: encoded
+      quantized: quantized
+    target:

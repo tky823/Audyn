@@ -1,0 +1,54 @@
+defaults:
+  - record: soundstream
+  - dataset: torch
+  - dataloader: defaults
+  - _self_
+
+dataloader:
+  train:
+    batch_size: 32
+  validation:
+    batch_size: 32
+
+key_mapping:
+  train:
+    input:
+      input: waveform_slice
+    output:
+      - estimated_waveform_slice
+      - encoded
+      - quantized
+      - codebook_indices
+  validation: ${.train}
+  inference:
+    input:
+      quantized: codebook_indices
+    output: estimated_waveform_slice
+
+clip_gradient:
+  _target_: audyn.utils.GradClipper
+  mode: norm
+  max_norm: 10
+
+resume:
+  continue_from:
+
+output:
+  exp_dir: "./exp"
+  tensorboard_dir: "./tensorboard"
+  save_checkpoint:
+    iteration:
+      every: 5000
+      path: ${...exp_dir}/model/iteration{iteration}.pth
+    epoch:
+      every: 20
+      path: ${...exp_dir}/model/epoch{epoch}.pth
+    last:
+      path: ${...exp_dir}/model/last.pth
+    best_epoch:
+      path: ${...exp_dir}/model/best_epoch.pth
+
+steps:
+  epochs: 10
+  iterations:
+  lr_scheduler:
