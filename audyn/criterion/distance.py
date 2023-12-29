@@ -24,6 +24,22 @@ class MultiScaleSpectralLoss(nn.Module):
         self.hop_length = hop_length
         self.weights = weights
 
+        if hop_length is None:
+            self.hop_length = []
+
+            for idx in range(len(self.n_fft)):
+                n_fft = self.n_fft[idx]
+                _hop_length = n_fft // 4
+                self.hop_length.append(_hop_length)
+
+        if weights is None:
+            self.weights = []
+
+            for idx in range(len(self.n_fft)):
+                n_fft = self.n_fft[idx]
+                _hop_length = self.hop_length[idx]
+                self.weights.append(math.sqrt(_hop_length / 2))
+
         if type(transform) is bool:
             if not transform:
                 raise ValueError(
@@ -32,21 +48,11 @@ class MultiScaleSpectralLoss(nn.Module):
 
             transform_modules = []
 
-            if weights is None:
-                self.weights = []
-
             for idx in range(len(self.n_fft)):
                 n_fft = self.n_fft[idx]
+                hop_length = self.hop_length[idx]
 
-                if self.hop_length is None:
-                    hop_length = n_fft // 4
-                else:
-                    hop_length = self.hop_length[idx]
-
-                if weights is None:
-                    self.weights.append(math.sqrt(hop_length / 2))
-
-                _transform = aT.Spectrogram(n_fft, hop_length=hop_length)
+                _transform = aT.Spectrogram(n_fft, hop_length=_hop_length)
                 transform_modules.append(_transform)
 
             transform = nn.ModuleList(transform_modules)
