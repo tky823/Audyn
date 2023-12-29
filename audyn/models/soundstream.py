@@ -6,10 +6,19 @@ import torch.nn.functional as F
 from torch.nn.common_types import _size_1_t, _size_2_t
 
 from ..modules.soundstream import DecoderBlock, EncoderBlock, ResidualUnit2d
-from .hifigan import MultiScaleDiscriminator
+from .hifigan import MultiScaleDiscriminator as _MultiScaleDiscriminator
+from .hifigan import ScaleDiscriminator as _ScaleDiscriminator
 from .rvqvae import RVQVAE
 
-__all__ = ["SoundStream", "Discriminator", "Encoder", "Decoder", "SpectrogramDiscriminator"]
+__all__ = [
+    "SoundStream",
+    "Discriminator",
+    "Encoder",
+    "Decoder",
+    "MultiScaleDiscriminator",
+    "ScaleDiscriminator",
+    "SpectrogramDiscriminator",
+]
 
 
 class SoundStream(RVQVAE):
@@ -101,7 +110,7 @@ class Discriminator(nn.Module):
 
     def __init__(
         self,
-        waveform_discriminator: MultiScaleDiscriminator,
+        waveform_discriminator: "MultiScaleDiscriminator",
         spectrogram_discriminator: "SpectrogramDiscriminator",
     ) -> None:
         super().__init__()
@@ -251,6 +260,107 @@ class Decoder(nn.Module):
         output = self.conv1d_out(x)
 
         return output
+
+
+class MultiScaleDiscriminator(_MultiScaleDiscriminator):
+    """Multi-scale discriminator.
+
+    Args:
+        num_features (list): Number of features in convolution. This value is given to
+            each sub-discriminator.
+        kernel_size (list): Kernel sizes in convolution. This value is given to
+            each sub-discriminator.
+        stride (list or _size_1_t): Strides in convolution. This value is given to
+            each sub-discriminator.
+        dilation (list or _size_1_t): Dilation factor in convolution. This value is given to
+            each sub-discriminator.
+        groups (list or int): List of groupds in convolution. This value is given to
+            each sub-discriminator.
+        negative_slope (float): Negative slope in leaky relu.
+        pool_kernel_size (_size_1_t): Kernel size in pooling layer.
+        pool_stride (_size_1_t): Stride in pooling layer.
+        weight_regularization (list, optional): List of weight regularization methods,
+            whose length corresponds to number of sub-discriminators.
+            Only ``weight_norm`` and ``spectral_norm`` are supported.
+
+    """
+
+    @classmethod
+    def build_from_default_config(cls) -> "MultiScaleDiscriminator":
+        """Build multi-scale discriminator from default config.
+
+        Returns:
+            MultiScaleDiscriminator: Multi-scale discriminator by default parameters.
+
+        """
+        num_features = [1, 16, 64, 256, 1024, 1024, 1024]
+        kernel_size = [15, 41, 41, 41, 41, 5, 3]
+        stride = [1, 4, 4, 4, 4, 1, 1]
+        dilation = [1, 1, 1, 1, 1, 1, 1]
+        groups = [1, 4, 4, 4, 4, 1, 1]
+        negative_slope = 0.1
+        pool_kernel_size = 4
+        pool_stride = 2
+        weight_regularization = [None, None, None]
+
+        discriminator = cls(
+            num_features,
+            kernel_size=kernel_size,
+            stride=stride,
+            dilation=dilation,
+            groups=groups,
+            negative_slope=negative_slope,
+            pool_kernel_size=pool_kernel_size,
+            pool_stride=pool_stride,
+            weight_regularization=weight_regularization,
+        )
+
+        return discriminator
+
+
+class ScaleDiscriminator(_ScaleDiscriminator):
+    """Scale discriminator for SoundStream.
+
+    Args:
+        num_features (list): Number of features in convolution.
+        kernel_size (list): Kernel sizes in convolution.
+        stride (list or _size_1_t): Strides in convolution.
+        dilation (list or _size_1_t): Dilation factor in convolution.
+        groups (list or int): Number of groupds in convolution.
+        negative_slope (float): Negative slope in leaky relu.
+        weight_regularization (list, optional): Weight regularization method.
+            Only ``weight_norm`` and ``spectral_norm`` are supported.
+
+    """
+
+    @classmethod
+    def build_from_default_config(
+        cls, weight_regularization: Optional[str] = None
+    ) -> "ScaleDiscriminator":
+        """Build scale discriminator from default config.
+
+        Returns:
+            ScaleDiscriminator: Scale discriminator by default parameters.
+
+        """
+        num_features = [1, 16, 64, 256, 1024, 1024, 1024]
+        kernel_size = [15, 41, 41, 41, 41, 5, 3]
+        stride = [1, 4, 4, 4, 4, 1, 1]
+        dilation = [1, 1, 1, 1, 1, 1, 1]
+        groups = [1, 4, 4, 4, 4, 1, 1]
+        negative_slope = 0.1
+
+        discriminator = cls(
+            num_features,
+            kernel_size=kernel_size,
+            stride=stride,
+            dilation=dilation,
+            groups=groups,
+            negative_slope=negative_slope,
+            weight_regularization=weight_regularization,
+        )
+
+        return discriminator
 
 
 class SpectrogramDiscriminator(nn.Module):
