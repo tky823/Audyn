@@ -426,6 +426,22 @@ class SpectrogramDiscriminator(nn.Module):
         self.backbone = nn.ModuleList(backbone)
         self.conv2d_out = nn.Conv2d(num_features[-1], 1, kernel_size=kernel_size_out, stride=1)
 
+    @classmethod
+    def build_from_default_config(cls) -> "SpectrogramDiscriminator":
+        num_features = [32, 32, 64, 128, 128, 256, 256]
+        kernel_size_in, kernel_size_out, kernel_size = (7, 7), (8, 1), 3
+        down_scale = [(2, 1), (2, 2), (2, 1), (2, 2), (2, 1), (2, 2)]
+        transform = _Spectrogram(n_fft=1024, hop_length=256, return_complex=True)
+
+        return cls(
+            num_features,
+            kernel_size_in=kernel_size_in,
+            kernel_size_out=kernel_size_out,
+            kernel_size=kernel_size,
+            down_scale=down_scale,
+            transform=transform,
+        )
+
     def forward(self, input: torch.Tensor) -> Tuple[torch.Tensor, List[torch.Tensor]]:
         """Forward pass of SpectrogramDiscriminator.
 
