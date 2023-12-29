@@ -33,7 +33,7 @@ generator:
     dilation_rate: ${..encoder.dilation_rate}
     num_layers: ${..encoder.num_layers}
   codebook_size: ${data.codebook.size}
-  embedding_dim: 4  # not sure
+  embedding_dim: 512
   num_layers: 2
 discriminator:
   _target_: audyn.models.soundstream.Discriminator
