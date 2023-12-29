@@ -13,8 +13,8 @@ preprocess="defaults"
 data="soundstream"
 train="soundstream"
 model="soundstream"
-optimizer="adam"
-lr_scheduler="none"
+optimizer="soundstream"
+lr_scheduler="soundstream"
 criterion="soundstream"
 
 . ../../_common/parse_options.sh || exit 1;

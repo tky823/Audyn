@@ -22,8 +22,8 @@ preprocess="defaults"
 data="soundstream"
 train="soundstream"
 model="soundstream"
-optimizer="adam"
-lr_scheduler="none"
+optimizer="soundstream"
+lr_scheduler="soundstream"
 criterion="soundstream"
 
 n_validation=500
