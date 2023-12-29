@@ -1,34 +1,10 @@
 generator:
   _target_: audyn.criterion.base.MultiCriteria
-  codebook_loss:
-    _target_: audyn.criterion.base.BaseCriterionWrapper
-    criterion:
-      _target_: audyn.criterion.rvqvae.CodebookLoss
-      layer_wise: true
-      reduction: mean
-    weight: 1
-    key_mapping:
-      estimated:
-        encoded: encoded
-        quantized: quantized
-      target:
-  commitment_loss:
-    _target_: audyn.criterion.base.BaseCriterionWrapper
-    criterion:
-      _target_: audyn.criterion.rvqvae.CommitmentLoss
-      layer_wise: true
-      reduction: mean
-    weight: 0.25
-    key_mapping:
-      estimated:
-        encoded: encoded
-        quantized: quantized
-      target:
   waveform_fm:
     _target_: audyn.criterion.base.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.hifigan.FeatureMatchingLoss
-    weight: 2
+    weight: 100
     key_mapping:
       estimated:
         input: waveform_fake_feature_map
@@ -38,7 +14,7 @@ generator:
     _target_: audyn.criterion.base.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.hifigan.FeatureMatchingLoss
-    weight: 2
+    weight: 100
     key_mapping:
       estimated:
         input: spectrogram_fake_feature_map
