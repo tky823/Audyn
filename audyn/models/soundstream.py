@@ -23,6 +23,7 @@ class SoundStream(RVQVAE):
         codebook_size (int): Size of codebook.
         embedding_dim (int): Number of embedding dimension.
         num_layers (int): Number of layers of RVQ.
+        dropout (bool): Dropout of RVQ. Default: ``True``.
 
     """
 
