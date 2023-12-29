@@ -218,12 +218,12 @@ class Decoder(nn.Module):
 
         self.conv1d_in = nn.Conv1d(
             in_channels,
-            hidden_channels ** len(stride),
+            hidden_channels * (depth_rate ** len(stride)),
             kernel_size=kernel_size_in,
             stride=1,
         )
 
-        _in_channels = hidden_channels ** len(stride)
+        _in_channels = hidden_channels * (depth_rate ** len(stride))
         backbone = []
 
         for _stride in stride:
