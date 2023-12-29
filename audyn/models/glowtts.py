@@ -116,6 +116,10 @@ class GlowTTS(nn.Module):
 
         # NOTE: "est_duration" might be taken log.
         log_est_duration = self.duration_predictor(src_latent)
+
+        if src_padding_mask is not None:
+            log_est_duration = log_est_duration.masked_fill(src_padding_mask, -float("inf"))
+
         tgt_latent = self.decoder(
             tgt,
             padding_mask=tgt_padding_mask,
@@ -195,6 +199,8 @@ class GlowTTS(nn.Module):
 
         # NOTE: "est_duration" might be taken log.
         log_est_duration = self.duration_predictor(src_latent)
+
+        # NOTE: transform_log_duration may apply flooring.
         linear_est_duration = transform_log_duration(log_est_duration)
 
         if src_padding_mask is not None:
