@@ -31,7 +31,7 @@ class SoundStream(RVQVAE):
             shape (batch_size, embedding_dim, *).
         codebook_size (int): Size of codebook.
         embedding_dim (int): Number of embedding dimension.
-        num_layers (int): Number of layers of RVQ.
+        num_stages (int): Number of residual stages of RVQ.
         dropout (bool): Dropout of RVQ. Default: ``True``.
 
     """
@@ -55,9 +55,9 @@ class SoundStream(RVQVAE):
                     (batch_size, embedding_dim, *latent_shape). In most cases, latent_shape is \
                     smaller than input_shape.
                 - torch.Tensor: Quantized latent feature of shape \
-                    (batch_size, num_layers, embedding_dim, *latent_shape).
+                    (batch_size, num_stages, embedding_dim, *latent_shape).
                 - torch.Tensor: Indices of embeddings in codebook of shape \
-                    (batch_size, num_layers, *latent_shape).
+                    (batch_size, num_stages, *latent_shape).
 
         .. note::
 
@@ -71,7 +71,7 @@ class SoundStream(RVQVAE):
         hierarchical_quantized, indices = self.quantize(encoded)
         quantized = hierarchical_quantized.sum(dim=1)
         quantized_straight_through = encoded + torch.detach(quantized - encoded)
-        output = self.decode(quantized_straight_through, layer_wise=False)
+        output = self.decode(quantized_straight_through, stage_wise=False)
 
         return output, encoded, hierarchical_quantized, indices
 
@@ -80,18 +80,18 @@ class SoundStream(RVQVAE):
         self,
         quantized: torch.Tensor,
         denoise: bool = False,
-        layer_wise: bool = True,
+        stage_wise: bool = True,
     ) -> torch.Tensor:
         """Inference of RVQVAE.
 
         Args:
             quantized (torch.Tensor): Following two types are supported.
-                1. Quantized latent feature of shape (batch_size, num_layers, *latent_shape)
+                1. Quantized latent feature of shape (batch_size, num_stages, *latent_shape)
                     or (batch_size, *latent_shape). dtype is torch.FloatTensor.
                 2. Indices of quantized latent feature of shape
-                    (batch_size, num_layers, *latent_shape). dtype is torch.LongTensor.
+                    (batch_size, num_stages, *latent_shape). dtype is torch.LongTensor.
             denoise (bool): If ``True``, denoising is applied.
-            layer_wise (bool): If ``True``, ``quantized`` has ``num_layers`` dimension at axis = 1.
+            stage_wise (bool): If ``True``, ``quantized`` has ``num_stages`` dimension at axis = 1.
 
         Returns:
             torch.Tensor: Reconstructed feature.
@@ -100,7 +100,7 @@ class SoundStream(RVQVAE):
         if denoise:
             raise NotImplementedError("Denoising is not supported now.")
 
-        output = self.decode(quantized, layer_wise=layer_wise)
+        output = self.decode(quantized, stage_wise=stage_wise)
 
         return output
 

@@ -15,7 +15,7 @@ class ResidualVectorQuantizer(nn.Module):
     Args:
         codebook_size (int): Size of codebook.
         embedding_dim (int): Number of embedding dimensions.
-        num_layers (int): Number of residual layers.
+        num_stages (int): Number of residual steps.
         dropout (bool): Dropout of RVQ. Default: ``True``.
 
     """
@@ -24,19 +24,19 @@ class ResidualVectorQuantizer(nn.Module):
         self,
         codebook_size: int,
         embedding_dim: int,
-        num_layers: int,
+        num_stages: int,
         dropout: bool = True,
     ) -> None:
         super().__init__()
 
         self.codebook_size = codebook_size
         self.embedding_dim = embedding_dim
-        self.num_layers = num_layers
+        self.num_stages = num_stages
         self.dropout = dropout
 
         codebooks = []
 
-        for _ in range(num_layers):
+        for _ in range(num_stages):
             codebook = nn.Embedding(
                 num_embeddings=codebook_size,
                 embedding_dim=embedding_dim,
@@ -55,33 +55,33 @@ class ResidualVectorQuantizer(nn.Module):
             tuple: Tuple containing:
 
                 - torch.Tensor: Selected embeddings of same shape as input.
-                - torch.LongTensor: Indices of codebook of shape (batch_size, num_layers', *),
-                    where num_layers' might be changed if ``dropout=True``.
+                - torch.LongTensor: Indices of codebook of shape (batch_size, num_stages', *),
+                    where num_stages' might be changed if ``dropout=True``.
                     To disable this feature, set ``dropout=False`` or call ``.eval()``.
 
         """
         if self.dropout and self.training:
-            num_layers = torch.randint(0, len(self.codebooks), ()) + 1
+            num_stages = torch.randint(0, len(self.codebooks), ()) + 1
 
             if dist.is_available() and dist.is_initialized():
-                # gather gathered_num_layers
-                # gathered_num_layers:
+                # gather gathered_num_stages
+                # gathered_num_stages:
                 #     () -> (num_gpus,)
-                gathered_num_layers = [
-                    torch.zeros_like(num_layers) for _ in range(dist.get_world_size())
+                gathered_num_stages = [
+                    torch.zeros_like(num_stages) for _ in range(dist.get_world_size())
                 ]
-                dist.all_gather(gathered_num_layers, gathered_num_layers)
+                dist.all_gather(gathered_num_stages, gathered_num_stages)
 
-                # use num_layers on 1st GPU
-                num_layers = gathered_num_layers[0]
+                # use num_stages on 1st GPU
+                num_stages = gathered_num_stages[0]
 
-            num_layers = num_layers.item()
+            num_stages = num_stages.item()
         else:
-            num_layers = len(self.codebooks)
+            num_stages = len(self.codebooks)
 
         weight = []
 
-        for codebook in self.codebooks[:num_layers]:
+        for codebook in self.codebooks[:num_stages]:
             codebook: nn.Embedding
             weight.append(codebook.weight)
 
