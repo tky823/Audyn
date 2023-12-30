@@ -2,6 +2,7 @@
 from typing import Tuple
 
 import torch
+import torch.distributed as dist
 import torch.nn as nn
 
 from ..functional.vector_quantization import quantize_vector
@@ -73,11 +74,15 @@ class VectorQuantizer(nn.Module):
 
     @torch.no_grad()
     def _initialize_parameters(self, encoded: torch.Tensor) -> None:
-        # TODO: support DDP
         self.is_initialized: torch.Tensor
         is_initialized: bool = self.is_initialized.item()
+        is_distributed = dist.is_available() and dist.is_initialized()
 
         assert self.init_by_kmeans > 0 and not is_initialized
+
+        if is_distributed:
+            # TODO: support DDP
+            raise NotImplementedError("DDP is not supported.")
 
         g = torch.Generator(device=encoded.device)
         g.manual_seed(self.seed)
