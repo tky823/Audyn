@@ -151,8 +151,12 @@ class Encoder(nn.Module):
         stride: List[_size_1_t],
         dilation_rate: _size_1_t = 3,
         num_layers: int = 3,
+        causal: bool = True,
     ) -> None:
         super().__init__()
+
+        if causal:
+            raise NotImplementedError("Encoder w/ causality is not supported.")
 
         self.conv1d_in = nn.Conv1d(
             in_channels,
@@ -239,8 +243,12 @@ class Decoder(nn.Module):
         stride: List[_size_1_t],
         dilation_rate: _size_1_t = 3,
         num_layers: int = 3,
+        causal: bool = True,
     ) -> None:
         super().__init__()
+
+        if causal:
+            raise NotImplementedError("Decoder w/ causality is not supported.")
 
         # num_modes
         # 0: reconstruct, 1: denoise
