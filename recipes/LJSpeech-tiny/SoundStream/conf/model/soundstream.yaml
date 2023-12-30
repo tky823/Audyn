@@ -14,6 +14,7 @@ generator:
       - 4
     dilation_rate: 3
     num_layers: 3
+    causal: false
   decoder:
     _target_: audyn.models.soundstream.Decoder
     in_channels: ${..embedding_dim}
@@ -28,6 +29,7 @@ generator:
       - 2
     dilation_rate: ${..encoder.dilation_rate}
     num_layers: ${..encoder.num_layers}
+    causal: ${..encoder.causal}
   codebook_size: ${data.codebook.size}
   embedding_dim: 4
   num_stages: 2
