@@ -3,6 +3,7 @@ https://github.com/pytorch/pytorch/blob/0093df78df590a35deb784773aa2165884c1b7bd
 """
 import copy
 import math
+import warnings
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, Union, overload
 
 import torch
@@ -341,6 +342,7 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
             smooth: float = 0.999,
             reset_step: Optional[int] = None,
             reset_var: Optional[float] = None,
+            reset_rth: Optional[float] = None,
             reset_rate: Optional[float] = None,
             seed: int = 0,
         ) -> None:
@@ -356,6 +358,7 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
             smooth: float = 0.999,
             reset_step: Optional[int] = None,
             reset_var: Optional[float] = None,
+            reset_rth: Optional[float] = None,
             reset_rate: Optional[float] = None,
             seed: int = 0,
         ) -> None:
@@ -367,6 +370,7 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
         smooth=0.999,
         reset_step=None,
         reset_var=None,
+        reset_rth=None,
         reset_rate=None,
         seed=0,
     ) -> None:
@@ -378,6 +382,9 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
         if reset_step is None:
             if reset_var is not None:
                 raise ValueError("reset_var is specified, but reset_step is not defined.")
+
+            if reset_rth is not None:
+                raise ValueError("reset_rth is specified, but reset_step is not defined.")
 
             if reset_rate is not None:
                 raise ValueError("reset_rate is specified, but reset_step is not defined.")
@@ -392,8 +399,19 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
             if reset_var is None:
                 reset_var = 0.01
 
-            if reset_rate is None:
-                reset_rate = 0.03
+            if (reset_rth is not None) and (reset_rate is not None):
+                raise ValueError("Set either reset_rth or reset_rate.")
+
+            if reset_rth is None and reset_rate is None:
+                reset_rth = 0.03
+
+            if reset_rate is not None:
+                warnings.warn(
+                    "reset_rate is deprecated. Use reset_rth instead.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                reset_rth = reset_rate
         else:
             accumulated_steps = None
 
@@ -413,7 +431,7 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
         self.accumulated_steps = accumulated_steps
         self.reset_step = reset_step
         self.reset_var = reset_var
-        self.reset_rate = reset_rate
+        self.reset_rth = reset_rth
 
         # for DDP and codebook reset
         self.seed = seed
@@ -482,7 +500,7 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
                     "accumulated_steps": self.accumulated_steps,
                     "reset_step": self.reset_step,
                     "reset_var": self.reset_var,
-                    "reset_rate": self.reset_rate,
+                    "reset_rth": self.reset_rth,
                 }
             )
 
@@ -572,7 +590,12 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
             self.accumulated_steps = state_dict["accumulated_steps"]
             self.reset_step = state_dict["reset_step"]
             self.reset_var = state_dict["reset_var"]
-            self.reset_rate = state_dict["reset_rate"]
+            reset_rth = state_dict.pop("reset_rth")
+
+            if reset_rth is None:
+                reset_rth = state_dict["reset_rate"]
+
+            self.reset_rth = reset_rth
 
     def _trim_scalar_parameters(self, params: Iterable) -> List[nn.Parameter]:
         fixed_params = []
@@ -598,10 +621,11 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             reset is deactivated).
         reset_var (float, optional): This parameter is activated if ``reset_step``
             is specified. Variance of codebook reset. If ``None``, 0.01 is used by default.
-        reset_rate (float, optional): This parameter is activated if ``reset_step``
+        reset_rth (float, optional): This parameter is activated if ``reset_step``
             is specified. If usage of least used codebook is
-            less than ``reset_rate``, position will be reset. If ``None``,
+            less than ``reset_rth``, position will be reset. If ``None``,
             0.03 is used by default.
+        reset_rate (float, optional): Legacy version of ``reset_rth``. (deprecated)
         seed (int): Seed to synchronize states among devices when DDP is used.
 
     .. note::
@@ -681,6 +705,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             smooth: float = 0.999,
             reset_step: Optional[int] = None,
             reset_var: Optional[float] = None,
+            reset_rth: Optional[float] = None,
             reset_rate: Optional[float] = None,
         ) -> None:
             ...
@@ -695,6 +720,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             smooth: float = 0.999,
             reset_step: Optional[int] = None,
             reset_var: Optional[float] = None,
+            reset_rth: Optional[float] = None,
             reset_rate: Optional[float] = None,
         ) -> None:
             ...
@@ -705,6 +731,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
         smooth=0.999,
         reset_step=None,
         reset_var=None,
+        reset_rth=None,
         reset_rate=None,
     ) -> None:
         super().__init__(
@@ -712,6 +739,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             smooth=smooth,
             reset_step=reset_step,
             reset_var=reset_var,
+            reset_rth=reset_rth,
             reset_rate=reset_rate,
         )
 
@@ -974,7 +1002,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                     least_usage, min_idx = torch.min(num_accumulated, dim=0)
                     most_usage, max_idx = torch.max(num_accumulated, dim=0)
 
-                    if least_usage < self.reset_rate * most_usage:
+                    if least_usage < self.reset_rth * most_usage:
                         # to ensure synchronization in DDP, use random number generator
                         most_used = param.data[max_idx]
                         g = torch.Generator(device=most_used.device)
