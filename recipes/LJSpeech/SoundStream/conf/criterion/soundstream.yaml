@@ -115,6 +115,16 @@ generator:
         input: estimated_waveform_slice
       target:
         target: waveform_slice
+  codebook_entropy:
+    _target_: audyn.criterion.base.BaseCriterionWrapper
+    criterion:
+      _target_: audyn.criterion.rvqvae.CodebookEntropyLoss
+      codebook_size: ${data.codebook.size}
+    weight: 0  # monitoring
+    key_mapping:
+      estimated:
+        input: codebook_indices
+      target:
 discriminator:
   _target_: audyn.criterion.base.MultiCriteria
   waveform_discriminator_fake:
