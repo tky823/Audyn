@@ -4,6 +4,7 @@ from typing import Tuple
 import torch
 import torch.distributed as dist
 import torch.nn as nn
+import torch.nn.functional as F
 
 from ..functional.vector_quantization import quantize_vector
 
@@ -108,10 +109,28 @@ class VectorQuantizer(nn.Module):
             dot = torch.matmul(encoded, centroids.transpose(1, 0))
             distance = norm - 2 * dot
             indices = torch.argmin(distance, dim=-1)
-            eye = torch.eye(codebook_size, device=encoded.device, dtype=encoded.dtype)
-            assignments = eye[indices]
-            assignments = assignments.permute(1, 0)
-            num_assignments = assignments.sum(dim=-1, keepdim=True)
-            centroids = torch.matmul(assignments, encoded) / num_assignments
+            unique_indices = torch.unique(indices)
+            num_drops = codebook_size - unique_indices.size(0)
+
+            if num_drops > 0:
+                index_counts = torch.bincount(indices, minlength=codebook_size)
+                least_used_indices = torch.argsort(index_counts)
+                most_used_indices = least_used_indices[num_drops:]
+                least_used_indices = least_used_indices[:num_drops]
+                unused_centroids = centroids[least_used_indices]
+                assignments = F.one_hot(indices, num_classes=codebook_size)
+                assignments = assignments.permute(1, 0)
+                num_assignments = assignments.sum(dim=-1, keepdim=True)
+                prod = torch.matmul(assignments.to(encoded.dtype), encoded)
+                prod = prod[most_used_indices]
+                num_assignments = num_assignments[most_used_indices]
+                used_centroids = prod / num_assignments.to(encoded.dtype)
+                centroids = torch.cat([used_centroids, unused_centroids], dim=0)
+            else:
+                assignments = F.one_hot(indices, num_classes=codebook_size)
+                assignments = assignments.permute(1, 0)
+                prod = torch.matmul(assignments.to(encoded.dtype), encoded)
+                num_assignments = assignments.sum(dim=-1, keepdim=True)
+                centroids = prod / num_assignments.to(encoded.dtype)
 
         self.codebook.weight.data.copy_(centroids)
