@@ -371,6 +371,8 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
         seed=0,
     ) -> None:
         defaults = {}
+        params = self._trim_scalar_parameters(params)
+
         super().__init__(params, defaults)
 
         if reset_step is None:
@@ -571,6 +573,18 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
             self.reset_step = state_dict["reset_step"]
             self.reset_var = state_dict["reset_var"]
             self.reset_rate = state_dict["reset_rate"]
+
+    def _trim_scalar_parameters(self, params: Iterable) -> List[nn.Parameter]:
+        fixed_params = []
+
+        for param in params:
+            if param.dim() == 0:
+                # flags related to initialization
+                pass
+            else:
+                fixed_params.append(param)
+
+        return fixed_params
 
 
 class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodebookOptimizer):
@@ -773,7 +787,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
         codebook_reset = self.codebook_reset
         is_distributed = dist.is_available() and dist.is_initialized()
 
-        param_groups = list(module.parameters())
+        param_groups = self._trim_scalar_parameters(module.parameters())
         tracking_param_groups = self.param_groups
         one_hot_sum_groups = self.one_hot_sum_groups
         z_e_sum_groups = self.z_e_sum_groups
