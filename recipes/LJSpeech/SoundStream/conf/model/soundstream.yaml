@@ -7,7 +7,7 @@ generator:
     hidden_channels: 16
     depth_rate: 2
     kernel_size_in: 7
-    kernel_size_out: 7
+    kernel_size_out: 3
     kernel_size: 3
     stride:
       - 2
@@ -22,7 +22,7 @@ generator:
     out_channels: ${..encoder.in_channels}
     hidden_channels: 16
     depth_rate: ${..encoder.depth_rate}
-    kernel_size_in: 7
+    kernel_size_in: 3
     kernel_size_out: 7
     kernel_size: ${..encoder.kernel_size}
     stride:
@@ -33,7 +33,7 @@ generator:
     dilation_rate: ${..encoder.dilation_rate}
     num_layers: ${..encoder.num_layers}
   codebook_size: ${data.codebook.size}
-  embedding_dim: 32
+  embedding_dim: 128
   num_layers: 8
 discriminator:
   _target_: audyn.models.soundstream.Discriminator
