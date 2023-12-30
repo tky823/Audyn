@@ -7,7 +7,7 @@ def test_residual_vector_quantizer() -> None:
     torch.manual_seed(0)
 
     batch_size = 4
-    num_layers = 6
+    num_stages = 6
     codebook_size, embedding_dim = 10, 5
     length = 3
 
@@ -16,10 +16,10 @@ def test_residual_vector_quantizer() -> None:
     rvq = ResidualVectorQuantizer(
         codebook_size,
         embedding_dim,
-        num_layers=num_layers,
+        num_stages=num_stages,
         dropout=False,
     )
     quantized, indices = rvq(input)
 
-    assert quantized.size() == (batch_size, num_layers, embedding_dim, length)
-    assert indices.size() == (batch_size, num_layers, length)
+    assert quantized.size() == (batch_size, num_stages, embedding_dim, length)
+    assert indices.size() == (batch_size, num_stages, length)

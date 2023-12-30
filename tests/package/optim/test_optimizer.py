@@ -88,7 +88,7 @@ def test_exponential_moving_average_wrapper(build_from_optim_class: bool):
 def test_exponential_moving_average_codebook_optimizer(is_rvq: bool, codebook_reset: bool) -> None:
     torch.manual_seed(0)
 
-    num_layers = 6
+    num_stages = 6
     codebook_size, embedding_dim = 3, 4
     batch_size, length = 2, 5
     num_initial_steps, num_total_steps = 5, 10
@@ -96,7 +96,7 @@ def test_exponential_moving_average_codebook_optimizer(is_rvq: bool, codebook_re
 
     with tempfile.TemporaryDirectory() as temp_dir:
         if is_rvq:
-            model = ResidualVectorQuantizer(codebook_size, embedding_dim, num_layers=num_layers)
+            model = ResidualVectorQuantizer(codebook_size, embedding_dim, num_stages=num_stages)
         else:
             model = VectorQuantizer(codebook_size, embedding_dim)
 

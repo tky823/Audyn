@@ -11,9 +11,9 @@ def test_soundstream() -> None:
     kernel_size_out = kernel_size_in = 3
     kernel_size = 3
     stride, dilation_rate = [2, 4, 5], 2
-    num_enc_layers = 2
+    num_layers = 2
     codebook_size = 16
-    num_rvq_layers = 4
+    num_stages = 4
 
     batch_size, compressed_length = 3, 8
     input_length = compressed_length
@@ -31,7 +31,7 @@ def test_soundstream() -> None:
         kernel_size=kernel_size,
         stride=stride,
         dilation_rate=dilation_rate,
-        num_layers=num_enc_layers,
+        num_layers=num_layers,
     )
     decoder = Decoder(
         embedding_dim,
@@ -43,14 +43,14 @@ def test_soundstream() -> None:
         kernel_size=kernel_size,
         stride=stride[-1::-1],
         dilation_rate=dilation_rate,
-        num_layers=num_enc_layers,
+        num_layers=num_layers,
     )
     model = SoundStream(
         encoder,
         decoder,
         codebook_size=codebook_size,
         embedding_dim=embedding_dim,
-        num_layers=num_rvq_layers,
+        num_stages=num_stages,
         dropout=False,
     )
 
@@ -61,11 +61,11 @@ def test_soundstream() -> None:
     assert encoded.size() == (batch_size, embedding_dim, compressed_length)
     assert hierarchical_quantized.size() == (
         batch_size,
-        num_rvq_layers,
+        num_stages,
         embedding_dim,
         compressed_length,
     )
-    assert indices.size() == (batch_size, num_rvq_layers, compressed_length)
+    assert indices.size() == (batch_size, num_stages, compressed_length)
 
 
 def test_soundstream_encoder() -> None:
