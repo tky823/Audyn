@@ -18,7 +18,11 @@ from torch.optim.lr_scheduler import _LRScheduler
 from torch.utils.data import DataLoader
 
 from ... import __version__ as _version
-from ...optim.optimizer import MovingAverageWrapper, MultiOptimizers
+from ...optim.optimizer import (
+    ExponentialMovingAverageCodebookOptimizer,
+    MovingAverageWrapper,
+    MultiOptimizers,
+)
 from ..clip_grad import GradClipper
 from ..data import BaseDataLoaders, select_device
 from ..distributed import select_global_rank, select_local_rank
@@ -806,7 +810,10 @@ class BaseTrainer(BaseDriver):
             for _optimizer in optimizer.optimizers.values():
                 self.optimizer_step(_optimizer)
         else:
-            self.scaler.step(optimizer)
+            if isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer):
+                optimizer.step()
+            else:
+                self.scaler.step(optimizer)
 
     def display_loss(
         self, train_loss: Dict[str, float], validation_loss: Optional[Dict[str, float]] = None
