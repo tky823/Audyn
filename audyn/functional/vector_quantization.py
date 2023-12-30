@@ -25,7 +25,7 @@ def quantize_vector(
     """
     n_dims = input.dim()
 
-    assert n_dims > 2, "n_dims is expected to be (batch_size, embedding_dim, *)."
+    assert n_dims > 1, "n_dims is expected to be (batch_size, embedding_dim, *)."
 
     batch_size, embedding_dim, *shape = input.size()
 
