@@ -96,7 +96,12 @@ def test_exponential_moving_average_codebook_optimizer(is_rvq: bool, codebook_re
 
     with tempfile.TemporaryDirectory() as temp_dir:
         if is_rvq:
-            model = ResidualVectorQuantizer(codebook_size, embedding_dim, num_stages=num_stages)
+            model = ResidualVectorQuantizer(
+                codebook_size,
+                embedding_dim,
+                num_stages=num_stages,
+                dropout=False,
+            )
         else:
             model = VectorQuantizer(codebook_size, embedding_dim)
 
