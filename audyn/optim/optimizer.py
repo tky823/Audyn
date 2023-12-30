@@ -796,30 +796,63 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
         if not isinstance(param_groups[0], dict):
             param_groups = [{"params": param_groups}]
 
-        (dequantized_input,) = input
-        _, indices = output
+        (dequantized,) = input
+        quantized, indices = output
+
+        dequantized = dequantized.transpose(1, 0).contiguous()
 
         if is_rvq:
-            # indices: (batch_size, num_stages, embedding_dim, *)
+            # quantized: (batch_size, num_stages, embedding_dim, *)
+            # indices: (batch_size, num_stages, *)
+            stacked_quantized = quantized.transpose(1, 0)
             stacked_indices = indices.transpose(1, 0)
         else:
-            # indices: (batch_size, embedding_dim, *)
+            # stacked_quantized: (batch_size, embedding_dim, *)
+            # indices: (batch_size, *)
+            stacked_quantized = quantized.unsqueeze(dim=0)
             stacked_indices = indices.unsqueeze(dim=0)
 
         if len(param_groups) != len(tracking_param_groups):
             # param_groups should be identical to tracking_param_groups
             raise ValueError("Given parameter groups do not match tracking ones.")
 
+        if is_distributed:
+            # gather dequantized, stacked_quantized, and stacked_indices
+            # dequantized:
+            #     (embedding_dim, num_samples) -> (embedding_dim, num_gpus * num_samples)
+            # stacked_quantized:
+            #     (num_stages, batch_size, embedding_dim, *)
+            #      -> (num_stages, num_gpus * batch_size, embedding_dim, *)
+            # stacked_indices:
+            #     (num_stages, batch_size, *) -> (num_stages, num_gpus * batch_size, *)
+            gathered_dequantized = [
+                torch.zeros_like(dequantized) for _ in range(dist.get_world_size())
+            ]
+            gathered_stacked_quantized = [
+                torch.zeros_like(stacked_quantized) for _ in range(dist.get_world_size())
+            ]
+            gathered_stacked_indices = [
+                torch.zeros_like(stacked_indices) for _ in range(dist.get_world_size())
+            ]
+
+            dist.all_gather(gathered_dequantized, dequantized)
+            dist.all_gather(gathered_stacked_quantized, stacked_quantized)
+            dist.all_gather(gathered_stacked_indices, stacked_indices)
+
+            dequantized = torch.cat(gathered_dequantized, dim=1)
+            stacked_quantized = torch.cat(gathered_stacked_quantized, dim=1)
+            stacked_indices = torch.cat(gathered_stacked_indices, dim=1)
+
+            raise NotImplementedError("DDP is not tested well.")
+
         with torch.cuda.amp.autocast(enabled=False):
             for (
-                indices,
                 param_group,
                 tracking_param_group,
                 one_hot_sum_group,
                 z_e_sum_group,
                 num_accumulated,
             ) in zip(
-                stacked_indices,
                 param_groups,
                 tracking_param_groups,
                 one_hot_sum_groups,
@@ -830,42 +863,40 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                     # param_group["params"] should be identical to tracking_param_group["params"]
                     raise ValueError("Given parameters do not match tracking ones.")
 
-                for idx, param in enumerate(param_group["params"]):
-                    codebook_size, embedding_dim = param.data.size()
+                if len(param_group["params"]) > 1 and not is_rvq:
+                    raise ValueError('Length of param_group["params"] is invalid.')
 
-                    dequantized_input = dequantized_input.transpose(1, 0).contiguous()
-                    dequantized_input = dequantized_input.view(embedding_dim, -1)
+                # NOTE: Due to dropout of codebooks, len(stacked_quantized)
+                #       might be smaller than len(param_group["params"]).
+                num_stages = len(stacked_quantized)
+
+                assert len(stacked_indices) == num_stages
+                assert len(param_group["params"]) >= num_stages
+
+                reconstructed = 0
+
+                for idx in range(num_stages):
+                    param = param_group["params"][idx]
+                    codebook_size, embedding_dim = param.data.size()
+                    quantized = stacked_quantized[idx]
+                    indices = stacked_indices[idx]
+
+                    if idx == 0:
+                        dequantized = dequantized.view(embedding_dim, -1)
+
+                    residual = dequantized - reconstructed
+
+                    quantized = quantized.transpose(1, 0).contiguous()
+                    quantized = quantized.view(embedding_dim, -1)
+
                     one_hot = F.one_hot(indices, num_classes=codebook_size)
                     one_hot = one_hot.view(-1, codebook_size)
-
-                    if is_distributed:
-                        # gather dequantized_input and one_hot
-                        # dequantized_input:
-                        #     (embedding_dim, num_samples)
-                        #     -> (embedding_dim, num_gpus * num_samples)
-                        # one_hot:
-                        #     (num_samples, codebook_size)
-                        #     -> (num_gpus * num_samples, codebook_size)
-                        gathered_dequantized_input = [
-                            torch.zeros_like(dequantized_input)
-                            for _ in range(dist.get_world_size())
-                        ]
-                        gathered_one_hot = [
-                            torch.zeros_like(one_hot) for _ in range(dist.get_world_size())
-                        ]
-
-                        dist.all_gather(gathered_dequantized_input, dequantized_input)
-                        dist.all_gather(gathered_one_hot, one_hot)
-
-                        dequantized_input = torch.cat(gathered_dequantized_input, dim=1)
-                        one_hot = torch.cat(gathered_one_hot, dim=0)
-
                     one_hot_sum = one_hot.sum(dim=0)
-                    one_hot = one_hot.to(dequantized_input.dtype)
+                    one_hot = one_hot.to(residual.dtype)
 
                     # NOTE: In some cases with mixed precision training,
                     #       the following matmul operation may cause inf.
-                    z_e_sum = torch.matmul(dequantized_input, one_hot)
+                    z_e_sum = torch.matmul(residual, one_hot)
                     z_e_sum = z_e_sum.permute(1, 0).contiguous()
 
                     one_hot_sum_group[idx].data.copy_(one_hot_sum.data)
@@ -873,6 +904,8 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
 
                     if codebook_reset:
                         num_accumulated[idx].data.add_(one_hot_sum.data)
+
+                    reconstructed = reconstructed + quantized
 
     def step(self) -> None:
         param_groups = self.param_groups
