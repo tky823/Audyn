@@ -1,3 +1,5 @@
+import copy
+
 import torch
 import torch.nn as nn
 
@@ -25,3 +27,21 @@ def test_vector_quantizer():
 
     # confirm gradient of input
     assert torch.allclose(quantized_by_quantizer, quantized_by_embedding)
+
+    # k-means clustering initalization
+    kmeans_iteration = 100
+
+    vector_quantizer = VectorQuantizer(
+        codebook_size,
+        embedding_dim=embedding_dim,
+        init_by_kmeans=kmeans_iteration,
+    )
+
+    _ = vector_quantizer(input)
+    _, indices_before_save = vector_quantizer(input)
+    state_dict = copy.copy(vector_quantizer.state_dict())
+    vector_quantizer.load_state_dict(state_dict)
+
+    _, indices_after_save = vector_quantizer(input)
+
+    assert torch.equal(indices_before_save, indices_after_save)
