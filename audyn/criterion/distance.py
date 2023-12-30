@@ -90,6 +90,10 @@ class MultiScaleSpectralLoss(nn.Module):
             target (torch.Tensor): Target waveform of shape (batch_size, length)
                 or (batch_size, in_channels, length).
 
+        .. note::
+
+            Loss is averaged over batch, frequency, and time axes.
+
         """
         eps = self.eps
         loss = 0
@@ -102,12 +106,16 @@ class MultiScaleSpectralLoss(nn.Module):
             _target = transform(target)
 
             l1 = torch.abs(_target - _input)
-            l1 = torch.sum(l1, dim=-2)
-            l1 = l1.sum()
+            # average over frequency bin
+            l1 = torch.mean(l1, dim=-2)
+            # average over time frames and batch samples
+            l1 = l1.mean()
 
             l2 = torch.log(_target + eps) - torch.log(_input + eps)
-            l2 = torch.linalg.vector_norm(l2, ord=2, dim=-2)
-            l2 = l2.sum()
+            # average over frequency bin
+            l2 = torch.linalg.vector_norm(l2, ord=2, dim=-2) / l2.size(-2)
+            # average over time frames and batch samples
+            l2 = l2.mean()
 
             l12 = l1 + weight * l2
             loss = loss + l12
