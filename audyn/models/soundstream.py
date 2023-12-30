@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.common_types import _size_1_t, _size_2_t
 
-from ..modules.soundstream import DecoderBlock, EncoderBlock, ResidualUnit2d
+from ..modules.soundstream import DecoderBlock, EncoderBlock, FiLM1d, ResidualUnit2d
 from .hifigan import MultiScaleDiscriminator as _MultiScaleDiscriminator
 from .hifigan import ScaleDiscriminator as _ScaleDiscriminator
 from .rvqvae import RVQVAE
@@ -186,16 +186,42 @@ class Encoder(nn.Module):
             stride=1,
         )
 
+        # num_modes
+        # 0: reconstruct, 1: denoise
+        num_modes = 2
+        self.film1d = FiLM1d(num_modes, out_channels)
+
         self.kernel_size_in, self.kernel_size_out = kernel_size_in, kernel_size_out
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
+    def forward(self, input: torch.Tensor, denoise: bool = False) -> torch.Tensor:
+        """Forward pass of Encoder.
+
+        Args:
+            input (torch.Tensor): Waveform of shape (batch_size, in_channels, length).
+            denoise (bool): Denoising flag.
+
+        Returns:
+            torch.Tensor: Compressed feature of shape (batch_size, out_channels, length').
+
+        """
         kernel_size_in, kernel_size_out = self.kernel_size_in, self.kernel_size_out
+        batch_size = input.size(0)
+
+        if denoise:
+            fill_value = 1
+        else:
+            fill_value = 0
+
+        mode = torch.full(
+            (batch_size,), fill_value=fill_value, dtype=torch.long, device=input.device
+        )
 
         x = F.pad(input, (kernel_size_in // 2, kernel_size_in // 2))
         x = self.conv1d_in(x)
         x = self.backbone(x)
         x = F.pad(x, (kernel_size_out // 2, kernel_size_out // 2))
-        output = self.conv1d_out(x)
+        x = self.conv1d_out(x)
+        output = self.film1d(x, mode=mode)
 
         return output
 
@@ -216,6 +242,10 @@ class Decoder(nn.Module):
     ) -> None:
         super().__init__()
 
+        # num_modes
+        # 0: reconstruct, 1: denoise
+        num_modes = 2
+        self.film1d = FiLM1d(num_modes, in_channels)
         self.conv1d_in = nn.Conv1d(
             in_channels,
             hidden_channels * (depth_rate ** len(stride)),
@@ -250,10 +280,31 @@ class Decoder(nn.Module):
 
         self.kernel_size_in, self.kernel_size_out = kernel_size_in, kernel_size_out
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
-        kernel_size_in, kernel_size_out = self.kernel_size_in, self.kernel_size_out
+    def forward(self, input: torch.Tensor, denoise: bool = False) -> torch.Tensor:
+        """Forward pass of Decoder.
 
-        x = F.pad(input, (kernel_size_in // 2, kernel_size_in // 2))
+        Args:
+            input (torch.Tensor): Compressed feature of shape (batch_size, in_channels, length).
+            denoise (bool): Denoising flag.
+
+        Returns:
+            torch.Tensor: Reconstructed waveform of shape (batch_size, out_channels, length').
+
+        """
+        kernel_size_in, kernel_size_out = self.kernel_size_in, self.kernel_size_out
+        batch_size = input.size(0)
+
+        if denoise:
+            fill_value = 1
+        else:
+            fill_value = 0
+
+        mode = torch.full(
+            (batch_size,), fill_value=fill_value, dtype=torch.long, device=input.device
+        )
+
+        x = self.film1d(input, mode=mode)
+        x = F.pad(x, (kernel_size_in // 2, kernel_size_in // 2))
         x = self.conv1d_in(x)
         x = self.backbone(x)
         x = F.pad(x, (kernel_size_out // 2, kernel_size_out // 2))
