@@ -2,6 +2,7 @@ import copy
 import math
 import os
 import tempfile
+from typing import Optional
 
 import pytest
 import torch
@@ -85,7 +86,10 @@ def test_exponential_moving_average_wrapper(build_from_optim_class: bool):
 
 @pytest.mark.parametrize("is_rvq", [True, False])
 @pytest.mark.parametrize("codebook_reset", [True, False])
-def test_exponential_moving_average_codebook_optimizer(is_rvq: bool, codebook_reset: bool) -> None:
+@pytest.mark.parametrize("reset_strategy", ["atol", "rtol", None])
+def test_exponential_moving_average_codebook_optimizer(
+    is_rvq: bool, codebook_reset: bool, reset_strategy: Optional[str]
+) -> None:
     torch.manual_seed(0)
 
     num_stages = 6
@@ -106,10 +110,22 @@ def test_exponential_moving_average_codebook_optimizer(is_rvq: bool, codebook_re
             model = VectorQuantizer(codebook_size, embedding_dim)
 
         if codebook_reset:
+            if reset_strategy == "atol":
+                reset_ath = 2
+                reset_rth = None
+            elif reset_strategy == "rtol":
+                reset_ath = None
+                reset_rth = 0.5
+            else:
+                reset_ath = None
+                reset_rth = None
+
             optimizer = ExponentialMovingAverageCodebookOptimizer(
                 model.parameters(),
                 reset_step=reset_step,
                 reset_var=reset_var,
+                reset_ath=reset_ath,
+                reset_rth=reset_rth,
             )
         else:
             optimizer = ExponentialMovingAverageCodebookOptimizer(model.parameters())
