@@ -4,7 +4,7 @@ waveform:
     sample_size: 1
     key_mapping:
       output:
-        estimated_waveform_slice: "Estimated waveform (iteration)"
+        estimated_waveform_slice: "Estimated waveform slice (iteration)"
       reference:
         waveform_slice: "Waveform slice (iteration)"
     transforms:
@@ -20,10 +20,6 @@ waveform:
         reference:
           waveform_slice: "Waveform slice (epoch)"
       inference:
-        output:
-          estimated_waveform_slice: "Estimated waveform slice of inference (epoch)"
-        reference:
-          waveform_slice: "Waveform slice of inference (epoch)"
     transforms:
       validation: ${...iteration.transforms}
       inference:
@@ -51,8 +47,4 @@ audio:
         reference:
           waveform_slice: "Audio (epoch)"
       inference:
-        output:
-          estimated_waveform_slice: "Estimated audio of inference (epoch)"
-        reference:
-          waveform_slice: "Audio of inference (epoch)"
     transforms: ${...waveform.epoch.transforms}
