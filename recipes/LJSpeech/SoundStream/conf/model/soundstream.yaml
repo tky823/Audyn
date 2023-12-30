@@ -34,7 +34,7 @@ generator:
     num_layers: ${..encoder.num_layers}
   codebook_size: ${data.codebook.size}
   embedding_dim: 128
-  num_layers: 8
+  num_stages: 8
 discriminator:
   _target_: audyn.models.soundstream.Discriminator
   waveform_discriminator:

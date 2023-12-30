@@ -36,7 +36,7 @@ def main(config: DictConfig) -> None:
     for s in config.model.generator.encoder.stride:
         down_scale *= s
 
-    num_layers = config.model.generator.num_layers
+    num_stages = config.model.generator.num_stages
 
     train_loader = hydra.utils.instantiate(
         config.train.dataloader.train,
@@ -45,7 +45,7 @@ def main(config: DictConfig) -> None:
             collate_fn,
             data_config=config.data,
             down_scale=down_scale,
-            num_layers=num_layers,
+            num_stages=num_stages,
             random_slice=True,
         ),
     )
@@ -56,7 +56,7 @@ def main(config: DictConfig) -> None:
             collate_fn,
             data_config=config.data,
             down_scale=down_scale,
-            num_layers=num_layers,
+            num_stages=num_stages,
             random_slice=False,
         ),
     )
@@ -126,7 +126,7 @@ def collate_fn(
     batch: List[Any],
     data_config: DictConfig,
     down_scale: int,
-    num_layers: int,
+    num_stages: int,
     random_slice: bool,
 ) -> Dict[str, Any]:
     """Generate dict-based batch.
@@ -136,7 +136,7 @@ def collate_fn(
             Type of each data is expected ``Dict[str, torch.Tensor]``.
         data_config (DictConfig): Config of data.
         down_scale (int): Scale of downsampling in RVQ.
-        num_layers (int): Number of layers in RVQ.
+        num_stages (int): Number of stages in RVQ.
         random_slice (bool): If ``random_slice=True``, waveform slice is selected at random.
             Default: ``True``.
 
@@ -167,7 +167,7 @@ def collate_fn(
     dict_batch["codebook_indices"] = torch.randint(
         0,
         codebook_size,
-        (batch_size, num_layers, length // down_scale),
+        (batch_size, num_stages, length // down_scale),
         dtype=torch.long,
     )
 

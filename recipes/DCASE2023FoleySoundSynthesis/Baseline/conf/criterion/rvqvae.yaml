@@ -14,7 +14,7 @@ codebook_loss:
   _target_: audyn.criterion.base.BaseCriterionWrapper
   criterion:
     _target_: audyn.criterion.rvqvae.CodebookLoss
-    layer_wise: true
+    stage_wise: true
     reduction: mean
   weight: 1
   key_mapping:
@@ -26,7 +26,7 @@ commitment_loss:
   _target_: audyn.criterion.base.BaseCriterionWrapper
   criterion:
     _target_: audyn.criterion.rvqvae.CommitmentLoss
-    layer_wise: true
+    stage_wise: true
     reduction: mean
   weight: 0.25
   key_mapping:
