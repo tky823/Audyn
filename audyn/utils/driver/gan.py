@@ -13,12 +13,7 @@ from ... import __version__ as _version
 from ...criterion.gan import GANCriterion
 from ...models.gan import BaseGAN
 from ...optim.lr_scheduler import GANLRScheduler
-from ...optim.optimizer import (
-    ExponentialMovingAverageCodebookOptimizer,
-    GANOptimizer,
-    MovingAverageWrapper,
-    MultiOptimizers,
-)
+from ...optim.optimizer import GANOptimizer, MovingAverageWrapper, MultiOptimizers
 from ..clip_grad import GANGradClipper
 from ..data import BaseDataLoaders
 from ..hydra.utils import instantiate_grad_clipper
@@ -803,27 +798,9 @@ class GANTrainer(BaseTrainer):
 
             if isinstance(optimizer, MultiOptimizers):
                 for _optimizer in optimizer.optimizers.values():
-                    if (
-                        isinstance(_optimizer, ExponentialMovingAverageCodebookOptimizer)
-                        and self.scaler.is_enabled()
-                    ):
-                        raise NotImplementedError(
-                            "ExponentialMovingAverageCodebookOptimizer and AMP "
-                            "cannot be used simultaneously."
-                        )
-                    else:
-                        self.scaler.unscale_(_optimizer)
+                    self.scaler.unscale_(_optimizer)
             else:
-                if (
-                    isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
-                    and self.scaler.is_enabled()
-                ):
-                    raise NotImplementedError(
-                        "ExponentialMovingAverageCodebookOptimizer and AMP "
-                        "cannot be used simultaneously."
-                    )
-                else:
-                    self.scaler.unscale_(optimizer)
+                self.scaler.unscale_(optimizer)
 
     def clip_gradient_if_necessary(
         self,

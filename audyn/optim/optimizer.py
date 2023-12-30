@@ -632,9 +632,9 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
         >>> from audyn.modules.rvq import ResidualVectorQuantizer
         >>> from audyn.optim.optimizer import ExponentialMovingAverageCodebookOptimizer
         >>> torch.manual_seed(0)
-        >>> num_layers, codebook_size, embedding_dim = 6, 3, 4
+        >>> num_stages, codebook_size, embedding_dim = 6, 3, 4
         >>> batch_size, length = 2, 5
-        >>> model = ResidualVectorQuantizer(codebook_size, embedding_dim, num_layers=num_layers)
+        >>> model = ResidualVectorQuantizer(codebook_size, embedding_dim, num_stages=num_stages)
         >>> # w/o codebook reset
         >>> optimizer = ExponentialMovingAverageCodebookOptimizer(model.parameters())
         >>> model.register_forward_hook(optimizer.store_current_stats)
@@ -786,7 +786,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
         _, indices = output
 
         if is_rvq:
-            # indices: (batch_size, num_layers, embedding_dim, *)
+            # indices: (batch_size, num_stages, embedding_dim, *)
             stacked_indices = indices.transpose(1, 0)
         else:
             # indices: (batch_size, embedding_dim, *)
@@ -796,65 +796,69 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             # param_groups should be identical to tracking_param_groups
             raise ValueError("Given parameter groups do not match tracking ones.")
 
-        for (
-            indices,
-            param_group,
-            tracking_param_group,
-            one_hot_sum_group,
-            z_e_sum_group,
-            num_accumulated,
-        ) in zip(
-            stacked_indices,
-            param_groups,
-            tracking_param_groups,
-            one_hot_sum_groups,
-            z_e_sum_groups,
-            num_accumulated_groups,
-        ):
-            if len(param_group["params"]) != len(tracking_param_group["params"]):
-                # param_group["params"] should be identical to tracking_param_group["params"]
-                raise ValueError("Given parameters do not match tracking ones.")
+        with torch.cuda.amp.autocast(enabled=False):
+            for (
+                indices,
+                param_group,
+                tracking_param_group,
+                one_hot_sum_group,
+                z_e_sum_group,
+                num_accumulated,
+            ) in zip(
+                stacked_indices,
+                param_groups,
+                tracking_param_groups,
+                one_hot_sum_groups,
+                z_e_sum_groups,
+                num_accumulated_groups,
+            ):
+                if len(param_group["params"]) != len(tracking_param_group["params"]):
+                    # param_group["params"] should be identical to tracking_param_group["params"]
+                    raise ValueError("Given parameters do not match tracking ones.")
 
-            for idx, param in enumerate(param_group["params"]):
-                codebook_size, embedding_dim = param.data.size()
+                for idx, param in enumerate(param_group["params"]):
+                    codebook_size, embedding_dim = param.data.size()
 
-                dequantized_input = dequantized_input.transpose(1, 0).contiguous()
-                dequantized_input = dequantized_input.view(embedding_dim, -1)
-                one_hot = F.one_hot(indices, num_classes=codebook_size)
-                one_hot = one_hot.view(-1, codebook_size)
+                    dequantized_input = dequantized_input.transpose(1, 0).contiguous()
+                    dequantized_input = dequantized_input.view(embedding_dim, -1)
+                    one_hot = F.one_hot(indices, num_classes=codebook_size)
+                    one_hot = one_hot.view(-1, codebook_size)
 
-                if is_distributed:
-                    # gather dequantized_input and one_hot
-                    # dequantized_input:
-                    #     (embedding_dim, num_samples) -> (embedding_dim, num_gpus * num_samples)
-                    # one_hot:
-                    #     (num_samples, codebook_size) -> (num_gpus * num_samples, codebook_size)
-                    gathered_dequantized_input = [
-                        torch.zeros_like(dequantized_input) for _ in range(dist.get_world_size())
-                    ]
-                    gathered_one_hot = [
-                        torch.zeros_like(one_hot) for _ in range(dist.get_world_size())
-                    ]
+                    if is_distributed:
+                        # gather dequantized_input and one_hot
+                        # dequantized_input:
+                        #     (embedding_dim, num_samples)
+                        #     -> (embedding_dim, num_gpus * num_samples)
+                        # one_hot:
+                        #     (num_samples, codebook_size)
+                        #     -> (num_gpus * num_samples, codebook_size)
+                        gathered_dequantized_input = [
+                            torch.zeros_like(dequantized_input)
+                            for _ in range(dist.get_world_size())
+                        ]
+                        gathered_one_hot = [
+                            torch.zeros_like(one_hot) for _ in range(dist.get_world_size())
+                        ]
 
-                    dist.all_gather(gathered_dequantized_input, dequantized_input)
-                    dist.all_gather(gathered_one_hot, one_hot)
+                        dist.all_gather(gathered_dequantized_input, dequantized_input)
+                        dist.all_gather(gathered_one_hot, one_hot)
 
-                    dequantized_input = torch.cat(gathered_dequantized_input, dim=1)
-                    one_hot = torch.cat(gathered_one_hot, dim=0)
+                        dequantized_input = torch.cat(gathered_dequantized_input, dim=1)
+                        one_hot = torch.cat(gathered_one_hot, dim=0)
 
-                one_hot_sum = one_hot.sum(dim=0)
-                one_hot = one_hot.to(dequantized_input.dtype)
+                    one_hot_sum = one_hot.sum(dim=0)
+                    one_hot = one_hot.to(dequantized_input.dtype)
 
-                # NOTE: In some cases with mixed precision training,
-                #       the following matmul operation may cause inf.
-                z_e_sum = torch.matmul(dequantized_input, one_hot)
-                z_e_sum = z_e_sum.permute(1, 0).contiguous()
+                    # NOTE: In some cases with mixed precision training,
+                    #       the following matmul operation may cause inf.
+                    z_e_sum = torch.matmul(dequantized_input, one_hot)
+                    z_e_sum = z_e_sum.permute(1, 0).contiguous()
 
-                one_hot_sum_group[idx].data.copy_(one_hot_sum.data)
-                z_e_sum_group[idx].data.copy_(z_e_sum.data)
+                    one_hot_sum_group[idx].data.copy_(one_hot_sum.data)
+                    z_e_sum_group[idx].data.copy_(z_e_sum.data)
 
-                if codebook_reset:
-                    num_accumulated[idx].data.add_(one_hot_sum.data)
+                    if codebook_reset:
+                        num_accumulated[idx].data.add_(one_hot_sum.data)
 
     def step(self) -> None:
         param_groups = self.param_groups
@@ -888,7 +892,14 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             z_e_sum_groups,
             num_accumulated_groups,
         ):
-            for param, num_samples_tracked, momentum, one_hot_sum, z_e_sum, num_accumulated in zip(
+            for (
+                param,
+                num_samples_tracked,
+                momentum,
+                one_hot_sum,
+                z_e_sum,
+                num_accumulated,
+            ) in zip(
                 param_group["params"],
                 num_samples_tracked_group,
                 momentum_group,

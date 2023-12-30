@@ -18,11 +18,7 @@ from torch.optim.lr_scheduler import _LRScheduler
 from torch.utils.data import DataLoader
 
 from ... import __version__ as _version
-from ...optim.optimizer import (
-    ExponentialMovingAverageCodebookOptimizer,
-    MovingAverageWrapper,
-    MultiOptimizers,
-)
+from ...optim.optimizer import MovingAverageWrapper, MultiOptimizers
 from ..clip_grad import GradClipper
 from ..data import BaseDataLoaders, select_device
 from ..distributed import select_global_rank, select_local_rank
@@ -758,29 +754,9 @@ class BaseTrainer(BaseDriver):
         if enable:
             if isinstance(self.optimizer, MultiOptimizers):
                 for optimizer in self.optimizer.optimizers.values():
-                    if (
-                        isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
-                        and self.scaler.is_enabled()
-                    ):
-                        # TODO: address numerical instability
-                        raise NotImplementedError(
-                            "ExponentialMovingAverageCodebookOptimizer and AMP "
-                            "cannot be used simultaneously."
-                        )
-                    else:
-                        self.scaler.unscale_(optimizer)
+                    self.scaler.unscale_(optimizer)
             else:
-                if (
-                    isinstance(self.optimizer, ExponentialMovingAverageCodebookOptimizer)
-                    and self.scaler.is_enabled()
-                ):
-                    # TODO: address numerical instability
-                    raise NotImplementedError(
-                        "ExponentialMovingAverageCodebookOptimizer and AMP "
-                        "cannot be used simultaneously."
-                    )
-                else:
-                    self.scaler.unscale_(self.optimizer)
+                self.scaler.unscale_(self.optimizer)
 
     def clip_gradient_if_necessary(self) -> None:
         """Clip gradient if self.grad_clipper is given."""
@@ -830,17 +806,7 @@ class BaseTrainer(BaseDriver):
             for _optimizer in optimizer.optimizers.values():
                 self.optimizer_step(_optimizer)
         else:
-            if (
-                isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
-                and self.scaler.is_enabled()
-            ):
-                # TODO: address numerical instability
-                raise NotImplementedError(
-                    "ExponentialMovingAverageCodebookOptimizer and AMP "
-                    "cannot be used simultaneously."
-                )
-            else:
-                self.scaler.step(optimizer)
+            self.scaler.step(optimizer)
 
     def display_loss(
         self, train_loss: Dict[str, float], validation_loss: Optional[Dict[str, float]] = None
