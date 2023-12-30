@@ -13,6 +13,7 @@ generator:
     optimizer:
       _target_: audyn.optim.optimizer.ExponentialMovingAverageCodebookOptimizer
       smooth: 0.99
+      reset_step: 20
     modules:
       - vector_quantizer
 discriminator:
