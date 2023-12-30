@@ -33,8 +33,10 @@ def quantize_vector(
         z_e = input.view(batch_size, embedding_dim, -1)
         z_e = z_e.permute(1, 0, 2).contiguous()
         z_e = z_e.view(embedding_dim, -1)
-        e = weight.view(-1, embedding_dim, 1)
-        distance = torch.sum((z_e - e) ** 2, dim=1)
+        e = weight.view(-1, embedding_dim)
+        dot = torch.matmul(e, z_e)
+        norm = torch.sum(e**2, dim=1)
+        distance = norm.unsqueeze(dim=-1) - 2 * dot
         indices = torch.argmin(distance, dim=0)
 
     z_q = F.embedding(indices, weight)
