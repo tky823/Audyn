@@ -1,23 +1,23 @@
 generator:
   - name: adamw
     optimizer:
-      _target_: torch.optim.AdamW
-      lr: 2.0e-4
+      _target_: torch.optim.Adam
+      lr: 1.0e-4
       betas:
-        - 0.8
-        - 0.99
+        - 0.5
+        - 0.9
     modules:
       - encoder
       - decoder
   - name: ema
     optimizer:
       _target_: audyn.optim.optimizer.ExponentialMovingAverageCodebookOptimizer
-      smooth: 0.999
+      smooth: 0.99
     modules:
       - vector_quantizer
 discriminator:
-  _target_: torch.optim.AdamW
-  lr: 2.0e-4
+  _target_: torch.optim.Adam
+  lr: 1.0e-4
   betas:
-    - 0.8
-    - 0.99
+    - 0.5
+    - 0.9
