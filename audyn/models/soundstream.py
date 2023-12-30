@@ -344,11 +344,11 @@ class MultiScaleDiscriminator(_MultiScaleDiscriminator):
             MultiScaleDiscriminator: Multi-scale discriminator by default parameters.
 
         """
-        num_features = [1, 16, 64, 256, 1024, 1024, 1024]
+        num_features = [1, 4, 16, 64, 256, 1024, 1024]
         kernel_size = [15, 41, 41, 41, 41, 5, 3]
         stride = [1, 4, 4, 4, 4, 1, 1]
         dilation = [1, 1, 1, 1, 1, 1, 1]
-        groups = [1, 4, 4, 4, 4, 1, 1]
+        groups = [1, 4, 16, 64, 256, 1, 1]
         negative_slope = 0.1
         pool_kernel_size = 4
         pool_stride = 2
