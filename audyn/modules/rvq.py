@@ -4,6 +4,7 @@ import torch
 import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.cuda.amp import autocast
 
 from ..functional.vector_quantization import quantize_residual_vector, quantize_vector
 
@@ -149,37 +150,38 @@ class ResidualVectorQuantizer(nn.Module):
             indices = indices[:codebook_size]
             centroids = residual[indices]
 
-            for _ in range(self.init_by_kmeans):
-                norm = torch.sum(centroids**2, dim=-1)
-                dot = torch.matmul(residual, centroids.transpose(1, 0))
-                distance = norm - 2 * dot
-                indices = torch.argmin(distance, dim=-1)
-                unique_indices = torch.unique(indices)
-                num_drops = codebook_size - unique_indices.size(0)
+            with autocast(enabled=False):
+                for _ in range(self.init_by_kmeans):
+                    norm = torch.sum(centroids**2, dim=-1)
+                    dot = torch.matmul(residual, centroids.transpose(1, 0))
+                    distance = norm - 2 * dot
+                    indices = torch.argmin(distance, dim=-1)
+                    unique_indices = torch.unique(indices)
+                    num_drops = codebook_size - unique_indices.size(0)
 
-                if num_drops > 0:
-                    index_counts = torch.bincount(indices, minlength=codebook_size)
-                    least_used_indices = torch.argsort(index_counts)
-                    most_used_indices = least_used_indices[num_drops:]
-                    least_used_indices = least_used_indices[:num_drops]
-                    unused_centroids = centroids[least_used_indices]
-                    assignments = F.one_hot(indices, num_classes=codebook_size)
-                    assignments = assignments.permute(1, 0)
-                    num_assignments = assignments.sum(dim=-1, keepdim=True)
-                    prod = torch.matmul(assignments.to(residual.dtype), residual)
-                    prod = prod[most_used_indices]
-                    num_assignments = num_assignments[most_used_indices]
-                    used_centroids = prod / num_assignments.to(residual.dtype)
-                    centroids = torch.cat([used_centroids, unused_centroids], dim=0)
-                else:
-                    assignments = F.one_hot(indices, num_classes=codebook_size)
-                    assignments = assignments.permute(1, 0)
-                    prod = torch.matmul(assignments.to(residual.dtype), residual)
-                    num_assignments = assignments.sum(dim=-1, keepdim=True)
-                    centroids = prod / num_assignments.to(residual.dtype)
+                    if num_drops > 0:
+                        index_counts = torch.bincount(indices, minlength=codebook_size)
+                        least_used_indices = torch.argsort(index_counts)
+                        most_used_indices = least_used_indices[num_drops:]
+                        least_used_indices = least_used_indices[:num_drops]
+                        unused_centroids = centroids[least_used_indices]
+                        assignments = F.one_hot(indices, num_classes=codebook_size)
+                        assignments = assignments.permute(1, 0)
+                        num_assignments = assignments.sum(dim=-1, keepdim=True)
+                        prod = torch.matmul(assignments.to(residual.dtype), residual)
+                        prod = prod[most_used_indices]
+                        num_assignments = num_assignments[most_used_indices]
+                        used_centroids = prod / num_assignments.to(residual.dtype)
+                        centroids = torch.cat([used_centroids, unused_centroids], dim=0)
+                    else:
+                        assignments = F.one_hot(indices, num_classes=codebook_size)
+                        assignments = assignments.permute(1, 0)
+                        prod = torch.matmul(assignments.to(residual.dtype), residual)
+                        num_assignments = assignments.sum(dim=-1, keepdim=True)
+                        centroids = prod / num_assignments.to(residual.dtype)
 
-            codebook.weight.data.copy_(centroids)
+                codebook.weight.data.copy_(centroids)
 
-            output, _ = quantize_vector(residual, codebook.weight)
-            reconstructed = reconstructed + output
-            residual = encoded - reconstructed
+                output, _ = quantize_vector(residual, codebook.weight)
+                reconstructed = reconstructed + output
+                residual = encoded - reconstructed
