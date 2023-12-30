@@ -33,6 +33,9 @@ class SoundStream(RVQVAE):
         embedding_dim (int): Number of embedding dimension.
         num_stages (int): Number of residual stages of RVQ.
         dropout (bool): Dropout of RVQ. Default: ``True``.
+        init_by_kmeans (int): Number of iterations in k-means clustering initialization.
+            If non-positive value is given, k-means clustering initialization is not used.
+        seed (int): Random seed for k-means clustering initialization.
 
     """
 

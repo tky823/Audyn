@@ -21,6 +21,9 @@ class RVQVAE(BaseVAE):
         embedding_dim (int): Number of embedding dimension.
         num_stages (int): Number of stages of RVQ.
         dropout (bool): Dropout of RVQ. Default: ``True``.
+        init_by_kmeans (int): Number of iterations in k-means clustering initialization.
+            If non-positive value is given, k-means clustering initialization is not used.
+        seed (int): Random seed for k-means clustering initialization.
 
     """
 
@@ -32,6 +35,8 @@ class RVQVAE(BaseVAE):
         embedding_dim: int,
         num_stages: int,
         dropout: bool = True,
+        init_by_kmeans: int = 0,
+        seed: int = 0,
     ) -> None:
         super().__init__()
 
@@ -41,6 +46,8 @@ class RVQVAE(BaseVAE):
             embedding_dim,
             num_stages=num_stages,
             dropout=dropout,
+            init_by_kmeans=init_by_kmeans,
+            seed=seed,
         )
         self.decoder = decoder
 
