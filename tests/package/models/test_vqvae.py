@@ -1,3 +1,5 @@
+import copy
+
 import torch
 from dummy.modules.vqvae import Decoder, Encoder
 
@@ -47,3 +49,21 @@ def test_vqvae():
     assert quantized.size(1) == hidden_channels
     assert quantized.size()[2:] == latent_size
     assert indices.size()[1:] == latent_size
+
+    # k-means clustering initialization
+    kmeans_initalization = 100
+    encoder = Encoder(in_channels, hidden_channels, stride=stride, num_layers=num_layers)
+    decoder = Decoder(in_channels, hidden_channels, stride=stride, num_layers=num_layers)
+    model = VQVAE(
+        encoder,
+        decoder,
+        codebook_size=codebook_size,
+        embedding_dim=hidden_channels,
+        init_by_kmeans=kmeans_initalization,
+    )
+
+    input = torch.randn((batch_size, in_channels, height, width))
+    reconstructed, encoded, quantized, indices = model(input)
+
+    state_dict = copy.copy(model.state_dict())
+    model.load_state_dict(state_dict)

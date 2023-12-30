@@ -1,3 +1,5 @@
+import copy
+
 import torch
 from dummy.modules.vqvae import Decoder, Encoder
 
@@ -61,3 +63,24 @@ def test_rvqvae():
     assert hierarchical_quantized.size(2) == hidden_channels
     assert hierarchical_quantized.size()[3:] == latent_size
     assert indices.size()[2:] == latent_size
+
+    # k-means clustering initialization
+    kmeans_initalization = 100
+
+    encoder = Encoder(in_channels, hidden_channels, stride=stride, num_layers=num_layers)
+    decoder = Decoder(in_channels, hidden_channels, stride=stride, num_layers=num_layers)
+    model = RVQVAE(
+        encoder,
+        decoder,
+        codebook_size=codebook_size,
+        embedding_dim=hidden_channels,
+        num_stages=num_stages,
+        dropout=False,
+        init_by_kmeans=kmeans_initalization,
+    )
+
+    input = torch.randn((batch_size, in_channels, height, width))
+    _ = model(input)
+
+    state_dict = copy.copy(model.state_dict())
+    model.load_state_dict(state_dict)
