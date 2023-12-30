@@ -9,10 +9,10 @@ __all__ = ["CodebookLoss", "CommitmentLoss"]
 class CodebookLoss(VQVAECodebookLoss):
     """Codebook loss to update embeddings in codebook."""
 
-    def __init__(self, layer_wise: bool = True, reduction: str = "mean") -> None:
+    def __init__(self, stage_wise: bool = True, reduction: str = "mean") -> None:
         super().__init__(reduction=reduction)
 
-        self.layer_wise = layer_wise
+        self.stage_wise = stage_wise
 
     def forward(self, encoded: torch.Tensor, quantized: torch.Tensor) -> torch.Tensor:
         """Forward pass of CodebookLoss.
@@ -26,7 +26,7 @@ class CodebookLoss(VQVAECodebookLoss):
             torch.Tensor: Computed loss. The shape depends on ``reduction``.
 
         """
-        if self.layer_wise:
+        if self.stage_wise:
             quantized = quantized.sum(dim=1)
 
         loss = super().forward(quantized, encoded)
@@ -37,10 +37,10 @@ class CodebookLoss(VQVAECodebookLoss):
 class CommitmentLoss(VQVAECommitmentLoss):
     """Codebook loss to update encoded feature."""
 
-    def __init__(self, layer_wise: bool = True, reduction: str = "mean") -> None:
+    def __init__(self, stage_wise: bool = True, reduction: str = "mean") -> None:
         super().__init__(reduction=reduction)
 
-        self.layer_wise = layer_wise
+        self.stage_wise = stage_wise
 
     def forward(self, encoded: torch.Tensor, quantized: torch.Tensor) -> torch.Tensor:
         """Forward pass of CommitmentLoss.
@@ -54,7 +54,7 @@ class CommitmentLoss(VQVAECommitmentLoss):
             torch.Tensor: Computed loss. The shape depends on ``reduction``.
 
         """
-        if self.layer_wise:
+        if self.stage_wise:
             quantized = quantized.sum(dim=1)
 
         loss = super().forward(encoded, quantized)
