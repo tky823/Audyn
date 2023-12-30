@@ -4,7 +4,9 @@ import torch.nn.functional as F
 from torch.nn.common_types import _size_1_t, _size_2_t
 from torch.nn.modules.utils import _pair, _single
 
-__all__ = ["EncoderBlock", "DecoderBlock", "ResidualUnit1d", "ResidualUnit2d"]
+from .film import FiLM1d as _FiLM1d
+
+__all__ = ["EncoderBlock", "DecoderBlock", "ResidualUnit1d", "ResidualUnit2d", "FiLM1d"]
 
 
 class EncoderBlock(nn.Module):
@@ -221,5 +223,41 @@ class ResidualUnit2d(nn.Module):
         padding_right = pw - padding_left
 
         output = F.pad(input, (padding_left, padding_right, padding_top, padding_bottom))
+
+        return output
+
+
+class FiLM1d(_FiLM1d):
+    """FiLM module for SoundStream.
+
+    Args:
+        num_modes (int): Number of modes to switch.
+        num_features (int): Number of features to embed.
+
+    """
+
+    def __init__(self, num_modes: int, num_features: int) -> None:
+        super().__init__()
+
+        self.num_features = num_features
+
+        self.gamma = nn.Embedding(num_modes, num_features)
+        self.beta = nn.Embedding(num_modes, num_features)
+
+    def forward(self, input: torch.Tensor, mode: torch.LongTensor) -> torch.Tensor:
+        """Forward pass of FiLM1d.
+
+        Args:
+            input (torch.Tensor): Input feature of shape (batch_size, num_features, length).
+            mode (torch.LongTensor): Mode indices of shape (batch_size,)
+
+        Returns:
+            torch.Tensor: Output feature of shape (batch_size, num_features, length).
+
+        """
+        gamma = self.gamma(mode)
+        beta = self.beta(mode)
+
+        output = super().forward(input, gamma=gamma, beta=beta)
 
         return output
