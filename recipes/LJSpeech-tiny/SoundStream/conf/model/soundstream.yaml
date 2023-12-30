@@ -33,6 +33,8 @@ generator:
   codebook_size: ${data.codebook.size}
   embedding_dim: 4
   num_stages: 2
+  init_by_kmeans: 10
+  seed: ${system.seed}
 discriminator:
   _target_: audyn.models.soundstream.Discriminator
   waveform_discriminator:
