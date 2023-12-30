@@ -947,7 +947,10 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                         g = torch.Generator(device=most_used.device)
                         g.manual_seed(self.seed + self.iteration)
                         replaced = most_used + std * torch.randn(
-                            most_used.size(), generator=g, dtype=most_used.dtype
+                            most_used.size(),
+                            generator=g,
+                            device=most_used.device,
+                            dtype=most_used.dtype,
                         )
                         param.data[min_idx].copy_(replaced)
 

@@ -139,7 +139,12 @@ class ResidualVectorQuantizer(nn.Module):
             # select ``codebook_size`` embeddings from encoded features
             codebook: nn.Embedding
             codebook_size = codebook.weight.size(0)
-            indices = torch.randperm(residual.size(0), generator=g, dtype=torch.long)
+            indices = torch.randperm(
+                residual.size(0),
+                generator=g,
+                device=residual.device,
+                dtype=torch.long,
+            )
             indices = indices[:codebook_size]
             centroids = residual[indices]
 

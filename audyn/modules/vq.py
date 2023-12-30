@@ -94,7 +94,12 @@ class VectorQuantizer(nn.Module):
 
         # select ``codebook_size`` embeddings from encoded features
         codebook_size = self.codebook.weight.size(0)
-        indices = torch.randperm(encoded.size(0), generator=g, dtype=torch.long)
+        indices = torch.randperm(
+            encoded.size(0),
+            generator=g,
+            device=encoded.device,
+            dtype=torch.long,
+        )
         indices = indices[:codebook_size]
         centroids = encoded[indices]
 
