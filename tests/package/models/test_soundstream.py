@@ -32,6 +32,7 @@ def test_soundstream() -> None:
         stride=stride,
         dilation_rate=dilation_rate,
         num_layers=num_layers,
+        causal=False,
     )
     decoder = Decoder(
         embedding_dim,
@@ -44,6 +45,7 @@ def test_soundstream() -> None:
         stride=stride[-1::-1],
         dilation_rate=dilation_rate,
         num_layers=num_layers,
+        causal=False,
     )
     model = SoundStream(
         encoder,
@@ -52,6 +54,30 @@ def test_soundstream() -> None:
         embedding_dim=embedding_dim,
         num_stages=num_stages,
         dropout=False,
+    )
+
+    input = torch.randn((batch_size, in_channels, input_length))
+    output, encoded, hierarchical_quantized, indices = model(input)
+
+    assert output.size() == input.size()
+    assert encoded.size() == (batch_size, embedding_dim, compressed_length)
+    assert hierarchical_quantized.size() == (
+        batch_size,
+        num_stages,
+        embedding_dim,
+        compressed_length,
+    )
+    assert indices.size() == (batch_size, num_stages, compressed_length)
+
+    # initialization
+    model = SoundStream(
+        encoder,
+        decoder,
+        codebook_size=codebook_size,
+        embedding_dim=embedding_dim,
+        num_stages=num_stages,
+        dropout=False,
+        init_by_kmeans=10,
     )
 
     input = torch.randn((batch_size, in_channels, input_length))
@@ -95,6 +121,7 @@ def test_soundstream_encoder() -> None:
         stride=stride,
         dilation_rate=dilation_rate,
         num_layers=num_layers,
+        causal=False,
     )
 
     input = torch.randn((batch_size, in_channels, input_length))
@@ -130,6 +157,7 @@ def test_soundstream_decoder() -> None:
         stride=stride,
         dilation_rate=dilation_rate,
         num_layers=num_layers,
+        causal=False,
     )
 
     input = torch.randn((batch_size, in_channels, input_length))
