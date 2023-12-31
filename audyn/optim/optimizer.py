@@ -1176,7 +1176,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                             raise NotImplementedError(f"{self.reset_source} is not supported.")
 
                         if self.reset_strategy == "ath":
-                            tracked_default = self.reset_ath + 1
+                            tracked_default = self.reset_ath
                         elif self.reset_strategy == "rth":
                             tracked_default = 1
                         else:
