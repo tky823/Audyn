@@ -165,6 +165,7 @@ class Encoder(nn.Module):
             kernel_size=kernel_size_in,
             stride=1,
         )
+        self.nonlinear1d = nn.ELU()
 
         _in_channels = hidden_channels
         backbone = []
@@ -226,6 +227,7 @@ class Encoder(nn.Module):
 
         x = self._pad1d(input, kernel_size=kernel_size_in)
         x = self.conv1d_in(x)
+        x = self.nonlinear1d(x)
         x = self.backbone(x)
         x = self._pad1d(x, kernel_size=kernel_size_out)
         x = self.conv1d_out(x)
@@ -277,6 +279,7 @@ class Decoder(nn.Module):
             kernel_size=kernel_size_in,
             stride=1,
         )
+        self.nonlinear1d = nn.ELU()
 
         _in_channels = hidden_channels * (depth_rate ** len(stride))
         backbone = []
@@ -334,6 +337,7 @@ class Decoder(nn.Module):
         x = self.film1d(input, mode=mode)
         x = self._pad1d(x, kernel_size=kernel_size_in)
         x = self.conv1d_in(x)
+        x = self.nonlinear1d(x)
         x = self.backbone(x)
         x = self._pad1d(x, kernel_size=kernel_size_out)
         output = self.conv1d_out(x)

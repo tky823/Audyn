@@ -46,6 +46,7 @@ class EncoderBlock(nn.Module):
             kernel_size=kernel_size_out,
             stride=stride,
         )
+        self.nonlinear1d = nn.ELU()
 
         self.kernel_size_out = _single(kernel_size_out)
         self.stride = stride
@@ -65,7 +66,8 @@ class EncoderBlock(nn.Module):
 
         x = F.pad(input, (padding_left, padding_right))
         x = self.backbone(x)
-        output = self.conv1d(x)
+        x = self.conv1d(x)
+        output = self.nonlinear1d(x)
 
         return output
 
@@ -93,6 +95,7 @@ class DecoderBlock(nn.Module):
             kernel_size=kernel_size_in,
             stride=stride,
         )
+        self.nonlinear1d = nn.ELU()
 
         backbone = []
 
@@ -126,6 +129,7 @@ class DecoderBlock(nn.Module):
 
         x = self.conv1d(input)
         x = F.pad(x, (-padding_left, -padding_right))
+        x = self.nonlinear1d(x)
         output = self.backbone(x)
 
         return output
@@ -159,8 +163,9 @@ class ResidualUnit1d(nn.Module):
         self.conv1d_in = nn.Conv1d(
             num_features, num_features, kernel_size=kernel_size, dilation=dilation
         )
-        self.nonlinear1d = nn.ELU()
+        self.nonlinear1d_in = nn.ELU()
         self.conv1d_out = nn.Conv1d(num_features, num_features, kernel_size=1)
+        self.nonlinear1d_out = nn.ELU()
 
         self.kernel_size = kernel_size
         self.dilation = dilation
@@ -180,9 +185,10 @@ class ResidualUnit1d(nn.Module):
             x = F.pad(input, (2 * padding, 0))
 
         x = self.conv1d_in(x)
-        x = self.nonlinear1d(x)
+        x = self.nonlinear1d_in(x)
         x = self.conv1d_out(x)
-        output = x + input
+        x = x + input
+        output = self.nonlinear1d_out(x)
 
         return output
 
