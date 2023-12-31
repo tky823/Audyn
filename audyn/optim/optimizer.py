@@ -349,7 +349,7 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
             reset_rth: Optional[float] = None,
             reset_rate: Optional[float] = None,
             reset_source: Optional[str] = None,
-            reset_scope: Optional[str] = None,
+            reset_scope: Optional[Union[str, int]] = None,
             seed: int = 0,
         ) -> None:
             ...
@@ -368,7 +368,7 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
             reset_rth: Optional[float] = None,
             reset_rate: Optional[float] = None,
             reset_source: Optional[str] = None,
-            reset_scope: Optional[str] = None,
+            reset_scope: Optional[Union[str, int]] = None,
             seed: int = 0,
         ) -> None:
             ...
@@ -456,10 +456,15 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
             if reset_scope is None:
                 reset_scope = self.available_reset_scope_keys[0]
 
-            if reset_scope not in self.available_reset_scope_keys:
-                raise ValueError(
-                    f"reset_scope should be one of {self.available_reset_scope_keys}."
-                )
+            if isinstance(reset_scope, str):
+                if reset_scope not in self.available_reset_scope_keys:
+                    raise ValueError(
+                        f"reset_scope should be one of {self.available_reset_scope_keys}."
+                    )
+            elif isinstance(reset_scope, int):
+                pass
+            else:
+                raise ValueError(f"Invalid {reset_scope} is specified as reset_scope.")
         else:
             accumulated_steps = None
             reset_strategy = None
@@ -690,7 +695,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
         reset_rate (float, optional): Legacy version of ``reset_rth``. (deprecated)
         reset_source (str, optional): Source to sample at codebook reset. ``mru``
             (most-recently-used) and ``batch`` are supported.
-        reset_scope (str, optional): Scope to reset. ``least`` (only least sample)
+        reset_scope (str or int, optional): Scope to reset. ``least`` (only least sample)
             and ``all`` (all satisfied samples satisfied) are supported.
         seed (int): Seed to synchronize states among devices when DDP is used.
 
@@ -775,7 +780,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             reset_rth: Optional[float] = None,
             reset_rate: Optional[float] = None,
             reset_source: Optional[str] = None,
-            reset_scope: Optional[str] = None,
+            reset_scope: Optional[Union[str, int]] = None,
             seed: int = 0,
         ) -> None:
             ...
@@ -794,7 +799,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             reset_rth: Optional[float] = None,
             reset_rate: Optional[float] = None,
             reset_source: Optional[str] = None,
-            reset_scope: Optional[str] = None,
+            reset_scope: Optional[Union[str, int]] = None,
             seed: int = 0,
         ) -> None:
             ...
@@ -1117,18 +1122,19 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                         )
 
                     most_used = param.data[max_idx]
+                    embedding_dim = most_used.size(0)
+                    num_grids = residual.size(0)
 
                     if requires_reset:
-                        std = math.sqrt(self.reset_var)
                         # to ensure synchronization in DDP, use random number generator
                         device = most_used.device
                         g = torch.Generator(device=device)
                         g.manual_seed(self.seed + self.iteration)
                         std = math.sqrt(self.reset_var)
 
-                        if self.reset_scope == "least":
+                        if self.reset_scope == "least" or self.reset_scope == 1:
                             noise = torch.randn(
-                                most_used.size(),
+                                (embedding_dim,),
                                 generator=g,
                                 device=device,
                                 dtype=most_used.dtype,
@@ -1138,10 +1144,8 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                                 replaced = most_used + std * noise
                             elif self.reset_source == "batch":
                                 # residual: (num_grids, embedding_dim)
-                                sample_idx = torch.randperm(
-                                    residual.size(0), generator=g, device=device
-                                )[:1]
-                                sample_idx = sample_idx.item()
+                                sample_idx = torch.randperm(num_grids, generator=g, device=device)
+                                sample_idx = sample_idx[0]
                                 replaced = residual[sample_idx] + std * noise
                             else:
                                 raise NotImplementedError(f"{self.reset_source} is not supported.")
@@ -1161,6 +1165,62 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                             momentum.data[min_idx].copy_(replaced)
                             momentum.data[min_idx].mul_(tracked_default)
                             num_samples_tracked.data[min_idx].fill_(tracked_default)
+                            num_accumulated.data.zero_()
+                        elif self.reset_scope == "all":
+                            if self.reset_strategy == "ath":
+                                least_usages, least_indices = torch.sort(
+                                    num_samples_tracked, dim=0
+                                )
+                                num_replaced = torch.sum(least_usages < self.reset_ath)
+                                num_replaced = num_replaced.item()
+                            elif self.reset_strategy == "rth":
+                                least_usages, least_indices = torch.sort(num_accumulated, dim=0)
+                                num_replaced = torch.sum(
+                                    least_usages < self.reset_rth * most_usage
+                                )
+                                num_replaced = num_replaced.item()
+                            else:
+                                raise ValueError(
+                                    f"Invalid reset_strategy {self.reset_strategy} is detected."
+                                )
+
+                            least_usages = least_usages[:num_replaced]
+                            least_indices = least_indices[:num_replaced]
+
+                            noise = torch.randn(
+                                (num_replaced, embedding_dim),
+                                generator=g,
+                                device=device,
+                                dtype=most_used.dtype,
+                            )
+
+                            if self.reset_source == "mru":
+                                replaced = most_used + std * noise
+                            elif self.reset_source == "batch":
+                                # residual: (num_grids, embedding_dim)
+                                sample_indices = torch.randperm(
+                                    num_grids, generator=g, device=device
+                                )
+                                sample_indices = sample_indices[:num_replaced]
+                                replaced = residual[sample_indices] + std * noise
+                            else:
+                                raise NotImplementedError(f"{self.reset_source} is not supported.")
+
+                            if self.reset_strategy == "ath":
+                                tracked_default = self.reset_ath + 1
+                            elif self.reset_strategy == "rth":
+                                tracked_default = 1
+                            else:
+                                raise ValueError(
+                                    f"Invalid reset_strategy {self.reset_strategy} is detected."
+                                )
+
+                            param.data[least_indices].copy_(replaced)
+
+                            # reset statistics
+                            momentum.data[least_indices].copy_(replaced)
+                            momentum.data[least_indices].mul_(tracked_default)
+                            num_samples_tracked.data[least_indices].fill_(tracked_default)
                             num_accumulated.data.zero_()
                         else:
                             raise NotImplementedError(f"{self.reset_scope} is not supported.")
