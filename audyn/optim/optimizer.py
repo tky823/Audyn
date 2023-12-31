@@ -1181,8 +1181,15 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                 if self.reset_source == "mru":
                     replaced = most_used + std * noise
                 elif self.reset_source == "batch":
-                    # residual: (num_grids, embedding_dim)
                     sample_indices = torch.randperm(num_grids, generator=g, device=device)
+
+                    if num_replaced > num_grids:
+                        # If number of samples to be replaced is larger than that of codebook size,
+                        # repeat sampled indices required times.
+                        # e.g. last batch at each epoch
+                        num_repeats = (num_replaced - 1) // num_grids + 1
+                        sample_indices = sample_indices.repeat(num_repeats)
+
                     sample_indices = sample_indices[:num_replaced]
                     replaced = residual[sample_indices] + std * noise
                 else:
