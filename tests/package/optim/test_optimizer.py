@@ -87,8 +87,9 @@ def test_exponential_moving_average_wrapper(build_from_optim_class: bool):
 @pytest.mark.parametrize("is_rvq", [True, False])
 @pytest.mark.parametrize("codebook_reset", [True, False])
 @pytest.mark.parametrize("reset_strategy", ["atol", "rtol", None])
+@pytest.mark.parametrize("reset_source", ["mru", "batch"])
 def test_exponential_moving_average_codebook_optimizer(
-    is_rvq: bool, codebook_reset: bool, reset_strategy: Optional[str]
+    is_rvq: bool, codebook_reset: bool, reset_strategy: Optional[str], reset_source: str
 ) -> None:
     torch.manual_seed(0)
 
@@ -126,6 +127,7 @@ def test_exponential_moving_average_codebook_optimizer(
                 reset_var=reset_var,
                 reset_ath=reset_ath,
                 reset_rth=reset_rth,
+                reset_source=reset_source,
             )
         else:
             optimizer = ExponentialMovingAverageCodebookOptimizer(model.parameters())
