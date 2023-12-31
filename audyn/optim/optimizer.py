@@ -333,6 +333,9 @@ class ExponentialMovingAverageWrapper(MovingAverageWrapper):
 
 
 class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
+    available_reset_source_keys = {"mru", "batch"}
+    available_reset_scope_keys = {"least", "all"}
+
     if IS_TORCH_LT_2_1:
 
         @overload
@@ -345,6 +348,8 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
             reset_ath: Optional[float] = None,
             reset_rth: Optional[float] = None,
             reset_rate: Optional[float] = None,
+            reset_source: Optional[str] = None,
+            reset_scope: Optional[str] = None,
             seed: int = 0,
         ) -> None:
             ...
@@ -362,6 +367,8 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
             reset_ath: Optional[float] = None,
             reset_rth: Optional[float] = None,
             reset_rate: Optional[float] = None,
+            reset_source: Optional[str] = None,
+            reset_scope: Optional[str] = None,
             seed: int = 0,
         ) -> None:
             ...
@@ -375,6 +382,8 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
         reset_ath=None,
         reset_rth=None,
         reset_rate=None,
+        reset_source=None,
+        reset_scope=None,
         seed=0,
     ) -> None:
         defaults = {}
@@ -394,6 +403,12 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
 
             if reset_rate is not None:
                 raise ValueError("reset_rate is specified, but reset_step is not defined.")
+
+            if reset_source is not None:
+                raise ValueError("reset_source is specified, but reset_step is not defined.")
+
+            if reset_scope is not None:
+                raise ValueError("reset_scope is specified, but reset_step is not defined.")
 
             codebook_reset = False
         else:
@@ -429,6 +444,22 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
                     raise ValueError("You cannot set reset_ath and reset_rate.")
 
                 reset_strategy = "ath"
+
+            if reset_source is None:
+                reset_source = "mru"
+
+            if reset_source not in self.available_reset_source_keys:
+                raise ValueError(
+                    f"reset_source should be one of {self.available_reset_source_keys}."
+                )
+
+            if reset_scope is None:
+                reset_scope = "least"
+
+            if reset_scope not in self.available_reset_scope_keys:
+                raise ValueError(
+                    f"reset_scope should be one of {self.available_reset_scope_keys}."
+                )
         else:
             accumulated_steps = None
             reset_strategy = None
@@ -452,6 +483,8 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
         self.reset_var = reset_var
         self.reset_ath = reset_ath
         self.reset_rth = reset_rth
+        self.reset_source = reset_source
+        self.reset_scope = reset_scope
 
         # for DDP and codebook reset
         self.seed = seed
@@ -651,6 +684,10 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             codebook is less than ``reset_rth``, position will be reset. If ``None``,
             0.03 is used by default.
         reset_rate (float, optional): Legacy version of ``reset_rth``. (deprecated)
+        reset_source (str, optional): Source to sample at codebook reset. ``mru``
+            (most-recently-used) and ``batch`` are supported.
+        reset_scope (str, optional): Scope to reset. ``least`` (only least sample)
+            and ``all`` (all satisfied samples satisfied) are supported.
         seed (int): Seed to synchronize states among devices when DDP is used.
 
     .. note::
@@ -733,6 +770,9 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             reset_ath: Optional[float] = None,
             reset_rth: Optional[float] = None,
             reset_rate: Optional[float] = None,
+            reset_source: Optional[str] = None,
+            reset_scope: Optional[str] = None,
+            seed: int = 0,
         ) -> None:
             ...
 
@@ -749,6 +789,9 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             reset_ath: Optional[float] = None,
             reset_rth: Optional[float] = None,
             reset_rate: Optional[float] = None,
+            reset_source: Optional[str] = None,
+            reset_scope: Optional[str] = None,
+            seed: int = 0,
         ) -> None:
             ...
 
@@ -761,6 +804,9 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
         reset_ath=None,
         reset_rth=None,
         reset_rate=None,
+        reset_source=None,
+        reset_scope=None,
+        seed=0,
     ) -> None:
         super().__init__(
             params,
@@ -770,6 +816,9 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             reset_ath=reset_ath,
             reset_rth=reset_rth,
             reset_rate=reset_rate,
+            reset_source=reset_source,
+            reset_scope=reset_scope,
+            seed=seed,
         )
 
         # running stats
@@ -902,7 +951,12 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
 
             raise NotImplementedError("DDP is not tested well.")
 
+        if len(param_groups) > 1:
+            raise RuntimeError("Unexpected error happened during store_current_stats.")
+
         with torch.cuda.amp.autocast(enabled=False):
+            residual_groups = []
+
             for (
                 param_group,
                 tracking_param_group,
@@ -930,6 +984,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                 assert len(stacked_indices) == num_stages
                 assert len(param_group["params"]) >= num_stages
 
+                residual_group = []
                 reconstructed = 0
 
                 for idx in range(num_stages):
@@ -942,7 +997,6 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                         dequantized = dequantized.view(embedding_dim, -1)
 
                     residual = dequantized - reconstructed
-
                     quantized = quantized.transpose(1, 0).contiguous()
                     quantized = quantized.view(embedding_dim, -1)
 
@@ -963,9 +1017,18 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                         num_accumulated[idx].data.add_(one_hot_sum.data)
 
                     reconstructed = reconstructed + quantized
+                    residual_group.append(residual.transpose(1, 0).contiguous())
+
+                # residual_group: (num_stages, num_grids, embedding_dim)
+                residual_group = torch.stack(residual_group, dim=0)
+                residual_groups.append(residual_group)
+
+            self.residual_groups = residual_groups
 
     def step(self) -> None:
         param_groups = self.param_groups
+
+        residual_groups = self.residual_groups
 
         num_samples_tracked_groups = self.num_samples_tracked_groups
         momentum_groups = self.momentum_groups
@@ -983,6 +1046,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
 
         for (
             param_group,
+            residual_group,
             num_samples_tracked_group,
             momentum_group,
             one_hot_sum_group,
@@ -990,6 +1054,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             num_accumulated_group,
         ) in zip(
             param_groups,
+            residual_groups,
             num_samples_tracked_groups,
             momentum_groups,
             one_hot_sum_groups,
@@ -998,6 +1063,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
         ):
             for (
                 param,
+                residual,
                 num_samples_tracked,
                 momentum,
                 one_hot_sum,
@@ -1005,6 +1071,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                 num_accumulated,
             ) in zip(
                 param_group["params"],
+                residual_group,
                 num_samples_tracked_group,
                 momentum_group,
                 one_hot_sum_group,
@@ -1048,18 +1115,42 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                         g = torch.Generator(device=most_used.device)
                         g.manual_seed(self.seed + self.iteration)
                         std = math.sqrt(self.reset_var)
-                        replaced = most_used + std * torch.randn(
-                            most_used.size(),
-                            generator=g,
-                            device=most_used.device,
-                            dtype=most_used.dtype,
-                        )
-                        param.data[min_idx].copy_(replaced)
 
-                        # reset statistics
-                        momentum.data[min_idx].copy_(replaced)
-                        num_samples_tracked.data[min_idx].fill_(1)
-                        num_accumulated.data.zero_()
+                        if self.reset_scope == "least":
+                            noise = torch.randn(
+                                most_used.size(),
+                                generator=g,
+                                device=most_used.device,
+                                dtype=most_used.dtype,
+                            )
+
+                            if self.reset_source == "mru":
+                                replaced = most_used + std * noise
+                            elif self.reset_source == "batch":
+                                # residual: (num_grids, embedding_dim)
+                                sample_idx = torch.randperm(residual.size(0), generator=g)[:1]
+                                sample_idx = sample_idx.item()
+                                replaced = residual[sample_idx] + std * noise
+                            else:
+                                raise NotImplementedError(f"{self.reset_source} is not supported.")
+
+                            if self.reset_strategy == "ath":
+                                tracked_default = self.reset_ath
+                            elif self.reset_strategy == "rth":
+                                tracked_default = 1
+                            else:
+                                raise ValueError(
+                                    f"Invalid reset_strategy {self.reset_strategy} is detected."
+                                )
+
+                            param.data[min_idx].copy_(replaced)
+
+                            # reset statistics
+                            momentum.data[min_idx].copy_(replaced)
+                            num_samples_tracked.data[min_idx].fill_(tracked_default)
+                            num_accumulated.data.zero_()
+                        else:
+                            raise NotImplementedError(f"{self.reset_scope} is not supported.")
 
 
 class MultiOptimizers:
