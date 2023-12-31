@@ -1,9 +1,11 @@
+import pytest
 import torch
 
 from audyn.models.soundstream import Decoder, Encoder, SoundStream, SpectrogramDiscriminator
 
 
-def test_soundstream() -> None:
+@pytest.mark.parametrize("causal", [True, False])
+def test_soundstream(causal: bool) -> None:
     torch.manual_seed(0)
 
     in_channels, embedding_dim, hidden_channels = 1, 5, 2
@@ -32,7 +34,7 @@ def test_soundstream() -> None:
         stride=stride,
         dilation_rate=dilation_rate,
         num_layers=num_layers,
-        causal=False,
+        causal=causal,
     )
     decoder = Decoder(
         embedding_dim,
@@ -45,7 +47,7 @@ def test_soundstream() -> None:
         stride=stride[-1::-1],
         dilation_rate=dilation_rate,
         num_layers=num_layers,
-        causal=False,
+        causal=causal,
     )
     model = SoundStream(
         encoder,
@@ -94,7 +96,8 @@ def test_soundstream() -> None:
     assert indices.size() == (batch_size, num_stages, compressed_length)
 
 
-def test_soundstream_encoder() -> None:
+@pytest.mark.parametrize("causal", [True, False])
+def test_soundstream_encoder(causal: bool) -> None:
     torch.manual_seed(0)
 
     in_channels, out_channels, hidden_channels = 1, 5, 2
@@ -121,7 +124,7 @@ def test_soundstream_encoder() -> None:
         stride=stride,
         dilation_rate=dilation_rate,
         num_layers=num_layers,
-        causal=False,
+        causal=causal,
     )
 
     input = torch.randn((batch_size, in_channels, input_length))
@@ -130,7 +133,8 @@ def test_soundstream_encoder() -> None:
     assert output.size() == (batch_size, out_channels, output_length)
 
 
-def test_soundstream_decoder() -> None:
+@pytest.mark.parametrize("causal", [True, False])
+def test_soundstream_decoder(causal: bool) -> None:
     torch.manual_seed(0)
 
     in_channels, out_channels, hidden_channels = 5, 1, 2
@@ -157,7 +161,7 @@ def test_soundstream_decoder() -> None:
         stride=stride,
         dilation_rate=dilation_rate,
         num_layers=num_layers,
-        causal=False,
+        causal=causal,
     )
 
     input = torch.randn((batch_size, in_channels, input_length))
