@@ -2,7 +2,7 @@ import copy
 import math
 import os
 import tempfile
-from typing import Optional
+from typing import Optional, Union
 
 import pytest
 import torch
@@ -88,8 +88,13 @@ def test_exponential_moving_average_wrapper(build_from_optim_class: bool):
 @pytest.mark.parametrize("codebook_reset", [True, False])
 @pytest.mark.parametrize("reset_strategy", ["atol", "rtol", None])
 @pytest.mark.parametrize("reset_source", ["mru", "batch"])
+@pytest.mark.parametrize("reset_scope", ["least", "all", 1, None])
 def test_exponential_moving_average_codebook_optimizer(
-    is_rvq: bool, codebook_reset: bool, reset_strategy: Optional[str], reset_source: str
+    is_rvq: bool,
+    codebook_reset: bool,
+    reset_strategy: Optional[str],
+    reset_source: str,
+    reset_scope: Optional[Union[str, int]],
 ) -> None:
     torch.manual_seed(0)
 
@@ -128,6 +133,7 @@ def test_exponential_moving_average_codebook_optimizer(
                 reset_ath=reset_ath,
                 reset_rth=reset_rth,
                 reset_source=reset_source,
+                reset_scope=reset_scope,
             )
         else:
             optimizer = ExponentialMovingAverageCodebookOptimizer(model.parameters())
