@@ -1105,14 +1105,14 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                     requires_reset = False
 
                     if self.reset_strategy == "ath":
-                        least_usage, min_idx = torch.min(num_samples_tracked, dim=0)
-                        most_usage, max_idx = torch.max(num_samples_tracked, dim=0)
+                        least_usage, least_idx = torch.min(num_samples_tracked, dim=0)
+                        most_usage, most_idx = torch.max(num_samples_tracked, dim=0)
 
                         if least_usage < self.reset_ath:
                             requires_reset = True
                     elif self.reset_strategy == "rth":
-                        least_usage, min_idx = torch.min(num_accumulated, dim=0)
-                        most_usage, max_idx = torch.max(num_accumulated, dim=0)
+                        least_usage, least_idx = torch.min(num_accumulated, dim=0)
+                        most_usage, most_idx = torch.max(num_accumulated, dim=0)
 
                         if least_usage < self.reset_rth * most_usage:
                             requires_reset = True
@@ -1121,7 +1121,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                             f"Invalid reset_strategy {self.reset_strategy} is detected."
                         )
 
-                    most_used = param.data[max_idx]
+                    most_used = param.data[most_idx]
                     embedding_dim = most_used.size(0)
                     num_grids = residual.size(0)
 
@@ -1133,97 +1133,64 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                         std = math.sqrt(self.reset_var)
 
                         if self.reset_scope == "least" or self.reset_scope == 1:
-                            noise = torch.randn(
-                                (embedding_dim,),
-                                generator=g,
-                                device=device,
-                                dtype=most_used.dtype,
+                            least_indices = torch.tensor(
+                                [least_idx], dtype=torch.long, device=device
                             )
-
-                            if self.reset_source == "mru":
-                                replaced = most_used + std * noise
-                            elif self.reset_source == "batch":
-                                # residual: (num_grids, embedding_dim)
-                                sample_idx = torch.randperm(num_grids, generator=g, device=device)
-                                sample_idx = sample_idx[0]
-                                replaced = residual[sample_idx] + std * noise
-                            else:
-                                raise NotImplementedError(f"{self.reset_source} is not supported.")
-
-                            if self.reset_strategy == "ath":
-                                tracked_default = self.reset_ath + 1
-                            elif self.reset_strategy == "rth":
-                                tracked_default = 1
-                            else:
-                                raise ValueError(
-                                    f"Invalid reset_strategy {self.reset_strategy} is detected."
-                                )
-
-                            param.data[min_idx].copy_(replaced)
-
-                            # reset statistics
-                            momentum.data[min_idx].copy_(replaced)
-                            momentum.data[min_idx].mul_(tracked_default)
-                            num_samples_tracked.data[min_idx].fill_(tracked_default)
-                            num_accumulated.data.zero_()
+                            num_replaced = 1
                         elif self.reset_scope == "all":
                             if self.reset_strategy == "ath":
                                 least_usages, least_indices = torch.sort(
                                     num_samples_tracked, dim=0
                                 )
                                 num_replaced = torch.sum(least_usages < self.reset_ath)
-                                num_replaced = num_replaced.item()
                             elif self.reset_strategy == "rth":
                                 least_usages, least_indices = torch.sort(num_accumulated, dim=0)
                                 num_replaced = torch.sum(
                                     least_usages < self.reset_rth * most_usage
                                 )
-                                num_replaced = num_replaced.item()
                             else:
                                 raise ValueError(
                                     f"Invalid reset_strategy {self.reset_strategy} is detected."
                                 )
 
-                            least_usages = least_usages[:num_replaced]
+                            num_replaced = num_replaced.item()
                             least_indices = least_indices[:num_replaced]
-
-                            noise = torch.randn(
-                                (num_replaced, embedding_dim),
-                                generator=g,
-                                device=device,
-                                dtype=most_used.dtype,
-                            )
-
-                            if self.reset_source == "mru":
-                                replaced = most_used + std * noise
-                            elif self.reset_source == "batch":
-                                # residual: (num_grids, embedding_dim)
-                                sample_indices = torch.randperm(
-                                    num_grids, generator=g, device=device
-                                )
-                                sample_indices = sample_indices[:num_replaced]
-                                replaced = residual[sample_indices] + std * noise
-                            else:
-                                raise NotImplementedError(f"{self.reset_source} is not supported.")
-
-                            if self.reset_strategy == "ath":
-                                tracked_default = self.reset_ath + 1
-                            elif self.reset_strategy == "rth":
-                                tracked_default = 1
-                            else:
-                                raise ValueError(
-                                    f"Invalid reset_strategy {self.reset_strategy} is detected."
-                                )
-
-                            param.data[least_indices].copy_(replaced)
-
-                            # reset statistics
-                            momentum.data[least_indices].copy_(replaced)
-                            momentum.data[least_indices].mul_(tracked_default)
-                            num_samples_tracked.data[least_indices].fill_(tracked_default)
-                            num_accumulated.data.zero_()
                         else:
                             raise NotImplementedError(f"{self.reset_scope} is not supported.")
+
+                        noise = torch.randn(
+                            (num_replaced, embedding_dim),
+                            generator=g,
+                            device=device,
+                            dtype=most_used.dtype,
+                        )
+
+                        if self.reset_source == "mru":
+                            replaced = most_used + std * noise
+                        elif self.reset_source == "batch":
+                            # residual: (num_grids, embedding_dim)
+                            sample_indices = torch.randperm(num_grids, generator=g, device=device)
+                            sample_indices = sample_indices[:num_replaced]
+                            replaced = residual[sample_indices] + std * noise
+                        else:
+                            raise NotImplementedError(f"{self.reset_source} is not supported.")
+
+                        if self.reset_strategy == "ath":
+                            tracked_default = self.reset_ath + 1
+                        elif self.reset_strategy == "rth":
+                            tracked_default = 1
+                        else:
+                            raise ValueError(
+                                f"Invalid reset_strategy {self.reset_strategy} is detected."
+                            )
+
+                        param.data[least_indices].copy_(replaced)
+
+                        # reset statistics
+                        momentum.data[least_indices].copy_(replaced)
+                        momentum.data[least_indices].mul_(tracked_default)
+                        num_samples_tracked.data[least_indices].fill_(tracked_default)
+                        num_accumulated.data.zero_()
 
 
 class MultiOptimizers:
