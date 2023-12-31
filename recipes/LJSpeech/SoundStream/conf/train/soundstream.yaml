@@ -37,8 +37,8 @@ output:
       path: ${...exp_dir}/model/best_epoch.pth
 
 steps:
-  epochs: 10
-  iterations:
+  epochs:
+  iterations: 200000
   lr_scheduler:
     generator:
     discriminator:
