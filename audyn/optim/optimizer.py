@@ -1184,12 +1184,11 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                                 f"Invalid reset_strategy {self.reset_strategy} is detected."
                             )
 
-                        param.data[least_indices].copy_(replaced)
+                        param.data[least_indices] = replaced.clone()
 
                         # reset statistics
-                        momentum.data[least_indices].copy_(replaced)
-                        momentum.data[least_indices].mul_(tracked_default)
-                        num_samples_tracked.data[least_indices].fill_(tracked_default)
+                        momentum.data[least_indices] = tracked_default * replaced.clone()
+                        num_samples_tracked.data[least_indices] = tracked_default
                         num_accumulated.data.zero_()
 
 
