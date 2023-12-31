@@ -16,7 +16,7 @@ generator:
       - 8
     dilation_rate: 3
     num_layers: 3
-    causal: false
+    causal: true
   decoder:
     _target_: audyn.models.soundstream.Decoder
     in_channels: ${..embedding_dim}
@@ -37,6 +37,7 @@ generator:
   codebook_size: ${data.codebook.size}
   embedding_dim: 128
   num_stages: 8
+  dropout: true
   init_by_kmeans: 100
   seed: ${system.seed}
 discriminator:
