@@ -11,6 +11,7 @@ import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
 from packaging import version
+from torch.cuda.amp import autocast
 from torch.optim import Optimizer
 from torch.utils.hooks import RemovableHandle
 
@@ -696,7 +697,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
         reset_source (str, optional): Source to sample at codebook reset. ``mru``
             (most-recently-used) and ``batch`` are supported.
         reset_scope (str or int, optional): Scope to reset. ``least`` (only least sample)
-            and ``all`` (all satisfied samples satisfied) are supported.
+            and ``all`` (all satisfied samples) are supported.
         seed (int): Seed to synchronize states among devices when DDP is used.
 
     .. note::
@@ -963,7 +964,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
         if len(param_groups) > 1:
             raise RuntimeError("Unexpected error happened during store_current_stats.")
 
-        with torch.cuda.amp.autocast(enabled=False):
+        with autocast(enabled=False):
             residual_groups = []
 
             for (
@@ -1045,151 +1046,161 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
         z_e_sum_groups = self.z_e_sum_groups
         num_accumulated_groups = self.num_accumulated_groups
 
-        smooth = self.smooth
-        codebook_reset = self.codebook_reset
-
         self.iteration += 1
 
-        if codebook_reset:
+        if self.codebook_reset:
             self.accumulated_steps += 1
 
-        for (
-            param_group,
-            residual_group,
-            num_samples_tracked_group,
-            momentum_group,
-            one_hot_sum_group,
-            z_e_sum_group,
-            num_accumulated_group,
-        ) in zip(
-            param_groups,
-            residual_groups,
-            num_samples_tracked_groups,
-            momentum_groups,
-            one_hot_sum_groups,
-            z_e_sum_groups,
-            num_accumulated_groups,
-        ):
+        with autocast(enabled=False):
             for (
-                param,
-                residual,
-                num_samples_tracked,
-                momentum,
-                one_hot_sum,
-                z_e_sum,
-                num_accumulated,
-            ) in zip(
-                param_group["params"],
+                param_group,
                 residual_group,
                 num_samples_tracked_group,
                 momentum_group,
                 one_hot_sum_group,
                 z_e_sum_group,
                 num_accumulated_group,
+            ) in zip(
+                param_groups,
+                residual_groups,
+                num_samples_tracked_groups,
+                momentum_groups,
+                one_hot_sum_groups,
+                z_e_sum_groups,
+                num_accumulated_groups,
             ):
-                param: nn.Parameter
-                one_hot_sum_data = one_hot_sum.data.to(num_samples_tracked.data.dtype)
-                num_samples_tracked.data = torch.lerp(
-                    one_hot_sum_data,
-                    num_samples_tracked.data,
-                    weight=smooth,
-                )
-                momentum.data = torch.lerp(
-                    z_e_sum.data,
-                    momentum.data,
-                    weight=smooth,
-                )
-                param.data = momentum / num_samples_tracked.unsqueeze(dim=-1)
+                for (
+                    param,
+                    residual,
+                    num_samples_tracked,
+                    momentum,
+                    one_hot_sum,
+                    z_e_sum,
+                    num_accumulated,
+                ) in zip(
+                    param_group["params"],
+                    residual_group,
+                    num_samples_tracked_group,
+                    momentum_group,
+                    one_hot_sum_group,
+                    z_e_sum_group,
+                    num_accumulated_group,
+                ):
+                    self._step(
+                        param,
+                        residual=residual,
+                        num_samples_tracked=num_samples_tracked,
+                        momentum=momentum,
+                        one_hot_sum=one_hot_sum,
+                        z_e_sum=z_e_sum,
+                        num_accumulated=num_accumulated,
+                    )
 
-                if codebook_reset and self.accumulated_steps % self.reset_step == 0:
-                    requires_reset = False
+    def _step(
+        self,
+        param: nn.Parameter,
+        residual: torch.Tensor,
+        num_samples_tracked: torch.Tensor,
+        momentum: torch.Tensor,
+        one_hot_sum: torch.LongTensor,
+        z_e_sum: torch.Tensor,
+        num_accumulated: torch.LongTensor,
+    ) -> None:
+        smooth = self.smooth
+        codebook_reset = self.codebook_reset
 
+        one_hot_sum_data = one_hot_sum.data.to(num_samples_tracked.data.dtype)
+        num_samples_tracked.data = torch.lerp(
+            one_hot_sum_data,
+            num_samples_tracked.data,
+            weight=smooth,
+        )
+        momentum.data = torch.lerp(
+            z_e_sum.data,
+            momentum.data,
+            weight=smooth,
+        )
+        param.data = momentum / num_samples_tracked.unsqueeze(dim=-1)
+
+        if codebook_reset and self.accumulated_steps % self.reset_step == 0:
+            requires_reset = False
+
+            if self.reset_strategy == "ath":
+                least_usage, least_idx = torch.min(num_samples_tracked, dim=0)
+                most_usage, most_idx = torch.max(num_samples_tracked, dim=0)
+
+                if least_usage < self.reset_ath:
+                    requires_reset = True
+            elif self.reset_strategy == "rth":
+                least_usage, least_idx = torch.min(num_accumulated, dim=0)
+                most_usage, most_idx = torch.max(num_accumulated, dim=0)
+
+                if least_usage < self.reset_rth * most_usage:
+                    requires_reset = True
+            else:
+                raise ValueError(f"Invalid reset_strategy {self.reset_strategy} is detected.")
+
+            most_used = param.data[most_idx]
+            embedding_dim = most_used.size(0)
+            num_grids = residual.size(0)
+
+            if requires_reset:
+                # to ensure synchronization in DDP, use random number generator
+                device = most_used.device
+                g = torch.Generator(device=device)
+                g.manual_seed(self.seed + self.iteration)
+                std = math.sqrt(self.reset_var)
+
+                if self.reset_scope == "least" or self.reset_scope == 1:
+                    least_indices = torch.tensor([least_idx], dtype=torch.long, device=device)
+                    num_replaced = 1
+                elif self.reset_scope == "all":
                     if self.reset_strategy == "ath":
-                        least_usage, least_idx = torch.min(num_samples_tracked, dim=0)
-                        most_usage, most_idx = torch.max(num_samples_tracked, dim=0)
-
-                        if least_usage < self.reset_ath:
-                            requires_reset = True
+                        least_usages, least_indices = torch.sort(num_samples_tracked, dim=0)
+                        num_replaced = torch.sum(least_usages < self.reset_ath)
                     elif self.reset_strategy == "rth":
-                        least_usage, least_idx = torch.min(num_accumulated, dim=0)
-                        most_usage, most_idx = torch.max(num_accumulated, dim=0)
-
-                        if least_usage < self.reset_rth * most_usage:
-                            requires_reset = True
+                        least_usages, least_indices = torch.sort(num_accumulated, dim=0)
+                        num_replaced = torch.sum(least_usages < self.reset_rth * most_usage)
                     else:
                         raise ValueError(
                             f"Invalid reset_strategy {self.reset_strategy} is detected."
                         )
 
-                    most_used = param.data[most_idx]
-                    embedding_dim = most_used.size(0)
-                    num_grids = residual.size(0)
+                    num_replaced = num_replaced.item()
+                    least_indices = least_indices[:num_replaced]
+                else:
+                    raise NotImplementedError(f"{self.reset_scope} is not supported.")
 
-                    if requires_reset:
-                        # to ensure synchronization in DDP, use random number generator
-                        device = most_used.device
-                        g = torch.Generator(device=device)
-                        g.manual_seed(self.seed + self.iteration)
-                        std = math.sqrt(self.reset_var)
+                noise = torch.randn(
+                    (num_replaced, embedding_dim),
+                    generator=g,
+                    device=device,
+                    dtype=most_used.dtype,
+                )
 
-                        if self.reset_scope == "least" or self.reset_scope == 1:
-                            least_indices = torch.tensor(
-                                [least_idx], dtype=torch.long, device=device
-                            )
-                            num_replaced = 1
-                        elif self.reset_scope == "all":
-                            if self.reset_strategy == "ath":
-                                least_usages, least_indices = torch.sort(
-                                    num_samples_tracked, dim=0
-                                )
-                                num_replaced = torch.sum(least_usages < self.reset_ath)
-                            elif self.reset_strategy == "rth":
-                                least_usages, least_indices = torch.sort(num_accumulated, dim=0)
-                                num_replaced = torch.sum(
-                                    least_usages < self.reset_rth * most_usage
-                                )
-                            else:
-                                raise ValueError(
-                                    f"Invalid reset_strategy {self.reset_strategy} is detected."
-                                )
+                if self.reset_source == "mru":
+                    replaced = most_used + std * noise
+                elif self.reset_source == "batch":
+                    # residual: (num_grids, embedding_dim)
+                    sample_indices = torch.randperm(num_grids, generator=g, device=device)
+                    sample_indices = sample_indices[:num_replaced]
+                    replaced = residual[sample_indices] + std * noise
+                else:
+                    raise NotImplementedError(f"{self.reset_source} is not supported.")
 
-                            num_replaced = num_replaced.item()
-                            least_indices = least_indices[:num_replaced]
-                        else:
-                            raise NotImplementedError(f"{self.reset_scope} is not supported.")
+                if self.reset_strategy == "ath":
+                    tracked_default = self.reset_ath
+                elif self.reset_strategy == "rth":
+                    tracked_default = 1
+                else:
+                    raise ValueError(f"Invalid reset_strategy {self.reset_strategy} is detected.")
 
-                        noise = torch.randn(
-                            (num_replaced, embedding_dim),
-                            generator=g,
-                            device=device,
-                            dtype=most_used.dtype,
-                        )
+                param.data[least_indices] = replaced.clone()
 
-                        if self.reset_source == "mru":
-                            replaced = most_used + std * noise
-                        elif self.reset_source == "batch":
-                            # residual: (num_grids, embedding_dim)
-                            sample_indices = torch.randperm(num_grids, generator=g, device=device)
-                            sample_indices = sample_indices[:num_replaced]
-                            replaced = residual[sample_indices] + std * noise
-                        else:
-                            raise NotImplementedError(f"{self.reset_source} is not supported.")
-
-                        if self.reset_strategy == "ath":
-                            tracked_default = self.reset_ath
-                        elif self.reset_strategy == "rth":
-                            tracked_default = 1
-                        else:
-                            raise ValueError(
-                                f"Invalid reset_strategy {self.reset_strategy} is detected."
-                            )
-
-                        param.data[least_indices] = replaced.clone()
-
-                        # reset statistics
-                        momentum.data[least_indices] = tracked_default * replaced.clone()
-                        num_samples_tracked.data[least_indices] = tracked_default
-                        num_accumulated.data.zero_()
+                # reset statistics
+                momentum.data[least_indices] = tracked_default * replaced.clone()
+                num_samples_tracked.data[least_indices] = tracked_default
+                num_accumulated.data.zero_()
 
 
 class MultiOptimizers:
