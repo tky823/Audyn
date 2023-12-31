@@ -333,8 +333,8 @@ class ExponentialMovingAverageWrapper(MovingAverageWrapper):
 
 
 class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
-    available_reset_source_keys = {"mru", "batch"}
-    available_reset_scope_keys = {"least", "all"}
+    available_reset_source_keys = ["mru", "batch"]
+    available_reset_scope_keys = ["least", "all"]
 
     if IS_TORCH_LT_2_1:
 
@@ -446,7 +446,7 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
                 reset_strategy = "ath"
 
             if reset_source is None:
-                reset_source = "mru"
+                reset_source = self.available_reset_source_keys[0]
 
             if reset_source not in self.available_reset_source_keys:
                 raise ValueError(
@@ -454,7 +454,7 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
                 )
 
             if reset_scope is None:
-                reset_scope = "least"
+                reset_scope = self.available_reset_scope_keys[0]
 
             if reset_scope not in self.available_reset_scope_keys:
                 raise ValueError(
@@ -555,6 +555,8 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
                     "reset_var": self.reset_var,
                     "reset_ath": self.reset_ath,
                     "reset_rth": self.reset_rth,
+                    "reset_source": self.reset_source,
+                    "reset_scope": self.reset_scope,
                 }
             )
 
@@ -645,6 +647,8 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
             self.reset_step = state_dict["reset_step"]
             self.reset_var = state_dict["reset_var"]
             self.reset_ath = state_dict["reset_ath"]
+            self.reset_source = state_dict.get("reset_source", self.available_reset_source_keys[0])
+            self.reset_scope = state_dict.get("reset_scope", self.available_reset_scope_keys[0])
             reset_rth = state_dict.get("reset_rth")
 
             if reset_rth is None:
