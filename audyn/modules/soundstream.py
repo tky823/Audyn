@@ -18,6 +18,7 @@ class EncoderBlock(nn.Module):
         stride: _size_1_t,
         dilation_rate: _size_1_t = 3,
         num_layers: int = 3,
+        causal: bool = True,
     ) -> None:
         super().__init__()
 
@@ -29,6 +30,7 @@ class EncoderBlock(nn.Module):
                 in_channels,
                 kernel_size=kernel_size,
                 dilation=dilation,
+                causal=causal,
             )
             backbone.append(unit)
 
@@ -47,13 +49,19 @@ class EncoderBlock(nn.Module):
 
         self.kernel_size_out = _single(kernel_size_out)
         self.stride = stride
+        self.causal = causal
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         (kernel_size_out,) = self.kernel_size_out
         (stride,) = self.stride
         padding = kernel_size_out - stride
-        padding_left = padding // 2
-        padding_right = padding - padding_left
+
+        if self.causal:
+            padding_left = padding
+            padding_right = 0
+        else:
+            padding_left = padding // 2
+            padding_right = padding - padding_left
 
         x = F.pad(input, (padding_left, padding_right))
         x = self.backbone(x)
@@ -71,6 +79,7 @@ class DecoderBlock(nn.Module):
         stride: _size_1_t,
         dilation_rate: _size_1_t = 3,
         num_layers: int = 3,
+        causal: bool = True,
     ) -> None:
         super().__init__()
 
@@ -93,6 +102,7 @@ class DecoderBlock(nn.Module):
                 out_channels,
                 kernel_size=kernel_size,
                 dilation=dilation,
+                causal=causal,
             )
             backbone.append(unit)
 
@@ -100,13 +110,19 @@ class DecoderBlock(nn.Module):
 
         self.kernel_size_in = _single(kernel_size_in)
         self.stride = stride
+        self.causal = causal
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         (kernel_size_in,) = self.kernel_size_in
         (stride,) = self.stride
         padding = kernel_size_in - stride
-        padding_left = padding // 2
-        padding_right = padding - padding_left
+
+        if self.causal:
+            padding_left = 0
+            padding_right = padding
+        else:
+            padding_left = padding // 2
+            padding_right = padding - padding_left
 
         x = self.conv1d(input)
         x = F.pad(x, (-padding_left, -padding_right))

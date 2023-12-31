@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.common_types import _size_1_t, _size_2_t
+from torch.nn.modules.utils import _single
 
 from ..modules.soundstream import DecoderBlock, EncoderBlock, FiLM1d, ResidualUnit2d
 from .hifigan import MultiScaleDiscriminator as _MultiScaleDiscriminator
@@ -158,9 +159,6 @@ class Encoder(nn.Module):
     ) -> None:
         super().__init__()
 
-        if causal:
-            raise NotImplementedError("Encoder w/ causality is not supported.")
-
         self.conv1d_in = nn.Conv1d(
             in_channels,
             hidden_channels,
@@ -181,6 +179,7 @@ class Encoder(nn.Module):
                 stride=_stride,
                 dilation_rate=dilation_rate,
                 num_layers=num_layers,
+                causal=causal,
             )
             backbone.append(block)
             _in_channels = _out_channels
@@ -198,7 +197,9 @@ class Encoder(nn.Module):
         num_modes = 2
         self.film1d = FiLM1d(num_modes, out_channels)
 
-        self.kernel_size_in, self.kernel_size_out = kernel_size_in, kernel_size_out
+        self.kernel_size_in = _single(kernel_size_in)
+        self.kernel_size_out = _single(kernel_size_out)
+        self.causal = causal
 
     def forward(self, input: torch.Tensor, denoise: bool = False) -> torch.Tensor:
         """Forward pass of Encoder.
@@ -211,7 +212,7 @@ class Encoder(nn.Module):
             torch.Tensor: Compressed feature of shape (batch_size, out_channels, length').
 
         """
-        kernel_size_in, kernel_size_out = self.kernel_size_in, self.kernel_size_out
+        (kernel_size_in,), (kernel_size_out,) = self.kernel_size_in, self.kernel_size_out
         batch_size = input.size(0)
 
         if denoise:
@@ -223,12 +224,28 @@ class Encoder(nn.Module):
             (batch_size,), fill_value=fill_value, dtype=torch.long, device=input.device
         )
 
-        x = F.pad(input, (kernel_size_in // 2, kernel_size_in // 2))
+        x = self._pad1d(input, kernel_size=kernel_size_in)
         x = self.conv1d_in(x)
         x = self.backbone(x)
-        x = F.pad(x, (kernel_size_out // 2, kernel_size_out // 2))
+        x = self._pad1d(x, kernel_size=kernel_size_out)
         x = self.conv1d_out(x)
         output = self.film1d(x, mode=mode)
+
+        return output
+
+    def _pad1d(self, input: torch.Tensor, kernel_size: _size_1_t) -> torch.Tensor:
+        # assume stride = 1
+        (kernel_size,) = _single(kernel_size)
+        padding = kernel_size - 1
+
+        if self.causal:
+            padding_left = padding
+            padding_right = 0
+        else:
+            padding_left = padding // 2
+            padding_right = padding - padding_left
+
+        output = F.pad(input, (padding_left, padding_right))
 
         return output
 
@@ -249,9 +266,6 @@ class Decoder(nn.Module):
         causal: bool = True,
     ) -> None:
         super().__init__()
-
-        if causal:
-            raise NotImplementedError("Decoder w/ causality is not supported.")
 
         # num_modes
         # 0: reconstruct, 1: denoise
@@ -277,6 +291,7 @@ class Decoder(nn.Module):
                 stride=_stride,
                 dilation_rate=dilation_rate,
                 num_layers=num_layers,
+                causal=causal,
             )
             backbone.append(block)
             _in_channels = _out_channels
@@ -289,7 +304,9 @@ class Decoder(nn.Module):
             stride=1,
         )
 
-        self.kernel_size_in, self.kernel_size_out = kernel_size_in, kernel_size_out
+        self.kernel_size_in = _single(kernel_size_in)
+        self.kernel_size_out = _single(kernel_size_out)
+        self.causal = causal
 
     def forward(self, input: torch.Tensor, denoise: bool = False) -> torch.Tensor:
         """Forward pass of Decoder.
@@ -302,7 +319,7 @@ class Decoder(nn.Module):
             torch.Tensor: Reconstructed waveform of shape (batch_size, out_channels, length').
 
         """
-        kernel_size_in, kernel_size_out = self.kernel_size_in, self.kernel_size_out
+        (kernel_size_in,), (kernel_size_out,) = self.kernel_size_in, self.kernel_size_out
         batch_size = input.size(0)
 
         if denoise:
@@ -315,11 +332,27 @@ class Decoder(nn.Module):
         )
 
         x = self.film1d(input, mode=mode)
-        x = F.pad(x, (kernel_size_in // 2, kernel_size_in // 2))
+        x = self._pad1d(x, kernel_size=kernel_size_in)
         x = self.conv1d_in(x)
         x = self.backbone(x)
-        x = F.pad(x, (kernel_size_out // 2, kernel_size_out // 2))
+        x = self._pad1d(x, kernel_size=kernel_size_out)
         output = self.conv1d_out(x)
+
+        return output
+
+    def _pad1d(self, input: torch.Tensor, kernel_size: _size_1_t) -> torch.Tensor:
+        # assume stride = 1
+        (kernel_size,) = _single(kernel_size)
+        padding = kernel_size - 1
+
+        if self.causal:
+            padding_left = padding
+            padding_right = 0
+        else:
+            padding_left = padding // 2
+            padding_right = padding - padding_left
+
+        output = F.pad(input, (padding_left, padding_right))
 
         return output
 
