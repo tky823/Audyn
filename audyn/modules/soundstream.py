@@ -116,7 +116,23 @@ class DecoderBlock(nn.Module):
 
 
 class ResidualUnit1d(nn.Module):
-    def __init__(self, num_features: int, kernel_size: _size_1_t, dilation: _size_1_t = 1) -> None:
+    """ResidualUnit used in SoundStream.
+
+    Args:
+        num_features (int): Number of channels.
+        kernel_size (_size_1_t): Kernel size of first convolution.
+        dilation (_size_1_t): Dilation of first convolution. Default: ``1``.
+        causal (bool): If ``True``, causality is guaranteed.
+
+    """
+
+    def __init__(
+        self,
+        num_features: int,
+        kernel_size: _size_1_t,
+        dilation: _size_1_t = 1,
+        causal: bool = True,
+    ) -> None:
         super().__init__()
 
         kernel_size = _single(kernel_size)
@@ -132,15 +148,21 @@ class ResidualUnit1d(nn.Module):
 
         self.kernel_size = kernel_size
         self.dilation = dilation
+        self.causal = causal
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         (kernel_size,) = self.kernel_size
         (dilation,) = self.dilation
 
         dilated_kernel_size = (kernel_size - 1) * dilation + 1
-        padding = dilated_kernel_size // 2
 
-        x = F.pad(input, (padding, padding))
+        if self.causal:
+            padding = dilated_kernel_size // 2
+            x = F.pad(input, (padding, padding))
+        else:
+            padding = dilated_kernel_size // 2
+            x = F.pad(input, (2 * padding, 0))
+
         x = self.conv1d_in(x)
         x = self.nonlinear1d(x)
         x = self.conv1d_out(x)
