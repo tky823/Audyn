@@ -1097,15 +1097,18 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                 param.data = momentum / num_samples_tracked.unsqueeze(dim=-1)
 
                 if codebook_reset and self.accumulated_steps % self.reset_step == 0:
-                    least_usage, min_idx = torch.min(num_accumulated, dim=0)
-                    most_usage, max_idx = torch.max(num_accumulated, dim=0)
-                    most_used = param.data[max_idx]
                     requires_reset = False
 
                     if self.reset_strategy == "ath":
+                        least_usage, min_idx = torch.min(num_samples_tracked, dim=0)
+                        most_usage, max_idx = torch.max(num_samples_tracked, dim=0)
+
                         if least_usage < self.reset_ath:
                             requires_reset = True
                     elif self.reset_strategy == "rth":
+                        least_usage, min_idx = torch.min(num_accumulated, dim=0)
+                        most_usage, max_idx = torch.max(num_accumulated, dim=0)
+
                         if least_usage < self.reset_rth * most_usage:
                             requires_reset = True
                     else:
@@ -1113,10 +1116,13 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                             f"Invalid reset_strategy {self.reset_strategy} is detected."
                         )
 
+                    most_used = param.data[max_idx]
+
                     if requires_reset:
                         std = math.sqrt(self.reset_var)
                         # to ensure synchronization in DDP, use random number generator
-                        g = torch.Generator(device=most_used.device)
+                        device = most_used.device
+                        g = torch.Generator(device=device)
                         g.manual_seed(self.seed + self.iteration)
                         std = math.sqrt(self.reset_var)
 
@@ -1124,7 +1130,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                             noise = torch.randn(
                                 most_used.size(),
                                 generator=g,
-                                device=most_used.device,
+                                device=device,
                                 dtype=most_used.dtype,
                             )
 
@@ -1132,14 +1138,16 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                                 replaced = most_used + std * noise
                             elif self.reset_source == "batch":
                                 # residual: (num_grids, embedding_dim)
-                                sample_idx = torch.randperm(residual.size(0), generator=g)[:1]
+                                sample_idx = torch.randperm(
+                                    residual.size(0), generator=g, device=device
+                                )[:1]
                                 sample_idx = sample_idx.item()
                                 replaced = residual[sample_idx] + std * noise
                             else:
                                 raise NotImplementedError(f"{self.reset_source} is not supported.")
 
                             if self.reset_strategy == "ath":
-                                tracked_default = self.reset_ath
+                                tracked_default = self.reset_ath + 1
                             elif self.reset_strategy == "rth":
                                 tracked_default = 1
                             else:
@@ -1151,6 +1159,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
 
                             # reset statistics
                             momentum.data[min_idx].copy_(replaced)
+                            momentum.data[min_idx].mul_(tracked_default)
                             num_samples_tracked.data[min_idx].fill_(tracked_default)
                             num_accumulated.data.zero_()
                         else:
