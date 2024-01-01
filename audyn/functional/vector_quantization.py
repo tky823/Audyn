@@ -80,15 +80,14 @@ def quantize_residual_vector(
     else:
         raise ValueError(f"Invalid type {type(weight)} is given as weight.")
 
-    residual = input
     reconstructed = 0
     output = []
     indices = []
 
     for _weight in weight:
+        residual = input - reconstructed
         _output, _indices = quantize_vector(residual, _weight)
         reconstructed = reconstructed + _output
-        residual = input - reconstructed
         output.append(_output)
         indices.append(_indices)
 
