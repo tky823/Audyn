@@ -95,7 +95,7 @@ class ResidualVectorQuantizer(nn.Module):
                 gathered_num_stages = [
                     torch.zeros_like(num_stages) for _ in range(dist.get_world_size())
                 ]
-                dist.all_gather(gathered_num_stages, gathered_num_stages)
+                dist.all_gather(gathered_num_stages, num_stages)
 
                 # use num_stages on 1st GPU
                 num_stages = gathered_num_stages[0]
