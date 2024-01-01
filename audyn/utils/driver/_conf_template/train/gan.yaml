@@ -21,6 +21,8 @@ key_mapping:
         output: real_prob
   validation: ${.train}
 
+ddp_kwargs:
+
 clip_gradient:
 
 resume:

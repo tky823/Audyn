@@ -70,6 +70,7 @@ class TextToFeatTrainer(BaseTrainer):
                     feat_to_wave,
                     accelerator=system_config.accelerator,
                     is_distributed=system_config.distributed.enable,
+                    ddp_kwargs=config.train.ddp_kwargs,
                 )
                 unwrapped_feat_to_wave = unwrap(feat_to_wave)
                 unwrapped_feat_to_wave.load_state_dict(state_dict["model"])
@@ -80,6 +81,7 @@ class TextToFeatTrainer(BaseTrainer):
                     feat_to_wave,
                     accelerator=system_config.accelerator,
                     is_distributed=system_config.distributed.enable,
+                    ddp_kwargs=config.train.ddp_kwargs,
                 )
                 unwrapped_feat_to_wave = unwrap(feat_to_wave)
                 unwrapped_feat_to_wave.load_state_dict(state_dict["model"]["generator"])
@@ -100,6 +102,7 @@ class TextToFeatTrainer(BaseTrainer):
                         transform_middle,
                         accelerator=system_config.accelerator,
                         is_distributed=system_config.distributed.enable,
+                        ddp_kwargs=config.train.ddp_kwargs,
                     )
 
         self.feat_to_wave = feat_to_wave
