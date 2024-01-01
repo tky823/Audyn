@@ -68,6 +68,7 @@ def main(config: DictConfig) -> None:
         generator,
         accelerator=config.system.accelerator,
         is_distributed=config.system.distributed.enable,
+        ddp_kwargs=config.train.ddp_kwargs,
     )
     generator_optimizer = instantiate_optimizer(config.optimizer.generator, generator)
     generator_lr_scheduler = instantiate_lr_scheduler(
@@ -81,6 +82,7 @@ def main(config: DictConfig) -> None:
         generator_criterion,
         accelerator=config.system.accelerator,
         is_distributed=config.system.distributed.enable,
+        ddp_kwargs=config.train.ddp_kwargs,
     )
 
     # discriminator
@@ -89,6 +91,7 @@ def main(config: DictConfig) -> None:
         discriminator,
         accelerator=config.system.accelerator,
         is_distributed=config.system.distributed.enable,
+        ddp_kwargs=config.train.ddp_kwargs,
     )
     discriminator_optimizer = instantiate_optimizer(config.optimizer.discriminator, discriminator)
     discriminator_lr_scheduler = instantiate_lr_scheduler(
@@ -102,6 +105,7 @@ def main(config: DictConfig) -> None:
         discriminator_criterion,
         accelerator=config.system.accelerator,
         is_distributed=config.system.distributed.enable,
+        ddp_kwargs=config.train.ddp_kwargs,
     )
 
     model = BaseGAN(generator, discriminator)

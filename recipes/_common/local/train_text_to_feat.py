@@ -39,6 +39,7 @@ def main(config: DictConfig) -> None:
         model,
         accelerator=config.system.accelerator,
         is_distributed=config.system.distributed.enable,
+        ddp_kwargs=config.train.ddp_kwargs,
     )
     optimizer = instantiate_optimizer(config.optimizer, model.parameters())
     lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
@@ -53,6 +54,7 @@ def main(config: DictConfig) -> None:
         criterion,
         accelerator=config.system.accelerator,
         is_distributed=config.system.distributed.enable,
+        ddp_kwargs=config.train.ddp_kwargs,
     )
 
     trainer = TextToFeatTrainer(

@@ -54,6 +54,7 @@ def main(config: DictConfig) -> None:
         generator,
         accelerator=config.system.accelerator,
         is_distributed=config.system.distributed.enable,
+        ddp_kwargs=config.train.ddp_kwargs,
     )
     generator_optimizer = hydra.utils.instantiate(
         config.optimizer.generator, generator.parameters()
@@ -69,6 +70,7 @@ def main(config: DictConfig) -> None:
         generator_criterion,
         accelerator=config.system.accelerator,
         is_distributed=config.system.distributed.enable,
+        ddp_kwargs=config.train.ddp_kwargs,
     )
 
     discriminator = instantiate_model(config.model.discriminator)
@@ -76,6 +78,7 @@ def main(config: DictConfig) -> None:
         discriminator,
         accelerator=config.system.accelerator,
         is_distributed=config.system.distributed.enable,
+        ddp_kwargs=config.train.ddp_kwargs,
     )
     discriminator_optimizer = hydra.utils.instantiate(
         config.optimizer.discriminator, discriminator.parameters()
@@ -91,6 +94,7 @@ def main(config: DictConfig) -> None:
         discriminator_criterion,
         accelerator=config.system.accelerator,
         is_distributed=config.system.distributed.enable,
+        ddp_kwargs=config.train.ddp_kwargs,
     )
 
     model = BaseGAN(generator, discriminator)
