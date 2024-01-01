@@ -125,6 +125,16 @@ generator:
       estimated:
         input: codebook_indices
       target:
+  codebook_loss:
+    _target_: audyn.criterion.base.BaseCriterionWrapper
+    criterion:
+      _target_: audyn.criterion.rvqvae.CodebookLoss
+    weight: 0  # monitoring
+    key_mapping:
+      estimated:
+        encoded: encoded
+        quantized: quantized
+      target:
 discriminator:
   _target_: audyn.criterion.base.MultiCriteria
   waveform_discriminator_fake:
