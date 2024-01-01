@@ -959,8 +959,6 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             stacked_quantized = torch.cat(gathered_stacked_quantized, dim=1)
             stacked_indices = torch.cat(gathered_stacked_indices, dim=1)
 
-            raise NotImplementedError("DDP is not tested well.")
-
         if len(param_groups) > 1:
             raise RuntimeError("Unexpected error happened during store_current_stats.")
 
