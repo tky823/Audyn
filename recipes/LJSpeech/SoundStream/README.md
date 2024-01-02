@@ -30,21 +30,27 @@ generator:
 To train SoundStream, run the following command:
 
 ```sh
+tag=<TAG>
+
 . ./run.sh \
 --stage 1 \
---stop-stage 1
+--stop-stage 1 \
+--tag "${tag}"
 ```
 
 To train SounsStream using official configs, set `train`, `model`, and `criterion` as follows:
 
 ```sh
+tag=<TAG>
+
 train="official_soundstream"
-model=official_soundstream""
+model="official_soundstream"
 criterion="official_soundstream"
 
 . ./run.sh \
 --stage 1 \
 --stop-stage 1 \
+--tag "${tag}" \
 --train "${train}" \
 --model "${model}" \
 --criterion "${criterion}"
