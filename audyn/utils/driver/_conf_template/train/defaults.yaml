@@ -18,6 +18,8 @@ key_mapping:
       max_length: max_waveform_length
     output: estimated_waveform
 
+ddp_kwargs:
+
 clip_gradient:
 
 resume:

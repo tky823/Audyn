@@ -3,9 +3,10 @@ from typing import Any, List, Union
 import torch
 import torch.nn as nn
 
+from .gan import DiscriminatorHingeLoss as BaseDiscriminatorHingeLoss
 from .lsgan import MSELoss as BaseMSELoss
 
-__all__ = ["FeatureMatchingLoss"]
+__all__ = ["FeatureMatchingLoss", "DiscriminatorHingeLoss"]
 
 
 class MSELoss(BaseMSELoss):
@@ -16,6 +17,24 @@ class MSELoss(BaseMSELoss):
 
     def __init__(self, target: float, reduction: str = "mean") -> None:
         super().__init__(target, reduction=reduction)
+
+    def forward(self, input: Union[torch.Tensor, List[Any]]) -> torch.Tensor:
+        loss = 0
+
+        if type(input) is list:
+            for idx in range(len(input)):
+                loss = loss + super().forward(input[idx])
+        elif isinstance(input, torch.Tensor):
+            loss = loss + super().forward(input)
+        else:
+            raise TypeError("Invalid type {} is found.".format(type(input)))
+
+        return loss
+
+
+class DiscriminatorHingeLoss(BaseDiscriminatorHingeLoss):
+    def __init__(self, minimize: bool, margin: float = 1, reduction: str = "mean") -> None:
+        super().__init__(minimize, margin, reduction)
 
     def forward(self, input: Union[torch.Tensor, List[Any]]) -> torch.Tensor:
         loss = 0

@@ -3,6 +3,7 @@ https://github.com/pytorch/pytorch/blob/0093df78df590a35deb784773aa2165884c1b7bd
 """
 import copy
 import math
+import warnings
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, Union, overload
 
 import torch
@@ -10,6 +11,7 @@ import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
 from packaging import version
+from torch.cuda.amp import autocast
 from torch.optim import Optimizer
 from torch.utils.hooks import RemovableHandle
 
@@ -332,6 +334,9 @@ class ExponentialMovingAverageWrapper(MovingAverageWrapper):
 
 
 class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
+    available_reset_source_keys = ["mru", "batch"]
+    available_reset_scope_keys = ["least", "all"]
+
     if IS_TORCH_LT_2_1:
 
         @overload
@@ -341,7 +346,11 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
             smooth: float = 0.999,
             reset_step: Optional[int] = None,
             reset_var: Optional[float] = None,
+            reset_ath: Optional[float] = None,
+            reset_rth: Optional[float] = None,
             reset_rate: Optional[float] = None,
+            reset_source: Optional[str] = None,
+            reset_scope: Optional[Union[str, int]] = None,
             seed: int = 0,
         ) -> None:
             ...
@@ -356,7 +365,11 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
             smooth: float = 0.999,
             reset_step: Optional[int] = None,
             reset_var: Optional[float] = None,
+            reset_ath: Optional[float] = None,
+            reset_rth: Optional[float] = None,
             reset_rate: Optional[float] = None,
+            reset_source: Optional[str] = None,
+            reset_scope: Optional[Union[str, int]] = None,
             seed: int = 0,
         ) -> None:
             ...
@@ -367,18 +380,36 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
         smooth=0.999,
         reset_step=None,
         reset_var=None,
+        reset_ath=None,
+        reset_rth=None,
         reset_rate=None,
+        reset_source=None,
+        reset_scope=None,
         seed=0,
     ) -> None:
         defaults = {}
+        params = self._trim_scalar_parameters(params)
+
         super().__init__(params, defaults)
 
         if reset_step is None:
             if reset_var is not None:
                 raise ValueError("reset_var is specified, but reset_step is not defined.")
 
+            if reset_ath is not None:
+                raise ValueError("reset_ath is specified, but reset_step is not defined.")
+
+            if reset_rth is not None:
+                raise ValueError("reset_rth is specified, but reset_step is not defined.")
+
             if reset_rate is not None:
                 raise ValueError("reset_rate is specified, but reset_step is not defined.")
+
+            if reset_source is not None:
+                raise ValueError("reset_source is specified, but reset_step is not defined.")
+
+            if reset_scope is not None:
+                raise ValueError("reset_scope is specified, but reset_step is not defined.")
 
             codebook_reset = False
         else:
@@ -390,10 +421,54 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
             if reset_var is None:
                 reset_var = 0.01
 
-            if reset_rate is None:
-                reset_rate = 0.03
+            if reset_ath is None:
+                if (reset_rth is not None) and (reset_rate is not None):
+                    raise ValueError("Set only one reset_rth or reset_rate.")
+
+                if reset_rth is None and reset_rate is None:
+                    reset_rth = 0.03
+
+                if reset_rate is not None:
+                    warnings.warn(
+                        "reset_rate is deprecated. Use reset_rth instead.",
+                        DeprecationWarning,
+                        stacklevel=2,
+                    )
+                    reset_rth = reset_rate
+
+                reset_strategy = "rth"
+            else:
+                if reset_rth is not None:
+                    raise ValueError("You cannot set reset_ath and reset_rth.")
+
+                if reset_rate is not None:
+                    raise ValueError("You cannot set reset_ath and reset_rate.")
+
+                reset_strategy = "ath"
+
+            if reset_source is None:
+                reset_source = self.available_reset_source_keys[0]
+
+            if reset_source not in self.available_reset_source_keys:
+                raise ValueError(
+                    f"reset_source should be one of {self.available_reset_source_keys}."
+                )
+
+            if reset_scope is None:
+                reset_scope = self.available_reset_scope_keys[0]
+
+            if isinstance(reset_scope, str):
+                if reset_scope not in self.available_reset_scope_keys:
+                    raise ValueError(
+                        f"reset_scope should be one of {self.available_reset_scope_keys}."
+                    )
+            elif isinstance(reset_scope, int):
+                pass
+            else:
+                raise ValueError(f"Invalid {reset_scope} is specified as reset_scope.")
         else:
             accumulated_steps = None
+            reset_strategy = None
 
         self.smooth = smooth
 
@@ -406,12 +481,16 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
         self.z_e_sum_groups: List[List[torch.Tensor]]
 
         # codebook reset
+        self.reset_strategy = reset_strategy
         self.num_accumulated_groups: Optional[List[List[torch.LongTensor]]]
         self.codebook_reset = codebook_reset
         self.accumulated_steps = accumulated_steps
         self.reset_step = reset_step
         self.reset_var = reset_var
-        self.reset_rate = reset_rate
+        self.reset_ath = reset_ath
+        self.reset_rth = reset_rth
+        self.reset_source = reset_source
+        self.reset_scope = reset_scope
 
         # for DDP and codebook reset
         self.seed = seed
@@ -480,7 +559,10 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
                     "accumulated_steps": self.accumulated_steps,
                     "reset_step": self.reset_step,
                     "reset_var": self.reset_var,
-                    "reset_rate": self.reset_rate,
+                    "reset_ath": self.reset_ath,
+                    "reset_rth": self.reset_rth,
+                    "reset_source": self.reset_source,
+                    "reset_scope": self.reset_scope,
                 }
             )
 
@@ -570,7 +652,27 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
             self.accumulated_steps = state_dict["accumulated_steps"]
             self.reset_step = state_dict["reset_step"]
             self.reset_var = state_dict["reset_var"]
-            self.reset_rate = state_dict["reset_rate"]
+            self.reset_ath = state_dict["reset_ath"]
+            self.reset_source = state_dict.get("reset_source", self.available_reset_source_keys[0])
+            self.reset_scope = state_dict.get("reset_scope", self.available_reset_scope_keys[0])
+            reset_rth = state_dict.get("reset_rth")
+
+            if reset_rth is None:
+                reset_rth = state_dict.get("reset_rate")
+
+            self.reset_rth = reset_rth
+
+    def _trim_scalar_parameters(self, params: Iterable) -> List[nn.Parameter]:
+        fixed_params = []
+
+        for param in params:
+            if param.dim() == 0:
+                # flags related to initialization
+                pass
+            else:
+                fixed_params.append(param)
+
+        return fixed_params
 
 
 class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodebookOptimizer):
@@ -584,10 +686,18 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             reset is deactivated).
         reset_var (float, optional): This parameter is activated if ``reset_step``
             is specified. Variance of codebook reset. If ``None``, 0.01 is used by default.
-        reset_rate (float, optional): This parameter is activated if ``reset_step``
-            is specified. If usage of least used codebook is
-            less than ``reset_rate``, position will be reset. If ``None``,
+        reset_ath (float, optional): Absolute threshold to reset codebooks. This parameter is
+            activated if ``reset_step`` is specified. If usage of codebook is less than
+            ``reset_ath``, position will be reset.
+        reset_rth (float, optional): Threshold relative to most used codebook to reset codebooks.
+            This parameter is activated if ``reset_step`` is specified. If usage of least used
+            codebook is less than ``reset_rth``, position will be reset. If ``None``,
             0.03 is used by default.
+        reset_rate (float, optional): Legacy version of ``reset_rth``. (deprecated)
+        reset_source (str, optional): Source to sample at codebook reset. ``mru``
+            (most-recently-used) and ``batch`` are supported.
+        reset_scope (str or int, optional): Scope to reset. ``least`` (only least sample)
+            and ``all`` (all satisfied samples) are supported.
         seed (int): Seed to synchronize states among devices when DDP is used.
 
     .. note::
@@ -632,9 +742,9 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
         >>> from audyn.modules.rvq import ResidualVectorQuantizer
         >>> from audyn.optim.optimizer import ExponentialMovingAverageCodebookOptimizer
         >>> torch.manual_seed(0)
-        >>> num_layers, codebook_size, embedding_dim = 6, 3, 4
+        >>> num_stages, codebook_size, embedding_dim = 6, 3, 4
         >>> batch_size, length = 2, 5
-        >>> model = ResidualVectorQuantizer(codebook_size, embedding_dim, num_layers=num_layers)
+        >>> model = ResidualVectorQuantizer(codebook_size, embedding_dim, num_stages=num_stages)
         >>> # w/o codebook reset
         >>> optimizer = ExponentialMovingAverageCodebookOptimizer(model.parameters())
         >>> model.register_forward_hook(optimizer.store_current_stats)
@@ -667,7 +777,12 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             smooth: float = 0.999,
             reset_step: Optional[int] = None,
             reset_var: Optional[float] = None,
+            reset_ath: Optional[float] = None,
+            reset_rth: Optional[float] = None,
             reset_rate: Optional[float] = None,
+            reset_source: Optional[str] = None,
+            reset_scope: Optional[Union[str, int]] = None,
+            seed: int = 0,
         ) -> None:
             ...
 
@@ -681,7 +796,12 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             smooth: float = 0.999,
             reset_step: Optional[int] = None,
             reset_var: Optional[float] = None,
+            reset_ath: Optional[float] = None,
+            reset_rth: Optional[float] = None,
             reset_rate: Optional[float] = None,
+            reset_source: Optional[str] = None,
+            reset_scope: Optional[Union[str, int]] = None,
+            seed: int = 0,
         ) -> None:
             ...
 
@@ -691,14 +811,24 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
         smooth=0.999,
         reset_step=None,
         reset_var=None,
+        reset_ath=None,
+        reset_rth=None,
         reset_rate=None,
+        reset_source=None,
+        reset_scope=None,
+        seed=0,
     ) -> None:
         super().__init__(
             params,
             smooth=smooth,
             reset_step=reset_step,
             reset_var=reset_var,
+            reset_ath=reset_ath,
+            reset_rth=reset_rth,
             reset_rate=reset_rate,
+            reset_source=reset_source,
+            reset_scope=reset_scope,
+            seed=seed,
         )
 
         # running stats
@@ -773,7 +903,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
         codebook_reset = self.codebook_reset
         is_distributed = dist.is_available() and dist.is_initialized()
 
-        param_groups = list(module.parameters())
+        param_groups = self._trim_scalar_parameters(module.parameters())
         tracking_param_groups = self.param_groups
         one_hot_sum_groups = self.one_hot_sum_groups
         z_e_sum_groups = self.z_e_sum_groups
@@ -782,82 +912,131 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
         if not isinstance(param_groups[0], dict):
             param_groups = [{"params": param_groups}]
 
-        (dequantized_input,) = input
-        _, indices = output
+        (dequantized,) = input
+        quantized, indices = output
+
+        dequantized = dequantized.transpose(1, 0).contiguous()
 
         if is_rvq:
-            # indices: (batch_size, num_layers, embedding_dim, *)
+            # quantized: (batch_size, num_stages, embedding_dim, *)
+            # indices: (batch_size, num_stages, *)
+            stacked_quantized = quantized.transpose(1, 0)
             stacked_indices = indices.transpose(1, 0)
         else:
-            # indices: (batch_size, embedding_dim, *)
+            # stacked_quantized: (batch_size, embedding_dim, *)
+            # indices: (batch_size, *)
+            stacked_quantized = quantized.unsqueeze(dim=0)
             stacked_indices = indices.unsqueeze(dim=0)
 
         if len(param_groups) != len(tracking_param_groups):
             # param_groups should be identical to tracking_param_groups
             raise ValueError("Given parameter groups do not match tracking ones.")
 
-        for (
-            indices,
-            param_group,
-            tracking_param_group,
-            one_hot_sum_group,
-            z_e_sum_group,
-            num_accumulated,
-        ) in zip(
-            stacked_indices,
-            param_groups,
-            tracking_param_groups,
-            one_hot_sum_groups,
-            z_e_sum_groups,
-            num_accumulated_groups,
-        ):
-            if len(param_group["params"]) != len(tracking_param_group["params"]):
-                # param_group["params"] should be identical to tracking_param_group["params"]
-                raise ValueError("Given parameters do not match tracking ones.")
+        if is_distributed:
+            # gather dequantized, stacked_quantized, and stacked_indices
+            # dequantized:
+            #     (embedding_dim, num_samples) -> (embedding_dim, num_gpus * num_samples)
+            # stacked_quantized:
+            #     (num_stages, batch_size, embedding_dim, *)
+            #      -> (num_stages, num_gpus * batch_size, embedding_dim, *)
+            # stacked_indices:
+            #     (num_stages, batch_size, *) -> (num_stages, num_gpus * batch_size, *)
+            gathered_dequantized = [
+                torch.zeros_like(dequantized) for _ in range(dist.get_world_size())
+            ]
+            gathered_stacked_quantized = [
+                torch.zeros_like(stacked_quantized) for _ in range(dist.get_world_size())
+            ]
+            gathered_stacked_indices = [
+                torch.zeros_like(stacked_indices) for _ in range(dist.get_world_size())
+            ]
 
-            for idx, param in enumerate(param_group["params"]):
-                codebook_size, embedding_dim = param.data.size()
+            dist.all_gather(gathered_dequantized, dequantized)
+            dist.all_gather(gathered_stacked_quantized, stacked_quantized)
+            dist.all_gather(gathered_stacked_indices, stacked_indices)
 
-                dequantized_input = dequantized_input.transpose(1, 0).contiguous()
-                dequantized_input = dequantized_input.view(embedding_dim, -1)
-                one_hot = F.one_hot(indices, num_classes=codebook_size)
-                one_hot = one_hot.view(-1, codebook_size)
+            dequantized = torch.cat(gathered_dequantized, dim=1)
+            stacked_quantized = torch.cat(gathered_stacked_quantized, dim=1)
+            stacked_indices = torch.cat(gathered_stacked_indices, dim=1)
 
-                if is_distributed:
-                    # gather dequantized_input and one_hot
-                    # dequantized_input:
-                    #     (embedding_dim, num_samples) -> (embedding_dim, num_gpus * num_samples)
-                    # one_hot:
-                    #     (num_samples, codebook_size) -> (num_gpus * num_samples, codebook_size)
-                    gathered_dequantized_input = [
-                        torch.zeros_like(dequantized_input) for _ in range(dist.get_world_size())
-                    ]
-                    gathered_one_hot = [
-                        torch.zeros_like(one_hot) for _ in range(dist.get_world_size())
-                    ]
+        if len(param_groups) > 1:
+            raise RuntimeError("Unexpected error happened during store_current_stats.")
 
-                    dist.all_gather(gathered_dequantized_input, dequantized_input)
-                    dist.all_gather(gathered_one_hot, one_hot)
+        with autocast(enabled=False):
+            residual_groups = []
 
-                    dequantized_input = torch.cat(gathered_dequantized_input, dim=1)
-                    one_hot = torch.cat(gathered_one_hot, dim=0)
+            for (
+                param_group,
+                tracking_param_group,
+                one_hot_sum_group,
+                z_e_sum_group,
+                num_accumulated,
+            ) in zip(
+                param_groups,
+                tracking_param_groups,
+                one_hot_sum_groups,
+                z_e_sum_groups,
+                num_accumulated_groups,
+            ):
+                if len(param_group["params"]) != len(tracking_param_group["params"]):
+                    # param_group["params"] should be identical to tracking_param_group["params"]
+                    raise ValueError("Given parameters do not match tracking ones.")
 
-                one_hot_sum = one_hot.sum(dim=0)
-                one_hot = one_hot.to(dequantized_input.dtype)
+                if len(param_group["params"]) > 1 and not is_rvq:
+                    raise ValueError('Length of param_group["params"] is invalid.')
 
-                # NOTE: In some cases with mixed precision training,
-                #       the following matmul operation may cause inf.
-                z_e_sum = torch.matmul(dequantized_input, one_hot)
-                z_e_sum = z_e_sum.permute(1, 0).contiguous()
+                # NOTE: Due to dropout of codebooks, len(stacked_quantized)
+                #       might be smaller than len(param_group["params"]).
+                num_stages = len(stacked_quantized)
 
-                one_hot_sum_group[idx].data.copy_(one_hot_sum.data)
-                z_e_sum_group[idx].data.copy_(z_e_sum.data)
+                assert len(stacked_indices) == num_stages
+                assert len(param_group["params"]) >= num_stages
 
-                if codebook_reset:
-                    num_accumulated[idx].data.add_(one_hot_sum.data)
+                residual_group = []
+                reconstructed = 0
+
+                for idx in range(num_stages):
+                    param = param_group["params"][idx]
+                    codebook_size, embedding_dim = param.data.size()
+                    quantized = stacked_quantized[idx]
+                    indices = stacked_indices[idx]
+
+                    if idx == 0:
+                        dequantized = dequantized.view(embedding_dim, -1)
+
+                    residual = dequantized - reconstructed
+                    quantized = quantized.transpose(1, 0).contiguous()
+                    quantized = quantized.view(embedding_dim, -1)
+
+                    one_hot = F.one_hot(indices, num_classes=codebook_size)
+                    one_hot = one_hot.view(-1, codebook_size)
+                    one_hot_sum = one_hot.sum(dim=0)
+                    one_hot = one_hot.to(residual.dtype)
+
+                    # NOTE: In some cases with mixed precision training,
+                    #       the following matmul operation may cause inf.
+                    z_e_sum = torch.matmul(residual, one_hot)
+                    z_e_sum = z_e_sum.permute(1, 0).contiguous()
+
+                    one_hot_sum_group[idx].data.copy_(one_hot_sum.data)
+                    z_e_sum_group[idx].data.copy_(z_e_sum.data)
+
+                    if codebook_reset:
+                        num_accumulated[idx].data.add_(one_hot_sum.data)
+
+                    reconstructed = reconstructed + quantized
+                    residual_group.append(residual.transpose(1, 0).contiguous())
+
+                # residual_group: (num_stages, num_grids, embedding_dim)
+                residual_group = torch.stack(residual_group, dim=0)
+                residual_groups.append(residual_group)
+
+            self.residual_groups = residual_groups
 
     def step(self) -> None:
         param_groups = self.param_groups
+
+        residual_groups = self.residual_groups
 
         num_samples_tracked_groups = self.num_samples_tracked_groups
         momentum_groups = self.momentum_groups
@@ -865,71 +1044,168 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
         z_e_sum_groups = self.z_e_sum_groups
         num_accumulated_groups = self.num_accumulated_groups
 
-        smooth = self.smooth
-        codebook_reset = self.codebook_reset
-
         self.iteration += 1
 
-        if codebook_reset:
+        if self.codebook_reset:
             self.accumulated_steps += 1
 
-        for (
-            param_group,
-            num_samples_tracked_group,
-            momentum_group,
-            one_hot_sum_group,
-            z_e_sum_group,
-            num_accumulated_group,
-        ) in zip(
-            param_groups,
-            num_samples_tracked_groups,
-            momentum_groups,
-            one_hot_sum_groups,
-            z_e_sum_groups,
-            num_accumulated_groups,
-        ):
-            for param, num_samples_tracked, momentum, one_hot_sum, z_e_sum, num_accumulated in zip(
-                param_group["params"],
+        with autocast(enabled=False):
+            for (
+                param_group,
+                residual_group,
                 num_samples_tracked_group,
                 momentum_group,
                 one_hot_sum_group,
                 z_e_sum_group,
                 num_accumulated_group,
+            ) in zip(
+                param_groups,
+                residual_groups,
+                num_samples_tracked_groups,
+                momentum_groups,
+                one_hot_sum_groups,
+                z_e_sum_groups,
+                num_accumulated_groups,
             ):
-                param: nn.Parameter
-                one_hot_sum_data = one_hot_sum.data.to(num_samples_tracked.data.dtype)
-                num_samples_tracked.data = torch.lerp(
-                    one_hot_sum_data,
-                    num_samples_tracked.data,
-                    weight=smooth,
-                )
-                momentum.data = torch.lerp(
-                    z_e_sum.data,
-                    momentum.data,
-                    weight=smooth,
-                )
-                param.data = momentum / num_samples_tracked.unsqueeze(dim=-1)
+                for (
+                    param,
+                    residual,
+                    num_samples_tracked,
+                    momentum,
+                    one_hot_sum,
+                    z_e_sum,
+                    num_accumulated,
+                ) in zip(
+                    param_group["params"],
+                    residual_group,
+                    num_samples_tracked_group,
+                    momentum_group,
+                    one_hot_sum_group,
+                    z_e_sum_group,
+                    num_accumulated_group,
+                ):
+                    self._step(
+                        param,
+                        residual=residual,
+                        num_samples_tracked=num_samples_tracked,
+                        momentum=momentum,
+                        one_hot_sum=one_hot_sum,
+                        z_e_sum=z_e_sum,
+                        num_accumulated=num_accumulated,
+                    )
 
-                if codebook_reset and self.accumulated_steps % self.reset_step == 0:
-                    std = math.sqrt(self.reset_var)
+    def _step(
+        self,
+        param: nn.Parameter,
+        residual: torch.Tensor,
+        num_samples_tracked: torch.Tensor,
+        momentum: torch.Tensor,
+        one_hot_sum: torch.LongTensor,
+        z_e_sum: torch.Tensor,
+        num_accumulated: torch.LongTensor,
+    ) -> None:
+        smooth = self.smooth
+        codebook_reset = self.codebook_reset
 
-                    least_usage, min_idx = torch.min(num_accumulated, dim=0)
-                    most_usage, max_idx = torch.max(num_accumulated, dim=0)
+        one_hot_sum_data = one_hot_sum.data.to(num_samples_tracked.data.dtype)
+        num_samples_tracked.data = torch.lerp(
+            one_hot_sum_data,
+            num_samples_tracked.data,
+            weight=smooth,
+        )
+        momentum.data = torch.lerp(
+            z_e_sum.data,
+            momentum.data,
+            weight=smooth,
+        )
+        param.data = momentum / num_samples_tracked.unsqueeze(dim=-1)
 
-                    if least_usage < self.reset_rate * most_usage:
-                        # to ensure synchronization in DDP, use random number generator
-                        most_used = param.data[max_idx]
-                        g = torch.Generator(device=most_used.device)
-                        g.manual_seed(self.seed + self.iteration)
-                        replaced = most_used + std * torch.randn(
-                            most_used.size(), generator=g, dtype=most_used.dtype
+        if codebook_reset and self.accumulated_steps % self.reset_step == 0:
+            requires_reset = False
+
+            if self.reset_strategy == "ath":
+                least_usage, least_idx = torch.min(num_samples_tracked, dim=0)
+                most_usage, most_idx = torch.max(num_samples_tracked, dim=0)
+
+                if least_usage < self.reset_ath:
+                    requires_reset = True
+            elif self.reset_strategy == "rth":
+                least_usage, least_idx = torch.min(num_accumulated, dim=0)
+                most_usage, most_idx = torch.max(num_accumulated, dim=0)
+
+                if least_usage < self.reset_rth * most_usage:
+                    requires_reset = True
+            else:
+                raise ValueError(f"Invalid reset_strategy {self.reset_strategy} is detected.")
+
+            most_used = param.data[most_idx]
+            embedding_dim = most_used.size(0)
+            num_grids = residual.size(0)
+
+            if requires_reset:
+                # to ensure synchronization in DDP, use random number generator
+                device = most_used.device
+                g = torch.Generator(device=device)
+                g.manual_seed(self.seed + self.iteration)
+                std = math.sqrt(self.reset_var)
+
+                if self.reset_scope == "least" or self.reset_scope == 1:
+                    least_indices = torch.tensor([least_idx], dtype=torch.long, device=device)
+                    num_replaced = 1
+                elif self.reset_scope == "all":
+                    if self.reset_strategy == "ath":
+                        least_usages, least_indices = torch.sort(num_samples_tracked, dim=0)
+                        num_replaced = torch.sum(least_usages < self.reset_ath)
+                    elif self.reset_strategy == "rth":
+                        least_usages, least_indices = torch.sort(num_accumulated, dim=0)
+                        num_replaced = torch.sum(least_usages < self.reset_rth * most_usage)
+                    else:
+                        raise ValueError(
+                            f"Invalid reset_strategy {self.reset_strategy} is detected."
                         )
-                        param.data[min_idx].copy_(replaced)
 
-                        # reset statistics
-                        momentum.data[min_idx].copy_(replaced)
-                        num_samples_tracked.data[min_idx].fill_(1)
-                        num_accumulated.data.zero_()
+                    num_replaced = num_replaced.item()
+                    least_indices = least_indices[:num_replaced]
+                else:
+                    raise NotImplementedError(f"{self.reset_scope} is not supported.")
+
+                noise = torch.randn(
+                    (num_replaced, embedding_dim),
+                    generator=g,
+                    device=device,
+                    dtype=most_used.dtype,
+                )
+
+                if self.reset_source == "mru":
+                    replaced = most_used + std * noise
+                elif self.reset_source == "batch":
+                    sample_indices = torch.randperm(num_grids, generator=g, device=device)
+
+                    if num_replaced > num_grids:
+                        # If number of samples to be replaced is larger than that of codebook size,
+                        # repeat sampled indices required times.
+                        # e.g. last batch at each epoch
+                        num_repeats = (num_replaced - 1) // num_grids + 1
+                        sample_indices = sample_indices.repeat(num_repeats)
+
+                    sample_indices = sample_indices[:num_replaced]
+                    replaced = residual[sample_indices] + std * noise
+                else:
+                    raise NotImplementedError(f"{self.reset_source} is not supported.")
+
+                if self.reset_strategy == "ath":
+                    tracked_default = self.reset_ath
+                elif self.reset_strategy == "rth":
+                    tracked_default = 1
+                else:
+                    raise ValueError(f"Invalid reset_strategy {self.reset_strategy} is detected.")
+
+                param.data[least_indices] = replaced.clone()
+
+                # reset statistics
+                momentum.data[least_indices] = tracked_default * replaced.clone()
+                num_samples_tracked.data[least_indices] = tracked_default
+                num_accumulated.data.zero_()
 
 
 class MultiOptimizers:

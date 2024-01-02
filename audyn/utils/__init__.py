@@ -66,6 +66,16 @@ def setup_system(config: DictConfig) -> None:
         full_config = None
         system_config = config
 
+    if full_config is not None:
+        # for backward compatibility
+        if not hasattr(full_config.train, "ddp_kwargs"):
+            OmegaConf.update(
+                full_config,
+                "train.ddp_kwargs",
+                None,
+                force_add=True,
+            )
+
     accelerator = select_accelerator(system_config)
 
     if accelerator == "gpu":

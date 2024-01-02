@@ -19,6 +19,9 @@ class VQVAE(BaseVAE):
             shape (batch_size, embedding_dim, *).
         codebook_size (int): Size of codebook.
         embedding_dim (int): Number of embedding dimension.
+        init_by_kmeans (int): Number of iterations in k-means clustering initialization in VQ.
+            If non-positive value is given, k-means clustering initialization is not used.
+        seed (int): Random seed for k-means clustering initialization in VQ.
 
     """
 
@@ -28,11 +31,15 @@ class VQVAE(BaseVAE):
         decoder: nn.Module,
         codebook_size: int,
         embedding_dim: int,
+        init_by_kmeans: int = 0,
+        seed: int = 0,
     ) -> None:
         super().__init__()
 
         self.encoder = encoder
-        self.vector_quantizer = VectorQuantizer(codebook_size, embedding_dim)
+        self.vector_quantizer = VectorQuantizer(
+            codebook_size, embedding_dim, init_by_kmeans=init_by_kmeans, seed=seed
+        )
         self.decoder = decoder
 
     def forward(

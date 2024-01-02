@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-__all__ = ["CodebookLoss", "CommitmentLoss"]
+__all__ = ["CodebookLoss", "CommitmentLoss", "CodebookEntropyLoss"]
 
 
 class CodebookLoss(nn.Module):
@@ -51,6 +51,35 @@ class CommitmentLoss(nn.Module):
 
         """
         loss = vqvae_mse_loss(encoded, quantized, reduction=self.reduction)
+
+        return loss
+
+
+class CodebookEntropyLoss(nn.Module):
+    def __init__(self, codebook_size: int, eps: float = 1e-8) -> None:
+        super().__init__()
+
+        self.codebook_size = codebook_size
+        self.eps = eps
+
+    def forward(self, input: torch.LongTensor) -> torch.Tensor:
+        """Forward pass of CodebookEntropyLoss.
+
+        .. note::
+
+            This loss is not differentiable, so use this for monitoring.
+
+        Args:
+            input (torch.Tensor): Selected codebook indices of shape (*,)
+
+        Returns:
+            torch.Tensor: Entropy of shape ().
+
+        """
+        counts = torch.bincount(input.view(-1), minlength=self.codebook_size).float()
+        counts = counts + self.eps
+        p = counts / counts.sum()
+        loss = -torch.sum(p * torch.log(p))
 
         return loss
 

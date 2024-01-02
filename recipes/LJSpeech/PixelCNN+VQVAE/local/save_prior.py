@@ -27,6 +27,7 @@ def main(config: DictConfig) -> None:
         model,
         accelerator=config.system.accelerator,
         is_distributed=config.system.distributed.enable,
+        ddp_kwargs=config.train.ddp_kwargs,
     )
 
     saver = PriorSaver(loader, model, config=config)

@@ -1,0 +1,28 @@
+generator:
+  - name: adam
+    optimizer:
+      _target_: torch.optim.Adam
+      lr: 1.0e-4
+      betas:
+        - 0.5
+        - 0.9
+    modules:
+      - encoder
+      - decoder
+  - name: ema
+    optimizer:
+      _target_: audyn.optim.optimizer.ExponentialMovingAverageCodebookOptimizer
+      smooth: 0.99
+      reset_step: 1
+      reset_var: 0
+      reset_ath: 2
+      reset_source: batch
+      reset_scope: all
+    modules:
+      - vector_quantizer
+discriminator:
+  _target_: torch.optim.Adam
+  lr: 1.0e-4
+  betas:
+    - 0.5
+    - 0.9

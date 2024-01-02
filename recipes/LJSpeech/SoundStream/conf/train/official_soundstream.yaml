@@ -1,0 +1,46 @@
+defaults:
+  - record: soundstream
+  - dataset: torch
+  - dataloader: defaults
+  - key_mapping: official_soundstream
+  - _self_
+
+dataloader:
+  train:
+    batch_size: 32
+    drop_last: true
+  validation:
+    batch_size: 32
+    drop_last: true
+
+clip_gradient:
+  generator:
+    _target_: audyn.utils.GradClipper
+    mode: norm
+    max_norm: 10
+  discriminator: ${.generator}
+
+resume:
+  continue_from:
+
+output:
+  exp_dir: "./exp"
+  tensorboard_dir: "./tensorboard"
+  save_checkpoint:
+    iteration:
+      every: 50000
+      path: ${...exp_dir}/model/iteration{iteration}.pth
+    epoch:
+      every: 200
+      path: ${...exp_dir}/model/epoch{epoch}.pth
+    last:
+      path: ${...exp_dir}/model/last.pth
+    best_epoch:
+      path: ${...exp_dir}/model/best_epoch.pth
+
+steps:
+  epochs:
+  iterations: 200000
+  lr_scheduler:
+    generator:
+    discriminator:

@@ -25,7 +25,7 @@ def quantize_vector(
     """
     n_dims = input.dim()
 
-    assert n_dims > 2, "n_dims is expected to be (batch_size, embedding_dim, *)."
+    assert n_dims > 1, "n_dims is expected to be (batch_size, embedding_dim, *)."
 
     batch_size, embedding_dim, *shape = input.size()
 
@@ -33,8 +33,10 @@ def quantize_vector(
         z_e = input.view(batch_size, embedding_dim, -1)
         z_e = z_e.permute(1, 0, 2).contiguous()
         z_e = z_e.view(embedding_dim, -1)
-        e = weight.view(-1, embedding_dim, 1)
-        distance = torch.sum((z_e - e) ** 2, dim=1)
+        e = weight.view(-1, embedding_dim)
+        dot = torch.matmul(e, z_e)
+        norm = torch.sum(e**2, dim=1)
+        distance = norm.unsqueeze(dim=-1) - 2 * dot
         indices = torch.argmin(distance, dim=0)
 
     z_q = F.embedding(indices, weight)
@@ -78,15 +80,14 @@ def quantize_residual_vector(
     else:
         raise ValueError(f"Invalid type {type(weight)} is given as weight.")
 
-    residual = input
     reconstructed = 0
     output = []
     indices = []
 
     for _weight in weight:
+        residual = input - reconstructed
         _output, _indices = quantize_vector(residual, _weight)
         reconstructed = reconstructed + _output
-        residual = input - reconstructed
         output.append(_output)
         indices.append(_indices)
 

@@ -19,7 +19,11 @@ class RVQVAE(BaseVAE):
             shape (batch_size, embedding_dim, *).
         codebook_size (int): Size of codebook.
         embedding_dim (int): Number of embedding dimension.
-        num_layers (int): Number of layers of RVQ.
+        num_stages (int): Number of stages of RVQ.
+        dropout (bool): Dropout of RVQ. Default: ``True``.
+        init_by_kmeans (int): Number of iterations in k-means clustering initialization.
+            If non-positive value is given, k-means clustering initialization is not used.
+        seed (int): Random seed for k-means clustering initialization.
 
     """
 
@@ -29,13 +33,21 @@ class RVQVAE(BaseVAE):
         decoder: nn.Module,
         codebook_size: int,
         embedding_dim: int,
-        num_layers: int,
+        num_stages: int,
+        dropout: bool = True,
+        init_by_kmeans: int = 0,
+        seed: int = 0,
     ) -> None:
         super().__init__()
 
         self.encoder = encoder
         self.vector_quantizer = ResidualVectorQuantizer(
-            codebook_size, embedding_dim, num_layers=num_layers
+            codebook_size,
+            embedding_dim,
+            num_stages=num_stages,
+            dropout=dropout,
+            init_by_kmeans=init_by_kmeans,
+            seed=seed,
         )
         self.decoder = decoder
 
@@ -55,9 +67,9 @@ class RVQVAE(BaseVAE):
                     (batch_size, embedding_dim, *latent_shape). In most cases, latent_shape is \
                     smaller than input_shape.
                 - torch.Tensor: Quantized latent feature of shape \
-                    (batch_size, num_layers, embedding_dim, *latent_shape).
+                    (batch_size, num_stages, embedding_dim, *latent_shape).
                 - torch.Tensor: Indices of embeddings in codebook of shape \
-                    (batch_size, num_layers, *latent_shape).
+                    (batch_size, num_stages, *latent_shape).
 
         .. note::
 
@@ -68,27 +80,27 @@ class RVQVAE(BaseVAE):
         hierarchical_quantized, indices = self.quantize(encoded)
         quantized = hierarchical_quantized.sum(dim=1)
         quantized_straight_through = encoded + torch.detach(quantized - encoded)
-        output = self.decode(quantized_straight_through, layer_wise=False)
+        output = self.decode(quantized_straight_through, stage_wise=False)
 
         return output, encoded, hierarchical_quantized, indices
 
     @torch.no_grad()
-    def inference(self, quantized: torch.Tensor, layer_wise: bool = True) -> torch.Tensor:
+    def inference(self, quantized: torch.Tensor, stage_wise: bool = True) -> torch.Tensor:
         """Inference of RVQVAE.
 
         Args:
             quantized (torch.Tensor): Following two types are supported.
-                1. Quantized latent feature of shape (batch_size, num_layers, *latent_shape)
+                1. Quantized latent feature of shape (batch_size, num_stages, *latent_shape)
                     or (batch_size, *latent_shape). dtype is torch.FloatTensor.
                 2. Indices of quantized latent feature of shape
-                    (batch_size, num_layers, *latent_shape). dtype is torch.LongTensor.
-            layer_wise (bool): If ``True``, ``quantized`` has ``num_layers`` dimension at axis = 1.
+                    (batch_size, num_stages, *latent_shape). dtype is torch.LongTensor.
+            stage_wise (bool): If ``True``, ``quantized`` has ``num_stages`` dimension at axis = 1.
 
         Returns:
             torch.Tensor: Reconstructed feature.
 
         """
-        output = self.decode(quantized, layer_wise=layer_wise)
+        output = self.decode(quantized, stage_wise=stage_wise)
 
         return output
 
@@ -100,37 +112,37 @@ class RVQVAE(BaseVAE):
 
         Returns:
             torch.Tensor: Encoded feature of shape
-                (batch_size, num_layers, embedding_dim, *latent_shape).
+                (batch_size, num_stages, embedding_dim, *latent_shape).
 
         """
         output = self.encoder(input)
 
         return output
 
-    def decode(self, quantized: torch.Tensor, layer_wise: bool = True) -> torch.Tensor:
+    def decode(self, quantized: torch.Tensor, stage_wise: bool = True) -> torch.Tensor:
         """Decode quantized latent feature.
 
         Args:
             quantized (torch.Tensor): Following two types are supported.
-                1. Quantized latent feature of shape (batch_size, num_layers, *latent_shape)
+                1. Quantized latent feature of shape (batch_size, num_stages, *latent_shape)
                     or (batch_size, *latent_shape). dtype is torch.FloatTensor.
                 2. Indices of quantized latent feature of shape
-                    (batch_size, num_layers, *latent_shape). dtype is torch.LongTensor.
-            layer_wise (bool): If ``True``, ``quantized`` has ``num_layers`` dimension at axis = 1.
+                    (batch_size, num_stages, *latent_shape). dtype is torch.LongTensor.
+            stage_wise (bool): If ``True``, ``quantized`` has ``num_stages`` dimension at axis = 1.
 
         Returns:
             torch.Tensor: Reconstructed feature.
 
         """
         if torch.is_floating_point(quantized):
-            if layer_wise:
-                # (batch_size, num_layers, *latent_shape) -> (batch_size, *latent_shape)
+            if stage_wise:
+                # (batch_size, num_stages, *latent_shape) -> (batch_size, *latent_shape)
                 quantized = quantized.sum(dim=1)
         elif quantized.dtype in [torch.long]:
             # to support torch.cuda.LongTensor, check dtype
-            if not layer_wise:
+            if not stage_wise:
                 raise ValueError(
-                    "Only layer_wise=True is supported when quantization indices are given."
+                    "Only stage_wise=True is supported when quantization indices are given."
                 )
 
             quantized = torch.unbind(quantized, dim=1)
@@ -164,9 +176,9 @@ class RVQVAE(BaseVAE):
             tuple: Tuple of tensors containing
 
                 - torch.Tensor: Quantized feature of shape \
-                    (batch_size, num_layers, embedding_dim, *input_shape).
+                    (batch_size, num_stages, embedding_dim, *input_shape).
                 - torch.LongTensor: Quantization indices of shape \
-                    (batch_size, num_layers, *input_shape).
+                    (batch_size, num_stages, *input_shape).
 
         .. note::
 
@@ -188,9 +200,9 @@ class RVQVAE(BaseVAE):
             tuple: Tuple of tensors containing
 
                 - torch.Tensor: Quantized feature of shape \
-                    (batch_size, num_layers, embedding_dim, *input_shape).
+                    (batch_size, num_stages, embedding_dim, *input_shape).
                 - torch.LongTensor: Quantization indices of shape \
-                    (batch_size, num_layers, *input_shape).
+                    (batch_size, num_stages, *input_shape).
 
         .. note::
 
@@ -214,7 +226,7 @@ class RVQVAE(BaseVAE):
             tuple: Tuple of tensors containing:
 
                 - torch.Tensor: Selected embeddings of shape
-                    (batch_size, num_layers, embedding_dim, *).
+                    (batch_size, num_stages, embedding_dim, *).
                 - torch.LongTensor: Indices of indices in codebook of shape (batch_size, *).
 
         """

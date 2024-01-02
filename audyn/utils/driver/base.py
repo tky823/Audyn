@@ -758,29 +758,9 @@ class BaseTrainer(BaseDriver):
         if enable:
             if isinstance(self.optimizer, MultiOptimizers):
                 for optimizer in self.optimizer.optimizers.values():
-                    if (
-                        isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
-                        and self.scaler.is_enabled()
-                    ):
-                        # TODO: address numerical instability
-                        raise NotImplementedError(
-                            "ExponentialMovingAverageCodebookOptimizer and AMP "
-                            "cannot be used simultaneously."
-                        )
-                    else:
-                        self.scaler.unscale_(optimizer)
+                    self.scaler.unscale_(optimizer)
             else:
-                if (
-                    isinstance(self.optimizer, ExponentialMovingAverageCodebookOptimizer)
-                    and self.scaler.is_enabled()
-                ):
-                    # TODO: address numerical instability
-                    raise NotImplementedError(
-                        "ExponentialMovingAverageCodebookOptimizer and AMP "
-                        "cannot be used simultaneously."
-                    )
-                else:
-                    self.scaler.unscale_(self.optimizer)
+                self.scaler.unscale_(self.optimizer)
 
     def clip_gradient_if_necessary(self) -> None:
         """Clip gradient if self.grad_clipper is given."""
@@ -830,15 +810,8 @@ class BaseTrainer(BaseDriver):
             for _optimizer in optimizer.optimizers.values():
                 self.optimizer_step(_optimizer)
         else:
-            if (
-                isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer)
-                and self.scaler.is_enabled()
-            ):
-                # TODO: address numerical instability
-                raise NotImplementedError(
-                    "ExponentialMovingAverageCodebookOptimizer and AMP "
-                    "cannot be used simultaneously."
-                )
+            if isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer):
+                optimizer.step()
             else:
                 self.scaler.step(optimizer)
 

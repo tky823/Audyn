@@ -63,6 +63,7 @@ def main(config: DictConfig) -> None:
         model,
         accelerator=config.system.accelerator,
         is_distributed=config.system.distributed.enable,
+        ddp_kwargs=config.train.ddp_kwargs,
     )
 
     optimizer = instantiate_optimizer(config.optimizer, model)
@@ -73,6 +74,7 @@ def main(config: DictConfig) -> None:
         criterion,
         accelerator=config.system.accelerator,
         is_distributed=config.system.distributed.enable,
+        ddp_kwargs=config.train.ddp_kwargs,
     )
 
     trainer = BaseTrainer(
@@ -102,7 +104,7 @@ def collate_fn(
             Type of each data is expected ``Dict[str, torch.Tensor]``.
         data_config (DictConfig): Config of data.
         codebook_size (int): Size of codebook used in VQVAE.
-        downscale (int): Scale of downsampling in VQVAE.
+        down_scale (int): Scale of downsampling in VQVAE.
         keys (iterable, optional): Keys to generate batch.
             If ``None`` is given, all keys detected in ``batch`` are used.
             Default: ``None``.
