@@ -1,3 +1,5 @@
+import os
+import tempfile
 from typing import List, Optional
 
 import pytest
@@ -121,6 +123,15 @@ def test_glowtts(scaling: bool, channel_dependent_scaling: bool) -> None:
 
     assert output.size()[:2] == (batch_size, n_mels)
     assert est_duration.size() == (batch_size, max_src_length)
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        path = os.path.join(temp_dir, "model.pth")
+
+        state_dict = model.state_dict()
+        torch.save(state_dict, path)
+
+        state_dict = torch.load(path, map_location="cpu")
+        model.load_state_dict(state_dict)
 
 
 @pytest.mark.parametrize("use_relative_position", [True, False])
