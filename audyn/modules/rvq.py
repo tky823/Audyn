@@ -1,10 +1,11 @@
-from typing import Tuple
+from typing import Any, Dict, Mapping, Tuple
 
 import torch
 import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.cuda.amp import autocast
+from torch.nn.modules.module import _IncompatibleKeys
 
 from ..functional.vector_quantization import quantize_residual_vector, quantize_vector
 
@@ -56,13 +57,9 @@ class ResidualVectorQuantizer(nn.Module):
         self.init_by_kmeans = init_by_kmeans
 
         if self.init_by_kmeans > 0:
-            self.register_parameter(
-                "is_initialized", nn.Parameter(torch.tensor(False), requires_grad=False)
-            )
+            self.is_initialized = False
         else:
-            self.register_parameter(
-                "is_initialized", nn.Parameter(torch.tensor(True), requires_grad=False)
-            )
+            self.is_initialized = True
 
     def forward(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.LongTensor]:
         """Forward pass of vector quantizer.
@@ -79,12 +76,9 @@ class ResidualVectorQuantizer(nn.Module):
                     To disable this feature, set ``dropout=False`` or call ``.eval()``.
 
         """
-        self.is_initialized: torch.Tensor
-        is_initialized: bool = self.is_initialized.item()
-
-        if not is_initialized:
+        if not self.is_initialized:
             self._initialize_parameters(input)
-            self.is_initialized.fill_(True)
+            self.is_initialized = True
 
         if self.dropout and self.training:
             num_stages = torch.randint(0, len(self.codebooks), ()) + 1
@@ -115,11 +109,9 @@ class ResidualVectorQuantizer(nn.Module):
 
     @torch.no_grad()
     def _initialize_parameters(self, encoded: torch.Tensor) -> None:
-        self.is_initialized: torch.Tensor
-        is_initialized: bool = self.is_initialized.item()
         is_distributed = dist.is_available() and dist.is_initialized()
 
-        assert self.init_by_kmeans > 0 and not is_initialized
+        assert self.init_by_kmeans > 0 and not self.is_initialized
 
         if is_distributed:
             # gather encoded
@@ -208,3 +200,66 @@ class ResidualVectorQuantizer(nn.Module):
             centroids = prod / num_assignments.to(dtype)
 
         return centroids
+
+    def state_dict(
+        self,
+        destination: Dict[str, Any] = None,
+        prefix: str = "",
+        keep_vars: bool = False,
+    ) -> Dict[str, Any]:
+        """Return state_dict of module.
+
+        .. note::
+
+            Returned ``state_dict`` includes ``is_initialized`` flag.
+
+        """
+        state_dict = super().state_dict(
+            destination=destination,
+            prefix=prefix,
+            keep_vars=keep_vars,
+        )
+        state_dict.update({prefix + "is_initialized": self.is_initialized})
+
+        return state_dict
+
+    def load_state_dict(
+        self, state_dict: Mapping[str, Any], strict: bool = True
+    ) -> _IncompatibleKeys:
+        is_initialized_key = "is_initialized"
+
+        if is_initialized_key in state_dict.keys():
+            is_initialized = state_dict.pop(is_initialized_key)
+
+            if isinstance(is_initialized, torch.Tensor):
+                # for backward compatibility
+                is_initialized = is_initialized.item()
+
+            self.is_initialized = is_initialized
+
+        return super().load_state_dict(state_dict, strict=strict)
+
+    def _load_from_state_dict(
+        self,
+        state_dict,
+        prefix,
+        local_metadata,
+        strict,
+        missing_keys,
+        unexpected_keys,
+        error_msgs,
+    ) -> Any:
+        is_initialized_key = prefix + "is_initialized"
+
+        if is_initialized_key in state_dict.keys():
+            is_initialized = state_dict.pop(is_initialized_key)
+
+            if isinstance(is_initialized, torch.Tensor):
+                # for backward compatibility
+                is_initialized = is_initialized.item()
+
+            self.is_initialized = is_initialized
+
+        return super()._load_from_state_dict(
+            state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs
+        )
