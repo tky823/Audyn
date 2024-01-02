@@ -205,7 +205,14 @@ def test_exponential_moving_average_codebook_optimizer(
             state_dict_sequential["model"].items(), state_dict_resume["model"].items()
         ):
             assert k_sequential == k_resume
-            assert torch.allclose(v_sequential, v_resume)
+
+            if isinstance(v_sequential, torch.Tensor):
+                assert isinstance(v_resume, torch.Tensor)
+                assert torch.allclose(v_sequential, v_resume)
+            else:
+                # is_initialized
+                assert type(v_sequential) is bool and type(v_resume) is bool
+                assert v_sequential == v_resume
 
         for (k_sequential, v_sequential), (k_resume, v_resume) in zip(
             state_dict_sequential["optimizer"].items(), state_dict_resume["optimizer"].items()
@@ -469,12 +476,9 @@ class CustomResidualVectorQuantizer(ResidualVectorQuantizer):
                     To disable this feature, set ``dropout=False`` or call ``.eval()``.
 
         """
-        self.is_initialized: torch.Tensor
-        is_initialized: bool = self.is_initialized.item()
-
-        if not is_initialized:
+        if not self.is_initialized:
             self._initialize_parameters(input)
-            self.is_initialized.fill_(True)
+            self.is_initialized = True
 
         if self.dropout and self.training:
             num_stages = torch.randint(0, len(self.codebooks), ()) + 1
