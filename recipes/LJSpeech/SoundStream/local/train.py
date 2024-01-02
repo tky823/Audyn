@@ -148,12 +148,16 @@ def collate_fn(
         Dict of batch.
 
     """
+    slice_length = data_config.audio.slice_length
+    codebook_size = data_config.codebook.size
+    peak_normalization = data_config.audio.peak_normalization
+
     dict_batch = default_collate_fn(batch)
 
     dict_batch["waveform"] = dict_batch["waveform"].unsqueeze(dim=1)
     dict_batch = slice_feautures(
         dict_batch,
-        slice_length=data_config.audio.slice_length,
+        slice_length=slice_length,
         key_mapping={
             "waveform": "waveform_slice",
         },
@@ -166,7 +170,12 @@ def collate_fn(
         random_slice=random_slice,
     )
 
-    codebook_size = data_config.codebook.size
+    if peak_normalization:
+        amplitude = torch.abs(dict_batch["waveform_slice"])
+        vmax, _ = torch.max(amplitude, dim=-1)
+        vmax = torch.clamp(vmax, min=1e-8)
+        dict_batch["waveform_slice"] = dict_batch["waveform_slice"] / vmax
+
     batch_size, _, length = dict_batch["waveform"].size()
     dict_batch["codebook_indices"] = torch.randint(
         0,
