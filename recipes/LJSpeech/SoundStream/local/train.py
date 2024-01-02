@@ -174,7 +174,7 @@ def collate_fn(
         amplitude = torch.abs(dict_batch["waveform_slice"])
         vmax, _ = torch.max(amplitude, dim=-1)
         vmax = torch.clamp(vmax, min=1e-8)
-        dict_batch["waveform_slice"] = dict_batch["waveform_slice"] / vmax
+        dict_batch["waveform_slice"] = dict_batch["waveform_slice"] / vmax.unsqueeze(dim=-1)
 
     batch_size, _, length = dict_batch["waveform"].size()
     dict_batch["codebook_indices"] = torch.randint(
