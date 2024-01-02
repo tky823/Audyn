@@ -38,6 +38,42 @@ class BaseVectorQuantizer(nn.Module):
         else:
             self.is_initialized = True
 
+    @torch.no_grad()
+    def _update_kmeans_centroids(
+        self, encoded: torch.Tensor, centroids: torch.Tensor
+    ) -> torch.Tensor:
+        """One step to update centroid of k-means clustering."""
+        dtype = encoded.dtype
+        codebook_size = centroids.size(0)
+
+        norm = torch.sum(centroids**2, dim=-1)
+        dot = torch.matmul(encoded, centroids.transpose(1, 0))
+        distance = norm - 2 * dot
+        indices = torch.argmin(distance, dim=-1)
+        unique_indices = torch.unique(indices)
+        num_drops = codebook_size - unique_indices.size(0)
+
+        if num_drops > 0:
+            index_counts = torch.bincount(indices, minlength=codebook_size)
+            least_used_indices = torch.argsort(index_counts)
+            most_used_indices = least_used_indices[num_drops:]
+            least_used_indices = least_used_indices[:num_drops]
+            unused_centroids = centroids[least_used_indices]
+            assignments = F.one_hot(indices, num_classes=codebook_size)
+            assignments = assignments.permute(1, 0)
+            num_assignments = assignments.sum(dim=-1, keepdim=True)
+            prod = torch.matmul(assignments.to(dtype), encoded)
+            prod = prod[most_used_indices]
+            num_assignments = num_assignments[most_used_indices]
+            used_centroids = prod / num_assignments.to(dtype)
+            centroids = torch.cat([used_centroids, unused_centroids], dim=0)
+        else:
+            assignments = F.one_hot(indices, num_classes=codebook_size)
+            assignments = assignments.permute(1, 0)
+            prod = torch.matmul(assignments.to(dtype), encoded)
+            num_assignments = assignments.sum(dim=-1, keepdim=True)
+            centroids = prod / num_assignments.to(dtype)
+
     def state_dict(
         self,
         destination: Dict[str, Any] = None,
@@ -188,39 +224,3 @@ class VectorQuantizer(BaseVectorQuantizer):
                 centroids = self._update_kmeans_centroids(encoded, centroids)
 
             self.codebook.weight.data.copy_(centroids)
-
-    @torch.no_grad()
-    def _update_kmeans_centroids(
-        self, encoded: torch.Tensor, centroids: torch.Tensor
-    ) -> torch.Tensor:
-        """One step to update centroid of k-means clustering."""
-        dtype = encoded.dtype
-        codebook_size = centroids.size(0)
-
-        norm = torch.sum(centroids**2, dim=-1)
-        dot = torch.matmul(encoded, centroids.transpose(1, 0))
-        distance = norm - 2 * dot
-        indices = torch.argmin(distance, dim=-1)
-        unique_indices = torch.unique(indices)
-        num_drops = codebook_size - unique_indices.size(0)
-
-        if num_drops > 0:
-            index_counts = torch.bincount(indices, minlength=codebook_size)
-            least_used_indices = torch.argsort(index_counts)
-            most_used_indices = least_used_indices[num_drops:]
-            least_used_indices = least_used_indices[:num_drops]
-            unused_centroids = centroids[least_used_indices]
-            assignments = F.one_hot(indices, num_classes=codebook_size)
-            assignments = assignments.permute(1, 0)
-            num_assignments = assignments.sum(dim=-1, keepdim=True)
-            prod = torch.matmul(assignments.to(dtype), encoded)
-            prod = prod[most_used_indices]
-            num_assignments = num_assignments[most_used_indices]
-            used_centroids = prod / num_assignments.to(dtype)
-            centroids = torch.cat([used_centroids, unused_centroids], dim=0)
-        else:
-            assignments = F.one_hot(indices, num_classes=codebook_size)
-            assignments = assignments.permute(1, 0)
-            prod = torch.matmul(assignments.to(dtype), encoded)
-            num_assignments = assignments.sum(dim=-1, keepdim=True)
-            centroids = prod / num_assignments.to(dtype)
