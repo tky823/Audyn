@@ -90,8 +90,7 @@ class ResidualVectorQuantizer(nn.Module):
             num_stages = torch.randint(0, len(self.codebooks), ()) + 1
 
             if dist.is_available() and dist.is_initialized():
-                # gather gathered_num_stages
-                # gathered_num_stages: () -> (num_gpus,)
+                # gather num_stages: () -> (num_gpus,)
                 gathered_num_stages = [
                     torch.zeros_like(num_stages) for _ in range(dist.get_world_size())
                 ]
@@ -123,8 +122,11 @@ class ResidualVectorQuantizer(nn.Module):
         assert self.init_by_kmeans > 0 and not is_initialized
 
         if is_distributed:
-            # TODO: support DDP
-            raise NotImplementedError("DDP is not supported.")
+            # gather encoded
+            # (batch_size, embedding_dim, *) -> (num_gpus * batch_size, embedding_dim, *)
+            gathered_encoded = [torch.zeros_like(encoded) for _ in range(dist.get_world_size())]
+            dist.all_gather(gathered_encoded, encoded)
+            encoded = torch.concat(gathered_encoded, dim=0)
 
         g = torch.Generator(device=encoded.device)
         g.manual_seed(self.seed)
@@ -133,23 +135,24 @@ class ResidualVectorQuantizer(nn.Module):
         encoded = encoded.view(batch_size, embedding_dim, -1)
         encoded = encoded.permute(0, 2, 1).contiguous()
         encoded = encoded.view(-1, embedding_dim)
-        residual = encoded
+        num_grids = encoded.size(0)
         reconstructed = 0
 
-        for codebook in self.codebooks:
-            # select ``codebook_size`` embeddings from encoded features
-            codebook: nn.Embedding
-            codebook_size = codebook.weight.size(0)
-            indices = torch.randperm(
-                residual.size(0),
-                generator=g,
-                device=residual.device,
-                dtype=torch.long,
-            )
-            indices = indices[:codebook_size]
-            centroids = residual[indices]
+        with autocast(enabled=False):
+            for codebook in self.codebooks:
+                # select ``codebook_size`` embeddings from encoded features
+                codebook: nn.Embedding
+                codebook_size = codebook.weight.size(0)
+                residual = encoded - reconstructed
+                indices = torch.randperm(
+                    num_grids,
+                    generator=g,
+                    device=residual.device,
+                    dtype=torch.long,
+                )
+                indices = indices[:codebook_size]
+                centroids = residual[indices]
 
-            with autocast(enabled=False):
                 for _ in range(self.init_by_kmeans):
                     norm = torch.sum(centroids**2, dim=-1)
                     dot = torch.matmul(residual, centroids.transpose(1, 0))
@@ -180,7 +183,5 @@ class ResidualVectorQuantizer(nn.Module):
                         centroids = prod / num_assignments.to(residual.dtype)
 
                 codebook.weight.data.copy_(centroids)
-
                 output, _ = quantize_vector(residual, codebook.weight)
                 reconstructed = reconstructed + output
-                residual = encoded - reconstructed
