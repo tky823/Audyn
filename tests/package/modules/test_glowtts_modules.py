@@ -1,6 +1,12 @@
+import os
+import tempfile
+
 import torch
+import torch.distributed as dist
+import torch.multiprocessing as mp
 import torch.nn as nn
 from dummy import allclose
+from omegaconf import OmegaConf
 
 from audyn.modules.glow import ActNorm1d, InvertiblePointwiseConv1d
 from audyn.modules.glowtts import (
@@ -210,6 +216,72 @@ def test_masked_act_norm1d() -> None:
     allclose(masked_z_logdet, non_masked_z_logdet)
     allclose(mean, torch.zeros(()), atol=1e-7)
     allclose(std, torch.ones(()), atol=1e-7)
+
+
+def test_masked_act_norm1d_ddp() -> None:
+    """Ensure MaskedActNorm1d works well for DDP."""
+    torch.manual_seed(0)
+
+    port = str(torch.randint(0, 2**16, ()).item())
+    world_size = 4
+    seed = 0
+
+    num_features = 6
+
+    processes = []
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        for rank in range(world_size):
+            path = os.path.join(temp_dir, f"{rank}.pth")
+            process = mp.Process(
+                target=train_dummy_masked_act_norm1d,
+                args=(rank, world_size, port),
+                kwargs={
+                    "num_features": num_features,
+                    "seed": seed,
+                    "path": path,
+                },
+            )
+            process.start()
+            processes.append(process)
+
+        for process in processes:
+            process.join()
+
+        z = []
+
+        rank = 0
+        reference_model = MaskedActNorm1d(num_features)
+        path = os.path.join(temp_dir, f"{rank}.pth")
+        state_dict = torch.load(path, map_location="cpu")
+        reference_model.load_state_dict(state_dict["model"])
+        latent = state_dict["latent"].permute(0, 2, 1)
+        length = state_dict["length"]
+        latent = nn.utils.rnn.unpad_sequence(latent, length, batch_first=True)
+        latent = torch.cat(latent, dim=0)
+        z.append(latent)
+
+        for rank in range(1, world_size):
+            model = MaskedActNorm1d(num_features)
+            path = os.path.join(temp_dir, f"{rank}.pth")
+            state_dict = torch.load(path, map_location="cpu")
+            model.load_state_dict(state_dict["model"])
+            latent = state_dict["latent"].permute(0, 2, 1)
+            length = state_dict["length"]
+            latent = nn.utils.rnn.unpad_sequence(latent, length, batch_first=True)
+            latent = torch.cat(latent, dim=0)
+            z.append(latent)
+
+            assert len(list(model.parameters())) == len(list(reference_model.parameters()))
+
+            for param, param_reference in zip(model.parameters(), reference_model.parameters()):
+                assert param.size() == param_reference.size()
+                assert torch.equal(param, param_reference)
+
+        std, mean = torch.std_mean(latent, dim=0, unbiased=False)
+
+        allclose(mean, torch.zeros(()), atol=1e-7)
+        allclose(std, torch.ones(()), atol=1e-7)
 
 
 def test_masked_invertible_pointwise_conv1d() -> None:
@@ -526,3 +598,73 @@ def test_stacked_residual_conv_block():
 
     assert log_s.size() == (batch_size, in_channels, max_length)
     assert t.size() == (batch_size, in_channels, max_length)
+
+
+def train_dummy_masked_act_norm1d(
+    rank: int,
+    world_size: int,
+    port: int,
+    num_features: int = 6,
+    seed: int = 0,
+    path: str = None,
+) -> None:
+    batch_size = 4
+    max_length = 20
+
+    os.environ["LOCAL_RANK"] = str(rank)
+    os.environ["RANK"] = str(rank)
+    os.environ["WORLD_SIZE"] = str(world_size)
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = str(port)
+
+    num_threads = torch.get_num_threads()
+    num_threads = max(num_threads // world_size, 1)
+    torch.set_num_threads(num_threads)
+
+    config = {
+        "seed": seed,
+        "distributed": {
+            "enable": True,
+            "backend": "gloo",
+            "init_method": None,
+        },
+        "cudnn": {
+            "benchmark": None,
+            "deterministic": None,
+        },
+        "amp": {
+            "enable": False,
+            "accelerator": "cpu",
+        },
+    }
+
+    config = OmegaConf.create(config)
+
+    dist.init_process_group(backend=config.distributed.backend)
+    torch.manual_seed(config.seed)
+
+    g = torch.Generator()
+    g.manual_seed(rank)
+
+    model = MaskedActNorm1d(num_features)
+    model = nn.parallel.DistributedDataParallel(model)
+
+    length = torch.randint(1, max_length + 1, (batch_size,), dtype=torch.long)
+    max_length = torch.max(length)
+    input = torch.randn((batch_size, num_features, max_length))
+    padding_mask = torch.arange(max_length) >= length.unsqueeze(dim=-1)
+
+    input = input.masked_fill(padding_mask.unsqueeze(dim=1), 0)
+    z = model(input, padding_mask=padding_mask)
+    output = model(z, padding_mask=padding_mask, reverse=True)
+
+    allclose(output, input)
+
+    state_dict = {
+        "latent": z,
+        "length": length,
+        "model": model.module.state_dict(),
+    }
+    torch.save(state_dict, path)
+
+    dist.destroy_process_group()
