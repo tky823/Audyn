@@ -74,6 +74,8 @@ class BaseVectorQuantizer(nn.Module):
             num_assignments = assignments.sum(dim=-1, keepdim=True)
             centroids = prod / num_assignments.to(dtype)
 
+        return centroids
+
     def state_dict(
         self,
         destination: Dict[str, Any] = None,
