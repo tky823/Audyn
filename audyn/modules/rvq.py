@@ -212,6 +212,8 @@ class ResidualVectorQuantizer(nn.Module):
         .. note::
 
             Returned ``state_dict`` includes ``is_initialized`` flag.
+            In terms of simplicity, registering ``is_initialized`` as boolean tensor
+            is better, but it is incompatible with DDP.
 
         """
         state_dict = super().state_dict(
