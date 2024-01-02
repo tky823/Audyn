@@ -2,14 +2,16 @@ defaults:
   - record: soundstream
   - dataset: torch
   - dataloader: defaults
-  - key_mapping: soundstream_waveform_discriminator
+  - key_mapping: soundstream_official
   - _self_
 
 dataloader:
   train:
-    batch_size: 4
+    batch_size: 32
+    drop_last: true
   validation:
-    batch_size: 4
+    batch_size: 32
+    drop_last: true
 
 clip_gradient:
   generator:
@@ -26,10 +28,10 @@ output:
   tensorboard_dir: "./tensorboard"
   save_checkpoint:
     iteration:
-      every: 4
+      every: 5000
       path: ${...exp_dir}/model/iteration{iteration}.pth
     epoch:
-      every: 2
+      every: 20
       path: ${...exp_dir}/model/epoch{epoch}.pth
     last:
       path: ${...exp_dir}/model/last.pth
@@ -38,7 +40,7 @@ output:
 
 steps:
   epochs:
-  iterations: 20
+  iterations: 200000
   lr_scheduler:
     generator:
     discriminator:

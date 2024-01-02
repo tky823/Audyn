@@ -36,30 +36,4 @@ generator:
   init_by_kmeans: 10
   seed: ${system.seed}
 discriminator:
-  _target_: audyn.models.soundstream.Discriminator
-  waveform_discriminator:
-    _target_: audyn.models.soundstream.MultiScaleDiscriminator.build_from_default_config
-  spectrogram_discriminator:
-    _target_: audyn.models.soundstream.SpectrogramDiscriminator
-    num_features:
-      - 4
-      - 3
-      - 2
-      - 2
-    kernel_size_in: 3
-    kernel_size_out:
-      - 8
-      - 1
-    kernel_size: 3
-    down_scale:
-      - - 2
-        - 2
-      - - 2
-        - 2
-      - - 4
-        - 2
-    transform: true
-    transform_kwargs:
-      n_fft: 256
-      hop_length: 64
-      return_complex: true
+  _target_: audyn.models.soundstream.MultiScaleDiscriminator.build_from_default_config

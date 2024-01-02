@@ -41,8 +41,4 @@ generator:
   init_by_kmeans: 100
   seed: ${system.seed}
 discriminator:
-  _target_: audyn.models.soundstream.Discriminator
-  waveform_discriminator:
-    _target_: audyn.models.soundstream.MultiScaleDiscriminator.build_from_default_config
-  spectrogram_discriminator:
-    _target_: audyn.models.soundstream.SpectrogramDiscriminator.build_from_default_config
+  _target_: audyn.models.soundstream.MultiScaleDiscriminator.build_from_default_config

@@ -12,14 +12,18 @@ train:
       input:
         input: waveform_slice
       output:
-        - waveform_real_prob
-        - waveform_real_feature_map
+        - - waveform_real_prob
+          - waveform_real_feature_map
+        - - spectrogram_real_prob
+          - spectrogram_real_feature_map
     fake:
       input:
         input: ${....generator.output.0}
       output:
-        - waveform_fake_prob
-        - waveform_fake_feature_map
+        - - waveform_fake_prob
+          - waveform_fake_feature_map
+        - - spectrogram_fake_prob
+          - spectrogram_fake_feature_map
 validation: ${.train}
 inference:
   generator:
