@@ -203,7 +203,7 @@ class ActNorm1d(BaseFlow):
             # (num_features,) -> (world_size, num_features)
             gathered_sum_input = [torch.zeros_like(sum_input) for _ in range(world_size)]
             dist.all_gather(gathered_sum_input, sum_input)
-            gathered_sum_input = torch.cat(gathered_sum_input, dim=0)
+            gathered_sum_input = torch.stack(gathered_sum_input, dim=0)
             sum_input = torch.sum(gathered_sum_input, dim=0)
 
         log_std = 0.5 * (torch.log(sum_input) - math.log((world_size * batch_size * length)))
