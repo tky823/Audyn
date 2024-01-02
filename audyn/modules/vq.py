@@ -207,20 +207,35 @@ class VectorQuantizer(BaseVectorQuantizer):
         encoded = encoded.view(batch_size, embedding_dim, -1)
         encoded = encoded.permute(0, 2, 1).contiguous()
         encoded = encoded.view(-1, embedding_dim)
+        num_grids = encoded.size(0)
+        reconstructed = 0
 
         # select ``codebook_size`` embeddings from encoded features
         codebook_size = self.codebook.weight.size(0)
-        indices = torch.randperm(
-            encoded.size(0),
-            generator=g,
-            device=encoded.device,
-            dtype=torch.long,
-        )
-        indices = indices[:codebook_size]
-        centroids = encoded[indices]
+
+        if num_grids < codebook_size:
+            msg = (
+                "Since number of grids given to RVQ is smaller than "
+                f"codebook size {codebook_size}, "
+                "we cannot apply k-means clustering initialization."
+            )
+            msg += " Please use larger batch size or smaller codebook size."
+
+            raise RuntimeError(msg)
 
         with autocast(enabled=False):
+            indices = torch.randperm(
+                num_grids,
+                generator=g,
+                device=encoded.device,
+                dtype=torch.long,
+            )
+            indices = indices[:codebook_size]
+            centroids = encoded[indices]
+
             for _ in range(self.init_by_kmeans):
                 centroids = self._update_kmeans_centroids(encoded, centroids)
 
             self.codebook.weight.data.copy_(centroids)
+            quantized, _ = quantize_vector(encoded, self.codebook.weight)
+            reconstructed = reconstructed + quantized
