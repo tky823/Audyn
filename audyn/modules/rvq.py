@@ -1,18 +1,18 @@
-from typing import Any, Dict, Mapping, Tuple
+from typing import Tuple
 
 import torch
 import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.cuda.amp import autocast
-from torch.nn.modules.module import _IncompatibleKeys
 
 from ..functional.vector_quantization import quantize_residual_vector, quantize_vector
+from .vq import BaseVectorQuantizer
 
 __all__ = ["ResidualVectorQuantizer"]
 
 
-class ResidualVectorQuantizer(nn.Module):
+class ResidualVectorQuantizer(BaseVectorQuantizer):
     """Residual vector quantizer used in SoundStream.
 
     Args:
@@ -35,7 +35,7 @@ class ResidualVectorQuantizer(nn.Module):
         init_by_kmeans: int = 0,
         seed: int = 0,
     ) -> None:
-        super().__init__()
+        super().__init__(init_by_kmeans=init_by_kmeans, seed=seed)
 
         self.codebook_size = codebook_size
         self.embedding_dim = embedding_dim
@@ -53,16 +53,8 @@ class ResidualVectorQuantizer(nn.Module):
 
         self.codebooks = nn.ModuleList(codebooks)
 
-        self.seed = seed
-        self.init_by_kmeans = init_by_kmeans
-
-        if self.init_by_kmeans > 0:
-            self.is_initialized = False
-        else:
-            self.is_initialized = True
-
     def forward(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.LongTensor]:
-        """Forward pass of vector quantizer.
+        """Forward pass of residual vector quantizer.
 
         Args:
             input (torch.Tensor): Latent feature of shape (batch_size, embedding_dim, *).
@@ -200,68 +192,3 @@ class ResidualVectorQuantizer(nn.Module):
             centroids = prod / num_assignments.to(dtype)
 
         return centroids
-
-    def state_dict(
-        self,
-        destination: Dict[str, Any] = None,
-        prefix: str = "",
-        keep_vars: bool = False,
-    ) -> Dict[str, Any]:
-        """Return state_dict of module.
-
-        .. note::
-
-            Returned ``state_dict`` includes ``is_initialized`` flag.
-            In terms of simplicity, registering ``is_initialized`` as boolean tensor
-            is better, but it is incompatible with DDP.
-
-        """
-        state_dict = super().state_dict(
-            destination=destination,
-            prefix=prefix,
-            keep_vars=keep_vars,
-        )
-        state_dict.update({prefix + "is_initialized": self.is_initialized})
-
-        return state_dict
-
-    def load_state_dict(
-        self, state_dict: Mapping[str, Any], strict: bool = True
-    ) -> _IncompatibleKeys:
-        is_initialized_key = "is_initialized"
-
-        if is_initialized_key in state_dict.keys():
-            is_initialized = state_dict.pop(is_initialized_key)
-
-            if isinstance(is_initialized, torch.Tensor):
-                # for backward compatibility
-                is_initialized = is_initialized.item()
-
-            self.is_initialized = is_initialized
-
-        return super().load_state_dict(state_dict, strict=strict)
-
-    def _load_from_state_dict(
-        self,
-        state_dict,
-        prefix,
-        local_metadata,
-        strict,
-        missing_keys,
-        unexpected_keys,
-        error_msgs,
-    ) -> Any:
-        is_initialized_key = prefix + "is_initialized"
-
-        if is_initialized_key in state_dict.keys():
-            is_initialized = state_dict.pop(is_initialized_key)
-
-            if isinstance(is_initialized, torch.Tensor):
-                # for backward compatibility
-                is_initialized = is_initialized.item()
-
-            self.is_initialized = is_initialized
-
-        return super()._load_from_state_dict(
-            state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs
-        )
