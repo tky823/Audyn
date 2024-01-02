@@ -168,8 +168,8 @@ class ResidualVectorQuantizer(nn.Module):
                     centroids = self._update_kmeans_centroids(residual, centroids)
 
                 codebook.weight.data.copy_(centroids)
-                output, _ = quantize_vector(residual, codebook.weight)
-                reconstructed = reconstructed + output
+                quantized, _ = quantize_vector(residual, codebook.weight)
+                reconstructed = reconstructed + quantized
 
     @torch.no_grad()
     def _update_kmeans_centroids(
