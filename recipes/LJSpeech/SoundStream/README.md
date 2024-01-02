@@ -34,3 +34,18 @@ To train SoundStream, run the following command:
 --stage 1 \
 --stop-stage 1
 ```
+
+To train SounsStream using official configs, set `train`, `model`, and `criterion` as follows:
+
+```sh
+train="official_soundstream"
+model=official_soundstream""
+criterion="official_soundstream"
+
+. ./run.sh \
+--stage 1 \
+--stop-stage 1 \
+--train "${train}" \
+--model "${model}" \
+--criterion "${criterion}"
+```
