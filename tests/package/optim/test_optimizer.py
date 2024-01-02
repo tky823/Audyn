@@ -95,7 +95,7 @@ def test_exponential_moving_average_wrapper(build_from_optim_class: bool):
 
 @pytest.mark.parametrize("is_rvq", [True, False])
 @pytest.mark.parametrize("codebook_reset", [True, False])
-@pytest.mark.parametrize("reset_strategy", ["atol", "rtol", None])
+@pytest.mark.parametrize("reset_strategy", ["ath", "rth", None])
 @pytest.mark.parametrize("reset_source", ["mru", "batch"])
 @pytest.mark.parametrize("reset_scope", ["least", "all", 1, None])
 def test_exponential_moving_average_codebook_optimizer(
@@ -125,10 +125,10 @@ def test_exponential_moving_average_codebook_optimizer(
             model = VectorQuantizer(codebook_size, embedding_dim)
 
         if codebook_reset:
-            if reset_strategy == "atol":
+            if reset_strategy == "ath":
                 reset_ath = 2
                 reset_rth = None
-            elif reset_strategy == "rtol":
+            elif reset_strategy == "rth":
                 reset_ath = None
                 reset_rth = 0.5
             else:
