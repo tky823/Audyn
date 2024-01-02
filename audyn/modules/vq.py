@@ -182,9 +182,8 @@ class VectorQuantizer(BaseVectorQuantizer):
                 - torch.LongTensor: Indices of indices in codebook of shape (batch_size, *).
 
         """
-        if not self.is_initialized:
+        if self.training and not self.is_initialized:
             self._initialize_parameters(input)
-            self.is_initialized = True
 
         output, indices = quantize_vector(input, self.codebook.weight)
 
@@ -242,3 +241,5 @@ class VectorQuantizer(BaseVectorQuantizer):
             self.codebook.weight.data.copy_(centroids)
             quantized, _ = quantize_vector(encoded, self.codebook.weight)
             reconstructed = reconstructed + quantized
+
+        self.is_initialized = True

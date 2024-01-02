@@ -67,9 +67,8 @@ class ResidualVectorQuantizer(BaseVectorQuantizer):
                     To disable this feature, set ``dropout=False`` or call ``.eval()``.
 
         """
-        if not self.is_initialized:
+        if self.training and not self.is_initialized:
             self._initialize_parameters(input)
-            self.is_initialized = True
 
         if self.dropout and self.training:
             num_stages = torch.randint(0, len(self.codebooks), (), device=input.device) + 1
@@ -153,3 +152,5 @@ class ResidualVectorQuantizer(BaseVectorQuantizer):
                 codebook.weight.data.copy_(centroids)
                 quantized, _ = quantize_vector(residual, codebook.weight)
                 reconstructed = reconstructed + quantized
+
+        self.is_initialized = True
