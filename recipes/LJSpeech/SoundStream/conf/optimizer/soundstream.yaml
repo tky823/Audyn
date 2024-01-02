@@ -1,5 +1,5 @@
 generator:
-  - name: adamw
+  - name: adam
     optimizer:
       _target_: torch.optim.Adam
       lr: 1.0e-4
