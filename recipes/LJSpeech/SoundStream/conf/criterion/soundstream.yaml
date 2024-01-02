@@ -62,7 +62,7 @@ generator:
   commitment_loss:
     _target_: audyn.criterion.base.BaseCriterionWrapper
     criterion:
-      _target_: audyn.criterion.vqvae.CommitmentLoss
+      _target_: audyn.criterion.rvqvae.CommitmentLoss
       reduction: mean
     weight: 0.25
     key_mapping:
