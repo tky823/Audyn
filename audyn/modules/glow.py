@@ -1,11 +1,11 @@
 import math
-from collections import OrderedDict
 from typing import Any, Dict, Mapping, Optional, Tuple, Union
 
 import torch
 import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.modules.module import _IncompatibleKeys
 
 from .flow import BaseFlow
 
@@ -268,16 +268,67 @@ class ActNorm1d(BaseFlow):
         else:
             return output, logdet
 
-    def state_dict(self, *args, **kwargs) -> Dict[str, Any]:
-        state_dict: OrderedDict = super().state_dict(*args, **kwargs)
-        state_dict["is_initialized"] = self.is_initialized
+    def state_dict(
+        self,
+        destination: Dict[str, Any] = None,
+        prefix: str = "",
+        keep_vars: bool = False,
+    ) -> Dict[str, Any]:
+        """Return state_dict of module.
+
+        .. note::
+
+            Returned ``state_dict`` includes ``is_initialized`` flag.
+            In terms of simplicity, registering ``is_initialized`` as boolean tensor
+            is better, but it is incompatible with DDP.
+
+        """
+        state_dict = super().state_dict(
+            destination=destination,
+            prefix=prefix,
+            keep_vars=keep_vars,
+        )
+        state_dict.update({prefix + "is_initialized": self.is_initialized})
 
         return state_dict
 
-    def load_state_dict(self, state_dict: Mapping[str, Any], strict: bool = True):
-        is_initialized = state_dict["is_initialized"]
-        self.is_initialized = is_initialized
+    def load_state_dict(
+        self, state_dict: Mapping[str, Any], strict: bool = True
+    ) -> _IncompatibleKeys:
+        is_initialized_key = "is_initialized"
 
-        del state_dict["is_initialized"]
+        if is_initialized_key in state_dict.keys():
+            is_initialized = state_dict.pop(is_initialized_key)
+
+            if isinstance(is_initialized, torch.Tensor):
+                # for backward compatibility
+                is_initialized = is_initialized.item()
+
+            self.is_initialized = is_initialized
 
         return super().load_state_dict(state_dict, strict=strict)
+
+    def _load_from_state_dict(
+        self,
+        state_dict,
+        prefix,
+        local_metadata,
+        strict,
+        missing_keys,
+        unexpected_keys,
+        error_msgs,
+    ) -> Any:
+        is_initialized_key = prefix + "is_initialized"
+
+        if is_initialized_key in state_dict.keys():
+            is_initialized = state_dict.pop(is_initialized_key)
+
+            if isinstance(is_initialized, torch.Tensor):
+                # for backward compatibility
+                is_initialized = is_initialized.item()
+
+            self.is_initialized = is_initialized
+
+        return super()._load_from_state_dict(
+            state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs
+        )
