@@ -171,10 +171,7 @@ class CustomResidualVectorQuantizer(ResidualVectorQuantizer):
 
     @torch.no_grad()
     def _initialize_parameters(self, encoded: torch.Tensor) -> None:
-        self.is_initialized: torch.Tensor
-        is_initialized: bool = self.is_initialized.item()
-
-        assert self.init_by_kmeans > 0 and not is_initialized
+        assert self.init_by_kmeans > 0 and not self.is_initialized
 
         g = torch.Generator(device=encoded.device)
         g.manual_seed(self.seed)
