@@ -1,13 +1,16 @@
 import copy
 import os
 import tempfile
+from typing import Tuple
 
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import torch.nn as nn
 from omegaconf import OmegaConf
+from torch.cuda.amp import autocast
 
+from audyn.functional.vector_quantization import quantize_vector
 from audyn.modules.rvq import ResidualVectorQuantizer
 
 
@@ -51,6 +54,29 @@ def test_residual_vector_quantizer() -> None:
     _, indices_after_save = vector_quantizer(input)
 
     assert torch.equal(indices_before_save, indices_after_save)
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        initialization_path = os.path.join(temp_dir, "initialization.pth")
+        forward_path = os.path.join(temp_dir, "forward.pth")
+
+        vector_quantizer = CustomResidualVectorQuantizer(
+            codebook_size,
+            embedding_dim,
+            num_stages=num_stages,
+            dropout=False,
+            init_by_kmeans=kmeans_iteration,
+            initialization_path=initialization_path,
+            forward_path=forward_path,
+        )
+
+        _ = vector_quantizer(input)
+
+        initialization_output = torch.load(initialization_path, map_location="cpu")
+        forward_output = torch.load(forward_path, map_location="cpu")
+        forward_output = forward_output.permute(0, 3, 1, 2).contiguous()
+        forward_output = forward_output.view(-1, num_stages, embedding_dim)
+
+        assert torch.allclose(initialization_output, forward_output)
 
 
 def test_residual_vector_quantizer_ddp() -> None:
@@ -110,6 +136,93 @@ def test_residual_vector_quantizer_ddp() -> None:
             for param, param_reference in zip(model.parameters(), reference_model.parameters()):
                 assert param.size() == param_reference.size()
                 assert torch.equal(param, param_reference)
+
+
+class CustomResidualVectorQuantizer(ResidualVectorQuantizer):
+    def __init__(
+        self,
+        codebook_size: int,
+        embedding_dim: int,
+        num_stages: int,
+        dropout: bool = True,
+        init_by_kmeans: int = 0,
+        seed: int = 0,
+        initialization_path: str = None,
+        forward_path: str = None,
+    ) -> None:
+        super().__init__(
+            codebook_size,
+            embedding_dim,
+            num_stages=num_stages,
+            dropout=dropout,
+            init_by_kmeans=init_by_kmeans,
+            seed=seed,
+        )
+
+        self.initialization_path = initialization_path
+        self.forward_path = forward_path
+
+    def forward(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.LongTensor]:
+        quantized, indices = super().forward(input)
+
+        torch.save(quantized, self.forward_path)
+
+        return quantized, indices
+
+    @torch.no_grad()
+    def _initialize_parameters(self, encoded: torch.Tensor) -> None:
+        self.is_initialized: torch.Tensor
+        is_initialized: bool = self.is_initialized.item()
+
+        assert self.init_by_kmeans > 0 and not is_initialized
+
+        g = torch.Generator(device=encoded.device)
+        g.manual_seed(self.seed)
+
+        batch_size, embedding_dim, *_ = encoded.size()
+        encoded = encoded.view(batch_size, embedding_dim, -1)
+        encoded = encoded.permute(0, 2, 1).contiguous()
+        encoded = encoded.view(-1, embedding_dim)
+        stacked_quantized = []
+        num_grids = encoded.size(0)
+        reconstructed = 0
+
+        with autocast(enabled=False):
+            for codebook in self.codebooks:
+                # select ``codebook_size`` embeddings from encoded features
+                codebook: nn.Embedding
+                codebook_size = codebook.weight.size(0)
+
+                if num_grids < codebook_size:
+                    msg = (
+                        "Since number of grids given to RVQ is smaller than "
+                        f"codebook size {codebook_size}, "
+                        "we cannot apply k-means clustering initialization."
+                    )
+                    msg += " Please use larger batch size or smaller codebook size."
+
+                    raise RuntimeError(msg)
+
+                residual = encoded - reconstructed
+                indices = torch.randperm(
+                    num_grids,
+                    generator=g,
+                    device=residual.device,
+                    dtype=torch.long,
+                )
+                indices = indices[:codebook_size]
+                centroids = residual[indices]
+
+                for _ in range(self.init_by_kmeans):
+                    centroids = self._update_kmeans_centroids(residual, centroids)
+
+                codebook.weight.data.copy_(centroids)
+                quantized, _ = quantize_vector(residual, codebook.weight)
+                reconstructed = reconstructed + quantized
+                stacked_quantized.append(quantized)
+
+        stacked_quantized = torch.stack(stacked_quantized, dim=1)
+        torch.save(stacked_quantized, self.initialization_path)
 
 
 def train_dummy_rvqvae(
