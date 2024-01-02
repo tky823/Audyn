@@ -579,6 +579,9 @@ def train_exponential_moving_average_codebook_optimizer(
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = str(port)
 
+    num_threads = torch.get_num_threads()
+    torch.set_num_threads(num_threads // world_size)
+
     config = {
         "seed": seed,
         "distributed": {
