@@ -143,6 +143,17 @@ class ResidualVectorQuantizer(nn.Module):
                 # select ``codebook_size`` embeddings from encoded features
                 codebook: nn.Embedding
                 codebook_size = codebook.weight.size(0)
+
+                if num_grids < codebook_size:
+                    msg = (
+                        "Since number of grids given to RVQ is smaller than "
+                        f"codebook size {codebook_size}, "
+                        "we cannot apply k-means clustering initialization."
+                    )
+                    msg += " Please use larger batch size or smaller codebook size."
+
+                    raise RuntimeError(msg)
+
                 residual = encoded - reconstructed
                 indices = torch.randperm(
                     num_grids,
@@ -154,34 +165,46 @@ class ResidualVectorQuantizer(nn.Module):
                 centroids = residual[indices]
 
                 for _ in range(self.init_by_kmeans):
-                    norm = torch.sum(centroids**2, dim=-1)
-                    dot = torch.matmul(residual, centroids.transpose(1, 0))
-                    distance = norm - 2 * dot
-                    indices = torch.argmin(distance, dim=-1)
-                    unique_indices = torch.unique(indices)
-                    num_drops = codebook_size - unique_indices.size(0)
-
-                    if num_drops > 0:
-                        index_counts = torch.bincount(indices, minlength=codebook_size)
-                        least_used_indices = torch.argsort(index_counts)
-                        most_used_indices = least_used_indices[num_drops:]
-                        least_used_indices = least_used_indices[:num_drops]
-                        unused_centroids = centroids[least_used_indices]
-                        assignments = F.one_hot(indices, num_classes=codebook_size)
-                        assignments = assignments.permute(1, 0)
-                        num_assignments = assignments.sum(dim=-1, keepdim=True)
-                        prod = torch.matmul(assignments.to(residual.dtype), residual)
-                        prod = prod[most_used_indices]
-                        num_assignments = num_assignments[most_used_indices]
-                        used_centroids = prod / num_assignments.to(residual.dtype)
-                        centroids = torch.cat([used_centroids, unused_centroids], dim=0)
-                    else:
-                        assignments = F.one_hot(indices, num_classes=codebook_size)
-                        assignments = assignments.permute(1, 0)
-                        prod = torch.matmul(assignments.to(residual.dtype), residual)
-                        num_assignments = assignments.sum(dim=-1, keepdim=True)
-                        centroids = prod / num_assignments.to(residual.dtype)
+                    centroids = self._update_kmeans_centroids(residual, centroids)
 
                 codebook.weight.data.copy_(centroids)
                 output, _ = quantize_vector(residual, codebook.weight)
                 reconstructed = reconstructed + output
+
+    @torch.no_grad()
+    def _update_kmeans_centroids(
+        self, encoded: torch.Tensor, centroids: torch.Tensor
+    ) -> torch.Tensor:
+        """One step to update centroid of k-means clustering."""
+        dtype = encoded.dtype
+        codebook_size = centroids.size(0)
+
+        norm = torch.sum(centroids**2, dim=-1)
+        dot = torch.matmul(encoded, centroids.transpose(1, 0))
+        distance = norm - 2 * dot
+        indices = torch.argmin(distance, dim=-1)
+        unique_indices = torch.unique(indices)
+        num_drops = codebook_size - unique_indices.size(0)
+
+        if num_drops > 0:
+            index_counts = torch.bincount(indices, minlength=codebook_size)
+            least_used_indices = torch.argsort(index_counts)
+            most_used_indices = least_used_indices[num_drops:]
+            least_used_indices = least_used_indices[:num_drops]
+            unused_centroids = centroids[least_used_indices]
+            assignments = F.one_hot(indices, num_classes=codebook_size)
+            assignments = assignments.permute(1, 0)
+            num_assignments = assignments.sum(dim=-1, keepdim=True)
+            prod = torch.matmul(assignments.to(dtype), encoded)
+            prod = prod[most_used_indices]
+            num_assignments = num_assignments[most_used_indices]
+            used_centroids = prod / num_assignments.to(dtype)
+            centroids = torch.cat([used_centroids, unused_centroids], dim=0)
+        else:
+            assignments = F.one_hot(indices, num_classes=codebook_size)
+            assignments = assignments.permute(1, 0)
+            prod = torch.matmul(assignments.to(dtype), encoded)
+            num_assignments = assignments.sum(dim=-1, keepdim=True)
+            centroids = prod / num_assignments.to(dtype)
+
+        return centroids
