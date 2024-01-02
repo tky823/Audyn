@@ -8,8 +8,10 @@ defaults:
 dataloader:
   train:
     batch_size: 32
+    drop_last: true
   validation:
     batch_size: 32
+    drop_last: true
 
 clip_gradient:
   generator:
