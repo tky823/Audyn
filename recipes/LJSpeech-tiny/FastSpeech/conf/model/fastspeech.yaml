@@ -50,6 +50,7 @@ duration_predictor:
   dropout: 1.0e-1
   stop_gradient: false
   batch_first: ${..batch_first}
+  channels_last: true
 length_regulator:
   _target_: audyn.models.fastspeech.LengthRegulator
   batch_first: ${..batch_first}

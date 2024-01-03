@@ -54,6 +54,7 @@ duration_predictor:
   dropout: 1.0e-1
   stop_gradient: true
   batch_first: ${..encoder.backbone.batch_first}
+  channels_last: true
 length_regulator:
   _target_: audyn.models.fastspeech.LengthRegulator
   batch_first: ${..encoder.backbone.batch_first}
