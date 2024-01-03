@@ -51,6 +51,7 @@ def test_fastspeech(batch_first: bool):
 
     if not batch_first:
         input = input.swapaxes(1, 0)
+        duration = duration.swapaxes(1, 0)
 
     word_embedding = nn.Embedding(
         num_embeddings=vocab_size, embedding_dim=d_model, padding_idx=padding_idx
@@ -94,23 +95,25 @@ def test_fastspeech(batch_first: bool):
     output, log_est_duration = model(input)
 
     assert output.size(2) == out_features
-    assert log_est_duration.size()[:2] == (batch_size, max_length)
 
     if batch_first:
         assert output.size(0) == batch_size
+        assert log_est_duration.size()[:2] == (batch_size, max_length)
     else:
         assert output.size(1) == batch_size
+        assert log_est_duration.size()[:2] == (max_length, batch_size)
 
     # w/ duration
     output, log_est_duration = model(input, duration=duration)
 
     assert output.size(2) == out_features
-    assert log_est_duration.size()[:2] == (batch_size, max_length)
 
     if batch_first:
         assert output.size(0) == batch_size
+        assert log_est_duration.size()[:2] == (batch_size, max_length)
     else:
         assert output.size(1) == batch_size
+        assert log_est_duration.size()[:2] == (max_length, batch_size)
 
 
 @pytest.mark.parametrize("batch_first", parameters_batch_first)
@@ -151,6 +154,7 @@ def test_multispk_fastspeech(batch_first: bool):
 
     if not batch_first:
         input = input.swapaxes(1, 0)
+        duration = duration.swapaxes(1, 0)
 
     word_embedding = nn.Embedding(
         num_embeddings=vocab_size, embedding_dim=d_model, padding_idx=padding_idx
@@ -198,23 +202,25 @@ def test_multispk_fastspeech(batch_first: bool):
     output, log_est_duration = model(input, speaker=speaker)
 
     assert output.size(2) == out_features
-    assert log_est_duration.size()[:2] == (batch_size, max_length)
 
     if batch_first:
         assert output.size(0) == batch_size
+        assert log_est_duration.size()[:2] == (batch_size, max_length)
     else:
         assert output.size(1) == batch_size
+        assert log_est_duration.size()[:2] == (max_length, batch_size)
 
     # w/ duration
     output, log_est_duration = model(input, speaker=speaker, duration=duration)
 
     assert output.size(2) == out_features
-    assert log_est_duration.size()[:2] == (batch_size, max_length)
 
     if batch_first:
         assert output.size(0) == batch_size
+        assert log_est_duration.size()[:2] == (batch_size, max_length)
     else:
         assert output.size(1) == batch_size
+        assert log_est_duration.size()[:2] == (max_length, batch_size)
 
 
 @pytest.mark.parametrize("batch_first", parameters_batch_first)
@@ -375,4 +381,8 @@ def test_length_regulator(batch_first: bool):
         assert output.size(1) == batch_size
 
     assert output.size(-1) == num_features[0]
-    assert log_est_duration.size() == (batch_size, max_length)
+
+    if batch_first:
+        assert log_est_duration.size() == (batch_size, max_length)
+    else:
+        assert log_est_duration.size() == (max_length, batch_size)
