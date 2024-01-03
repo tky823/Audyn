@@ -469,7 +469,6 @@ class BaseTrainer(BaseDriver):
 
     def train_one_epoch(self) -> Dict[str, float]:
         """Train model for one epoch."""
-        record_config = self.config.train.record
         criterion_names = self.criterion_names(self.config.criterion)
         mean_metrics = {
             criterion_name: MeanMetric(device=self.device) for criterion_name in criterion_names
@@ -525,76 +524,31 @@ class BaseTrainer(BaseDriver):
                 global_step=self.iteration_idx + 1,
             )
 
-            if hasattr(record_config, "duration"):
-                duration_config = record_config.duration.iteration
-                global_step = self.iteration_idx + 1
-
-                if duration_config is not None and global_step % duration_config.every == 0:
-                    self.write_duration_if_necessary(
-                        named_output,
-                        named_data,
-                        sample_size=duration_config.sample_size,
-                        key_mapping=duration_config.key_mapping,
-                        transforms=duration_config.transforms,
-                        global_step=global_step,
-                    )
-
-            if hasattr(record_config, "spectrogram"):
-                spectrogram_config = record_config.spectrogram.iteration
-                global_step = self.iteration_idx + 1
-
-                if spectrogram_config is not None and global_step % spectrogram_config.every == 0:
-                    self.write_spectrogram_if_necessary(
-                        named_output,
-                        named_data,
-                        sample_size=spectrogram_config.sample_size,
-                        key_mapping=spectrogram_config.key_mapping,
-                        transforms=spectrogram_config.transforms,
-                        global_step=global_step,
-                    )
-
-            if hasattr(record_config, "waveform"):
-                waveform_config = record_config.waveform.iteration
-                global_step = self.iteration_idx + 1
-
-                if waveform_config is not None and global_step % waveform_config.every == 0:
-                    self.write_waveform_if_necessary(
-                        named_output,
-                        named_data,
-                        sample_size=waveform_config.sample_size,
-                        key_mapping=waveform_config.key_mapping,
-                        transforms=waveform_config.transforms,
-                        global_step=global_step,
-                    )
-
-            if hasattr(record_config, "audio"):
-                audio_config = record_config.audio.iteration
-                global_step = self.iteration_idx + 1
-
-                if audio_config is not None and global_step % audio_config.every == 0:
-                    self.write_audio_if_necessary(
-                        named_output,
-                        named_data,
-                        sample_size=audio_config.sample_size,
-                        key_mapping=audio_config.key_mapping,
-                        transforms=audio_config.transforms,
-                        global_step=global_step,
-                        sample_rate=audio_config.sample_rate,
-                    )
-
-            if hasattr(record_config, "image"):
-                image_config = record_config.image.iteration
-                global_step = self.iteration_idx + 1
-
-                if image_config is not None and global_step % image_config.every == 0:
-                    self.write_image_if_necessary(
-                        named_output,
-                        named_data,
-                        sample_size=image_config.sample_size,
-                        key_mapping=image_config.key_mapping,
-                        transforms=image_config.transforms,
-                        global_step=global_step,
-                    )
+            self.write_train_duration_if_necessary(
+                named_output,
+                named_data,
+                config=self.config.train.record,
+            )
+            self.write_train_spectrogram_if_necessary(
+                named_output,
+                named_data,
+                config=self.config.train.record,
+            )
+            self.write_train_waveform_if_necessary(
+                named_output,
+                named_data,
+                config=self.config.train.record,
+            )
+            self.write_train_audio_if_necessary(
+                named_output,
+                named_data,
+                config=self.config.train.record,
+            )
+            self.write_train_image_if_necessary(
+                named_output,
+                named_data,
+                config=self.config.train.record,
+            )
 
             self.optimizer.zero_grad()
             self.scaler.scale(total_loss).backward()
@@ -936,6 +890,162 @@ class BaseTrainer(BaseDriver):
 
         s = f"Save model: {save_path}."
         self.logger.info(s)
+
+    def write_train_duration_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        config: DictConfig = None,
+    ) -> None:
+        """Write duration to tensorboard for training.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            config (DictConfig, optional): Config to write out to tensorboard.
+
+        """
+        if config is None:
+            config = self.config.train.record
+
+        if hasattr(config, "duration"):
+            duration_config = config.duration.iteration
+            global_step = self.iteration_idx + 1
+
+            if duration_config is not None and global_step % duration_config.every == 0:
+                self.write_duration_if_necessary(
+                    named_output,
+                    named_reference,
+                    sample_size=duration_config.sample_size,
+                    key_mapping=duration_config.key_mapping,
+                    transforms=duration_config.transforms,
+                    global_step=global_step,
+                )
+
+    def write_train_spectrogram_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        config: DictConfig = None,
+    ) -> None:
+        """Write spectrogram to tensorboard for training.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            config (DictConfig, optional): Config to write out to tensorboard.
+
+        """
+        if config is None:
+            config = self.config.train.record
+
+        if hasattr(config, "spectrogram"):
+            spectrogram_config = config.spectrogram.iteration
+            global_step = self.iteration_idx + 1
+
+            if spectrogram_config is not None and global_step % spectrogram_config.every == 0:
+                self.write_spectrogram_if_necessary(
+                    named_output,
+                    named_reference,
+                    sample_size=spectrogram_config.sample_size,
+                    key_mapping=spectrogram_config.key_mapping,
+                    transforms=spectrogram_config.transforms,
+                    global_step=global_step,
+                )
+
+    def write_train_waveform_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        config: DictConfig = None,
+    ) -> None:
+        """Write waveform to tensorboard for training.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            config (DictConfig, optional): Config to write out to tensorboard.
+
+        """
+        if config is None:
+            config = self.config.train.record
+
+        if hasattr(config, "spectrogram"):
+            spectrogram_config = config.spectrogram.iteration
+            global_step = self.iteration_idx + 1
+
+            if spectrogram_config is not None and global_step % spectrogram_config.every == 0:
+                self.write_spectrogram_if_necessary(
+                    named_output,
+                    named_reference,
+                    sample_size=spectrogram_config.sample_size,
+                    key_mapping=spectrogram_config.key_mapping,
+                    transforms=spectrogram_config.transforms,
+                    global_step=global_step,
+                )
+
+    def write_train_audio_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        config: DictConfig = None,
+    ) -> None:
+        """Write audio to tensorboard for training.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            config (DictConfig, optional): Config to write out to tensorboard.
+
+        """
+        if config is None:
+            config = self.config.train.record
+
+        if hasattr(config, "audio"):
+            audio_config = config.audio.iteration
+            global_step = self.iteration_idx + 1
+
+            if audio_config is not None and global_step % audio_config.every == 0:
+                self.write_audio_if_necessary(
+                    named_output,
+                    named_reference,
+                    sample_size=audio_config.sample_size,
+                    key_mapping=audio_config.key_mapping,
+                    transforms=audio_config.transforms,
+                    global_step=global_step,
+                    sample_rate=audio_config.sample_rate,
+                )
+
+    def write_train_image_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        config: DictConfig = None,
+    ) -> None:
+        """Write image to tensorboard for training.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            config (DictConfig, optional): Config to write out to tensorboard.
+
+        """
+        if config is None:
+            config = self.config.train.record
+
+        if hasattr(config, "image"):
+            image_config = config.image.iteration
+            global_step = self.iteration_idx + 1
+
+            if image_config is not None and global_step % image_config.every == 0:
+                self.write_image_if_necessary(
+                    named_output,
+                    named_reference,
+                    sample_size=image_config.sample_size,
+                    key_mapping=image_config.key_mapping,
+                    transforms=image_config.transforms,
+                    global_step=global_step,
+                )
 
     def write_validation_duration_if_necessary(
         self,
