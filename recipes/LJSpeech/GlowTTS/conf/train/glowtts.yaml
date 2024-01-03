@@ -30,6 +30,8 @@ clip_gradient:
   mode: norm
   max_norm: 5
 
+ddp_kwargs:
+
 resume:
   continue_from:
 
