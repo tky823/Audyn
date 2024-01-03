@@ -4,6 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .normalization import MaskedLayerNorm
+
 __all__ = ["FastSpeechDurationPredictor", "DurationPredictor"]
 
 
@@ -132,12 +134,14 @@ class ConvBlock(nn.Module):
             stride=1,
         )
         self.activation1d = nn.ReLU()
-        self.norm1d = nn.LayerNorm(out_channels)
+        self.norm1d = MaskedLayerNorm(out_channels)
         self.dropout1d = nn.Dropout(p=dropout)
 
         self.kernel_size = kernel_size
 
-    def forward(self, input: torch.Tensor, padding_mask: torch.BoolTensor = None) -> torch.Tensor:
+    def forward(
+        self, input: torch.Tensor, padding_mask: Optional[torch.BoolTensor] = None
+    ) -> torch.Tensor:
         """Forward pass of ConvBlock.
 
         Args:
@@ -160,7 +164,7 @@ class ConvBlock(nn.Module):
         x = self._masked_fill(x, padding_mask=padding_mask)
         x = self.activation1d(x)
         x = x.permute(0, 2, 1)
-        x = self.norm1d(x)
+        x = self.norm1d(x, padding_mask=padding_mask.unsqueeze(dim=-1))
         x = x.permute(0, 2, 1)
         x = self._masked_fill(x, padding_mask=padding_mask)
         output = self.dropout1d(x)
@@ -169,7 +173,8 @@ class ConvBlock(nn.Module):
 
     @staticmethod
     def _masked_fill(
-        input: torch.Tensor, padding_mask: Optional[torch.Tensor] = None
+        input: torch.Tensor,
+        padding_mask: Optional[torch.BoolTensor] = None,
     ) -> torch.Tensor:
         """Apply padding mask if given.
 
