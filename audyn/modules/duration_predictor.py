@@ -15,6 +15,7 @@ class FastSpeechDurationPredictor(nn.Module):
         dropout: float = 1e-1,
         stop_gradient: bool = True,
         batch_first: bool = False,
+        channels_last: bool = True,
     ):
         super().__init__()
 
@@ -35,7 +36,7 @@ class FastSpeechDurationPredictor(nn.Module):
         self.fc_layer = nn.Linear(num_features[-1], 1)
 
         self.stop_gradient = stop_gradient
-        self.batch_first = batch_first
+        self.batch_first, self.channels_last = batch_first, channels_last
 
     def forward(self, input: torch.Tensor, padding_mask: torch.BoolTensor = None) -> torch.Tensor:
         """Forward pass of DurationPredictor.
@@ -47,10 +48,11 @@ class FastSpeechDurationPredictor(nn.Module):
                 or (batch_size, length).
 
         Returns:
-            torch.Tensor: Estimated log duration of shape (batch_size, length).
+            torch.Tensor: Estimated log duration of shape (batch_size, length)
+                if ``batch_first=True``, otherwise (length, batch_size).
 
         """
-        batch_first = self.batch_first
+        batch_first, channels_last = self.batch_first, self.channels_last
         stop_gradient = self.stop_gradient
 
         if stop_gradient:
@@ -58,20 +60,37 @@ class FastSpeechDurationPredictor(nn.Module):
         else:
             x = input
 
+        # permute axes to (batch_size, num_features, length)
         if batch_first:
-            x = x.permute(0, 2, 1)
+            if channels_last:
+                # (batch_size, length, num_features) -> (batch_size, num_features, length)
+                x = x.permute(0, 2, 1)
+            else:
+                # (batch_size, num_features, length)
+                pass
         else:
-            x = x.permute(1, 2, 0)
+            if channels_last:
+                # (length, batch_size, num_features) -> (batch_size, num_features, length)
+                x = x.permute(1, 2, 0)
+            else:
+                raise NotImplementedError(
+                    "Condition of batch_first = False and channels_last = False is not supported."
+                )
 
         for layer_idx in range(self.num_layers):
             x = self.backbone[layer_idx](x, padding_mask=padding_mask)
 
+        # (batch_size, num_features, length) -> (batch_size, length, num_features)
         x = x.permute(0, 2, 1)
         x = self.fc_layer(x)
         log_duration = x.squeeze(dim=-1)
 
         if padding_mask is not None:
             log_duration = log_duration.masked_fill(padding_mask, -float("inf"))
+
+        if not batch_first:
+            # (batch_size, length) -> (length, batch_size)
+            log_duration = log_duration.permute(1, 0).contiguous()
 
         return log_duration
 
