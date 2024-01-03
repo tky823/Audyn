@@ -8,6 +8,18 @@ __all__ = ["FastSpeechDurationPredictor", "DurationPredictor"]
 
 
 class FastSpeechDurationPredictor(nn.Module):
+    """Duration predictor of FastSpeech composed of stacked ConvBlock.
+
+    Args:
+        num_features (list): Number of features.
+        kernel_size (int): Kernel size in convolutions.
+        dropout (float): Drop out rate. Default: ``1e-1``.
+        stop_gradient (bool): Whether to stop gradient of input feature.
+        batch_first (bool): If ``True``, first dimension of input is treated as batch index.
+        channels_last (bool): If ``True``, last dimension of input is treated as channel index.
+
+    """
+
     def __init__(
         self,
         num_features: List[int],
