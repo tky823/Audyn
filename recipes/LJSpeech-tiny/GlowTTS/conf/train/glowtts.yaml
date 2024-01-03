@@ -1,4 +1,5 @@
 defaults:
+  - key_mapping: glowtts_ljspeech
   - record: glowtts
   - _self_
 
@@ -23,30 +24,6 @@ dataloader:
     _target_: torch.utils.data.DataLoader
     batch_size: 1
     shuffle: false
-
-key_mapping:
-  train:
-    input:
-      src: phones
-      tgt: log_melspectrogram
-      src_length: phones_length
-      tgt_length: melspectrogram_length
-    output:
-      - - src_latent
-        - tgt_latent
-      - - log_est_duration
-        - ml_duration
-      - - src_padding_mask
-        - tgt_padding_mask
-      - logdet
-  validation: ${.train}
-  inference:
-    input:
-      src: phones
-      src_length: phones_length
-    output:
-      - estimated_log_melspectrogram
-      - estimated_duration
 
 clip_gradient:
   _target_: torch.nn.utils.clip_grad_norm_
