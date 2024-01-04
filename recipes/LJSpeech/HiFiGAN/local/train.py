@@ -10,7 +10,12 @@ from audyn.criterion.gan import GANCriterion
 from audyn.models.gan import BaseGAN
 from audyn.optim.lr_scheduler import GANLRScheduler
 from audyn.optim.optimizer import GANOptimizer
-from audyn.utils import instantiate_grad_clipper, instantiate_model, setup_system
+from audyn.utils import (
+    instantiate_gan_discriminator,
+    instantiate_gan_generator,
+    instantiate_grad_clipper,
+    setup_system,
+)
 from audyn.utils.clip_grad import GANGradClipper
 from audyn.utils.data import (
     BaseDataLoaders,
@@ -49,7 +54,7 @@ def main(config: DictConfig) -> None:
     )
     loaders = BaseDataLoaders(train_loader, validation_loader)
 
-    generator = instantiate_model(config.model.generator)
+    generator = instantiate_gan_generator(config.model)
     generator = set_device(
         generator,
         accelerator=config.system.accelerator,
@@ -73,7 +78,7 @@ def main(config: DictConfig) -> None:
         ddp_kwargs=config.train.ddp_kwargs,
     )
 
-    discriminator = instantiate_model(config.model.discriminator)
+    discriminator = instantiate_gan_discriminator(config.model)
     discriminator = set_device(
         discriminator,
         accelerator=config.system.accelerator,
