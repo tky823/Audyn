@@ -1,0 +1,4 @@
+test:
+  _target_: audyn.utils.data.dataset.TorchObjectDataset
+  list_path:
+  feature_dir:

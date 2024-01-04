@@ -1,15 +1,17 @@
 defaults:
-  - dataset: defaults
+  - dataset: torch
   - dataloader: defaults
   - _self_
 
 key_mapping:
   inference:
     input:
-      initial_state: initial_waveform
-      local_conditioning: log_melspectrogram
-      max_length: max_waveform_length
-    output: estimated_waveform
+      input: waveform
+    output:
+      - estimated_waveform
+      - encoded
+      - quantized
+      - codebook_indices
     identifier:
       filename: filename
 
@@ -25,10 +27,13 @@ output:
     key_mapping:
       inference:
         output:
-          estimated_waveform: "{filename}_estimated.wav"
+          estimated_waveform_mulaw: "{filename}_estimated.wav"
         reference:
           waveform: "{filename}.wav"
     transforms:
       inference:
         output:
+          estimated_waveform_mulaw:
+            _target_: torchaudio.transforms.MuLawDecoding
+            quantization_channels: ${data.audio.quantization_channels}
         reference:
