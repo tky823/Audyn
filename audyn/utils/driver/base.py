@@ -1648,37 +1648,51 @@ class BaseGenerator(BaseDriver):
                 output, key_mapping=self.config.test.key_mapping.inference
             )
 
-            if hasattr(self.config.test.output, "audio"):
-                audio_config = self.config.test.output.audio
-
-                if audio_config is not None:
-                    if hasattr(audio_config.key_mapping, "inference"):
-                        key_mapping = audio_config.key_mapping.inference
-                    elif hasattr(audio_config.key_mapping, "test"):
-                        key_mapping = audio_config.key_mapping.test
-                    else:
-                        key_mapping = audio_config.key_mapping
-
-                    if hasattr(audio_config.key_mapping, "inference"):
-                        transforms = audio_config.transforms.inference
-                    elif hasattr(audio_config.key_mapping, "test"):
-                        transforms = audio_config.transforms.test
-                    else:
-                        transforms = audio_config.transforms
-
-                    self.save_audio_if_necessary(
-                        named_output,
-                        named_data,
-                        named_identifier,
-                        key_mapping=key_mapping,
-                        transforms=transforms,
-                        sample_rate=audio_config.sample_rate,
-                    )
+            self.save_inference_audio_if_necessary(
+                named_output, named_data, named_identifier, config=self.config.test.output
+            )
 
     def load_checkpoint(self, path: str) -> None:
         state_dict = torch.load(path, map_location=self.device)
 
         self.unwrapped_model.load_state_dict(state_dict["model"])
+
+    def save_inference_audio_if_necessary(
+        self,
+        named_output: Dict[str, torch.Tensor],
+        named_reference: Dict[str, torch.Tensor],
+        named_identifier: Dict[str, List[str]],
+        config: DictConfig = None,
+    ) -> None:
+        if config is None:
+            config = config.test.output
+
+        if hasattr(config, "audio"):
+            audio_config = config.audio
+
+            if audio_config is not None:
+                if hasattr(audio_config.key_mapping, "inference"):
+                    key_mapping = audio_config.key_mapping.inference
+                elif hasattr(audio_config.key_mapping, "test"):
+                    key_mapping = audio_config.key_mapping.test
+                else:
+                    key_mapping = audio_config.key_mapping
+
+                if hasattr(audio_config.key_mapping, "inference"):
+                    transforms = audio_config.transforms.inference
+                elif hasattr(audio_config.key_mapping, "test"):
+                    transforms = audio_config.transforms.test
+                else:
+                    transforms = audio_config.transforms
+
+                self.save_audio_if_necessary(
+                    named_output,
+                    named_reference,
+                    named_identifier,
+                    key_mapping=key_mapping,
+                    transforms=transforms,
+                    sample_rate=audio_config.sample_rate,
+                )
 
     @run_only_master_rank()
     def save_audio_if_necessary(
