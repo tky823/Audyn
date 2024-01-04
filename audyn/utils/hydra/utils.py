@@ -21,6 +21,8 @@ from ..parallel import is_dp_or_ddp
 
 __all__ = [
     "instantiate_model",
+    "instantiate_gan_generator",
+    "instantiate_gan_discriminator",
     "instantiate_cascade_text_to_wave",
     "instantiate_optimizer",
     "instantiate_lr_scheduler",
@@ -109,6 +111,104 @@ def instantiate_model(
         raise NotImplementedError(f"{type(config_or_path)} is not supported.")
 
     return model
+
+
+def instantiate_gan_generator(
+    config_or_path: Union[str, DictConfig],
+    load_weights: Optional[bool] = None,
+) -> nn.Module:
+    """Instantiate generator in GANs.
+
+    Args:
+        config_or_path (str or DictConfig): Config of model.
+        load_weights (bool, optional): If ``True``, model loads pretrained weights.
+            Default: ``False``.
+
+    Returns:
+        nn.Module: Constructed model.
+
+    """
+    if load_weights is None:
+        load_weights = False
+
+    if isinstance(config_or_path, str):
+        state_dict = torch.load(config_or_path, map_location=lambda storage, loc: storage)
+
+        resolved_config: Dict[str, Any] = state_dict["resolved_config"]
+        model_config: Dict[str, Any] = resolved_config["model"]
+        generator_config = OmegaConf.create(model_config["generator"])
+        generator: nn.Module = hydra.utils.instantiate(generator_config)
+
+        if load_weights:
+            generator.load_state_dict(state_dict["model"]["generator"])
+
+    elif isinstance(config_or_path, DictConfig):
+        if load_weights:
+            raise ValueError(
+                "load_weights=True is not supported when config_or_path is DictConfig."
+            )
+
+        model_config = config_or_path
+
+        if hasattr(model_config, "generator"):
+            generator_config = model_config.generator
+        else:
+            generator_config = model_config
+
+        generator: nn.Module = hydra.utils.instantiate(generator_config)
+    else:
+        raise NotImplementedError(f"{type(config_or_path)} is not supported.")
+
+    return generator
+
+
+def instantiate_gan_discriminator(
+    config_or_path: Union[str, DictConfig],
+    load_weights: Optional[bool] = None,
+) -> nn.Module:
+    """Instantiate discriminator in GANs.
+
+    Args:
+        config_or_path (str or DictConfig): Config of model.
+        load_weights (bool, optional): If ``True``, model loads pretrained weights.
+            Default: ``False``.
+
+    Returns:
+        nn.Module: Constructed model.
+
+    """
+    if load_weights is None:
+        load_weights = False
+
+    if isinstance(config_or_path, str):
+        state_dict = torch.load(config_or_path, map_location=lambda storage, loc: storage)
+
+        resolved_config: Dict[str, Any] = state_dict["resolved_config"]
+        model_config: Dict[str, Any] = resolved_config["model"]
+        discriminator_config = OmegaConf.create(model_config["discriminator"])
+        discriminator: nn.Module = hydra.utils.instantiate(discriminator_config)
+
+        if load_weights:
+            discriminator.load_state_dict(state_dict["model"]["discriminator"])
+
+    elif isinstance(config_or_path, DictConfig):
+        if load_weights:
+            raise ValueError(
+                "load_weights=True is not supported when config_or_path is DictConfig."
+            )
+
+        model_config = config_or_path
+
+        if hasattr(model_config, "discriminator"):
+            discriminator_config = model_config.discriminator
+        else:
+            discriminator_config = model_config
+
+        discriminator: nn.Module = hydra.utils.instantiate(discriminator_config)
+    else:
+        raise NotImplementedError(f"{type(config_or_path)} is not supported.")
+
+    return discriminator
 
 
 def instantiate_cascade_text_to_wave(

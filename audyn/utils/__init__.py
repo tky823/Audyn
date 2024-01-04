@@ -21,6 +21,8 @@ from .distributed import is_distributed, setup_distributed
 from .hydra.utils import (
     instantiate_cascade_text_to_wave,
     instantiate_criterion,
+    instantiate_gan_discriminator,
+    instantiate_gan_generator,
     instantiate_grad_clipper,
     instantiate_lr_scheduler,
     instantiate_model,
@@ -34,6 +36,8 @@ __all__ = [
     "convert_dataloader_to_ddp_if_possible",
     "convert_dataset_and_dataloader_format_if_necessary",
     "instantiate_model",
+    "instantiate_gan_generator",
+    "instantiate_gan_discriminator",
     "instantiate_cascade_text_to_wave",
     "instantiate_optimizer",
     "instantiate_lr_scheduler",
