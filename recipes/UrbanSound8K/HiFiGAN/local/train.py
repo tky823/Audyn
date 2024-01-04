@@ -10,7 +10,15 @@ from audyn.criterion.gan import GANCriterion
 from audyn.models.gan import BaseGAN
 from audyn.optim.lr_scheduler import GANLRScheduler
 from audyn.optim.optimizer import GANOptimizer
-from audyn.utils import instantiate_grad_clipper, instantiate_model, setup_system
+from audyn.utils import (
+    instantiate_criterion,
+    instantiate_gan_discriminator,
+    instantiate_gan_generator,
+    instantiate_grad_clipper,
+    instantiate_lr_scheduler,
+    instantiate_optimizer,
+    setup_system,
+)
 from audyn.utils.clip_grad import GANGradClipper
 from audyn.utils.data import (
     BaseDataLoaders,
@@ -49,23 +57,21 @@ def main(config: DictConfig) -> None:
     )
     loaders = BaseDataLoaders(train_loader, validation_loader)
 
-    generator = instantiate_model(config.model.generator)
+    generator = instantiate_gan_generator(config.model)
     generator = set_device(
         generator,
         accelerator=config.system.accelerator,
         is_distributed=config.system.distributed.enable,
         ddp_kwargs=config.train.ddp_kwargs,
     )
-    generator_optimizer = hydra.utils.instantiate(
-        config.optimizer.generator, generator.parameters()
-    )
-    generator_lr_scheduler = hydra.utils.instantiate(
+    generator_optimizer = instantiate_optimizer(config.optimizer.generator, generator.parameters())
+    generator_lr_scheduler = instantiate_lr_scheduler(
         config.lr_scheduler.generator, generator_optimizer
     )
     generator_grad_clipper = instantiate_grad_clipper(
         config.train.clip_gradient.generator, generator.parameters()
     )
-    generator_criterion = hydra.utils.instantiate(config.criterion.generator)
+    generator_criterion = instantiate_criterion(config.criterion.generator)
     generator_criterion = set_device(
         generator_criterion,
         accelerator=config.system.accelerator,
@@ -73,23 +79,23 @@ def main(config: DictConfig) -> None:
         ddp_kwargs=config.train.ddp_kwargs,
     )
 
-    discriminator = instantiate_model(config.model.discriminator)
+    discriminator = instantiate_gan_discriminator(config.model.discriminator)
     discriminator = set_device(
         discriminator,
         accelerator=config.system.accelerator,
         is_distributed=config.system.distributed.enable,
         ddp_kwargs=config.train.ddp_kwargs,
     )
-    discriminator_optimizer = hydra.utils.instantiate(
+    discriminator_optimizer = instantiate_optimizer(
         config.optimizer.discriminator, discriminator.parameters()
     )
-    discriminator_lr_scheduler = hydra.utils.instantiate(
+    discriminator_lr_scheduler = instantiate_lr_scheduler(
         config.lr_scheduler.discriminator, discriminator_optimizer
     )
     discriminator_grad_clipper = instantiate_grad_clipper(
         config.train.clip_gradient.discriminator, discriminator.parameters()
     )
-    discriminator_criterion = hydra.utils.instantiate(config.criterion.discriminator)
+    discriminator_criterion = instantiate_criterion(config.criterion.discriminator)
     discriminator_criterion = set_device(
         discriminator_criterion,
         accelerator=config.system.accelerator,
