@@ -2,7 +2,7 @@
 
 ## Stages
 
-### Stage 1: Training
+### Stage 1: Training SoundStream
 
 By default, codebooks in RVQ are updated by exponential moving average.
 If the codebook usage is less than `reset_ath`, the codebook is randomly replaced with an encoded feature in the current batch.
@@ -54,4 +54,17 @@ criterion="official_soundstream"
 --train "${train}" \
 --model "${model}" \
 --criterion "${criterion}"
+```
+
+### Stage 2: Reconstruction of speeches
+
+```sh
+tag=<TAG>
+checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>
+
+. ./run.sh \
+--stage 2 \
+--stop-stage 2 \
+--tag "${tag}" \
+--checkpoint "${checkpoint}"
 ```
