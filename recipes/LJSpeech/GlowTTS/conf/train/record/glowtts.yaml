@@ -12,6 +12,7 @@ duration:
         log_est_duration:
           _target_: audyn.utils.duration.transform_log_duration
           _partial_: true
+          min_duration: 0
           dtype: ${const:torch.long}
       reference:
   epoch:
