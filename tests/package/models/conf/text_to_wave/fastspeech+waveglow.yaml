@@ -10,7 +10,7 @@ text_to_feat:
       padding_idx: 0
     positional_encoding:
       _target_: audyn.modules.positional_encoding.AbsolutePositionalEncoding
-      batch_first: true
+      batch_first: ${...batch_first}
     encoder_layer:
       _target_: audyn.modules.fastspeech.FFTrBlock
       d_model: ${..word_embedding.embedding_dim}
@@ -20,14 +20,14 @@ text_to_feat:
         - 3
         - 3
       dropout: 1.0e-1
-      batch_first: ${..positional_encoding.batch_first}
+      batch_first: ${...batch_first}
     num_layers: 2
-    batch_first: ${.positional_encoding.batch_first}
+    batch_first: ${..batch_first}
   decoder:
     _target_: audyn.models.fastspeech.Decoder
     positional_encoding:
       _target_: audyn.modules.positional_encoding.AbsolutePositionalEncoding
-      batch_first: ${...encoder.positional_encoding.batch_first}
+      batch_first: ${...batch_first}
     decoder_layer:
       _target_: audyn.modules.fastspeech.FFTrBlock
       d_model: ${...encoder.word_embedding.embedding_dim}
@@ -35,13 +35,13 @@ text_to_feat:
       num_heads: ${...encoder.encoder_layer.num_heads}
       kernel_size: ${...encoder.encoder_layer.kernel_size}
       dropout: ${...encoder.encoder_layer.dropout}
-      batch_first: ${...encoder.positional_encoding.batch_first}
+      batch_first: ${...batch_first}
     fc_layer:
       _target_: torch.nn.Linear
       in_features: ${...encoder.word_embedding.embedding_dim}
       out_features: 5
     num_layers: ${..encoder.num_layers}
-    batch_first: ${..encoder.positional_encoding.batch_first}
+    batch_first: ${..batch_first}
   duration_predictor:
     _target_: audyn.modules.duration_predictor.DurationPredictor
     num_features:
@@ -51,10 +51,11 @@ text_to_feat:
     kernel_size: 3
     dropout: 1.0e-1
     stop_gradient: False
-    batch_first: ${..encoder.positional_encoding.batch_first}
+    batch_first: ${..batch_first}
   length_regulator:
     _target_: audyn.models.fastspeech.LengthRegulator
-    batch_first: ${..encoder.positional_encoding.batch_first}
+    batch_first: ${..batch_first}
+  batch_first: true
 feat_to_wave:
   _target_: audyn.models.waveglow.WaveGlow
   in_channels: 6
