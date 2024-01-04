@@ -988,6 +988,15 @@ class GANTrainer(BaseTrainer):
 class GANGenerator(BaseGenerator):
     """Waveform synthesis using generator of GAN."""
 
+    def load_checkpoint(self, path: str) -> None:
+        state_dict = torch.load(path, map_location=self.device)
+
+        unwrapped_generator = unwrap(self.unwrapped_model.generator)
+        unwrapped_discriminator = unwrap(self.unwrapped_model.discriminator)
+
+        unwrapped_generator.load_state_dict(state_dict["model"]["generator"])
+        unwrapped_discriminator.load_state_dict(state_dict["model"]["discriminator"])
+
     @torch.no_grad()
     def run(self) -> None:
         self.model.eval()
