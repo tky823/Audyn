@@ -106,7 +106,7 @@ class GlowTTS(nn.Module):
         if src_length is None:
             src_padding_mask = None
         else:
-            max_src_length = torch.max(src_length).item()
+            max_src_length = src.size(-1)
             src_padding_mask = torch.arange(
                 max_src_length, device=src.device
             ) >= src_length.unsqueeze(dim=-1)
@@ -114,7 +114,7 @@ class GlowTTS(nn.Module):
         if tgt_length is None:
             tgt_padding_mask = None
         else:
-            max_tgt_length = torch.max(tgt_length).item()
+            max_tgt_length = tgt.size(-1)
             tgt_padding_mask = torch.arange(
                 max_tgt_length, device=tgt.device
             ) >= tgt_length.unsqueeze(dim=-1)
@@ -606,7 +606,16 @@ class Decoder(BaseFlow):
             logdet (torch.Tensor, optional): Log-determinant of shape (batch_size,).
 
         Returns:
-            tuple: Tuple of tensors.
+            torch.Tensor or tuple: Tensor or tuple of tensors.
+
+                - If ``padding_mask`` is ``None`` and ``logdet`` is None,
+                  output (batch_size, in_channels, length) is returned.
+                - If ``padding_mask`` is given and ``logdet`` is None,
+                  output and modified padding mask (batch_size, in_channels, length) are returned.
+                - If ``padding_mask`` is ``None`` and ``logdet`` is given,
+                  output and log-determinant (batch_size,) are returned.
+                - If ``padding_mask`` and ``logdet`` are given, output, modified padding mask,
+                    and log-determinant are returned.
 
         """
         down_scale = self.down_scale
