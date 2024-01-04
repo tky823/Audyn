@@ -7,7 +7,7 @@ from omegaconf import DictConfig
 
 import audyn
 from audyn.models.gan import BaseGAN
-from audyn.utils import instantiate_model, setup_system
+from audyn.utils import instantiate_gan_discriminator, instantiate_gan_generator, setup_system
 from audyn.utils.data import default_collate_fn
 from audyn.utils.driver import GANGenerator
 from audyn.utils.model import set_device
@@ -29,14 +29,14 @@ def main(config: DictConfig) -> None:
         ),
     )
 
-    generator = instantiate_model(config.model.generator)
+    generator = instantiate_gan_generator(config.test.checkpoint)
     generator = set_device(
         generator,
         accelerator=config.system.accelerator,
         is_distributed=config.system.distributed.enable,
         ddp_kwargs=config.test.ddp_kwargs,
     )
-    discriminator = instantiate_model(config.model.discriminator)
+    discriminator = instantiate_gan_discriminator(config.test.checkpoint)
     discriminator = set_device(
         discriminator,
         accelerator=config.system.accelerator,
