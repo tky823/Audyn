@@ -3,6 +3,7 @@ from typing import Callable, Optional, Tuple
 import torch
 import torch.nn as nn
 
+from ..utils.model import unwrap
 from .fastspeech import FastSpeech
 from .waveglow import WaveGlow
 from .wavenet import WaveNet
@@ -42,21 +43,25 @@ class CascadeTextToWave(nn.Module):
         text: torch.Tensor,
         max_length: Optional[int] = None,
     ) -> torch.Tensor:
-        if hasattr(self.text_to_feat, "inference"):
-            feature = self.text_to_feat.inference(text, max_length=max_length)
-        else:
-            feature = self.text_to_feat(text, max_length=max_length)
+        unwrapped_text_to_feat = unwrap(self.text_to_feat)
+        unwrapped_transform_middle = unwrap(self.transform_middle)
+        unwrapped_feat_to_wave = unwrap(self.feat_to_wave)
 
-        if self.transform_middle is not None:
-            if hasattr(self.transform_middle, "inference"):
-                feature = self.transform_middle.inference(feature)
+        if hasattr(unwrapped_text_to_feat, "inference"):
+            feature = unwrapped_text_to_feat.inference(text, max_length=max_length)
+        else:
+            feature = unwrapped_text_to_feat(text, max_length=max_length)
+
+        if unwrapped_transform_middle is not None:
+            if hasattr(unwrapped_transform_middle, "inference"):
+                feature = unwrapped_transform_middle.inference(feature)
             else:
-                feature = self.transform_middle(feature)
+                feature = unwrapped_transform_middle(feature)
 
-        if hasattr(self.feat_to_wave, "inference"):
-            waveform = self.feat_to_wave.inference(feature)
+        if hasattr(unwrapped_feat_to_wave, "inference"):
+            waveform = unwrapped_feat_to_wave.inference(feature)
         else:
-            waveform = self.feat_to_wave(feature)
+            waveform = unwrapped_feat_to_wave(feature)
 
         return waveform
 
@@ -110,33 +115,32 @@ class FastSpeechWaveNet(CascadeTextToWave):
                     of shape (batch_size, text_length).
 
         """
-        if hasattr(self.transform_middle, "inference"):
-            log_melspectrogram, log_est_duration = self.text_to_feat.inference(
+        unwrapped_text_to_feat = unwrap(self.text_to_feat)
+        unwrapped_transform_middle = unwrap(self.transform_middle)
+        unwrapped_feat_to_wave = unwrap(self.feat_to_wave)
+
+        if hasattr(unwrapped_transform_middle, "inference"):
+            log_melspectrogram, log_est_duration = unwrapped_text_to_feat.inference(
                 text, max_length=max_length
             )
         else:
-            log_melspectrogram, log_est_duration = self.text_to_feat(
-                text,
-                max_length=max_length,
+            log_melspectrogram, log_est_duration = unwrapped_text_to_feat(
+                text, max_length=max_length
             )
 
-        if hasattr(self.transform_middle, "inference"):
-            melspectrogram = self.transform_middle.inference(
-                log_melspectrogram,
-            )
+        if hasattr(unwrapped_transform_middle, "inference"):
+            melspectrogram = unwrapped_transform_middle.inference(log_melspectrogram)
         else:
-            melspectrogram = self.transform_middle(
-                log_melspectrogram,
-            )
+            melspectrogram = unwrapped_transform_middle(log_melspectrogram)
 
-        if hasattr(self.feat_to_wave, "inference"):
-            waveform = self.feat_to_wave.inference(
+        if hasattr(unwrapped_feat_to_wave, "inference"):
+            waveform = unwrapped_feat_to_wave.inference(
                 initial_state,
                 local_conditioning=melspectrogram,
                 global_conditioning=global_conditioning,
             )
         else:
-            waveform = self.feat_to_wave(
+            waveform = unwrapped_feat_to_wave(
                 initial_state,
                 local_conditioning=melspectrogram,
                 global_conditioning=global_conditioning,
@@ -145,8 +149,10 @@ class FastSpeechWaveNet(CascadeTextToWave):
         return waveform, melspectrogram, log_est_duration
 
     def remove_weight_norm_(self) -> None:
-        if hasattr(self.feat_to_wave, "remove_weight_norm_"):
-            self.feat_to_wave.remove_weight_norm_()
+        unwrapped_feat_to_wave = unwrap(self.feat_to_wave)
+
+        if hasattr(unwrapped_feat_to_wave, "remove_weight_norm_"):
+            unwrapped_feat_to_wave.remove_weight_norm_()
 
 
 class FastSpeechWaveGlow(CascadeTextToWave):
@@ -201,27 +207,26 @@ class FastSpeechWaveGlow(CascadeTextToWave):
                     of shape (batch_size, text_length).
 
         """
-        if hasattr(self.transform_middle, "inference"):
-            log_melspectrogram, log_est_duration = self.text_to_feat.inference(
+        unwrapped_text_to_feat = unwrap(self.text_to_feat)
+        unwrapped_transform_middle = unwrap(self.transform_middle)
+        unwrapped_feat_to_wave = unwrap(self.feat_to_wave)
+
+        if hasattr(unwrapped_text_to_feat, "inference"):
+            log_melspectrogram, log_est_duration = unwrapped_text_to_feat.inference(
                 text, max_length=max_length
             )
         else:
-            log_melspectrogram, log_est_duration = self.text_to_feat(
-                text,
-                max_length=max_length,
+            log_melspectrogram, log_est_duration = unwrapped_text_to_feat(
+                text, max_length=max_length
             )
 
-        if hasattr(self.transform_middle, "inference"):
-            melspectrogram = self.transform_middle.inference(
-                log_melspectrogram,
-            )
+        if hasattr(unwrapped_transform_middle, "inference"):
+            melspectrogram = unwrapped_transform_middle.inference(log_melspectrogram)
         else:
-            melspectrogram = self.transform_middle(
-                log_melspectrogram,
-            )
+            melspectrogram = unwrapped_transform_middle(log_melspectrogram)
 
-        in_channels = self.feat_to_wave.in_channels
-        upsampled_melspectrogram = self.feat_to_wave.upsample(melspectrogram)
+        in_channels = unwrapped_feat_to_wave.in_channels
+        upsampled_melspectrogram = unwrapped_feat_to_wave.upsample(melspectrogram)
         batch_size, _, length = upsampled_melspectrogram.size()
 
         if noise is None:
@@ -233,14 +238,14 @@ class FastSpeechWaveGlow(CascadeTextToWave):
         else:
             noise = std * noise
 
-        if hasattr(self.feat_to_wave, "inference"):
-            waveform = self.feat_to_wave.inference(
+        if hasattr(unwrapped_feat_to_wave, "inference"):
+            waveform = unwrapped_feat_to_wave.inference(
                 noise,
                 local_conditioning=melspectrogram,
                 global_conditioning=global_conditioning,
             )
         else:
-            waveform = self.feat_to_wave(
+            waveform = unwrapped_feat_to_wave(
                 noise,
                 local_conditioning=melspectrogram,
                 global_conditioning=global_conditioning,
@@ -249,8 +254,10 @@ class FastSpeechWaveGlow(CascadeTextToWave):
         return waveform, melspectrogram, log_est_duration
 
     def remove_weight_norm_(self) -> None:
-        if hasattr(self.feat_to_wave, "remove_weight_norm_"):
-            self.feat_to_wave.remove_weight_norm_()
+        unwrapped_feat_to_wave = unwrap(self.feat_to_wave)
+
+        if hasattr(unwrapped_feat_to_wave, "remove_weight_norm_"):
+            unwrapped_feat_to_wave.remove_weight_norm_()
 
 
 class FastSpeechWaveNetBridge(nn.Module):

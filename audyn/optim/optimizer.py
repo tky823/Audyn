@@ -920,8 +920,8 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
         if is_rvq:
             # quantized: (batch_size, num_stages, embedding_dim, *)
             # indices: (batch_size, num_stages, *)
-            stacked_quantized = quantized.transpose(1, 0)
-            stacked_indices = indices.transpose(1, 0)
+            stacked_quantized = quantized.transpose(1, 0).contiguous()
+            stacked_indices = indices.transpose(1, 0).contiguous()
         else:
             # stacked_quantized: (batch_size, embedding_dim, *)
             # indices: (batch_size, *)

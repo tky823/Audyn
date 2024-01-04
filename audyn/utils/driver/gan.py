@@ -646,10 +646,12 @@ class GANTrainer(BaseTrainer):
                 key_mapping=inference_key_mapping,
             )
 
-            if hasattr(self.unwrapped_model.generator, "inference"):
-                output = self.unwrapped_model.generator.inference(**named_input)
+            unwrapped_generator = unwrap(self.unwrapped_model.generator)
+
+            if hasattr(unwrapped_generator, "inference"):
+                output = unwrapped_generator.inference(**named_input)
             else:
-                output = self.unwrapped_model.generator(**named_input)
+                output = unwrapped_generator(**named_input)
 
             named_output = self.map_to_named_output(
                 output,
