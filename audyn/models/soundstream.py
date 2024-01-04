@@ -13,6 +13,7 @@ from .rvqvae import RVQVAE
 
 __all__ = [
     "SoundStream",
+    "SoundStreamReconstructor",
     "Discriminator",
     "Encoder",
     "Decoder",
@@ -105,6 +106,49 @@ class SoundStream(RVQVAE):
             raise NotImplementedError("Denoising is not supported now.")
 
         output = self.decode(quantized, stage_wise=stage_wise)
+
+        return output
+
+
+class SoundStreamReconstructor(SoundStream):
+    """Wrapper class of SoundStream for waveform reconstruction.
+
+    Different from SoundStream class, inference method is used for reconstruction.
+    """
+
+    @torch.no_grad()
+    def inference(
+        self,
+        input: torch.Tensor,
+        denoise: bool = False,
+        num_stages: Optional[int] = None,
+    ) -> torch.Tensor:
+        """Inference of SoundStreamReconstructor.
+
+        Args:
+            input (torch.Tensor): Input feature of shape (batch_size, *input_shape).
+            denoise (bool): If ``True``, denoising is applied.
+
+        Returns:
+            torch.Tensor: Reconstructed feature of same shape as input.
+
+        """
+        if denoise:
+            raise NotImplementedError("Denoising is not supported now.")
+
+        encoded = self.encode(input)
+        hierarchical_quantized, _ = self.quantize(encoded)
+
+        num_total_stages = hierarchical_quantized.size(1)
+
+        if num_stages is None:
+            num_stages = num_total_stages
+
+        hierarchical_quantized, _ = torch.split(
+            hierarchical_quantized, [num_stages, num_total_stages - num_stages], dim=1
+        )
+        quantized = hierarchical_quantized.sum(dim=1)
+        output = self.decode(quantized, stage_wise=False)
 
         return output
 
