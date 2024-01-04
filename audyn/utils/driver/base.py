@@ -121,7 +121,10 @@ class BaseDriver:
     ) -> Dict[str, torch.Tensor]:
         for key in data.keys():
             value = data[key]
-            if isinstance(value, torch.Tensor):
+            if value is None:
+                # None cannot be allocated to specific device.
+                pass
+            elif isinstance(value, torch.Tensor):
                 value = value.to(device)
             elif (
                 isinstance(value, int)
