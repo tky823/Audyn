@@ -7,17 +7,14 @@ key_mapping:
   inference:
     input:
       input: waveform
-    output:
-      - estimated_waveform
-      - encoded
-      - quantized
-      - codebook_indices
+      num_stages: num_stages
+    output: estimated_waveform
     identifier:
       filename: filename
 
 checkpoint:
 
-remove_weight_norm:
+num_stages:
 
 output:
   exp_dir: "./exp"
@@ -27,13 +24,10 @@ output:
     key_mapping:
       inference:
         output:
-          estimated_waveform_mulaw: "{filename}_estimated.wav"
+          estimated_waveform: "{filename}_estimated.wav"
         reference:
           waveform: "{filename}.wav"
     transforms:
       inference:
         output:
-          estimated_waveform_mulaw:
-            _target_: torchaudio.transforms.MuLawDecoding
-            quantization_channels: ${data.audio.quantization_channels}
         reference:
