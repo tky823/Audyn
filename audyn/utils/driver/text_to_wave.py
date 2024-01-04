@@ -74,14 +74,17 @@ class CascadeTextToWaveGenerator(BaseGenerator):
                 output, key_mapping=self.config.test.key_mapping.inference
             )
 
-            audio_config = self.config.test.output.audio
-            self.save_audio_if_necessary(
+            self.save_inference_audio_if_necessary(
                 named_output,
                 named_batch,
                 named_identifier,
-                key_mapping=audio_config.key_mapping.inference,
-                transforms=audio_config.transforms.inference,
-                sample_rate=audio_config.sample_rate,
+                config=self.config.test.output,
+            )
+            self.save_inference_spectrogram_if_necessary(
+                named_output,
+                named_batch,
+                named_identifier,
+                config=self.config.test.output,
             )
 
     def load_checkpoint(self, text_to_feat_path, feat_to_wave_path: str) -> None:

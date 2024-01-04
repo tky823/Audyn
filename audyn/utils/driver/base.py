@@ -1649,7 +1649,16 @@ class BaseGenerator(BaseDriver):
             )
 
             self.save_inference_audio_if_necessary(
-                named_output, named_data, named_identifier, config=self.config.test.output
+                named_output,
+                named_data,
+                named_identifier,
+                config=self.config.test.output,
+            )
+            self.save_inference_spectrogram_if_necessary(
+                named_output,
+                named_data,
+                named_identifier,
+                config=self.config.test.output,
             )
 
     def load_checkpoint(self, path: str) -> None:
@@ -1692,6 +1701,42 @@ class BaseGenerator(BaseDriver):
                     key_mapping=key_mapping,
                     transforms=transforms,
                     sample_rate=audio_config.sample_rate,
+                )
+
+    def save_inference_spectrogram_if_necessary(
+        self,
+        named_output: Dict[str, torch.Tensor],
+        named_reference: Dict[str, torch.Tensor],
+        named_identifier: Dict[str, List[str]],
+        config: DictConfig = None,
+    ) -> None:
+        if config is None:
+            config = config.test.output
+
+        if hasattr(config, "spectrogram"):
+            spectrogram_config = config.spectrogram
+
+            if spectrogram_config is not None:
+                if hasattr(spectrogram_config.key_mapping, "inference"):
+                    key_mapping = spectrogram_config.key_mapping.inference
+                elif hasattr(spectrogram_config.key_mapping, "test"):
+                    key_mapping = spectrogram_config.key_mapping.test
+                else:
+                    key_mapping = spectrogram_config.key_mapping
+
+                if hasattr(spectrogram_config.key_mapping, "inference"):
+                    transforms = spectrogram_config.transforms.inference
+                elif hasattr(spectrogram_config.key_mapping, "test"):
+                    transforms = spectrogram_config.transforms.test
+                else:
+                    transforms = spectrogram_config.transforms
+
+                self.save_spectrogram_if_necessary(
+                    named_output,
+                    named_reference,
+                    named_identifier,
+                    key_mapping=key_mapping,
+                    transforms=transforms,
                 )
 
     @run_only_master_rank()

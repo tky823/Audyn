@@ -164,31 +164,18 @@ class Generator(BaseGenerator):
                 output, key_mapping=self.config.test.key_mapping.inference
             )
 
-            if hasattr(self.config.test.output, "spectrogram"):
-                spectrogram_config = self.config.test.output.spectrogram
-
-                if spectrogram_config is not None:
-                    if hasattr(spectrogram_config.key_mapping, "inference"):
-                        key_mapping = spectrogram_config.key_mapping.inference
-                    elif hasattr(spectrogram_config.key_mapping, "test"):
-                        key_mapping = spectrogram_config.key_mapping.test
-                    else:
-                        key_mapping = spectrogram_config.key_mapping
-
-                    if hasattr(spectrogram_config.key_mapping, "inference"):
-                        transforms = spectrogram_config.transforms.inference
-                    elif hasattr(spectrogram_config.key_mapping, "test"):
-                        transforms = spectrogram_config.transforms.test
-                    else:
-                        transforms = spectrogram_config.transforms
-
-                    self.save_spectrogram_if_necessary(
-                        named_output,
-                        named_batch,
-                        named_identifier,
-                        key_mapping=key_mapping,
-                        transforms=transforms,
-                    )
+            self.save_inference_audio_if_necessary(
+                named_output,
+                named_batch,
+                named_identifier,
+                config=self.config.test.output,
+            )
+            self.save_inference_spectrogram_if_necessary(
+                named_output,
+                named_batch,
+                named_identifier,
+                config=self.config.test.output,
+            )
 
     def load_checkpoint(self, pixelcnn_path: str, vqvae_path: str) -> None:
         # load weights of PixelCNN
