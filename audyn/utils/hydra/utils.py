@@ -20,6 +20,7 @@ from ..clip_grad import GradClipper
 from ..parallel import is_dp_or_ddp
 
 __all__ = [
+    "instantiate",
     "instantiate_model",
     "instantiate_gan_generator",
     "instantiate_gan_discriminator",
@@ -70,6 +71,11 @@ else:
         ...
 
 
+def instantiate(config: Any, *args, **kwargs) -> Any:
+    """Wrapper function of ``hydra.utils.instantiate``."""
+    return hydra.utils.instantiate(config, *args, **kwargs)
+
+
 def instantiate_model(
     config_or_path: Union[str, DictConfig],
     load_weights: Optional[bool] = None,
@@ -94,7 +100,7 @@ def instantiate_model(
         resolved_config: Dict[str, Any] = state_dict["resolved_config"]
         model_config: Dict[str, Any] = resolved_config["model"]
         model_config = OmegaConf.create(model_config)
-        model: nn.Module = hydra.utils.instantiate(model_config)
+        model: nn.Module = instantiate(model_config)
 
         if load_weights:
             model.load_state_dict(state_dict["model"])
@@ -106,7 +112,7 @@ def instantiate_model(
             )
 
         model_config = config_or_path
-        model: nn.Module = hydra.utils.instantiate(model_config)
+        model: nn.Module = instantiate(model_config)
     else:
         raise NotImplementedError(f"{type(config_or_path)} is not supported.")
 
@@ -137,7 +143,7 @@ def instantiate_gan_generator(
         resolved_config: Dict[str, Any] = state_dict["resolved_config"]
         model_config: Dict[str, Any] = resolved_config["model"]
         generator_config = OmegaConf.create(model_config["generator"])
-        generator: nn.Module = hydra.utils.instantiate(generator_config)
+        generator: nn.Module = instantiate(generator_config)
 
         if load_weights:
             generator.load_state_dict(state_dict["model"]["generator"])
@@ -155,7 +161,7 @@ def instantiate_gan_generator(
         else:
             generator_config = model_config
 
-        generator: nn.Module = hydra.utils.instantiate(generator_config)
+        generator: nn.Module = instantiate(generator_config)
     else:
         raise NotImplementedError(f"{type(config_or_path)} is not supported.")
 
@@ -186,7 +192,7 @@ def instantiate_gan_discriminator(
         resolved_config: Dict[str, Any] = state_dict["resolved_config"]
         model_config: Dict[str, Any] = resolved_config["model"]
         discriminator_config = OmegaConf.create(model_config["discriminator"])
-        discriminator: nn.Module = hydra.utils.instantiate(discriminator_config)
+        discriminator: nn.Module = instantiate(discriminator_config)
 
         if load_weights:
             discriminator.load_state_dict(state_dict["model"]["discriminator"])
@@ -204,7 +210,7 @@ def instantiate_gan_discriminator(
         else:
             discriminator_config = model_config
 
-        discriminator: nn.Module = hydra.utils.instantiate(discriminator_config)
+        discriminator: nn.Module = instantiate(discriminator_config)
     else:
         raise NotImplementedError(f"{type(config_or_path)} is not supported.")
 
@@ -243,15 +249,15 @@ def instantiate_cascade_text_to_wave(
     text_to_feat_resolved_config: Dict[str, Any] = text_to_feat_state_dict["resolved_config"]
     text_to_feat_model_config: Dict[str, Any] = text_to_feat_resolved_config["model"]
     text_to_feat_model_config = OmegaConf.create(text_to_feat_model_config)
-    text_to_feat: nn.Module = hydra.utils.instantiate(text_to_feat_model_config)
+    text_to_feat: nn.Module = instantiate(text_to_feat_model_config)
 
     # feat-to-wave
     feat_to_wave_resolved_config: Dict[str, Any] = feat_to_wave_state_dict["resolved_config"]
     feat_to_wave_model_config: Dict[str, Any] = feat_to_wave_resolved_config["model"]
     feat_to_wave_model_config = OmegaConf.create(feat_to_wave_model_config)
-    feat_to_wave: nn.Module = hydra.utils.instantiate(feat_to_wave_model_config)
+    feat_to_wave: nn.Module = instantiate(feat_to_wave_model_config)
 
-    model: CascadeTextToWave = hydra.utils.instantiate(
+    model: CascadeTextToWave = instantiate(
         config,
         text_to_feat=text_to_feat,
         feat_to_wave=feat_to_wave,
@@ -300,9 +306,7 @@ def instantiate_optimizer(
                     params.append(submodule.parameters())
 
                 params = itertools.chain(*params)
-                optimizer = hydra.utils.instantiate(
-                    subconfig["optimizer"], params, *args, **kwargs
-                )
+                optimizer = instantiate(subconfig["optimizer"], params, *args, **kwargs)
 
                 if isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer):
                     for submodule_name in subconfig["modules"]:
@@ -325,7 +329,7 @@ def instantiate_optimizer(
             return optimizers
         else:
             params = module.parameters()
-            optimizer = hydra.utils.instantiate(config, params, *args, **kwargs)
+            optimizer = instantiate(config, params, *args, **kwargs)
 
             if isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer):
                 _register_forward_hook_for_ema_codebook_optim(module, optimizer)
@@ -335,7 +339,7 @@ def instantiate_optimizer(
         if isinstance(config, ListConfig):
             raise ValueError("ListConfig is not supported when parameters are given to optimizer.")
 
-        optimizer = hydra.utils.instantiate(config, params, *args, **kwargs)
+        optimizer = instantiate(config, params, *args, **kwargs)
 
     return optimizer
 
@@ -348,7 +352,7 @@ def instantiate_lr_scheduler(
     .. note::
 
         If ``config`` is empty dict, this function returns ``None``
-        unlike ``hydra.utils.instantiate``.
+        unlike ``instantiate``.
 
     """
     if isinstance(config, ListConfig):
@@ -367,7 +371,7 @@ def instantiate_lr_scheduler(
                 optim_name = idx
 
             _optimizer = optimizer.optimizers[optim_name]
-            _lr_scheduler = hydra.utils.instantiate(_config, _optimizer, *args, **kwargs)
+            _lr_scheduler = instantiate(_config, _optimizer, *args, **kwargs)
 
             if isinstance(_lr_scheduler, DictConfig):
                 _lr_scheduler = _DummyLRScheduler()
@@ -378,7 +382,7 @@ def instantiate_lr_scheduler(
 
         return lr_schedulers
     else:
-        lr_scheduler = hydra.utils.instantiate(config, optimizer, *args, **kwargs)
+        lr_scheduler = instantiate(config, optimizer, *args, **kwargs)
 
     if isinstance(lr_scheduler, DictConfig):
         lr_scheduler = None
@@ -401,9 +405,7 @@ def instantiate_grad_clipper(config, module_or_params, *args, **kwargs) -> GradC
         else:
             overridden_config = config
 
-        grad_clipper = hydra.utils.instantiate(
-            overridden_config, module_or_params, *args, **kwargs
-        )
+        grad_clipper = instantiate(overridden_config, module_or_params, *args, **kwargs)
 
         if isinstance(grad_clipper, DictConfig):
             grad_clipper = None
@@ -419,7 +421,7 @@ def instantiate_criterion(
     """Instantiate criterion."""
 
     if isinstance(config, DictConfig):
-        criterion = hydra.utils.instantiate(config, *args, **kwargs)
+        criterion = instantiate(config, *args, **kwargs)
     elif isinstance(config, ListConfig):
         assert len(args) == 0, "Positional arguments are not supported."
         assert len(kwargs) == 0, "Keyword arguments are not supported."
@@ -428,7 +430,7 @@ def instantiate_criterion(
 
         for _config in config:
             _name = _config.name
-            _criterion = hydra.utils.instantiate(_config.criterion)
+            _criterion = instantiate(_config.criterion)
             _weight = _config.weight
             _key_mapping = OmegaConf.to_object(_config.key_mapping)
             _criterion_wrapper = BaseCriterionWrapper(
