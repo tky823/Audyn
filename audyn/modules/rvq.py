@@ -72,7 +72,7 @@ class ResidualVectorQuantizer(BaseVectorQuantizer):
             self.is_initialized = True
 
         if self.dropout and self.training:
-            num_stages = torch.randint(0, len(self.codebooks), ()) + 1
+            num_stages = torch.randint(0, len(self.codebooks), (), device=input.device) + 1
 
             if dist.is_available() and dist.is_initialized():
                 # gather num_stages: () -> (num_gpus,)
