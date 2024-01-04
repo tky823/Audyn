@@ -33,7 +33,7 @@ class FastSpeech(nn.Module):
         duration_predictor: nn.Module,
         length_regulator: nn.Module,
         batch_first: bool = False,
-    ):
+    ) -> None:
         super().__init__()
 
         self.encoder = encoder
@@ -69,6 +69,16 @@ class FastSpeech(nn.Module):
         else:
             src_key_padding_mask = duration == 0
 
+            if not self.batch_first:
+                # NOTE: We assume encoder supports (batch_size, tgt_length)
+                #       even when batch_first = False.
+                src_key_padding_mask = src_key_padding_mask.permute(1, 0)
+
+        _validate_padding_mask_shape(
+            src,
+            padding_mask=src_key_padding_mask,
+            batch_first=self.batch_first,
+        )
         h_src = self.encoder(src, src_key_padding_mask=src_key_padding_mask)
         log_est_duration = self.duration_predictor(h_src)
 
@@ -101,12 +111,21 @@ class FastSpeech(nn.Module):
             max_length=max_length,
         )
 
-        tgt_duration = linear_est_duration.sum(dim=1)
+        if self.batch_first:
+            tgt_duration = linear_est_duration.sum(dim=1)
+        else:
+            tgt_duration = linear_est_duration.sum(dim=0)
+
         max_tgt_duration = torch.max(tgt_duration)
         tgt_key_padding_mask = self.create_duration_padding_mask(
             tgt_duration, max_duration=max_tgt_duration
         )
 
+        _validate_padding_mask_shape(
+            h_tgt,
+            padding_mask=tgt_key_padding_mask,
+            batch_first=self.batch_first,
+        )
         output = self.decoder(h_tgt, tgt_key_padding_mask=tgt_key_padding_mask)
 
         return output, log_est_duration
@@ -198,6 +217,16 @@ class MultiSpeakerFastSpeech(FastSpeech):
         else:
             src_key_padding_mask = duration == 0
 
+            if not self.batch_first:
+                # NOTE: We assume encoder supports (batch_size, tgt_length)
+                #       even when batch_first = False.
+                src_key_padding_mask = src_key_padding_mask.permute(1, 0)
+
+        _validate_padding_mask_shape(
+            src,
+            padding_mask=src_key_padding_mask,
+            batch_first=self.batch_first,
+        )
         spk_emb = self.speaker_encoder(speaker)
         h_src = self.encoder(src, src_key_padding_mask=src_key_padding_mask)
         h_src = self.blend_embeddings(h_src, spk_emb)
@@ -232,13 +261,23 @@ class MultiSpeakerFastSpeech(FastSpeech):
             max_length=max_length,
         )
 
-        tgt_duration = linear_est_duration.sum(dim=1)
+        if self.batch_first:
+            tgt_duration = linear_est_duration.sum(dim=1)
+        else:
+            tgt_duration = linear_est_duration.sum(dim=0)
+
         max_tgt_duration = torch.max(tgt_duration)
         tgt_key_padding_mask = self.create_duration_padding_mask(
             tgt_duration, max_duration=max_tgt_duration
         )
 
         h_tgt = self.blend_embeddings(h_tgt, spk_emb)
+
+        _validate_padding_mask_shape(
+            h_tgt,
+            padding_mask=tgt_key_padding_mask,
+            batch_first=self.batch_first,
+        )
         output = self.decoder(h_tgt, tgt_key_padding_mask=tgt_key_padding_mask)
 
         return output, log_est_duration
@@ -329,6 +368,12 @@ class Encoder(nn.Module):
         """
         x = self.word_embedding(src)
         x = self.positional_encoding(x)
+
+        _validate_padding_mask_shape(
+            x,
+            padding_mask=src_key_padding_mask,
+            batch_first=self.batch_first,
+        )
 
         for module in self.layers:
             x = module(
@@ -430,6 +475,12 @@ class Decoder(nn.Module):
         """
         x = self.positional_encoding(tgt)
 
+        _validate_padding_mask_shape(
+            x,
+            padding_mask=tgt_key_padding_mask,
+            batch_first=self.batch_first,
+        )
+
         for module in self.layers:
             x = module(
                 x,
@@ -506,8 +557,8 @@ class LengthRegulator(nn.Module):
         Args:
             sequence (torch.Tensor): Input sequence of shape (batch_size, length, *)
                 if ``self.batch_first=True``. Otherwise, (length, batch_size, *).
-            duration (torch.LongTensor): Duration of each input token
-                of shape (batch_size, length).
+            duration (torch.LongTensor): Duration of each input token of shape
+                (batch_size, length) if ``self.batch_first=True``. Otherwise, (length, batch_size).
             expand_scale (float): Parameter to control scale of duration. Default: ``1``.
             padding_mask (torch.BoolTensor, optional): Padding mask
                 of shape (batch_size, length).
@@ -517,8 +568,10 @@ class LengthRegulator(nn.Module):
         Returns:
             tuple: Tuple of tensors containing
 
-                - torch.Tensor: Expanded sequence.
-                - torch.Tensor: Scaled duration.
+                - torch.Tensor: Expanded sequence of shape (batch_size, expanded_length, *)
+                    if ``self.batch_first=True``. Otherwise, (length, batch_size, *).
+                - torch.Tensor: Scaled duration of shape (batch_size, length, *)
+                    if ``self.batch_first=True``. Otherwise, (length, batch_size).
 
         """
         pad_value = self.pad_value
@@ -559,3 +612,23 @@ class LengthRegulator(nn.Module):
 
 def _get_clones(module, N) -> nn.ModuleList:
     return nn.ModuleList([copy.deepcopy(module) for _ in range(N)])
+
+
+def _validate_padding_mask_shape(
+    input: torch.Tensor,
+    padding_mask: Optional[torch.BoolTensor] = None,
+    batch_first: Optional[bool] = None,
+) -> None:
+    """Validate shape of padding mask is compatible with that of input depending on batch_first."""
+    if padding_mask is None:
+        return
+
+    if batch_first is None:
+        raise ValueError("Specify batch_first.")
+
+    if batch_first:
+        assert input.size(0) == padding_mask.size(0)
+        assert input.size(1) == padding_mask.size(1)
+    else:
+        assert input.size(1) == padding_mask.size(0)
+        assert input.size(0) == padding_mask.size(1)
