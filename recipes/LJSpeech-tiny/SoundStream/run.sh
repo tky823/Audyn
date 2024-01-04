@@ -8,6 +8,7 @@ stop_stage=-1
 
 tag=""
 continue_from=""
+checkpoint=""
 
 exp_dir="./exp"
 
@@ -21,7 +22,8 @@ system="defaults"
 preprocess="defaults"
 data="soundstream"
 train="soundstream"
-model="soundstream"
+test="soundstream_reconstruction"
+model="soundstream_reconstruction"
 optimizer="soundstream"
 lr_scheduler="soundstream"
 criterion="soundstream"
@@ -78,5 +80,23 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         --optimizer "${optimizer}" \
         --lr-scheduler "${lr_scheduler}" \
         --criterion "${criterion}"
+    )
+fi
+
+if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
+    echo "Stage 2: Reconstruction of signals"
+
+    (
+        . ./test_reconstruction.sh \
+        --tag "${tag}" \
+        --checkpoint "${checkpoint}" \
+        --exp-dir "${exp_dir}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
+        --system "${system}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --test "${test}" \
+        --model "${model}"
     )
 fi

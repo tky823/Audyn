@@ -1,0 +1,1 @@
+../../LJSpeech/SoundStream/test_reconstruction.sh
