@@ -29,14 +29,14 @@ def main(config: DictConfig) -> None:
         ),
     )
 
-    generator = instantiate_gan_generator(config.test.checkpoint)
+    generator = instantiate_gan_generator(config.model)
     generator = set_device(
         generator,
         accelerator=config.system.accelerator,
         is_distributed=config.system.distributed.enable,
         ddp_kwargs=config.test.ddp_kwargs,
     )
-    discriminator = instantiate_gan_discriminator(config.test.checkpoint)
+    discriminator = instantiate_gan_discriminator(config.model)
     discriminator = set_device(
         discriminator,
         accelerator=config.system.accelerator,
