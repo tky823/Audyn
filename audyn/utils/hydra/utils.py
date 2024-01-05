@@ -156,7 +156,7 @@ def instantiate_gan_generator(
 
         model_config = config_or_path
 
-        if hasattr(model_config, "generator"):
+        if hasattr(model_config, "generator") and hasattr(model_config, "discriminator"):
             generator_config = model_config.generator
         else:
             generator_config = model_config
@@ -205,7 +205,7 @@ def instantiate_gan_discriminator(
 
         model_config = config_or_path
 
-        if hasattr(model_config, "discriminator"):
+        if hasattr(model_config, "generator") and hasattr(model_config, "discriminator"):
             discriminator_config = model_config.discriminator
         else:
             discriminator_config = model_config
