@@ -3,4 +3,4 @@ defaults:
   - _self_
 
 generator:
-  _target_: audyn.models.soundstream.SoundStreamReconstruction
+  _target_: audyn.models.soundstream.SoundStreamReconstructor

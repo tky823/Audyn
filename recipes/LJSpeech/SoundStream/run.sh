@@ -8,6 +8,7 @@ stop_stage=-1
 
 tag=""
 continue_from=""
+checkpoint=""
 
 exp_dir="./exp"
 
