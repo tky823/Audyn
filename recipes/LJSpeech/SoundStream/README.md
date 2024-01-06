@@ -68,3 +68,19 @@ checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>
 --tag "${tag}" \
 --checkpoint "${checkpoint}"
 ```
+
+### Stage 3: Save quantized features as codebook indices
+
+```sh
+tag=<TAG>
+checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>
+
+train="save_quantized_features"
+
+. ./run.sh \
+--stage 3 \
+--stop-stage 3 \
+--tag "${tag}" \
+--checkpoint "${checkpoint}" \
+--train "${train}"
+```
