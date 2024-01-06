@@ -35,6 +35,13 @@ n_test=500
 
 ljspeech_root="${data_root}/LJSpeech-1.1"
 
+set +u
+
+# path to local scripts
+export PYTHONPATH="./:${PYTHONPATH}"
+
+set -u
+
 if [ ${stage} -le -1 ] && [ ${stop_stage} -ge -1 ]; then
     echo "Stage -1"
 
@@ -97,6 +104,24 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         --preprocess "${preprocess}" \
         --data "${data}" \
         --test "${test}" \
+        --model "${model}"
+    )
+fi
+
+if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
+    echo "Stage 3: Save quantized features."
+
+    (
+        . ./save_quantized_features.sh \
+        --tag "${tag}" \
+        --continue-from "${continue_from}" \
+        --exp-dir "${exp_dir}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
+        --system "${system}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --train "${train}" \
         --model "${model}"
     )
 fi
