@@ -14,5 +14,20 @@ melspectrogram:
   f_max:
   n_mels: 80
 
+text:
+  vocab_size: ${const:audyn.utils.data.cmudict.vocab_size}
+  preprocessor:
+    _target_: audyn.utils.text.TextPreprocessor
+    normalizer:
+      _target_: audyn.utils.data.tacotron.text.normalization.TacotronBasicNormalizer
+    tokenizer:
+      _target_: audyn.utils.text.tokenization.EnglishWordTokenizer
+    phonemizer:
+      _target_: audyn.utils.text.pronunciation.Phonemizer
+      pron_dict:
+        _target_: audyn.utils.data.cmudict.CMUDict
+    indexer:
+      _target_: audyn.utils.data.cmudict.indexing.CMUDictIndexer
+
 codebook:
   size: 16
