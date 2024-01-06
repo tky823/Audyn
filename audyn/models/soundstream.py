@@ -72,11 +72,14 @@ class SoundStream(RVQVAE):
         if denoise:
             raise NotImplementedError("Denoising is not supported now.")
 
-        encoded = self.encode(input)
+        padding_left, padding_right = self.compute_padding(input)
+        x = F.pad(input, (padding_left, padding_right))
+        encoded = self.encode(x)
         hierarchical_quantized, indices = self.quantize(encoded)
         quantized = hierarchical_quantized.sum(dim=1)
         quantized_straight_through = encoded + torch.detach(quantized - encoded)
-        output = self.decode(quantized_straight_through, stage_wise=False)
+        x = self.decode(quantized_straight_through, stage_wise=False)
+        output = F.pad(x, (-padding_left, -padding_right))
 
         return output, encoded, hierarchical_quantized, indices
 
@@ -108,6 +111,69 @@ class SoundStream(RVQVAE):
         output = self.decode(quantized, stage_wise=stage_wise)
 
         return output
+
+    def compute_padding(self, input: torch.Tensor) -> Tuple[int, int]:
+        """Compute padding size based on down_scale.
+
+        Args:
+            input (torch.Tensor): Waveform-like feature of shape (batch_size, in_channels, length).
+
+        Returns:
+            tuple: Padding size of left- and right-hand side.
+
+        """
+        down_scale = self.down_scale
+
+        if down_scale is None:
+            padding = 0
+        else:
+            length = input.size(-1)
+            padding = (down_scale - length % down_scale) % down_scale
+
+        padding_left = padding // 2
+        padding_right = padding - padding_left
+
+        return padding_left, padding_right
+
+    @property
+    def down_scale(self) -> Optional[int]:
+        """Try to find down_scale or downscale parameter from self.encoder."""
+        encoder = self.encoder
+        scale = 1
+
+        if isinstance(encoder, Encoder):
+            encoder: Encoder
+
+            for s in encoder.stride:
+                scale *= s
+        elif hasattr(encoder, "down_scale") and not callable(encoder.down_scale):
+            scale = encoder.down_scale
+        elif hasattr(encoder, "downscale") and not callable(encoder.downscale):
+            scale = encoder.downscale
+        else:
+            scale = None
+
+        return scale
+
+    @property
+    def up_scale(self) -> Optional[int]:
+        """Try to find up_scale or upscale parameter from self.decoder."""
+        decoder = self.decoder
+        scale = 1
+
+        if isinstance(decoder, Decoder):
+            decoder: Decoder
+
+            for s in decoder.stride:
+                scale *= s
+        elif hasattr(decoder, "up_scale") and not callable(decoder.up_scale):
+            scale = decoder.up_scale
+        elif hasattr(decoder, "upscale") and not callable(decoder.upscale):
+            scale = decoder.upscale
+        else:
+            scale = None
+
+        return scale
 
 
 class SoundStreamReconstructor(SoundStream):
@@ -244,6 +310,7 @@ class Encoder(nn.Module):
 
         self.kernel_size_in = _single(kernel_size_in)
         self.kernel_size_out = _single(kernel_size_out)
+        self.stride = stride
         self.causal = causal
 
     def forward(self, input: torch.Tensor, denoise: bool = False) -> torch.Tensor:
