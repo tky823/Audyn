@@ -1,0 +1,19 @@
+defaults:
+  - record: soundstream
+  - key_mapping: save_quantized_features
+  - _self_
+
+dataset:
+  _target_: audyn.utils.data.dataset.TorchObjectDataset
+  list_path:
+  feature_dir:
+
+dataloader:
+  _target_: torch.utils.data.DataLoader
+  batch_size: 1
+  shuffle: false
+
+checkpoint: ??
+
+output:
+  exp_dir: "./exp"

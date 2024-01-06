@@ -1,0 +1,13 @@
+input:
+  input: waveform
+output:
+  - estimated_waveform
+  - encoded
+  - quantized
+  - codebook_indices
+save:
+  input:
+    identifier: filename
+    waveform: waveform
+  output:
+    codebook_indices: codebook_indices
