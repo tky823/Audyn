@@ -15,7 +15,6 @@ melspectrogram:
   n_mels: 80
 
 text:
-  vocab_size: ${const:audyn.utils.data.cmudict.vocab_size}
   preprocessor:
     _target_: audyn.utils.text.TextPreprocessor
     normalizer:
