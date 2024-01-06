@@ -19,7 +19,7 @@ dump_root="dump"
 dump_format="torch"
 
 system="defaults"
-preprocess="defaults"
+preprocess="ljspeech_text-to-feat"
 data="soundstream"
 train="soundstream"
 test="soundstream_reconstruction"
@@ -58,7 +58,7 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
     (
         . ./preprocess.sh \
         --stage 0 \
-        --stop-stage 3 \
+        --stop-stage 4 \
         --data-root "${data_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
