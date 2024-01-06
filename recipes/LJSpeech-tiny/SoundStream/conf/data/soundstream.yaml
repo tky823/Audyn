@@ -15,6 +15,8 @@ melspectrogram:
   n_mels: 80
 
 text:
+  bos_token: ${const:audyn.utils.data.cmudict.BOS_SYMBOL}
+  eos_token: ${const:audyn.utils.data.cmudict.EOS_SYMBOL}
   preprocessor:
     _target_: audyn.utils.text.TextPreprocessor
     normalizer:
