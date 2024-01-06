@@ -28,6 +28,8 @@ def main(config: DictConfig) -> None:
     assert feature_dir is not None, "Specify preprocess.feature_dir."
 
     sample_rate = config.data.audio.sample_rate
+    bos_token = config.data.text.bos_token
+    eos_token = config.data.text.eos_token
 
     text_preprocessor = hydra.utils.instantiate(config.data.text.preprocessor)
 
@@ -54,6 +56,8 @@ def main(config: DictConfig) -> None:
                             feature_path=feature_path,
                             text_preprocessor=text_preprocessor,
                             sample_rate=sample_rate,
+                            bos_token=bos_token,
+                            eos_token=eos_token,
                         )
                         futures.append(future)
 
@@ -74,6 +78,8 @@ def main(config: DictConfig) -> None:
                         feature_path=feature_path,
                         text_preprocessor=text_preprocessor,
                         sample_rate=sample_rate,
+                        bos_token=bos_token,
+                        eos_token=eos_token,
                     )
     else:
         template_path = os.path.join(feature_dir, "%d.tar")
@@ -93,6 +99,8 @@ def main(config: DictConfig) -> None:
                     text_path=text_path,
                     text_preprocessor=text_preprocessor,
                     sample_rate=sample_rate,
+                    bos_token=bos_token,
+                    eos_token=eos_token,
                 )
 
 
@@ -103,6 +111,8 @@ def process_torch(
     feature_path: str,
     text_preprocessor: TextPreprocessor = None,
     sample_rate: Optional[int] = None,
+    bos_token: Optional[str] = None,
+    eos_token: Optional[str] = None,
 ) -> None:
     feature = {}
 
@@ -120,8 +130,17 @@ def process_torch(
 
     # text
     normalized_text = load_text(text_path)
-    phones = text_preprocessor.index_normalized_text(normalized_text, return_type="tensor")
+    phones = text_preprocessor.phonemize_normalized_text(normalized_text)
+
+    if bos_token is not None and phones[0] != bos_token:
+        phones.insert(0, bos_token)
+
+    if eos_token is not None and phones[-1] != eos_token:
+        phones.append(eos_token)
+
+    phones = text_preprocessor.index_phonemes(phones, return_type="tensor")
     feature["phones"] = phones
+    feature["phones_length"] = torch.tensor(phones.size(-1), dtype=torch.long)
 
     feature["filename"] = filename
 
@@ -137,6 +156,8 @@ def process_webdataset(
     text_path: str,
     text_preprocessor: TextPreprocessor = None,
     sample_rate: Optional[int] = None,
+    bos_token: Optional[str] = None,
+    eos_token: Optional[str] = None,
 ) -> None:
     feature = {}
 
@@ -156,8 +177,17 @@ def process_webdataset(
 
     # text
     normalized_text = load_text(text_path)
-    phones = text_preprocessor.index_normalized_text(normalized_text, return_type="tensor")
+    phones = text_preprocessor.phonemize_normalized_text(normalized_text)
+
+    if bos_token is not None and phones[0] != bos_token:
+        phones.insert(0, bos_token)
+
+    if eos_token is not None and phones[-1] != eos_token:
+        phones.append(eos_token)
+
+    phones = text_preprocessor.index_phonemes(phones, return_type="tensor")
     feature["phones.pth"] = phones
+    feature["phones_length.pth"] = torch.tensor(phones.size(-1), dtype=torch.long)
 
     feature["filename.txt"] = filename
 
