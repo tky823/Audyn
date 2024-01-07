@@ -26,7 +26,7 @@ resume:
 
 output:
   exp_dir: "./exp"
-  tensorboard_dir: "./tensorboard"
+  tensorboard_dir: "./tensorboard/valle"
   save_checkpoint:
     iteration:
       every: 50000
