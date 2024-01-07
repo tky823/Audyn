@@ -155,8 +155,8 @@ criterion="valle"
 
 ```sh
 tag=<TAG>
-text_to_feat_checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>
-feat_to_wave_checkpoint=<PATH/TO/PRETRAINED/VALLE>
+text_to_feat_checkpoint=<PATH/TO/PRETRAINED/VALLE>
+feat_to_wave_checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>
 
 data="soundstream"
 test="valle_tts"
