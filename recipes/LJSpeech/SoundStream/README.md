@@ -93,6 +93,7 @@ tag=<TAG>
 checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>
 
 data="soundstream"
+test="soundstream_reconstruction"
 model="soundstream_reconstructor"
 
 . ./run.sh \
@@ -101,6 +102,7 @@ model="soundstream_reconstructor"
 --tag "${tag}" \
 --checkpoint "${checkpoint}" \
 --data "${data}" \
+--test "${test}" \
 --model "${model}"
 ```
 
@@ -147,4 +149,26 @@ criterion="valle"
 --optimizer "${optimizer}" \
 --lr-scheduler "${lr_scheduler}" \
 --criterion "${criterion}"
+```
+
+### Stage 5: Reconstruction of speeches
+
+```sh
+tag=<TAG>
+text_to_feat_checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>
+feat_to_wave_checkpoint=<PATH/TO/PRETRAINED/VALLE>
+
+data="soundstream"
+test="valle_tts"
+model="valle_tts"
+
+. ./run.sh \
+--stage 5 \
+--stop-stage 5 \
+--tag "${tag}" \
+--text-to-feat-checkpoint "${text_to_feat_checkpoint}" \
+--feat-to-wave-checkpoint "${feat_to_wave_checkpoint}" \
+--data "${data}" \
+--test "${test}" \
+--model "${model}"
 ```
