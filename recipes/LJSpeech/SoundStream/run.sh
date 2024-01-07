@@ -23,7 +23,7 @@ preprocess="ljspeech_text-to-feat"
 data="soundstream"
 train="soundstream"
 test="soundstream_reconstruction"
-model="soundstream_reconstruction"
+model="soundstream"
 optimizer="soundstream"
 lr_scheduler="soundstream"
 criterion="soundstream"
@@ -114,7 +114,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
     (
         . ./save_quantized_features.sh \
         --tag "${tag}" \
-        --continue-from "${continue_from}" \
+        --checkpoint "${checkpoint}" \
         --exp-dir "${exp_dir}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
@@ -123,5 +123,26 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
         --data "${data}" \
         --train "${train}" \
         --model "${model}"
+    )
+fi
+
+if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
+    echo "Stage 4: Training SoundStream-TTS"
+
+    (
+        . ./train_tts.sh \
+        --tag "${tag}" \
+        --continue-from "${continue_from}" \
+        --exp-dir "${exp_dir}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
+        --system "${system}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --train "${train}" \
+        --model "${model}" \
+        --optimizer "${optimizer}" \
+        --lr-scheduler "${lr_scheduler}" \
+        --criterion "${criterion}"
     )
 fi
