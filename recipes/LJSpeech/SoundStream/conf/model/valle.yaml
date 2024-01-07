@@ -1,0 +1,38 @@
+_target_: utils.models.valle.VALLE
+text_embedding:
+  _target_: torch.nn.Embedding
+  num_embeddings: ${data.text.vocab_size}
+  embedding_dim: 512
+  padding_idx: ${data.text.pad_idx}
+acoustic_embedding:
+  _target_: torch.nn.Embedding
+  num_embeddings:
+    _target_: operator.add
+    _args_:
+      - ${data.codebook.size}
+      - 2
+  embedding_dim: ${..text_embedding.embedding_dim}
+  padding_idx: ${..acoustic_pad_idx}
+text_positional_encoding:
+  _target_: audyn.modules.positional_encoding.AbsolutePositionalEncoding
+acoustic_positional_encoding:
+  _target_: audyn.modules.positional_encoding.AbsolutePositionalEncoding
+decoder:
+  _target_: torch.nn.TransformerEncoder
+  encoder_layer:
+    _target_: torch.nn.TransformerEncoderLayer
+    d_model: ${...text_embedding.embedding_dim}
+    nhead: 4
+    dim_feedforward: 2048
+    batch_first: true
+  num_layers: 6
+out_proj:
+  _target_: torch.nn.Linear
+  in_features: ${..text_embedding.embedding_dim}
+  out_features:
+    _target_: operator.add
+    _args_:
+      - ${data.codebook.size}
+      - 1
+acoustic_pad_idx: ${data.codebook.pad_idx}
+acoustic_eos_idx: ${data.codebook.eos_idx}
