@@ -33,3 +33,5 @@ text:
 
 codebook:
   size: 1024
+  pad_idx: 0
+  eos_idx: 1
