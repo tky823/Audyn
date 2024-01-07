@@ -129,19 +129,22 @@ class VALLE(nn.Module):
         self, text: torch.LongTensor, max_length: Optional[int] = None
     ) -> torch.LongTensor:
         batch_size = text.size(0)
+        device = text.device
 
         assert batch_size == 1, f"Batch size should be 1, but {batch_size} is given."
 
         x_text = self.text_embedding(text)
-        x_acoustic = torch.zeros((batch_size, 0, x_text.size(-1)), dtype=x_text.dtype)
-        output = torch.zeros((batch_size, 0), dtype=torch.long)
+        x_acoustic = torch.zeros(
+            (batch_size, 0, x_text.size(-1)), device=device, dtype=x_text.dtype
+        )
+        output = torch.zeros((batch_size, 0), device=device, dtype=torch.long)
 
         frame_idx = 0
 
         while True:
             x = torch.cat([x_text, x_acoustic], dim=1)
             max_full_length = x.size(1)
-            positions = torch.arange(max_full_length)
+            positions = torch.arange(max_full_length, device=device)
             causal_padding_mask = positions > positions.unsqueeze(dim=-1)
             x = self.decoder(x, mask=causal_padding_mask)
             _, x_last_acoustic = torch.split(x, [max_full_length - 1, 1], dim=1)
