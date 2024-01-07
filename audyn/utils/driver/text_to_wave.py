@@ -90,9 +90,24 @@ class CascadeTextToWaveGenerator(BaseGenerator):
     def load_checkpoint(self, text_to_feat_path, feat_to_wave_path: str) -> None:
         text_to_feat_state_dict = torch.load(text_to_feat_path, map_location=self.device)
         feat_to_wave_state_dict = torch.load(feat_to_wave_path, map_location=self.device)
+        unwrapped_text_to_feat = self.unwrapped_model.text_to_feat
+        unwrapped_feat_to_wave = self.unwrapped_model.feat_to_wave
 
-        self.unwrapped_model.text_to_feat.load_state_dict(text_to_feat_state_dict["model"])
-        self.unwrapped_model.feat_to_wave.load_state_dict(feat_to_wave_state_dict["model"])
+        if (
+            "generator" in text_to_feat_state_dict["model"]
+            and "discriminator" in text_to_feat_state_dict["model"]
+        ):
+            unwrapped_text_to_feat.load_state_dict(text_to_feat_state_dict["model"]["generator"])
+        else:
+            unwrapped_text_to_feat.load_state_dict(text_to_feat_state_dict["model"])
+
+        if (
+            "generator" in feat_to_wave_state_dict["model"]
+            and "discriminator" in feat_to_wave_state_dict["model"]
+        ):
+            unwrapped_feat_to_wave.load_state_dict(feat_to_wave_state_dict["model"]["generator"])
+        else:
+            unwrapped_feat_to_wave.load_state_dict(feat_to_wave_state_dict["model"])
 
     def remove_weight_norm_if_necessary(self) -> None:
         """Remove weight normalization from self.model by calling self.model.remove_weight_norm()

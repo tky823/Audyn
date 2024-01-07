@@ -249,13 +249,31 @@ def instantiate_cascade_text_to_wave(
     text_to_feat_resolved_config: Dict[str, Any] = text_to_feat_state_dict["resolved_config"]
     text_to_feat_model_config: Dict[str, Any] = text_to_feat_resolved_config["model"]
     text_to_feat_model_config = OmegaConf.create(text_to_feat_model_config)
-    text_to_feat: nn.Module = instantiate(text_to_feat_model_config)
+
+    if hasattr(text_to_feat_model_config, "generator") and hasattr(
+        text_to_feat_model_config, "discriminator"
+    ):
+        # We assume generator is used as text-to-feat model.
+        is_text_to_feat_gan = True
+        text_to_feat: nn.Module = instantiate(text_to_feat_model_config.generator)
+    else:
+        is_text_to_feat_gan = False
+        text_to_feat: nn.Module = instantiate(text_to_feat_model_config)
 
     # feat-to-wave
     feat_to_wave_resolved_config: Dict[str, Any] = feat_to_wave_state_dict["resolved_config"]
     feat_to_wave_model_config: Dict[str, Any] = feat_to_wave_resolved_config["model"]
     feat_to_wave_model_config = OmegaConf.create(feat_to_wave_model_config)
-    feat_to_wave: nn.Module = instantiate(feat_to_wave_model_config)
+
+    if hasattr(feat_to_wave_model_config, "generator") and hasattr(
+        feat_to_wave_model_config, "discriminator"
+    ):
+        # We assume generator is used as feat-to-wave model.
+        is_feat_to_wave_gan = True
+        feat_to_wave: nn.Module = instantiate(feat_to_wave_model_config.generator)
+    else:
+        is_feat_to_wave_gan = False
+        feat_to_wave: nn.Module = instantiate(feat_to_wave_model_config)
 
     model: CascadeTextToWave = instantiate(
         config,
@@ -264,8 +282,15 @@ def instantiate_cascade_text_to_wave(
     )
 
     if load_weights:
-        model.text_to_feat.load_state_dict(text_to_feat_state_dict["model"])
-        model.feat_to_wave.load_state_dict(feat_to_wave_state_dict["model"])
+        if is_text_to_feat_gan:
+            model.text_to_feat.load_state_dict(text_to_feat_state_dict["model"]["generator"])
+        else:
+            model.text_to_feat.load_state_dict(text_to_feat_state_dict["model"])
+
+        if is_feat_to_wave_gan:
+            model.feat_to_wave.load_state_dict(feat_to_wave_state_dict["model"]["generator"])
+        else:
+            model.feat_to_wave.load_state_dict(feat_to_wave_state_dict["model"])
 
     return model
 
