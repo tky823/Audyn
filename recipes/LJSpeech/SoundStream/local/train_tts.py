@@ -1,7 +1,9 @@
+import functools
 from typing import Any, Dict, List
 
 import hydra
 import torch
+import torch.nn.functional as F
 from omegaconf import DictConfig
 
 import audyn
@@ -28,12 +30,12 @@ def main(config: DictConfig) -> None:
     train_loader = hydra.utils.instantiate(
         config.train.dataloader.train,
         train_dataset,
-        collate_fn=collate_fn,
+        collate_fn=functools.partial(collate_fn, data_config=config.data),
     )
     validation_loader = hydra.utils.instantiate(
         config.train.dataloader.validation,
         validation_dataset,
-        collate_fn=collate_fn,
+        collate_fn=functools.partial(collate_fn, data_config=config.data),
     )
 
     loaders = BaseDataLoaders(train_loader, validation_loader)
@@ -48,7 +50,7 @@ def main(config: DictConfig) -> None:
     optimizer = instantiate_optimizer(config.optimizer, model)
     lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
     grad_clipper = instantiate_grad_clipper(config.train.clip_gradient, model.parameters())
-    criterion = instantiate_criterion(config.criterion.generator)
+    criterion = instantiate_criterion(config.criterion)
     criterion = set_device(
         criterion,
         accelerator=config.system.accelerator,
@@ -68,7 +70,7 @@ def main(config: DictConfig) -> None:
     trainer.run()
 
 
-def collate_fn(batch: List[Any]) -> Dict[str, Any]:
+def collate_fn(batch: List[Any], data_config: DictConfig) -> Dict[str, Any]:
     """Generate dict-based batch.
 
     Args:
@@ -80,14 +82,39 @@ def collate_fn(batch: List[Any]) -> Dict[str, Any]:
         Dict of batch.
 
     """
+    pad_idx = data_config.codebook.pad_idx
+    eos_idx = data_config.codebook.eos_idx
+
+    assert pad_idx == 0
+    assert eos_idx == 1
+
     list_batch = []
 
     for sample in batch:
-        codebook_indices_length = sample["codebook_indices"].size(-1)
-        sample["codebook_indices_length"] = torch.tensor(codebook_indices_length, dtype=torch.long)
+        codebook_indices = sample["codebook_indices"]
+
+        # extract first stage
+        codebook_indices, _ = torch.split(
+            codebook_indices, [1, codebook_indices.size(0) - 1], dim=0
+        )
+        codebook_indices = codebook_indices.squeeze(dim=0)
+
+        # shift indices for padding & eos token
+        codebook_indices = codebook_indices + 2
+
+        # insert eos index
+        codebook_indices = F.pad(codebook_indices, (0, 1), value=eos_idx)
+
+        sample["codebook_indices"] = codebook_indices
+        sample["codebook_indices_length"] = torch.tensor(
+            codebook_indices.size(-1), dtype=torch.long
+        )
         list_batch.append(sample)
 
     dict_batch = default_collate_fn(list_batch)
+    dict_batch["max_codebook_indices_length"] = torch.max(
+        dict_batch["codebook_indices_length"]
+    ).item()
 
     return dict_batch
 
