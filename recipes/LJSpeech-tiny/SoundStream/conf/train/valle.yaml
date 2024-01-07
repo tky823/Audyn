@@ -30,14 +30,14 @@ output:
   save_checkpoint:
     iteration:
       every: 4
-      path: ${...exp_dir}/model/iteration{iteration}.pth
+      path: ${...exp_dir}/model/valle/iteration{iteration}.pth
     epoch:
       every: 2
-      path: ${...exp_dir}/model/epoch{epoch}.pth
+      path: ${...exp_dir}/model/valle/epoch{epoch}.pth
     last:
-      path: ${...exp_dir}/model/last.pth
+      path: ${...exp_dir}/model/valle/last.pth
     best_epoch:
-      path: ${...exp_dir}/model/best_epoch.pth
+      path: ${...exp_dir}/model/valle/best_epoch.pth
 
 steps:
   epochs:
