@@ -2,4 +2,4 @@ defaults:
   - transformer
   - _self_
 
-d_model: ${model.decoder.d_model}
+d_model: ${model.decoder.encoder_layer.d_model}
