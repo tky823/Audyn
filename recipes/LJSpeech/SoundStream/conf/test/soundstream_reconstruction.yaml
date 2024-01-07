@@ -18,7 +18,7 @@ num_stages: 1
 
 output:
   exp_dir: "./exp"
-  inference_dir: ${.exp_dir}/inference
+  inference_dir: ${.exp_dir}/reconstruction
   audio:
     sample_rate: ${data.audio.sample_rate}
     key_mapping:
