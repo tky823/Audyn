@@ -1,6 +1,6 @@
 audio:
   sample_rate: 24000
-  slice_length: 16000
+  slice_length: 800
   peak_normalization: true
 spectrogram:
   sample_rate: ${..audio.sample_rate}
