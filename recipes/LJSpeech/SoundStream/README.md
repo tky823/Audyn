@@ -2,6 +2,17 @@
 
 ## Stages
 
+### Stage 0: Preprocessing
+
+```sh
+data="soundstream"
+
+. ./run.sh \
+--stage 0 \
+--stop-stage 0 \
+--data "${data}"
+```
+
 ### Stage 1: Training SoundStream
 
 By default, codebooks in RVQ are updated by exponential moving average.
@@ -32,10 +43,23 @@ To train SoundStream, run the following command:
 ```sh
 tag=<TAG>
 
+data="soundstream"
+train="soundstream"
+model="soundstream"
+optimizer="soundstream"
+lr_scheduler="soundstream"
+criterion="soundstream"
+
 . ./run.sh \
 --stage 1 \
 --stop-stage 1 \
---tag "${tag}"
+--tag "${tag}" \
+--data "${data}" \
+--train "${train}" \
+--model "${model}" \
+--optimizer "${optimizer}" \
+--lr-scheduler "${lr_scheduler}" \
+--criterion "${criterion}"
 ```
 
 To train SounsStream using official configs, set `train`, `model`, and `criterion` as follows:
@@ -43,16 +67,22 @@ To train SounsStream using official configs, set `train`, `model`, and `criterio
 ```sh
 tag=<TAG>
 
+data="soundstream"
 train="official_soundstream"
 model="official_soundstream"
+optimizer="soundstream"
+lr_scheduler="soundstream"
 criterion="official_soundstream"
 
 . ./run.sh \
 --stage 1 \
 --stop-stage 1 \
 --tag "${tag}" \
+--data "${data}" \
 --train "${train}" \
 --model "${model}" \
+--optimizer "${optimizer}" \
+--lr-scheduler "${lr_scheduler}" \
 --criterion "${criterion}"
 ```
 
@@ -62,11 +92,16 @@ criterion="official_soundstream"
 tag=<TAG>
 checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>
 
+data="soundstream"
+model="soundstream_reconstructor"
+
 . ./run.sh \
 --stage 2 \
 --stop-stage 2 \
 --tag "${tag}" \
---checkpoint "${checkpoint}"
+--checkpoint "${checkpoint}" \
+--data "${data}" \
+--model "${model}"
 ```
 
 ### Stage 3: Save quantized features as codebook indices
@@ -75,14 +110,18 @@ checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>
 tag=<TAG>
 checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>
 
+data="soundstream"
 train="save_quantized_features"
+model="soundstream"
 
 . ./run.sh \
 --stage 3 \
 --stop-stage 3 \
 --tag "${tag}" \
 --checkpoint "${checkpoint}" \
---train "${train}"
+--data "${data}" \
+--train "${train}" \
+--model "${model}"
 ```
 
 
@@ -91,6 +130,7 @@ train="save_quantized_features"
 ```sh
 tag=<TAG>
 
+data="soundstream"
 train="valle"
 model="valle"
 optimizer="valle"
@@ -101,6 +141,7 @@ criterion="valle"
 --stage 4 \
 --stop-stage 4 \
 --tag "${tag}" \
+--data "${data}" \
 --train "${train}" \
 --model "${model}" \
 --optimizer "${optimizer}" \
