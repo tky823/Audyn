@@ -34,5 +34,8 @@ out_proj:
     _args_:
       - ${data.codebook.size}
       - 1
+text_pad_idx: ${data.text.pad_idx}
+text_eos_idx: ${data.text.eos_idx}
 acoustic_pad_idx: ${data.codebook.pad_idx}
 acoustic_eos_idx: ${data.codebook.eos_idx}
+channels_last: true
