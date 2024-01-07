@@ -1,0 +1,1 @@
+../../LJSpeech/SoundStream/train_tts.sh
