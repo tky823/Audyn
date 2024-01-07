@@ -84,3 +84,26 @@ train="save_quantized_features"
 --checkpoint "${checkpoint}" \
 --train "${train}"
 ```
+
+
+### Stage 4: Training of SoundStream-TTS
+
+```sh
+tag=<TAG>
+
+train="valle"
+model="valle"
+optimizer="valle"
+lr_scheduler="valle"
+criterion="valle"
+
+. ./run.sh \
+--stage 4 \
+--stop-stage 4 \
+--tag "${tag}" \
+--train "${train}" \
+--model "${model}" \
+--optimizer "${optimizer}" \
+--lr-scheduler "${lr_scheduler}" \
+--criterion "${criterion}"
+```
