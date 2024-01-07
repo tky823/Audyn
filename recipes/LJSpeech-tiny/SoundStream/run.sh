@@ -9,6 +9,8 @@ stop_stage=-1
 tag=""
 continue_from=""
 checkpoint=""
+text_to_feat_checkpoint=""
+feat_to_wave_checkpoint=""
 
 exp_dir="./exp"
 
@@ -144,5 +146,24 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
         --optimizer "${optimizer}" \
         --lr-scheduler "${lr_scheduler}" \
         --criterion "${criterion}"
+    )
+fi
+
+if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
+    echo "Stage 5: Synthesize speeches"
+
+    (
+        . ./test_tts.sh \
+        --tag "${tag}" \
+        --text-to-feat_checkpoint "${text_to_feat_checkpoint}" \
+        --feat-to-wave_checkpoint "${feat_to_wave_checkpoint}" \
+        --exp-dir "${exp_dir}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
+        --system "${system}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --test "${test}" \
+        --model "${model}"
     )
 fi
