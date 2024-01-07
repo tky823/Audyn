@@ -3,6 +3,9 @@ from typing import Optional, Tuple
 import torch
 import torch.nn as nn
 
+from audyn.models.soundstream import SoundStream
+from audyn.models.text_to_wave import CascadeTextToWave
+
 __all__ = ["VALLE"]
 
 
@@ -247,3 +250,41 @@ class VALLE(nn.Module):
         src_key_padding_mask = positions >= length.unsqueeze(dim=-1)
 
         return src_key_padding_mask
+
+
+class VALLETTS(CascadeTextToWave):
+    def __init__(
+        self,
+        text_to_feat: VALLE,
+        feat_to_wave: SoundStream,
+    ) -> None:
+        super().__init__(text_to_feat, feat_to_wave)
+
+        self.text_to_feat: VALLE
+        self.feat_to_wave: SoundStream
+
+    @torch.no_grad()
+    def inference(self, text: torch.LongTensor, max_length: Optional[int] = None) -> torch.Tensor:
+        """
+
+        Args:
+            text (torch.LongTensor): Text tokens of shape (batch_size, max_text_length).
+            max_length (int, optional): Max length of acoustic features.
+
+        Returns:
+            torch.Tensor: Estimated waveform of shape (batch_size, out_channels, max_timesteps).
+
+        """
+        feat_to_wave = self.feat_to_wave
+        codebook = feat_to_wave.vector_quantizer.codebooks[0]
+
+        estimated_indices = self.text_to_feat.inference(text, max_length=max_length)
+        quantized = codebook(estimated_indices)
+        quantized = quantized.permute(0, 2, 1)
+        output = feat_to_wave.decode(quantized, stage_wise=False)
+
+        return output
+
+    @property
+    def down_scale(self) -> Optional[int]:
+        return self.feat_to_wave.down_scale
