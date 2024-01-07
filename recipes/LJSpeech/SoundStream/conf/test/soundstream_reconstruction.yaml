@@ -14,7 +14,7 @@ key_mapping:
 
 checkpoint:
 
-num_stages:
+num_stages: 1
 
 output:
   exp_dir: "./exp"
