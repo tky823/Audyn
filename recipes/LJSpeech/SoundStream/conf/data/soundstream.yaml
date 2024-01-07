@@ -18,6 +18,8 @@ text:
   vocab_size: ${const:audyn.utils.data.cmudict.vocab_size}
   bos_token: ${const:audyn.utils.data.cmudict.BOS_SYMBOL}
   eos_token: ${const:audyn.utils.data.cmudict.EOS_SYMBOL}
+  pad_idx: 0
+  eos_idx: 1
   preprocessor:
     _target_: audyn.utils.text.TextPreprocessor
     normalizer:
