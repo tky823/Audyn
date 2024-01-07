@@ -1,0 +1,5 @@
+defaults:
+  - transformer
+  - _self_
+
+d_model: ${model.decoder.d_model}
