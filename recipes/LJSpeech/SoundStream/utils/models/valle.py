@@ -255,16 +255,37 @@ class VALLE(nn.Module):
         return src_key_padding_mask
 
 
+class SoundStreamFirstStageDecoder(SoundStream):
+    @torch.no_grad()
+    def inference(self, indices: torch.LongTensor) -> torch.Tensor:
+        """
+
+        Args:
+            indices (torch.LongTensor): Codebook indices of shape (batch_size, max_length).
+
+        Returns:
+            torch.Tensor: Estimated waveform of shape (batch_size, out_channels, max_timesteps).
+
+        """
+        codebook = self.vector_quantizer.codebooks[0]
+
+        quantized = codebook(indices)
+        quantized = quantized.permute(0, 2, 1)
+        output = self.decode(quantized, stage_wise=False)
+
+        return output
+
+
 class VALLETTS(CascadeTextToWave):
     def __init__(
         self,
         text_to_feat: VALLE,
-        feat_to_wave: SoundStream,
+        feat_to_wave: SoundStreamFirstStageDecoder,
     ) -> None:
         super().__init__(text_to_feat, feat_to_wave)
 
         self.text_to_feat: VALLE
-        self.feat_to_wave: SoundStream
+        self.feat_to_wave: SoundStreamFirstStageDecoder
 
     @torch.no_grad()
     def inference(self, text: torch.LongTensor, max_length: Optional[int] = None) -> torch.Tensor:
@@ -278,13 +299,8 @@ class VALLETTS(CascadeTextToWave):
             torch.Tensor: Estimated waveform of shape (batch_size, out_channels, max_timesteps).
 
         """
-        feat_to_wave = self.feat_to_wave
-        codebook = feat_to_wave.vector_quantizer.codebooks[0]
-
         estimated_indices = self.text_to_feat.inference(text, max_length=max_length)
-        quantized = codebook(estimated_indices)
-        quantized = quantized.permute(0, 2, 1)
-        output = feat_to_wave.decode(quantized, stage_wise=False)
+        output = self.feat_to_wave.inference(estimated_indices)
 
         return output
 
