@@ -62,6 +62,12 @@ class VALLE(nn.Module):
         assert (
             acoustic_embedding.padding_idx == acoustic_pad_idx
         ), "padding_idx of acoustic_embedding should be 0."
+        assert acoustic_pad_idx == 0, "acoustic_pad_idx should be 0, but {} is specfied.".format(
+            acoustic_pad_idx
+        )
+        assert acoustic_eos_idx == 1, "acoustic_eos_idx should be 1, but {} is specfied.".format(
+            acoustic_eos_idx
+        )
         assert channels_last, "Only channels_last=True is supported."
 
         self.text_embedding = text_embedding
