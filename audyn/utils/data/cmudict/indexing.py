@@ -16,10 +16,13 @@ class CMUDictIndexer(BaseTextIndexer):
 
         table = []
 
-        for idx, symbol in enumerate(cmudict_full_symbols):
+        # To be compatible with order of full_symbols,
+        # - set start=1
+        # - set special_first=False.
+        for idx, symbol in enumerate(cmudict_full_symbols, start=1):
             table.append((symbol, idx))
 
-        self.vocab = build_vocab(OrderedDict(table), specials=SPECIALS)
+        self.vocab = build_vocab(OrderedDict(table), specials=SPECIALS, special_first=False)
 
     def index(self, phonemes: List[str]) -> List[int]:
         """Map each phoneme to corresponding index.
