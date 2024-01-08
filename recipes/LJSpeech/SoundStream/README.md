@@ -90,7 +90,7 @@ criterion="official_soundstream"
 
 ```sh
 tag=<TAG>
-checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>
+checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>  # e.g. ${exp_dir}/${tag}/model/soundstream/last.pth
 
 data="soundstream"
 test="soundstream_reconstruction"
@@ -110,7 +110,7 @@ model="soundstream_reconstructor"
 
 ```sh
 tag=<TAG>
-checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>
+checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>  # e.g. ${exp_dir}/${tag}/model/soundstream/last.pth
 
 data="soundstream"
 train="save_quantized_features"
@@ -126,23 +126,44 @@ model="soundstream"
 --model "${model}"
 ```
 
-
-### Stage 4: Training of SoundStream-TTS
+### Stage 4: Convert SoundStream to SoundStreamFirstStageDecoder
 
 ```sh
 tag=<TAG>
+checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>
 
 data="soundstream"
-train="valle"
+train="convert_soundstream"
+
+. ./run.sh \
+--stage 4 \
+--stop-stage 4 \
+--tag "${tag}" \
+--checkpoint "${checkpoint}" \
+--data "${data}" \
+--train "${train}"
+```
+
+Then, the converted model is saved as `${exp_dir}/${tag}/model/soundstream_first_stage_decoder/*.pth`.
+
+### Stage 5: Training of SoundStream-TTS
+
+```sh
+tag=<TAG>
+feat_to_wave_checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>  # e.g. ${exp_dir}/${tag}/model/soundstream_first_stage_decoder/last.pth
+
+data="soundstream"
+train="valle+pretrained_soundstream"
 model="valle"
 optimizer="valle"
 lr_scheduler="valle"
 criterion="valle"
 
 . ./run.sh \
---stage 4 \
---stop-stage 4 \
+--stage 5 \
+--stop-stage 5 \
 --tag "${tag}" \
+--feat-to-wave-checkpoint "${feat_to_wave_checkpoint}" \
 --data "${data}" \
 --train "${train}" \
 --model "${model}" \
@@ -151,20 +172,20 @@ criterion="valle"
 --criterion "${criterion}"
 ```
 
-### Stage 5: Reconstruction of speeches
+### Stage 6: Synthesis of speeches
 
 ```sh
 tag=<TAG>
-text_to_feat_checkpoint=<PATH/TO/PRETRAINED/VALLE>
-feat_to_wave_checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>
+text_to_feat_checkpoint=<PATH/TO/PRETRAINED/VALLE>  # e.g. ${exp_dir}/${tag}/model/valle/last.pth
+feat_to_wave_checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>  # e.g. ${exp_dir}/${tag}/model/soundstream_first_stage_decoder/last.pth
 
 data="soundstream"
 test="valle_tts"
 model="valle_tts"
 
 . ./run.sh \
---stage 5 \
---stop-stage 5 \
+--stage 6 \
+--stop-stage 6 \
 --tag "${tag}" \
 --text-to-feat-checkpoint "${text_to_feat_checkpoint}" \
 --feat-to-wave-checkpoint "${feat_to_wave_checkpoint}" \
