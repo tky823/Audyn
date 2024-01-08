@@ -36,4 +36,4 @@ data="${data}" \
 train="${train}" \
 preprocess.dump_format="${dump_format}" \
 train.checkpoint="${checkpoint}" \
-train.output.save_path="${exp_dir}/${tag}/model/soundstream_fist_stage_decoder/${filename}"
+train.output.save_path="${exp_dir}/${tag}/model/soundstream_first_stage_decoder/${filename}"
