@@ -10,6 +10,33 @@ __all__ = ["VALLE"]
 
 
 class VALLE(nn.Module):
+    """Prototype of VALL-E.
+
+    Args:
+        text_embedding (nn.Embedding): Embedding layer that maps text tokens into dense features.
+            The shape of input is (batch_size, max_text_length) and that of output is
+            (batch_size, max_text_length, num_features).
+        acoustic_embedding (nn.Embedding): Embedding layer that maps acoustic tokens into dense
+            features. The shape of input is (batch_size, max_acoustic_length) and that of output is
+            (batch_size, max_acoustic_length, num_features).
+        text_positional_encoding (nn.Module): Positional encoding for text features.
+            (batch_size, max_text_length, num_features) is expected to be given.
+        acoustic_positional_encoding (nn.Module): Positional encoding for acoustic features.
+            (batch_size, max_acoustic_length, num_features) is expected to be given.
+        decoder (nn.Module): Transformer that estimates next acoustic tokens by AR manner.
+            (batch_size, max_length, num_features) is expected to be given.
+        out_proj (nn.Linear): Linear layer that maps output of decoder to logit
+            of codebook indices. ``out_features`` is typically ``codebook_size + 1``,
+            where additional index means EOS of acoustic tokens.
+        text_pad_idx (int): PAD index of text tokens.
+        text_eos_idx (int): EOS index of text tokens.
+        acoustic_pad_idx (int): PAD index of acoustic tokens. ``0`` is typically used.
+        acoustic_eos_idx (int): EOS index of acoustic tokens. ``1`` is typically used.
+        channels_last (bool): Whether to channels dim is last or not. To be consistent
+            with ``out_proj``, only ``channels_last=True`` is supported.
+
+    """
+
     def __init__(
         self,
         text_embedding: nn.Embedding,
