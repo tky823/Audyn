@@ -5,6 +5,7 @@ exp_dir="./exp"
 
 tag=""
 continue_from=""
+feat_to_wave_checkpoint=""
 
 dump_format="torch"
 
@@ -53,5 +54,6 @@ train.dataset.train.feature_dir="${save_dir}/train" \
 train.dataset.validation.list_path="${list_dir}/validation.txt" \
 train.dataset.validation.feature_dir="${save_dir}/validation" \
 train.resume.continue_from="${continue_from}" \
+++train.pretrained_feat_to_wave.path="${feat_to_wave_checkpoint}" \
 train.output.exp_dir="${exp_dir}/${tag}" \
 train.output.tensorboard_dir="tensorboard/${tag}/valle"
