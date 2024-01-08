@@ -130,7 +130,7 @@ model="soundstream"
 
 ```sh
 tag=<TAG>
-checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>
+checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>  # e.g. ${exp_dir}/${tag}/model/soundstream/last.pth
 
 data="soundstream"
 train="convert_soundstream"
