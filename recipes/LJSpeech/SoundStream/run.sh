@@ -129,12 +129,29 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
 fi
 
 if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
-    echo "Stage 4: Training SoundStream-TTS"
+    echo "Stage 4: Convert SoundStream to SoundStreamFirstStageDecoder"
+
+    (
+        . ./convert_soundstream.sh \
+        --tag "${tag}" \
+        --checkpoint "${checkpoint}" \
+        --exp-dir "${exp_dir}" \
+        --dump-format "${dump_format}" \
+        --system "${system}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --train "${train}"
+    )
+fi
+
+if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
+    echo "Stage 5: Training SoundStream-TTS"
 
     (
         . ./train_tts.sh \
         --tag "${tag}" \
         --continue-from "${continue_from}" \
+        --feat-to-wave-checkpoint "${feat_to_wave_checkpoint}" \
         --exp-dir "${exp_dir}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
@@ -149,14 +166,14 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
     )
 fi
 
-if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
-    echo "Stage 5: Synthesize speeches"
+if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
+    echo "Stage 6: Synthesize speeches"
 
     (
         . ./test_tts.sh \
         --tag "${tag}" \
-        --text-to-feat_checkpoint "${text_to_feat_checkpoint}" \
-        --feat-to-wave_checkpoint "${feat_to_wave_checkpoint}" \
+        --text-to-feat-checkpoint "${text_to_feat_checkpoint}" \
+        --feat-to-wave-checkpoint "${feat_to_wave_checkpoint}" \
         --exp-dir "${exp_dir}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
