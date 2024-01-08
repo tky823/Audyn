@@ -1,0 +1,13 @@
+train:
+  input:
+    text: phones
+    acoustic: codebook_indices
+    text_length: phones_length
+    acoustic_length: codebook_indices_length
+  output: logit
+validation: ${.train}
+inference:
+  input:
+    text: phones
+    max_length: max_codebook_indices_length
+  output: estimated_waveform_slice

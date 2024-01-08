@@ -1,6 +1,6 @@
 from .base import BaseGenerator, BaseTrainer
 from .feat_to_wave import FeatToWaveGenerator, FeatToWaveTrainer
-from .gan import GANTrainer
+from .gan import GANGenerator, GANTrainer
 from .text_to_feat import TextToFeatTrainer
 from .text_to_wave import CascadeTextToWaveGenerator, TextToWaveTrainer
 
@@ -13,4 +13,5 @@ __all__ = [
     "FeatToWaveGenerator",
     "CascadeTextToWaveGenerator",
     "GANTrainer",
+    "GANGenerator",
 ]

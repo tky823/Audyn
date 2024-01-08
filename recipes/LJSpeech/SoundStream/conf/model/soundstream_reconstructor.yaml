@@ -1,0 +1,6 @@
+defaults:
+  - soundstream
+  - _self_
+
+generator:
+  _target_: audyn.models.soundstream.SoundStreamReconstructor

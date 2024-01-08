@@ -13,6 +13,10 @@ __all__ = [
     "EOS_SYMBOL",
     "UNK_SYMBOL",
     "PAD_SYMBOL",
+    "BOS_IDX",
+    "EOS_IDX",
+    "UNK_IDX",
+    "PAD_IDX",
     "SPECIALS",
     "vocab_size",
     "CMUDict",
@@ -112,6 +116,10 @@ UNK_SYMBOL = "<UNK>"
 PAD_SYMBOL = "<PAD>"
 SPECIALS = [UNK_SYMBOL, PAD_SYMBOL]
 full_symbols = symbols + BREAK_SYMBOLS + [BOS_SYMBOL] + [EOS_SYMBOL] + SPECIALS
+BOS_IDX = full_symbols.index(BOS_SYMBOL)
+EOS_IDX = full_symbols.index(EOS_SYMBOL)
+UNK_IDX = full_symbols.index(UNK_SYMBOL)
+PAD_IDX = full_symbols.index(PAD_SYMBOL)
 
 vocab_size = len(full_symbols)
 

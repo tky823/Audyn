@@ -20,7 +20,10 @@ from ..clip_grad import GradClipper
 from ..parallel import is_dp_or_ddp
 
 __all__ = [
+    "instantiate",
     "instantiate_model",
+    "instantiate_gan_generator",
+    "instantiate_gan_discriminator",
     "instantiate_cascade_text_to_wave",
     "instantiate_optimizer",
     "instantiate_lr_scheduler",
@@ -68,6 +71,11 @@ else:
         ...
 
 
+def instantiate(config: Any, *args, **kwargs) -> Any:
+    """Wrapper function of ``hydra.utils.instantiate``."""
+    return hydra.utils.instantiate(config, *args, **kwargs)
+
+
 def instantiate_model(
     config_or_path: Union[str, DictConfig],
     load_weights: Optional[bool] = None,
@@ -92,7 +100,7 @@ def instantiate_model(
         resolved_config: Dict[str, Any] = state_dict["resolved_config"]
         model_config: Dict[str, Any] = resolved_config["model"]
         model_config = OmegaConf.create(model_config)
-        model: nn.Module = hydra.utils.instantiate(model_config)
+        model: nn.Module = instantiate(model_config)
 
         if load_weights:
             model.load_state_dict(state_dict["model"])
@@ -104,11 +112,109 @@ def instantiate_model(
             )
 
         model_config = config_or_path
-        model: nn.Module = hydra.utils.instantiate(model_config)
+        model: nn.Module = instantiate(model_config)
     else:
         raise NotImplementedError(f"{type(config_or_path)} is not supported.")
 
     return model
+
+
+def instantiate_gan_generator(
+    config_or_path: Union[str, DictConfig],
+    load_weights: Optional[bool] = None,
+) -> nn.Module:
+    """Instantiate generator in GANs.
+
+    Args:
+        config_or_path (str or DictConfig): Config of model.
+        load_weights (bool, optional): If ``True``, model loads pretrained weights.
+            Default: ``False``.
+
+    Returns:
+        nn.Module: Constructed model.
+
+    """
+    if load_weights is None:
+        load_weights = False
+
+    if isinstance(config_or_path, str):
+        state_dict = torch.load(config_or_path, map_location=lambda storage, loc: storage)
+
+        resolved_config: Dict[str, Any] = state_dict["resolved_config"]
+        model_config: Dict[str, Any] = resolved_config["model"]
+        generator_config = OmegaConf.create(model_config["generator"])
+        generator: nn.Module = instantiate(generator_config)
+
+        if load_weights:
+            generator.load_state_dict(state_dict["model"]["generator"])
+
+    elif isinstance(config_or_path, DictConfig):
+        if load_weights:
+            raise ValueError(
+                "load_weights=True is not supported when config_or_path is DictConfig."
+            )
+
+        model_config = config_or_path
+
+        if hasattr(model_config, "generator") and hasattr(model_config, "discriminator"):
+            generator_config = model_config.generator
+        else:
+            generator_config = model_config
+
+        generator: nn.Module = instantiate(generator_config)
+    else:
+        raise NotImplementedError(f"{type(config_or_path)} is not supported.")
+
+    return generator
+
+
+def instantiate_gan_discriminator(
+    config_or_path: Union[str, DictConfig],
+    load_weights: Optional[bool] = None,
+) -> nn.Module:
+    """Instantiate discriminator in GANs.
+
+    Args:
+        config_or_path (str or DictConfig): Config of model.
+        load_weights (bool, optional): If ``True``, model loads pretrained weights.
+            Default: ``False``.
+
+    Returns:
+        nn.Module: Constructed model.
+
+    """
+    if load_weights is None:
+        load_weights = False
+
+    if isinstance(config_or_path, str):
+        state_dict = torch.load(config_or_path, map_location=lambda storage, loc: storage)
+
+        resolved_config: Dict[str, Any] = state_dict["resolved_config"]
+        model_config: Dict[str, Any] = resolved_config["model"]
+        discriminator_config = OmegaConf.create(model_config["discriminator"])
+        discriminator: nn.Module = instantiate(discriminator_config)
+
+        if load_weights:
+            discriminator.load_state_dict(state_dict["model"]["discriminator"])
+
+    elif isinstance(config_or_path, DictConfig):
+        if load_weights:
+            raise ValueError(
+                "load_weights=True is not supported when config_or_path is DictConfig."
+            )
+
+        model_config = config_or_path
+
+        if hasattr(model_config, "generator") and hasattr(model_config, "discriminator"):
+            discriminator_config = model_config.discriminator
+        else:
+            discriminator_config = model_config
+
+        discriminator: nn.Module = instantiate(discriminator_config)
+    else:
+        raise NotImplementedError(f"{type(config_or_path)} is not supported.")
+
+    return discriminator
 
 
 def instantiate_cascade_text_to_wave(
@@ -143,23 +249,48 @@ def instantiate_cascade_text_to_wave(
     text_to_feat_resolved_config: Dict[str, Any] = text_to_feat_state_dict["resolved_config"]
     text_to_feat_model_config: Dict[str, Any] = text_to_feat_resolved_config["model"]
     text_to_feat_model_config = OmegaConf.create(text_to_feat_model_config)
-    text_to_feat: nn.Module = hydra.utils.instantiate(text_to_feat_model_config)
+
+    if hasattr(text_to_feat_model_config, "generator") and hasattr(
+        text_to_feat_model_config, "discriminator"
+    ):
+        # We assume generator is used as text-to-feat model.
+        is_text_to_feat_gan = True
+        text_to_feat: nn.Module = instantiate(text_to_feat_model_config.generator)
+    else:
+        is_text_to_feat_gan = False
+        text_to_feat: nn.Module = instantiate(text_to_feat_model_config)
 
     # feat-to-wave
     feat_to_wave_resolved_config: Dict[str, Any] = feat_to_wave_state_dict["resolved_config"]
     feat_to_wave_model_config: Dict[str, Any] = feat_to_wave_resolved_config["model"]
     feat_to_wave_model_config = OmegaConf.create(feat_to_wave_model_config)
-    feat_to_wave: nn.Module = hydra.utils.instantiate(feat_to_wave_model_config)
 
-    model: CascadeTextToWave = hydra.utils.instantiate(
+    if hasattr(feat_to_wave_model_config, "generator") and hasattr(
+        feat_to_wave_model_config, "discriminator"
+    ):
+        # We assume generator is used as feat-to-wave model.
+        is_feat_to_wave_gan = True
+        feat_to_wave: nn.Module = instantiate(feat_to_wave_model_config.generator)
+    else:
+        is_feat_to_wave_gan = False
+        feat_to_wave: nn.Module = instantiate(feat_to_wave_model_config)
+
+    model: CascadeTextToWave = instantiate(
         config,
         text_to_feat=text_to_feat,
         feat_to_wave=feat_to_wave,
     )
 
     if load_weights:
-        model.text_to_feat.load_state_dict(text_to_feat_state_dict["model"])
-        model.feat_to_wave.load_state_dict(feat_to_wave_state_dict["model"])
+        if is_text_to_feat_gan:
+            model.text_to_feat.load_state_dict(text_to_feat_state_dict["model"]["generator"])
+        else:
+            model.text_to_feat.load_state_dict(text_to_feat_state_dict["model"])
+
+        if is_feat_to_wave_gan:
+            model.feat_to_wave.load_state_dict(feat_to_wave_state_dict["model"]["generator"])
+        else:
+            model.feat_to_wave.load_state_dict(feat_to_wave_state_dict["model"])
 
     return model
 
@@ -200,9 +331,7 @@ def instantiate_optimizer(
                     params.append(submodule.parameters())
 
                 params = itertools.chain(*params)
-                optimizer = hydra.utils.instantiate(
-                    subconfig["optimizer"], params, *args, **kwargs
-                )
+                optimizer = instantiate(subconfig["optimizer"], params, *args, **kwargs)
 
                 if isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer):
                     for submodule_name in subconfig["modules"]:
@@ -225,7 +354,7 @@ def instantiate_optimizer(
             return optimizers
         else:
             params = module.parameters()
-            optimizer = hydra.utils.instantiate(config, params, *args, **kwargs)
+            optimizer = instantiate(config, params, *args, **kwargs)
 
             if isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer):
                 _register_forward_hook_for_ema_codebook_optim(module, optimizer)
@@ -235,7 +364,7 @@ def instantiate_optimizer(
         if isinstance(config, ListConfig):
             raise ValueError("ListConfig is not supported when parameters are given to optimizer.")
 
-        optimizer = hydra.utils.instantiate(config, params, *args, **kwargs)
+        optimizer = instantiate(config, params, *args, **kwargs)
 
     return optimizer
 
@@ -248,7 +377,7 @@ def instantiate_lr_scheduler(
     .. note::
 
         If ``config`` is empty dict, this function returns ``None``
-        unlike ``hydra.utils.instantiate``.
+        unlike ``instantiate``.
 
     """
     if isinstance(config, ListConfig):
@@ -267,7 +396,7 @@ def instantiate_lr_scheduler(
                 optim_name = idx
 
             _optimizer = optimizer.optimizers[optim_name]
-            _lr_scheduler = hydra.utils.instantiate(_config, _optimizer, *args, **kwargs)
+            _lr_scheduler = instantiate(_config, _optimizer, *args, **kwargs)
 
             if isinstance(_lr_scheduler, DictConfig):
                 _lr_scheduler = _DummyLRScheduler()
@@ -278,7 +407,7 @@ def instantiate_lr_scheduler(
 
         return lr_schedulers
     else:
-        lr_scheduler = hydra.utils.instantiate(config, optimizer, *args, **kwargs)
+        lr_scheduler = instantiate(config, optimizer, *args, **kwargs)
 
     if isinstance(lr_scheduler, DictConfig):
         lr_scheduler = None
@@ -301,9 +430,7 @@ def instantiate_grad_clipper(config, module_or_params, *args, **kwargs) -> GradC
         else:
             overridden_config = config
 
-        grad_clipper = hydra.utils.instantiate(
-            overridden_config, module_or_params, *args, **kwargs
-        )
+        grad_clipper = instantiate(overridden_config, module_or_params, *args, **kwargs)
 
         if isinstance(grad_clipper, DictConfig):
             grad_clipper = None
@@ -319,7 +446,7 @@ def instantiate_criterion(
     """Instantiate criterion."""
 
     if isinstance(config, DictConfig):
-        criterion = hydra.utils.instantiate(config, *args, **kwargs)
+        criterion = instantiate(config, *args, **kwargs)
     elif isinstance(config, ListConfig):
         assert len(args) == 0, "Positional arguments are not supported."
         assert len(kwargs) == 0, "Keyword arguments are not supported."
@@ -328,7 +455,7 @@ def instantiate_criterion(
 
         for _config in config:
             _name = _config.name
-            _criterion = hydra.utils.instantiate(_config.criterion)
+            _criterion = instantiate(_config.criterion)
             _weight = _config.weight
             _key_mapping = OmegaConf.to_object(_config.key_mapping)
             _criterion_wrapper = BaseCriterionWrapper(

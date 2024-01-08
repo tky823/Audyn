@@ -28,18 +28,18 @@ resume:
 
 output:
   exp_dir: "./exp"
-  tensorboard_dir: "./tensorboard"
+  tensorboard_dir: "./tensorboard/soundstream"
   save_checkpoint:
     iteration:
       every: 50000
-      path: ${...exp_dir}/model/iteration{iteration}.pth
+      path: ${...exp_dir}/model/soundstream/iteration{iteration}.pth
     epoch:
       every: 200
-      path: ${...exp_dir}/model/epoch{epoch}.pth
+      path: ${...exp_dir}/model/soundstream/epoch{epoch}.pth
     last:
-      path: ${...exp_dir}/model/last.pth
+      path: ${...exp_dir}/model/soundstream/last.pth
     best_epoch:
-      path: ${...exp_dir}/model/best_epoch.pth
+      path: ${...exp_dir}/model/soundstream/best_epoch.pth
 
 steps:
   epochs:

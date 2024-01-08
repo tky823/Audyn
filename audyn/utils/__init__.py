@@ -19,8 +19,11 @@ from .data.dataloader import (
 from .data.dataset import SortableTorchObjectDataset, TorchObjectDataset, WebDatasetWrapper
 from .distributed import is_distributed, setup_distributed
 from .hydra.utils import (
+    instantiate,
     instantiate_cascade_text_to_wave,
     instantiate_criterion,
+    instantiate_gan_discriminator,
+    instantiate_gan_generator,
     instantiate_grad_clipper,
     instantiate_lr_scheduler,
     instantiate_model,
@@ -33,7 +36,10 @@ __all__ = [
     "setup_system",
     "convert_dataloader_to_ddp_if_possible",
     "convert_dataset_and_dataloader_format_if_necessary",
+    "instantiate",
     "instantiate_model",
+    "instantiate_gan_generator",
+    "instantiate_gan_discriminator",
     "instantiate_cascade_text_to_wave",
     "instantiate_optimizer",
     "instantiate_lr_scheduler",
@@ -72,6 +78,14 @@ def setup_system(config: DictConfig) -> None:
             OmegaConf.update(
                 full_config,
                 "train.ddp_kwargs",
+                None,
+                force_add=True,
+            )
+
+        if not hasattr(full_config.test, "ddp_kwargs"):
+            OmegaConf.update(
+                full_config,
+                "test.ddp_kwargs",
                 None,
                 force_add=True,
             )

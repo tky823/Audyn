@@ -1,0 +1,15 @@
+input:
+  input: waveform_slice
+output:
+  - estimated_waveform
+  - encoded
+  - quantized
+  - codebook_indices
+save:
+  input:
+    identifier: filename
+    waveform: waveform_slice
+    phones: phones
+    phones_length: phones_length
+  output:
+    codebook_indices: codebook_indices

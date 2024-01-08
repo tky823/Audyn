@@ -12,7 +12,7 @@ log_dir="./log"
 
 dump_format="torch"
 
-preprocess="defaults"
+preprocess="ljspeech_text-to-feat"
 data="soundstream"
 
 n_validation=500
@@ -26,6 +26,7 @@ wav_dir="${ljspeech_root}/wavs"
 
 dump_dir="${dump_root}/${data}"
 list_dir="${dump_dir}/list"
+text_dir="${dump_dir}/text"
 feature_dir="${dump_dir}/feature"
 
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
@@ -60,7 +61,20 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
 fi
 
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
-    echo "Preprocess stage 2: Remove short samples"
+    echo "Preprocess stage 2: Normalize text"
+
+    python ../_common/local/normalize_text.py \
+    --config-dir "./conf" \
+    hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
+    preprocess="${preprocess}" \
+    data="${data}" \
+    preprocess.dump_format="${dump_format}" \
+    preprocess.metadata_path="${csv_path}" \
+    preprocess.text_dir="${text_dir}"
+fi
+
+if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
+    echo "Preprocess stage 3: Remove short samples"
 
     for subset in "train" "validation" "test"; do
         python ./local/remove_short_samples.py \
@@ -73,8 +87,8 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     done
 fi
 
-if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
-    echo "Preprocess stage 3: Save features"
+if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
+    echo "Preprocess stage 4: Save features"
 
     for subset in "train" "validation" "test"; do
         python ./local/save_features.py \
@@ -85,6 +99,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
         preprocess.dump_format="${dump_format}" \
         preprocess.list_path="${list_dir}/${subset}.txt" \
         preprocess.wav_dir="${wav_dir}" \
+        preprocess.text_dir="${text_dir}" \
         preprocess.feature_dir="${feature_dir}/${subset}"
     done
 fi

@@ -1,0 +1,33 @@
+defaults:
+  - dataset: torch
+  - dataloader: defaults
+  - _self_
+
+key_mapping:
+  inference:
+    input:
+      input: waveform
+      num_stages: num_stages
+    output: estimated_waveform
+    identifier:
+      filename: filename
+
+checkpoint:
+
+num_stages: 1
+
+output:
+  exp_dir: "./exp"
+  inference_dir: ${.exp_dir}/reconstruction
+  audio:
+    sample_rate: ${data.audio.sample_rate}
+    key_mapping:
+      inference:
+        output:
+          estimated_waveform: "{filename}_estimated.wav"
+        reference:
+          waveform: "{filename}.wav"
+    transforms:
+      inference:
+        output:
+        reference:

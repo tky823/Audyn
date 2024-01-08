@@ -1,0 +1,9 @@
+defaults:
+  - defaults
+  - _self_
+
+checkpoint: ???
+
+output:
+  exp_dir: "./exp"
+  save_path: ???

@@ -74,22 +74,40 @@ class CascadeTextToWaveGenerator(BaseGenerator):
                 output, key_mapping=self.config.test.key_mapping.inference
             )
 
-            audio_config = self.config.test.output.audio
-            self.save_audio_if_necessary(
+            self.save_inference_audio_if_necessary(
                 named_output,
                 named_batch,
                 named_identifier,
-                key_mapping=audio_config.key_mapping.inference,
-                transforms=audio_config.transforms.inference,
-                sample_rate=audio_config.sample_rate,
+                config=self.config.test.output,
+            )
+            self.save_inference_spectrogram_if_necessary(
+                named_output,
+                named_batch,
+                named_identifier,
+                config=self.config.test.output,
             )
 
     def load_checkpoint(self, text_to_feat_path, feat_to_wave_path: str) -> None:
         text_to_feat_state_dict = torch.load(text_to_feat_path, map_location=self.device)
         feat_to_wave_state_dict = torch.load(feat_to_wave_path, map_location=self.device)
+        unwrapped_text_to_feat = self.unwrapped_model.text_to_feat
+        unwrapped_feat_to_wave = self.unwrapped_model.feat_to_wave
 
-        self.unwrapped_model.text_to_feat.load_state_dict(text_to_feat_state_dict["model"])
-        self.unwrapped_model.feat_to_wave.load_state_dict(feat_to_wave_state_dict["model"])
+        if (
+            "generator" in text_to_feat_state_dict["model"]
+            and "discriminator" in text_to_feat_state_dict["model"]
+        ):
+            unwrapped_text_to_feat.load_state_dict(text_to_feat_state_dict["model"]["generator"])
+        else:
+            unwrapped_text_to_feat.load_state_dict(text_to_feat_state_dict["model"])
+
+        if (
+            "generator" in feat_to_wave_state_dict["model"]
+            and "discriminator" in feat_to_wave_state_dict["model"]
+        ):
+            unwrapped_feat_to_wave.load_state_dict(feat_to_wave_state_dict["model"]["generator"])
+        else:
+            unwrapped_feat_to_wave.load_state_dict(feat_to_wave_state_dict["model"])
 
     def remove_weight_norm_if_necessary(self) -> None:
         """Remove weight normalization from self.model by calling self.model.remove_weight_norm()

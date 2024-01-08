@@ -1,0 +1,22 @@
+train:
+  input:
+    text: phones
+    acoustic: codebook_indices
+    text_length: phones_length
+    acoustic_length: codebook_indices_length
+  output: logit
+validation:
+  text_to_feat: ${..train}
+  transform_middle:
+  feat_to_wave:
+inference:
+  text_to_feat:
+    input:
+      text: phones
+      max_length: max_codebook_indices_length
+    output: estimated_codebook_indices
+  transform_middle:
+  feat_to_wave:
+    input:
+      indices: estimated_codebook_indices
+    output: estimated_waveform

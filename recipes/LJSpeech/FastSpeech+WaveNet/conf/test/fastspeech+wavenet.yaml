@@ -1,14 +1,7 @@
-dataset:
-  test:
-    _target_: audyn.utils.data.dataset.TorchObjectDataset
-    list_path:
-    feature_dir:
-
-dataloader:
-  test:
-    _target_: torch.utils.data.DataLoader
-    batch_size: 1
-    shuffle: false
+defaults:
+  - dataset: torch
+  - dataloader: defaults
+  - _self_
 
 key_mapping:
   inference:

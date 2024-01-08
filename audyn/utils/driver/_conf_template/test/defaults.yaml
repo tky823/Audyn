@@ -1,14 +1,7 @@
-dataset:
-  test:
-    _target_: torch.utils.data.DataSet
-    list_path:
-    feature_dir:
-
-dataloader:
-  test:
-    _target_: torch.utils.data.DataLoader
-    batch_size: 1
-    shuffle: false
+defaults:
+  - dataset: defaults
+  - dataloader: defaults
+  - _self_
 
 key_mapping:
   inference:
@@ -21,6 +14,8 @@ key_mapping:
       filename: filename
 
 checkpoint:
+
+remove_weight_norm:
 
 output:
   exp_dir: "./exp"

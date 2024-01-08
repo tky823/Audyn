@@ -12,9 +12,10 @@ from audyn.optim.lr_scheduler import GANLRScheduler
 from audyn.optim.optimizer import GANOptimizer
 from audyn.utils import (
     instantiate_criterion,
+    instantiate_gan_discriminator,
+    instantiate_gan_generator,
     instantiate_grad_clipper,
     instantiate_lr_scheduler,
-    instantiate_model,
     instantiate_optimizer,
     setup_system,
 )
@@ -63,7 +64,7 @@ def main(config: DictConfig) -> None:
     loaders = BaseDataLoaders(train_loader, validation_loader)
 
     # generator
-    generator = instantiate_model(config.model.generator)
+    generator = instantiate_gan_generator(config.model)
     generator = set_device(
         generator,
         accelerator=config.system.accelerator,
@@ -86,7 +87,7 @@ def main(config: DictConfig) -> None:
     )
 
     # discriminator
-    discriminator = instantiate_model(config.model.discriminator)
+    discriminator = instantiate_gan_discriminator(config.model)
     discriminator = set_device(
         discriminator,
         accelerator=config.system.accelerator,

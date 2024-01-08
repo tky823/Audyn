@@ -1,0 +1,12 @@
+defaults:
+  - valle
+  - override key_mapping: valle+pretrained_soundstream
+  - override record: valle+pretrained_soundstream
+  - _self_
+
+resume:
+  continue_from:
+
+pretrained_feat_to_wave:
+  path:
+  transform_middle:

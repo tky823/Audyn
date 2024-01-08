@@ -1,15 +1,15 @@
 defaults:
-  - record: soundstream
+  - record: valle
   - dataset: torch
   - dataloader: defaults
-  - key_mapping: soundstream_official
+  - key_mapping: valle
   - _self_
 
 dataloader:
   train:
-    batch_size: 4
+    batch_size: 2
   validation:
-    batch_size: 4
+    batch_size: 1
 
 clip_gradient:
   generator:
@@ -18,23 +18,26 @@ clip_gradient:
     max_norm: 10
   discriminator: ${.generator}
 
+ddp_kwargs:
+  find_unused_parameters: true
+
 resume:
   continue_from:
 
 output:
   exp_dir: "./exp"
-  tensorboard_dir: "./tensorboard"
+  tensorboard_dir: "./tensorboard/valle"
   save_checkpoint:
     iteration:
       every: 4
-      path: ${...exp_dir}/model/iteration{iteration}.pth
+      path: ${...exp_dir}/model/valle/iteration{iteration}.pth
     epoch:
       every: 2
-      path: ${...exp_dir}/model/epoch{epoch}.pth
+      path: ${...exp_dir}/model/valle/epoch{epoch}.pth
     last:
-      path: ${...exp_dir}/model/last.pth
+      path: ${...exp_dir}/model/valle/last.pth
     best_epoch:
-      path: ${...exp_dir}/model/best_epoch.pth
+      path: ${...exp_dir}/model/valle/best_epoch.pth
 
 steps:
   epochs:
