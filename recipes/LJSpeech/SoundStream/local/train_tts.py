@@ -16,7 +16,7 @@ from audyn.utils import (
     setup_system,
 )
 from audyn.utils.data import BaseDataLoaders, default_collate_fn
-from audyn.utils.driver import BaseTrainer
+from audyn.utils.driver import TextToFeatTrainer
 from audyn.utils.model import set_device
 
 
@@ -58,7 +58,7 @@ def main(config: DictConfig) -> None:
         ddp_kwargs=config.train.ddp_kwargs,
     )
 
-    trainer = BaseTrainer(
+    trainer = TextToFeatTrainer(
         loaders,
         model,
         optimizer,
