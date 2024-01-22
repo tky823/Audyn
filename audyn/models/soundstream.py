@@ -417,6 +417,7 @@ class Decoder(nn.Module):
             kernel_size=kernel_size_out,
             stride=1,
         )
+        self.tanh = nn.Tanh()
 
         self.kernel_size_in = _single(kernel_size_in)
         self.kernel_size_out = _single(kernel_size_out)
@@ -451,7 +452,8 @@ class Decoder(nn.Module):
         x = self.nonlinear1d(x)
         x = self.backbone(x)
         x = self._pad1d(x, kernel_size=kernel_size_out)
-        output = self.conv1d_out(x)
+        x = self.conv1d_out(x)
+        output = self.tanh(x)
 
         return output
 
