@@ -1,3 +1,4 @@
+import csv
 import os
 from typing import List
 
@@ -30,15 +31,18 @@ def main(config: DictConfig) -> None:
 
 def process(captions_path: str) -> List[str]:
     with open(captions_path) as f:
-        for row_idx, line in enumerate(f):
-            if row_idx > 0:
-                line = line.strip()
-                captions = line.split(",")
+        reader = csv.reader(f)
 
-                for caption in captions:
-                    tokens = [token.lower() for token in caption.split()]
+        for idx, line in enumerate(reader):
+            if idx == 0:
+                continue
 
-                    yield tokens
+            _, *captions = line
+
+            for caption in captions:
+                tokens = [token.lower() for token in caption.split(" ")]
+
+                yield tokens
 
 
 if __name__ == "__main__":
