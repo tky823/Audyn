@@ -1,4 +1,3 @@
-import csv
 import os
 from typing import List
 
@@ -7,42 +6,45 @@ from omegaconf import DictConfig
 from torchtext.vocab import build_vocab_from_iterator
 
 import audyn
+from audyn.utils.text.tokenization import BaseTextTokenizer
 
 
 @audyn.main()
 def main(config: DictConfig) -> None:
     list_path = config.preprocess.list_path
-    captions_path = config.preprocess.captions_path
+    text_dir = config.preprocess.text_dir
     symbols_path = config.preprocess.symbols_path
 
     assert list_path is not None, "Specify preprocess.list_path."
-    assert captions_path is not None, "Specify preprocess.captions_path."
+    assert text_dir is not None, "Specify preprocess.text_dir."
     assert symbols_path is not None, "Specify preprocess.symbols_path."
+
+    tokenizer = audyn.utils.instantiate(config.data.text.tokenization)
 
     symbols_dir = os.path.dirname(symbols_path)
 
     if symbols_dir:
         os.makedirs(symbols_dir, exist_ok=True)
 
-    vocab = build_vocab_from_iterator(process(captions_path), specials=["<BOS>", "<EOS>"])
+    vocab = build_vocab_from_iterator(
+        process(list_path, text_dir, tokenizer), specials=["<BOS>", "<EOS>"]
+    )
 
     torch.save(vocab, symbols_path)
 
 
-def process(captions_path: str) -> List[str]:
-    with open(captions_path) as f:
-        reader = csv.reader(f)
+def process(list_path: str, text_dir: str, tokenizer: BaseTextTokenizer) -> List[str]:
+    with open(list_path) as f_list:
+        for filename in f_list:
+            filename = filename.strip("\n")
 
-        for idx, line in enumerate(reader):
-            if idx == 0:
-                continue
+            text_path = os.path.join(text_dir, f"{filename}.txt")
 
-            _, *captions = line
+            with open(text_path) as f_text:
+                for caption in f_text:
+                    tokens = tokenizer(caption)
 
-            for caption in captions:
-                tokens = [token.lower() for token in caption.split(" ")]
-
-                yield tokens
+                    yield tokens
 
 
 if __name__ == "__main__":
