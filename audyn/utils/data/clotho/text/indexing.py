@@ -14,7 +14,7 @@ class ClothoTextIndexer(BaseTextIndexer):
 
         if isinstance(vocab, str):
             path = vocab
-            vocab = torch.load(path)
+            vocab = torch.load(path, map_location=lambda storage, loc: storage)
         elif isinstance(vocab, torchtext.vocab.Vocab):
             pass
         else:
