@@ -6,6 +6,12 @@ __all__ = ["ClothoTextNormalizer"]
 
 
 class ClothoTextNormalizer(BaseTextNormalizer):
+    """Text normalizer for Clotho dataset.
+
+    This class is ported from
+    https://github.com/audio-captioning/dcase-2020-baseline/blob/654e808924f7c0d4e6e3d90cdcdaf28c9165a0ce/tools/dataset_creation.py. # noqa: E501
+    """
+
     def __init__(self) -> None:
         super().__init__()
 
