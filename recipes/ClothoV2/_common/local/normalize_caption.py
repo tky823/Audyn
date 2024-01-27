@@ -42,7 +42,7 @@ def main(config: DictConfig) -> None:
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
             futures = []
 
-            for filename, _captions in tqdm(captions.items()):
+            for filename, _captions in captions.items():
                 text_path = os.path.join(text_dir, f"{filename}.txt")
 
                 future = executor.submit(
