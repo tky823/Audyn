@@ -1,28 +1,39 @@
-from typing import List, Union
+import os
+from typing import List, Optional
 
-import torch
-import torchtext
+from torchtext.vocab import build_vocab_from_iterator
 
+from .....utils import audyn_cache_dir
 from ....text.indexing import BaseTextIndexer
 
 __all__ = ["ClothoTextIndexer"]
 
 
 class ClothoTextIndexer(BaseTextIndexer):
-    def __init__(self, vocab: Union[str, torchtext.vocab.Vocab]) -> None:
+    """Text indexer for Clotho dataset."""
+
+    filename = "vocab.txt"
+
+    def __init__(self, root: Optional[str] = None) -> None:
         super().__init__()
 
-        if isinstance(vocab, str):
-            path = vocab
-            vocab = torch.load(path, map_location=lambda storage, loc: storage)
-        elif isinstance(vocab, torchtext.vocab.Vocab):
-            pass
-        else:
-            raise NotImplementedError(f"{type(vocab)} is not supported.")
+        if root is None:
+            root = os.path.join(audyn_cache_dir, "data", "clotho")
 
-        self.vocab = vocab
+        path = os.path.join(root, self.filename)
+
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"{path} not found.")
+
+        self.vocab = build_vocab_from_iterator(self.build_vocab(path))
 
     def index(self, text: List[str]) -> List[int]:
         tokens = self.vocab(text)
 
         return tokens
+
+    @staticmethod
+    def build_vocab(path: str) -> List[str]:
+        with open(path) as f:
+            for line in f:
+                yield [line.strip()]
