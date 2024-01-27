@@ -19,6 +19,7 @@ class ClothoTextTokenizer(BaseTextTokenizer):
         self.sub_re = re.compile('[,.!?;:"]')
 
     def tokenize(self, text: str) -> List[str]:
-        tokens = self.sub_re.sub("", text)
+        text = self.sub_re.sub("", text)
+        tokens = text.strip().split()
 
         return tokens
