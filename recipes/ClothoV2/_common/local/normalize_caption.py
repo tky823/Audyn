@@ -7,7 +7,7 @@ from omegaconf import DictConfig
 from tqdm import tqdm
 
 import audyn
-from audyn.utils.text.normalization import BaseTextNormalizer
+from audyn.utils.text import TextPreprocessor
 
 
 @audyn.main()
@@ -19,7 +19,7 @@ def main(config: DictConfig) -> None:
     assert captions_path is not None, "Specify preprocess.captions_path."
     assert text_dir is not None, "Specify preprocess.text_dir."
 
-    normalizer = audyn.utils.instantiate(config.data.text.normalization)
+    text_preprocessor = audyn.utils.instantiate(config.data.text.preprocessor)
 
     os.makedirs(text_dir, exist_ok=True)
 
@@ -36,7 +36,6 @@ def main(config: DictConfig) -> None:
             filename, _ = os.path.splitext(filename)
             captions[filename] = _captions
 
-    config.preprocess.max_workers = 1
     max_workers = config.preprocess.max_workers
 
     if max_workers > 1:
@@ -50,7 +49,7 @@ def main(config: DictConfig) -> None:
                     process,
                     captions=_captions,
                     text_path=text_path,
-                    normalizer=normalizer,
+                    text_preprocessor=text_preprocessor,
                 )
                 futures.append(future)
 
@@ -63,18 +62,18 @@ def main(config: DictConfig) -> None:
             process(
                 captions=_captions,
                 text_path=text_path,
-                normalizer=normalizer,
+                text_preprocessor=text_preprocessor,
             )
 
 
 def process(
     captions: List[str],
     text_path: str,
-    normalizer: BaseTextNormalizer,
+    text_preprocessor: TextPreprocessor,
 ) -> None:
     with open(text_path, mode="w") as f:
         for caption in captions:
-            caption = normalizer(caption)
+            caption = text_preprocessor.normalize_text(caption)
             f.write(caption + "\n")
 
 
