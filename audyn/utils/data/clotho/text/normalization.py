@@ -21,5 +21,6 @@ class ClothoTextNormalizer(BaseTextNormalizer):
     def normalize(self, text: str) -> str:
         text = self.sub_re.sub(r"\1", text)
         text = self.continuous_space_re.sub(" ", text)
+        text = text.lower()
 
         return text
