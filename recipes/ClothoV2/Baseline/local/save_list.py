@@ -24,7 +24,7 @@ def main(config: DictConfig) -> None:
                 continue
 
             filename, *_ = line
-            filename = filename.replace(".wav", "")
+            filename, _ = os.path.splitext(filename)
             filenames.append(filename)
 
     list_dir = os.path.dirname(list_path)
