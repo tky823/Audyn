@@ -185,7 +185,7 @@ class AbsolutePositionalMultiheadSelfAttention(MultiheadSelfAttention):
         attn_mask: Optional[torch.Tensor] = None,
         average_attn_weights: bool = True,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
-        """
+        """Forward pass of AbsolutePositionalMultiheadSelfAttention.
 
         Args:
             input (torch.Tensor): Sequence of shape (batch_size, length, embed_dim)
@@ -306,7 +306,7 @@ class AbsolutePositionalMultiheadSelfAttention(MultiheadSelfAttention):
             input (torch.Tensor): Sequence of shape (length, batch_size, num_heads, head_dim).
 
         Returns:
-            torch.Tensor: Output sequence as same shape as input.
+            torch.Tensor: Output sequence same shape as input.
 
         """
         max_length = self.max_length
@@ -418,7 +418,7 @@ class RelativePositionalMultiheadSelfAttention(MultiheadSelfAttention):
         attn_mask: Optional[torch.Tensor] = None,
         average_attn_weights: bool = True,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
-        """
+        """Forward pass of RelativePositionalMultiheadSelfAttention.
 
         Args:
             input (torch.Tensor): Sequence of shape (batch_size, length, embed_dim)
