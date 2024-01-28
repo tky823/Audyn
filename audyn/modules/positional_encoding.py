@@ -124,7 +124,7 @@ class RotaryPositionalEmbedding(nn.Module):
 
         x_cos = x_cos.view(batch_size, length, embed_dim // 2, 2)
         x_sin_pre, x_sin_post = torch.unbind(x_cos, dim=-1)
-        x_sin = torch.cat([-x_sin_post, x_sin_pre], dim=-1)
+        x_sin = torch.stack([-x_sin_post, x_sin_pre], dim=-1)
 
         positions = torch.arange(length, dtype=torch.long, device=device)
         theta = positions.unsqueeze(dim=-1) * embed
