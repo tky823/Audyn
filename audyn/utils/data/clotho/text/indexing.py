@@ -1,4 +1,5 @@
 import os
+import urllib
 from typing import List, Optional
 
 from torchtext.vocab import build_vocab_from_iterator
@@ -14,6 +15,9 @@ class ClothoTextIndexer(BaseTextIndexer):
     """Text indexer for Clotho dataset."""
 
     filename = "vocab.txt"
+    chotho_vocab_urls = [
+        "https://github.com/tky823/Audyn/releases/download/v0.0.0/clotho-v2-vocab.txt"
+    ]
 
     def __init__(self, root: Optional[str] = None) -> None:
         super().__init__()
@@ -24,7 +28,18 @@ class ClothoTextIndexer(BaseTextIndexer):
         path = os.path.join(root, self.filename)
 
         if not os.path.exists(path):
-            raise FileNotFoundError(f"{path} not found.")
+            # TODO: additional sources
+            assert len(self.chotho_vocab_urls) == 1
+
+            os.makedirs(root, exist_ok=True)
+
+            for url in self.chotho_vocab_urls:
+                data = urllib.request.urlopen(url).read()
+
+                with open(path, mode="wb") as f:
+                    f.write(data)
+
+                break
 
         self.vocab = build_vocab_from_iterator(self.build_vocab(path))
 
