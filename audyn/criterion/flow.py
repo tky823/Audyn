@@ -72,9 +72,7 @@ class GaussFlowLoss(nn.Module):
         z_2 = torch.sum(z * z, dim=dims)
         dim = z.numel() / z.size(0)
 
-        nll_gauss = (
-            math.log(2 * math.pi) / 2 + math.log(self.std) + z_2 / (2 * dim * self.std**2)
-        )
+        nll_gauss = math.log(2 * math.pi) / 2 + math.log(self.std) + z_2 / (2 * dim * self.std**2)
         loss = nll_gauss - logdet / dim
 
         if reduction == "mean":

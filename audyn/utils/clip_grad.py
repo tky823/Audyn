@@ -49,8 +49,7 @@ class GradClipper:
             params: Iterable,
             mode: str = None,
             clip_value: float = None,
-        ) -> None:
-            ...
+        ) -> None: ...
 
         @overload
         def __init__(
@@ -60,8 +59,7 @@ class GradClipper:
             max_norm: float = None,
             norm_type: float = 2,
             error_if_nonfinite: float = False,
-        ) -> None:
-            ...
+        ) -> None: ...
 
     else:
         from torch.optim.optimizer import params_t
@@ -72,8 +70,7 @@ class GradClipper:
             params: params_t,
             mode: str = None,
             clip_value: float = None,
-        ) -> None:
-            ...
+        ) -> None: ...
 
         @overload
         def __init__(
@@ -83,8 +80,7 @@ class GradClipper:
             max_norm: float = None,
             norm_type: float = 2,
             error_if_nonfinite: float = False,
-        ) -> None:
-            ...
+        ) -> None: ...
 
     def __init__(self, params, mode=None, **kwargs) -> None:
         if mode == "value":

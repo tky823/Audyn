@@ -1,6 +1,7 @@
 """This file is based on
 https://github.com/pytorch/pytorch/blob/0093df78df590a35deb784773aa2165884c1b7bd/torch/optim/optimizer.py.
 """
+
 import copy
 import math
 import warnings
@@ -352,8 +353,7 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
             reset_source: Optional[str] = None,
             reset_scope: Optional[Union[str, int]] = None,
             seed: int = 0,
-        ) -> None:
-            ...
+        ) -> None: ...
 
     else:
         from torch.optim.optimizer import params_t
@@ -371,8 +371,7 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
             reset_source: Optional[str] = None,
             reset_scope: Optional[Union[str, int]] = None,
             seed: int = 0,
-        ) -> None:
-            ...
+        ) -> None: ...
 
     def __init__(
         self,
@@ -783,8 +782,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             reset_source: Optional[str] = None,
             reset_scope: Optional[Union[str, int]] = None,
             seed: int = 0,
-        ) -> None:
-            ...
+        ) -> None: ...
 
     else:
         from torch.optim.optimizer import params_t
@@ -802,8 +800,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             reset_source: Optional[str] = None,
             reset_scope: Optional[Union[str, int]] = None,
             seed: int = 0,
-        ) -> None:
-            ...
+        ) -> None: ...
 
     def __init__(
         self,

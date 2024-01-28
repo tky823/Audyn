@@ -2,6 +2,7 @@
 
 See https://arxiv.org/abs/1712.09763 for the details.
 """
+
 import copy
 import math
 from typing import Callable, Optional, Union

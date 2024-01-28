@@ -43,14 +43,12 @@ if IS_TORCH_LT_2_1:
         module_or_params: Union[Iterable, nn.Module],
         *args,
         **kwargs,
-    ) -> Optimizer:
-        ...
+    ) -> Optimizer: ...
 
     @overload
     def instantiate_grad_clipper(
         config: DictConfig, module_or_params: Iterable, *args, **kwargs
-    ) -> GradClipper:
-        ...
+    ) -> GradClipper: ...
 
 else:
     from torch.optim.optimizer import params_t
@@ -61,14 +59,12 @@ else:
         module_or_params: Union[params_t, nn.Module],
         *args,
         **kwargs,
-    ) -> Optimizer:
-        ...
+    ) -> Optimizer: ...
 
     @overload
     def instantiate_grad_clipper(
         config: DictConfig, module_or_params: params_t, *args, **kwargs
-    ) -> GradClipper:
-        ...
+    ) -> GradClipper: ...
 
 
 def instantiate(config: Any, *args, **kwargs) -> Any:

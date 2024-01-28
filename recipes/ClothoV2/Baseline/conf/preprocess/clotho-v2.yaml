@@ -1,0 +1,8 @@
+defaults:
+  - defaults
+
+list_path:
+wav_dir:
+captions_path:
+text_dir:
+feature_dir:
