@@ -63,23 +63,23 @@ class KaldiMelSpectrogram(nn.Module):
             if "frame_length" in fbank_kwargs:
                 frame_length = fbank_kwargs["frame_length"]
 
-                assert win_length / sample_rate == frame_length, (
+                assert 1000 * (win_length / sample_rate) == frame_length, (
                     f"win_length ({win_length}) should be compatible with "
                     f"frame_length ({frame_length}) in fbank_kwargs."
                 )
             else:
-                fbank_kwargs["frame_length"] = win_length / sample_rate
+                fbank_kwargs["frame_length"] = 1000 * (win_length / sample_rate)
 
         if hop_length is not None:
             if "frame_shift" in fbank_kwargs:
                 frame_shift = fbank_kwargs["frame_shift"]
 
-                assert hop_length / sample_rate == frame_shift, (
+                assert 1000 * (hop_length / sample_rate) == frame_shift, (
                     f"hop_length ({hop_length}) should be compatible with "
                     f"frame_shift ({frame_shift}) in fbank_kwargs."
                 )
             else:
-                fbank_kwargs["frame_shift"] = hop_length / sample_rate
+                fbank_kwargs["frame_shift"] = 1000 * (hop_length / sample_rate)
 
         if f_min is not None:
             if "low_freq" in fbank_kwargs:
