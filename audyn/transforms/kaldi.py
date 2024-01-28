@@ -162,10 +162,12 @@ class KaldiMelSpectrogram(nn.Module):
         """Apply _fbank_fn sequentially.
 
         Args:
-            waveform (torch.Tensor): Waveform of shape (num_channels, timesteps).
+            waveform (torch.Tensor): Waveform of shape (batch_size, timesteps)
+                or (batch_size, 1, timesteps).
 
         Returns:
-            torch.Tensor (torch.Tensor): Mel-spectrogram of shape (num_channels, n_bins, n_frames).
+            torch.Tensor: Mel-spectrogram of shape (batch_size, n_mels, n_frames)
+                or (batch_size, 1, n_mels, n_frames).
 
         """
         spectrogram = []
@@ -183,10 +185,12 @@ class KaldiMelSpectrogram(nn.Module):
         """Apply _fbank_fn via torch.vmap.
 
         Args:
-            waveform (torch.Tensor): Waveform of shape (num_channels, timesteps).
+            waveform (torch.Tensor): Waveform of shape (batch_size, timesteps)
+                or (batch_size, 1, timesteps).
 
         Returns:
-            torch.Tensor (torch.Tensor): Mel-spectrogram of shape (num_channels, n_bins, n_frames).
+            torch.Tensor: Mel-spectrogram of shape (batch_size, n_mels, n_frames)
+                or (batch_size, 1, n_mels, n_frames).
 
         """
         vfbank_fn = torch.vmap(functools.partial(_fbank_fn, **kwargs))
