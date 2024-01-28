@@ -102,7 +102,7 @@ jobs:
         run: |
           # See pyproject.toml
           isort --line-length 99 audyn
-          flake8 --max-line-length=99 --ignore=E203,W503,W504 audyn
+          flake8 --max-line-length=99 --ignore=E203,W503,W504,E704 audyn
       - name: Run formatters
         run: |
           python -m black --config pyproject.toml --check audyn tests
