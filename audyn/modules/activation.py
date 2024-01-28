@@ -375,13 +375,15 @@ class RelativePositionalMultiheadSelfAttention(MultiheadSelfAttention):
             torch.empty(
                 *embedding_shape,
                 **factory_kwargs,
-            )
+            ),
+            requires_grad=True,
         )
         self.v_pos_emb = nn.Parameter(
             torch.empty(
                 *embedding_shape,
                 **factory_kwargs,
-            )
+            ),
+            requires_grad=True,
         )
 
         self.window_size = window_size
