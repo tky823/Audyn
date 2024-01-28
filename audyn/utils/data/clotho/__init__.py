@@ -3,9 +3,10 @@ from typing import Optional
 from ...text import TextPreprocessor
 from .text.indexing import ClothoTextIndexer
 from .text.normalization import ClothoTextNormalizer
+from .text.symbols import vocab_size
 from .text.tokenization import ClothoTextTokenizer
 
-__all__ = ["ClothoTextNormalizer", "ClothoTextTokenizer", "ClothoTextIndexer"]
+__all__ = ["vocab_size", "ClothoTextNormalizer", "ClothoTextTokenizer", "ClothoTextIndexer"]
 
 
 class ClothoTextPreprocessor(TextPreprocessor):

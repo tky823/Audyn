@@ -5,6 +5,7 @@ from torchtext.vocab import build_vocab_from_iterator
 
 from .....utils import audyn_cache_dir
 from ....text.indexing import BaseTextIndexer
+from .symbols import vocab_size
 
 __all__ = ["ClothoTextIndexer"]
 
@@ -26,6 +27,10 @@ class ClothoTextIndexer(BaseTextIndexer):
             raise FileNotFoundError(f"{path} not found.")
 
         self.vocab = build_vocab_from_iterator(self.build_vocab(path))
+
+        assert (
+            len(self.vocab) == vocab_size
+        ), f"Vocab size is expected {vocab_size}, but {len(self.vocab)} is given."
 
     def index(self, text: List[str]) -> List[int]:
         tokens = self.vocab(text)
