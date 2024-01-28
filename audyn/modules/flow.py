@@ -180,9 +180,7 @@ class ChannelSplitFlow(BaseFlow):
 
         self.channels = channels
 
-    def forward(
-        self, *args, logdet: torch.Tensor = None, reverse: bool = False
-    ) -> Union[
+    def forward(self, *args, logdet: torch.Tensor = None, reverse: bool = False) -> Union[
         Tuple[torch.Tensor, torch.Tensor],
         Tuple[Tuple[torch.Tensor, torch.Tensor], torch.Tensor],
     ]:

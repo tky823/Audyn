@@ -3,6 +3,7 @@
 See https://arxiv.org/abs/1712.09763 for the details.
 TODO: improve architecture to reproduce exactly
 """
+
 import copy
 from typing import Callable, Optional, Union
 

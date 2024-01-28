@@ -1,4 +1,5 @@
 """Vector quantization modules."""
+
 from typing import Any, Dict, Mapping, Tuple
 
 import torch
