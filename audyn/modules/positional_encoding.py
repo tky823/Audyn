@@ -125,7 +125,7 @@ class RotaryPositionalEmbedding(nn.Module):
         if batch_first:
             output = x
         else:
-            output = x.transpose(1, 0)
+            output = x.transpose(1, 0).contiguous()
 
         return output
 
