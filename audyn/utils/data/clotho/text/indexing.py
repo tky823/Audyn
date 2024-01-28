@@ -57,7 +57,7 @@ class ClothoTextIndexer(BaseTextIndexer):
             phonemes = [BOS_SYMBOL] + phonemes
 
         if insert_eos_token and phonemes[-1] != EOS_SYMBOL:
-            phonemes = phonemes + [BOS_SYMBOL]
+            phonemes = phonemes + [EOS_SYMBOL]
 
         phonemes = self.vocab(phonemes)
 
