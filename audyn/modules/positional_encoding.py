@@ -1,5 +1,3 @@
-from typing import Optional
-
 import torch
 import torch.nn as nn
 
@@ -75,43 +73,27 @@ class RotaryPositionalEmbedding(nn.Module):
 
     def __init__(
         self,
-        embed_dim: int,
+        base: int = 10000,
         batch_first: bool = True,
-        device: Optional[torch.device] = None,
-        dtype: Optional[torch.dtype] = None,
     ) -> None:
-        factory_kwargs = {
-            "device": device,
-            "dtype": dtype,
-        }
         super().__init__()
 
-        if embed_dim % 2 != 0:
-            raise ValueError("embed_dim should be even number.")
-
-        self.embed = nn.Parameter(
-            torch.empty(
-                embed_dim // 2,
-                **factory_kwargs,
-            ),
-            requires_grad=True,
-        )
-
+        self.base = base
         self.batch_first = batch_first
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         """Forward pass of RoPE.
 
         Args:
-            input (torch.Tensor): Sequence of shape (batch_size, length, embed_dim)
-                if ``batch_first=True``, otherwise (length, batch_size, embed_dim).
+            input (torch.Tensor): Sequence of shape (batch_size, length, num_features)
+                if ``batch_first=True``, otherwise (length, batch_size, num_features).
 
         Returns:
             torch.Tensor: Sequence of same shape as input.
 
         """
+        base = self.base
         batch_first = self.batch_first
-        embed = self.embed
 
         device = input.device
 
@@ -120,19 +102,25 @@ class RotaryPositionalEmbedding(nn.Module):
         else:
             x_cos = input.transpose(1, 0)
 
-        batch_size, length, embed_dim = x_cos.size()
+        batch_size, length, num_features = x_cos.size()
 
-        x_cos = x_cos.view(batch_size, length, embed_dim // 2, 2)
+        x_cos = x_cos.view(batch_size, length, num_features // 2, 2)
         x_sin_pre, x_sin_post = torch.unbind(x_cos, dim=-1)
         x_sin = torch.stack([-x_sin_post, x_sin_pre], dim=-1)
 
-        positions = torch.arange(length, dtype=torch.long, device=device)
-        theta = positions.unsqueeze(dim=-1) * embed
-        cos_theta = torch.cos(theta)
-        sin_theta = torch.sin(theta)
+        pos_seq = torch.arange(length)
+        num_seq = torch.arange(0, num_features, 2) / num_features
+        theta = pos_seq.unsqueeze(dim=-1) / (base**num_seq)
 
-        x = x_cos * cos_theta.unsqueeze(dim=-1) + x_sin * sin_theta.unsqueeze(dim=-1)
-        x = x.view(batch_size, length, embed_dim)
+        sin = torch.sin(theta).to(device)
+        cos = torch.cos(theta).to(device)
+
+        pos_emb = torch.stack([sin, cos], dim=2)  # (length, num_features // 2, 2)
+        pos_emb = pos_emb.view(length, num_features)
+        pos_emb = pos_emb.to(device)
+
+        x = x_sin * sin.unsqueeze(dim=-1) + x_cos * cos.unsqueeze(dim=-1)
+        x = x.view(batch_size, length, num_features)
 
         if batch_first:
             output = x
