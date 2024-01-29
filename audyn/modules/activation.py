@@ -10,7 +10,7 @@ from .positional_encoding import RotaryPositionalEmbedding
 
 __all__ = [
     "MultiheadSelfAttention",
-    "AbsolutePositionalMultiheadSelfAttention",
+    "TrainableAbsolutePositionalMultiheadSelfAttention",
     "RelativePositionalMultiheadSelfAttention",
     "RotaryPositionalMultiheadSelfAttention",
 ]
@@ -86,7 +86,7 @@ class MultiheadSelfAttention(nn.MultiheadAttention):
         )
 
 
-class AbsolutePositionalMultiheadSelfAttention(MultiheadSelfAttention):
+class TrainableAbsolutePositionalMultiheadSelfAttention(MultiheadSelfAttention):
     """Multihead self-attention using trainable absolute positional representation."""
 
     def __init__(
