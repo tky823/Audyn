@@ -135,7 +135,7 @@ class RoPE(RotaryPositionalEmbedding):
 
 
 class ExtrapolatablePositionalEmbedding(nn.Module):
-    """Extrapolatable positional embedding proposed in [#sun2022length]_.
+    """Extrapolatable positional embedding proposed in [#sun2023length]_.
 
     Args:
         invert_decay (bool): If ``True``, decay is inverted.
