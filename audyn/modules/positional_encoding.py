@@ -137,6 +137,10 @@ class RoPE(RotaryPositionalEmbedding):
 class ExtrapolatablePositionalEmbedding(nn.Module):
     """Extrapolatable positional embedding proposed in [#sun2022length]_.
 
+    Args:
+        invert_decay (bool): If ``True``, decay is inverted.
+        smooth (float): Smoothing factor.
+
     .. [#sun2023length]
         Y. Sun et al., "A length-extrapolatable transformer,"
         in *ACL*, 2023.
