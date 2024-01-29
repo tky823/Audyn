@@ -3,16 +3,16 @@ import torch
 import torch.nn as nn
 
 from audyn.modules.activation import (
-    AbsolutePositionalMultiheadSelfAttention,
     RelativePositionalMultiheadSelfAttention,
     RotaryPositionalMultiheadSelfAttention,
+    TrainableAbsolutePositionalMultiheadSelfAttention,
 )
 
 
 @pytest.mark.parametrize("batch_first", [True, False])
 @pytest.mark.parametrize("is_causal", [True, False])
 @pytest.mark.parametrize("share_heads", [True, False])
-def test_absolute_positional_self_attn(
+def test_trainable_absolute_positional_self_attn(
     batch_first: bool, is_causal: bool, share_heads: bool
 ) -> None:
     torch.manual_seed(0)
@@ -37,7 +37,7 @@ def test_absolute_positional_self_attn(
     else:
         attn_mask = None
 
-    absolute_mha = AbsolutePositionalMultiheadSelfAttention(
+    absolute_mha = TrainableAbsolutePositionalMultiheadSelfAttention(
         embed_dim,
         num_heads,
         max_length=max_pos_length,
