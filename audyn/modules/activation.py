@@ -612,7 +612,7 @@ class RotaryPositionalMultiheadSelfAttention(MultiheadSelfAttention):
         add_bias_kv: bool = False,
         add_zero_attn: bool = False,
         base: int = 10000,
-        share_heads: bool = False,
+        share_heads: bool = True,
         batch_first: bool = False,
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
@@ -800,7 +800,7 @@ class ExtrapolatablePositionalMultiheadSelfAttention(MultiheadSelfAttention):
         add_bias_kv: bool = False,
         add_zero_attn: bool = False,
         base: int = 10000,
-        share_heads: bool = False,
+        share_heads: bool = True,
         batch_first: bool = False,
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
@@ -839,7 +839,7 @@ class ExtrapolatablePositionalMultiheadSelfAttention(MultiheadSelfAttention):
         attn_mask: Optional[torch.Tensor] = None,
         average_attn_weights: bool = True,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
-        """Forward pass of RotaryPositionalMultiheadSelfAttention.
+        """Forward pass of ExtrapolatablePositionalMultiheadSelfAttention.
 
         Args:
             input (torch.Tensor): Sequence of shape (batch_size, length, embed_dim)
