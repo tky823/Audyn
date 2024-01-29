@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 
 from audyn.modules.activation import (
+    ExtrapolatablePositionalMultiheadSelfAttention,
     RelativePositionalMultiheadSelfAttention,
     RotaryPositionalMultiheadSelfAttention,
     TrainableAbsolutePositionalMultiheadSelfAttention,
@@ -237,3 +238,52 @@ def test_rotary_positional_self_attn(
         assert rotary_output.size() == (max_length, batch_size, embed_dim)
 
     assert rotary_attn_weights.size() == (batch_size, max_length, max_length)
+
+
+@pytest.mark.parametrize("batch_first", [True, False])
+@pytest.mark.parametrize("is_causal", [True, False])
+@pytest.mark.parametrize("share_heads", [True, False])
+def test_extrapolatable_positional_self_attn(
+    batch_first: bool, is_causal: bool, share_heads: bool
+) -> None:
+    torch.manual_seed(0)
+
+    batch_size = 3
+    max_length, embed_dim = 12, 8
+    num_heads = 4
+
+    length = torch.randint(max_length // 2, max_length, (batch_size,))
+    max_length = torch.max(length).item()
+
+    input = torch.randn(max_length, batch_size, embed_dim)
+
+    if batch_first:
+        input = input.transpose(1, 0)
+
+    pos_indices = torch.arange(max_length)
+    padding_mask = pos_indices >= length.unsqueeze(dim=-1)
+
+    if is_causal:
+        attn_mask = pos_indices > pos_indices.unsqueeze(dim=-1)
+    else:
+        attn_mask = None
+
+    xpos_mha = ExtrapolatablePositionalMultiheadSelfAttention(
+        embed_dim,
+        num_heads,
+        share_heads=share_heads,
+        batch_first=batch_first,
+    )
+
+    xpos_output, xpos_attn_weights = xpos_mha(
+        input,
+        padding_mask=padding_mask,
+        attn_mask=attn_mask,
+    )
+
+    if batch_first:
+        assert xpos_output.size() == (batch_size, max_length, embed_dim)
+    else:
+        assert xpos_output.size() == (max_length, batch_size, embed_dim)
+
+    assert xpos_attn_weights.size() == (batch_size, max_length, max_length)
