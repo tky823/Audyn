@@ -65,9 +65,9 @@ class AbsolutePositionalEncoding(nn.Module):
 
 
 class RotaryPositionalEmbedding(nn.Module):
-    """RoPE: Rotary positional embedding proposed in [#su2024roformer]_.
+    """RoPE: Rotary positional embedding proposed in [#su2021roformer]_.
 
-    .. [#su2024roformer]
+    .. [#su2021roformer]
         J. Su et al., "Roformer: Enhanced transformer with rotary position embedding,"
         *Neurocomputing*, vol. 568, 2024.
 
