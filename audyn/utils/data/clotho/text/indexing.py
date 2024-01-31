@@ -16,7 +16,7 @@ class ClothoTextIndexer(BaseTextIndexer):
 
     filename = "vocab.txt"
     chotho_vocab_urls = [
-        "https://github.com/tky823/Audyn/releases/download/v0.0.0/clotho-v2-vocab.txt"
+        "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev1/clotho-v2-vocab.txt"
     ]
 
     def __init__(self, root: Optional[str] = None) -> None:

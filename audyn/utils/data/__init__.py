@@ -69,7 +69,7 @@ def select_accelerator(config_or_accelerator: Union[DictConfig, Optional[str]]) 
     return accelerator
 
 
-def select_device(accelerator: Optional[str], is_distributed: bool = False) -> str:
+def select_device(accelerator: Optional[str], is_distributed: bool = False) -> Union[str, int]:
     """Select device by accelerator."""
     accelerator = select_accelerator(accelerator)
 

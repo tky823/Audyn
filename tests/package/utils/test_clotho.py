@@ -9,7 +9,7 @@ def test_clotho_text_preprocessor() -> None:
     text_preprocessor = ClothoTextPreprocessor()
 
     text = "A car passes in front of me, then a bird starts singing."
-    expected_indices = [0, 2, 525, 2555, 1857, 1535, 2433, 2207, 3850, 2, 314, 3615, 3355, 1]
+    expected_indices = [0, 2, 525, 2553, 1857, 1535, 2432, 2206, 3846, 2, 314, 3612, 3352, 1]
 
     indices = text_preprocessor(text, return_type=int)
 
@@ -56,7 +56,7 @@ def test_clotho_text_indexer() -> None:
         "singing",
     ]
     inserted_tokens = [BOS_SYMBOL] + tokens + [EOS_SYMBOL]
-    expected_indices = [2, 525, 2555, 1857, 1535, 2433, 2207, 3850, 2, 314, 3615, 3355]
+    expected_indices = [2, 525, 2553, 1857, 1535, 2432, 2206, 3846, 2, 314, 3612, 3352]
     expected_inserted_indices = [0] + expected_indices + [1]
 
     indices = indexer(tokens, insert_bos_token=False, insert_eos_token=False)
