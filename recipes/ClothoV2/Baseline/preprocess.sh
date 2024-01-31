@@ -38,7 +38,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
 
         csv_path="${clotho_root}/clotho_captions_${raw_subset}.csv"
 
-        python ./local/normalize_caption.py \
+        python ./local/normalize_captions.py \
         --config-dir "./conf" \
         hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
         preprocess="${preprocess}" \
