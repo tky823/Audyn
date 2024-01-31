@@ -5,6 +5,7 @@ from ....text.normalization import BaseTextNormalizer
 __all__ = ["ClothoTextNormalizer"]
 
 _normalize_re = re.compile(r'\s([,.!?;:"](?:\s|$))')
+_fix_re = re.compile(r'([,.!?;:"])([a-zA-Z])')
 _whitespace_re = re.compile(r"\s+")
 _punctuation_re = re.compile('[,.!?;:"]')
 
@@ -19,6 +20,7 @@ class ClothoTextNormalizer(BaseTextNormalizer):
     def normalize(self, text: str) -> str:
         text = text.lower()
         text = _normalize_re.sub(r"\1", text)
+        text = _fix_re.sub(r"\1 \2", text)
         text = _whitespace_re.sub(" ", text)
         text = _punctuation_re.sub("", text)
 
