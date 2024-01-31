@@ -337,7 +337,7 @@ class InfoNCELoss(_InfoNCELoss):
 
     def __init__(
         self,
-        dim: float,
+        dim: int,
         temperature: float = 1,
         trainable: bool = True,
         min_temperature: Optional[float] = None,
@@ -366,7 +366,7 @@ class NTXentLoss(_NTXentLoss):
 
     def __init__(
         self,
-        dim: float,
+        dim: int,
         temperature: float = 1,
         trainable: bool = True,
         min_temperature: Optional[float] = None,
@@ -395,7 +395,7 @@ class IntraInfoNCELoss(_InfoNCELoss):
 
     def __init__(
         self,
-        dim: float,
+        dim: int,
         temperature: float = 1,
         trainable: bool = True,
         min_temperature: Optional[float] = None,
@@ -419,7 +419,7 @@ class InterInfoNCELoss(_InfoNCELoss):
 
     def __init__(
         self,
-        dim: float,
+        dim: int,
         temperature: float = 1,
         trainable: bool = True,
         min_temperature: Optional[float] = None,
@@ -443,7 +443,7 @@ class IntraNTXentLoss(_NTXentLoss):
 
     def __init__(
         self,
-        dim: float,
+        dim: int,
         temperature: float = 1,
         trainable: bool = True,
         min_temperature: Optional[float] = None,
@@ -467,7 +467,7 @@ class InterNTXentLoss(_NTXentLoss):
 
     def __init__(
         self,
-        dim: float,
+        dim: int,
         temperature: float = 1,
         trainable: bool = True,
         min_temperature: Optional[float] = None,
