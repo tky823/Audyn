@@ -2,6 +2,7 @@ import copy
 import itertools
 import os
 import tempfile
+import uuid
 from typing import Tuple
 
 import pytest
@@ -94,13 +95,16 @@ def test_info_nce_loss(reduction: str) -> None:
 @pytest.mark.parametrize("dim", [0, 1, 2])
 def test_info_nce_loss_ddp(dim: int) -> None:
     """Ensure InfoNCELoss works well for DDP."""
-    torch.manual_seed(0)
+    seed = _uuid_seed()
+    torch.manual_seed(seed)
 
     port = str(torch.randint(0, 2**16, ()).item())
-    world_size = 4
     seed = 0
+    world_size = 4
+
     batch_size = 4
 
+    torch.manual_seed(seed)
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -327,17 +331,19 @@ def test_inter_info_nce_loss(reduction: str) -> None:
 @pytest.mark.parametrize("dim", [0, 1])
 def test_inter_info_nce_loss_ddp(dim: int) -> None:
     """Ensure InterInfoNCELoss works well for DDP."""
-    torch.manual_seed(0)
+    seed = _uuid_seed()
+    torch.manual_seed(seed)
 
     port = str(torch.randint(0, 2**16, ()).item())
-    world_size = 4
     seed = 0
+    world_size = 4
 
     batch_size = 4
     in_channels, out_channels = 8, 6
     lr = 0.1
     iterations = 10
 
+    torch.manual_seed(seed)
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -626,3 +632,11 @@ def update_intra_info_nce_modules(
         optimizer.step()
 
     return loss
+
+
+def _uuid_seed(vmax: int = 2**16) -> int:
+    seed = str(uuid.uuid4())
+    seed = seed.replace("-", "")
+    seed = int(seed, 16)
+
+    return seed % vmax
