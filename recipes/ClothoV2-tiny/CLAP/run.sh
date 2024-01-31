@@ -26,6 +26,10 @@ optimizer="clap"
 lr_scheduler="clap"
 criterion="info_nce"
 
+n_train=50
+n_validation=10
+n_test=10
+
 . ../../_common/parse_options.sh || exit 1;
 
 set +u
@@ -50,14 +54,17 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
 
     (
         . ./preprocess.sh \
-        --stage 1 \
+        --stage 3 \
         --stop-stage 3 \
         --data-root "${data_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \
         --preprocess "${preprocess}" \
-        --data "${data}"
+        --data "${data}" \
+        --n-train ${n_train} \
+        --n-validation ${n_validation} \
+        --n-test ${n_test}
     )
 fi
 
