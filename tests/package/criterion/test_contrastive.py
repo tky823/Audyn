@@ -12,7 +12,14 @@ import torch.multiprocessing as mp
 import torch.nn as nn
 from torch.optim import SGD
 
-from audyn.criterion.contrastive import InfoNCELoss, InterInfoNCELoss, IntraInfoNCELoss
+from audyn.criterion.contrastive import (
+    InfoNCELoss,
+    InterInfoNCELoss,
+    InterNTXentLoss,
+    IntraInfoNCELoss,
+    IntraNTXentLoss,
+    NTXentLoss,
+)
 
 
 @pytest.mark.parametrize("reduction", ["mean", "sum", "none"])
@@ -167,6 +174,83 @@ def test_info_nce_loss_ddp(dim: int) -> None:
 
 
 @pytest.mark.parametrize("reduction", ["mean", "sum", "none"])
+def test_ntxent_loss(reduction: str) -> None:
+    torch.manual_seed(0)
+
+    # 3D input
+    batch_size, length, embedding_dim = 4, 12, 10
+
+    input = torch.randn((batch_size, length, embedding_dim))
+    other = torch.randn((batch_size, length, embedding_dim))
+
+    criterion = NTXentLoss(dim=0, reduction=reduction)
+    reference_criterion = InterNTXentLoss(dim=0, reduction=reduction)
+    loss = criterion(input, other)
+    reference_loss = reference_criterion(input, other)
+
+    if reduction in ["mean", "sum"]:
+        assert loss.size() == ()
+    else:
+        assert loss.size() == (length, batch_size)
+
+    assert torch.allclose(loss, reference_loss)
+
+    criterion = NTXentLoss(dim=1, reduction=reduction)
+    reference_criterion = IntraNTXentLoss(dim=1, reduction=reduction)
+    loss = criterion(input, other)
+    reference_loss = reference_criterion(input, other)
+
+    if reduction in ["mean", "sum"]:
+        assert loss.size() == ()
+    else:
+        assert loss.size() == (batch_size, length)
+
+    assert torch.allclose(loss, reference_loss)
+
+    # 4D input
+    batch_size, height, width, embedding_dim = 4, 5, 6, 10
+
+    input = torch.randn((batch_size, height, width, embedding_dim))
+    other = torch.randn((batch_size, height, width, embedding_dim))
+
+    criterion = NTXentLoss(dim=0, reduction=reduction)
+    reference_criterion = InterNTXentLoss(dim=0, reduction=reduction)
+    loss = criterion(input, other)
+    reference_loss = reference_criterion(input, other)
+
+    if reduction in ["mean", "sum"]:
+        assert loss.size() == ()
+    else:
+        assert loss.size() == (height, width, batch_size)
+
+    assert torch.allclose(loss, reference_loss)
+
+    criterion = NTXentLoss(dim=1, reduction=reduction)
+    reference_criterion = IntraNTXentLoss(dim=1, reduction=reduction)
+    loss = criterion(input, other)
+    reference_loss = reference_criterion(input, other)
+
+    if reduction in ["mean", "sum"]:
+        assert loss.size() == ()
+    else:
+        assert loss.size() == (batch_size, width, height)
+
+    assert torch.allclose(loss, reference_loss)
+
+    criterion = NTXentLoss(dim=2, reduction=reduction)
+    reference_criterion = IntraNTXentLoss(dim=2, reduction=reduction)
+    loss = criterion(input, other)
+    reference_loss = reference_criterion(input, other)
+
+    if reduction in ["mean", "sum"]:
+        assert loss.size() == ()
+    else:
+        assert loss.size() == (batch_size, height, width)
+
+    assert torch.allclose(loss, reference_loss)
+
+
+@pytest.mark.parametrize("reduction", ["mean", "sum", "none"])
 def test_intra_info_nce_loss(reduction: str) -> None:
     torch.manual_seed(0)
 
@@ -249,6 +333,88 @@ def test_intra_info_nce_loss(reduction: str) -> None:
 
 
 @pytest.mark.parametrize("reduction", ["mean", "sum", "none"])
+def test_intra_ntxent_loss(reduction: str) -> None:
+    torch.manual_seed(0)
+
+    # 3D input
+    batch_size, length, embedding_dim = 4, 12, 10
+
+    input = torch.randn((batch_size, length, embedding_dim))
+    other = torch.randn((batch_size, length, embedding_dim))
+
+    criterion = IntraNTXentLoss(dim=0, reduction=reduction)
+    loss1 = criterion(input, other)
+    loss2 = criterion(other, input)
+
+    if reduction in ["mean", "sum"]:
+        assert loss1.size() == ()
+        assert loss2.size() == ()
+    else:
+        assert loss1.size() == (length, batch_size)
+        assert loss2.size() == (length, batch_size)
+
+    assert torch.allclose(loss1, loss2)
+
+    criterion = IntraNTXentLoss(dim=1, reduction=reduction)
+    loss1 = criterion(input, other)
+    loss2 = criterion(other, input)
+
+    if reduction in ["mean", "sum"]:
+        assert loss1.size() == ()
+        assert loss2.size() == ()
+    else:
+        assert loss1.size() == (batch_size, length)
+        assert loss2.size() == (batch_size, length)
+
+    assert torch.allclose(loss1, loss2)
+
+    # 4D input
+    batch_size, height, width, embedding_dim = 4, 5, 6, 10
+
+    input = torch.randn((batch_size, height, width, embedding_dim))
+    other = torch.randn((batch_size, height, width, embedding_dim))
+
+    criterion = IntraNTXentLoss(dim=0, reduction=reduction)
+    loss1 = criterion(input, other)
+    loss2 = criterion(other, input)
+
+    if reduction in ["mean", "sum"]:
+        assert loss1.size() == ()
+        assert loss2.size() == ()
+    else:
+        assert loss1.size() == (height, width, batch_size)
+        assert loss2.size() == (height, width, batch_size)
+
+    assert torch.allclose(loss1, loss2)
+
+    criterion = IntraNTXentLoss(dim=1, reduction=reduction)
+    loss1 = criterion(input, other)
+    loss2 = criterion(other, input)
+
+    if reduction in ["mean", "sum"]:
+        assert loss1.size() == ()
+        assert loss2.size() == ()
+    else:
+        assert loss1.size() == (batch_size, width, height)
+        assert loss2.size() == (batch_size, width, height)
+
+    assert torch.allclose(loss1, loss2)
+
+    criterion = IntraNTXentLoss(dim=2, reduction=reduction)
+    loss1 = criterion(input, other)
+    loss2 = criterion(other, input)
+
+    if reduction in ["mean", "sum"]:
+        assert loss1.size() == ()
+        assert loss2.size() == ()
+    else:
+        assert loss1.size() == (batch_size, height, width)
+        assert loss2.size() == (batch_size, height, width)
+
+    assert torch.allclose(loss1, loss2)
+
+
+@pytest.mark.parametrize("reduction", ["mean", "sum", "none"])
 def test_inter_info_nce_loss(reduction: str) -> None:
     torch.manual_seed(0)
 
@@ -317,6 +483,88 @@ def test_inter_info_nce_loss(reduction: str) -> None:
     assert torch.allclose(loss1, loss2)
 
     criterion = InterInfoNCELoss(dim=2, reduction=reduction)
+    loss1 = criterion(input, other)
+    loss2 = criterion(other, input)
+
+    if reduction in ["mean", "sum"]:
+        assert loss1.size() == ()
+        assert loss2.size() == ()
+    else:
+        assert loss1.size() == (batch_size, height, width)
+        assert loss2.size() == (batch_size, height, width)
+
+    assert torch.allclose(loss1, loss2)
+
+
+@pytest.mark.parametrize("reduction", ["mean", "sum", "none"])
+def test_inter_ntxent_loss(reduction: str) -> None:
+    torch.manual_seed(0)
+
+    # 3D input
+    batch_size, length, embedding_dim = 4, 12, 10
+
+    input = torch.randn((batch_size, length, embedding_dim))
+    other = torch.randn((batch_size, length, embedding_dim))
+
+    criterion = InterNTXentLoss(dim=0, reduction=reduction)
+    loss1 = criterion(input, other)
+    loss2 = criterion(other, input)
+
+    if reduction in ["mean", "sum"]:
+        assert loss1.size() == ()
+        assert loss2.size() == ()
+    else:
+        assert loss1.size() == (length, batch_size)
+        assert loss2.size() == (length, batch_size)
+
+    assert torch.allclose(loss1, loss2)
+
+    criterion = InterNTXentLoss(dim=1, reduction=reduction)
+    loss1 = criterion(input, other)
+    loss2 = criterion(other, input)
+
+    if reduction in ["mean", "sum"]:
+        assert loss1.size() == ()
+        assert loss2.size() == ()
+    else:
+        assert loss1.size() == (batch_size, length)
+        assert loss2.size() == (batch_size, length)
+
+    assert torch.allclose(loss1, loss2)
+
+    # 4D input
+    batch_size, height, width, embedding_dim = 4, 5, 6, 10
+
+    input = torch.randn((batch_size, height, width, embedding_dim))
+    other = torch.randn((batch_size, height, width, embedding_dim))
+
+    criterion = InterNTXentLoss(dim=0, reduction=reduction)
+    loss1 = criterion(input, other)
+    loss2 = criterion(other, input)
+
+    if reduction in ["mean", "sum"]:
+        assert loss1.size() == ()
+        assert loss2.size() == ()
+    else:
+        assert loss1.size() == (height, width, batch_size)
+        assert loss2.size() == (height, width, batch_size)
+
+    assert torch.allclose(loss1, loss2)
+
+    criterion = InterNTXentLoss(dim=1, reduction=reduction)
+    loss1 = criterion(input, other)
+    loss2 = criterion(other, input)
+
+    if reduction in ["mean", "sum"]:
+        assert loss1.size() == ()
+        assert loss2.size() == ()
+    else:
+        assert loss1.size() == (batch_size, width, height)
+        assert loss2.size() == (batch_size, width, height)
+
+    assert torch.allclose(loss1, loss2)
+
+    criterion = InterNTXentLoss(dim=2, reduction=reduction)
     loss1 = criterion(input, other)
     loss2 = criterion(other, input)
 
