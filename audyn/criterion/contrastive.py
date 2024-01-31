@@ -276,6 +276,7 @@ class _NTXentLoss(nn.Module):
 
         """
         gather_if_necessary = self.gather_if_necessary
+        reduction = self.reduction
         dim = self.dim
         n_dims = input.dim()
 
@@ -318,6 +319,15 @@ class _NTXentLoss(nn.Module):
         logit_diag = torch.diagonal(logit, dim1=-2, dim2=-1)
         logit_no_diag = torch.logsumexp(logit_no_diag, dim=-1)
         loss = -logit_diag + logit_no_diag
+
+        if reduction == "mean":
+            loss = loss.mean()
+        elif reduction == "sum":
+            loss = loss.sum()
+        elif reduction == "none":
+            pass
+        else:
+            raise ValueError(f"Invalid reduction ({reduction}) is specified.")
 
         return loss
 
