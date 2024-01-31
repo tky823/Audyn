@@ -10,6 +10,8 @@ __all__ = ["InfoNCELoss", "IntraInfoNCELoss", "InterInfoNCELoss"]
 
 
 class _InfoNCELoss(nn.Module):
+    """Base class of InfoNCE loss."""
+
     def __init__(
         self,
         dim: Optional[int] = None,
@@ -115,7 +117,7 @@ class _InfoNCELoss(nn.Module):
         return loss
 
     def forward(self, input: torch.Tensor, other: torch.Tensor) -> torch.Tensor:
-        """Forward pass of InterInfoNCELoss.
+        """Forward pass of _InfoNCELoss.
 
         Args:
             input (torch.Tensor): Feature of shape (*, num_features).
