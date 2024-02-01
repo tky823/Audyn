@@ -16,8 +16,8 @@ key_mapping:
     input:
       text: text
       audio: log_melspectrogram
-      text_length: melspectrogram_length
-      audio_length: text_length
+      text_length: text_length
+      audio_length: melspectrogram_length
     output:
       - text_embedding
       - audio_embedding
