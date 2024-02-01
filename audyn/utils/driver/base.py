@@ -3,7 +3,7 @@ import os
 import subprocess
 import warnings
 from logging import Logger
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import hydra
 import matplotlib.pyplot as plt
@@ -50,6 +50,16 @@ class BaseDriver:
     def unwrapped_model(self) -> nn.Module:
         """Unwrapped model to access attributes directly."""
         return unwrap(self.model)
+
+    def criterion_names(self, config: Optional[DictConfig] = None) -> Set[str]:
+        if config is None:
+            config = self.config.criterion
+
+        criterion_names = {
+            key for key in config.keys() if not key.startswith("_") and not key.endswith("_")
+        }
+
+        return criterion_names
 
     def count_num_parameters(self) -> int:
         """Count number of parameters.
@@ -185,9 +195,7 @@ class BaseDriver:
         if config is None:
             config = self.config.criterion
 
-        criterion_names = {
-            key for key in config.keys() if not key.startswith("_") and not key.endswith("_")
-        }
+        criterion_names = self.criterion_names(config)
         named_target = {criterion_name: {} for criterion_name in criterion_names}
 
         for criterion_name in criterion_names:
@@ -266,9 +274,7 @@ class BaseDriver:
         if config is None:
             config = self.config.criterion
 
-        criterion_names = {
-            key for key in config.keys() if not key.startswith("_") and not key.endswith("_")
-        }
+        criterion_names = self.criterion_names(config)
         named_estimated = {criterion_name: {} for criterion_name in criterion_names}
 
         for criterion_name in criterion_names:
@@ -385,11 +391,7 @@ class BaseTrainer(BaseDriver):
 
     def run(self) -> None:
         start_epoch_idx = self.epoch_idx
-        criterion_names = {
-            key
-            for key in self.config.criterion.keys()
-            if not key.startswith("_") and not key.endswith("_")
-        }
+        criterion_names = self.criterion_names(self.config.criterion)
 
         for epoch_idx in range(start_epoch_idx, self.epochs):
             train_loss = self.train_one_epoch()
@@ -466,11 +468,7 @@ class BaseTrainer(BaseDriver):
     def train_one_epoch(self) -> Dict[str, float]:
         """Train model for one epoch."""
         record_config = self.config.train.record
-        criterion_names = {
-            key
-            for key in self.config.criterion.keys()
-            if not key.startswith("_") and not key.endswith("_")
-        }
+        criterion_names = self.criterion_names(self.config.criterion)
         train_loss = {criterion_name: 0 for criterion_name in criterion_names}
         n_batch = 0
         n_remain = self.iteration_idx % len(self.loaders.train)
@@ -630,11 +628,7 @@ class BaseTrainer(BaseDriver):
     @torch.no_grad()
     def validate_one_epoch(self) -> Dict[str, float]:
         """Validate model for one epoch."""
-        criterion_names = {
-            key
-            for key in self.config.criterion.keys()
-            if not key.startswith("_") and not key.endswith("_")
-        }
+        criterion_names = self.criterion_names(self.config.criterion)
         validation_loss = {criterion_name: 0 for criterion_name in criterion_names}
         n_batch = 0
 
@@ -824,11 +818,7 @@ class BaseTrainer(BaseDriver):
         train_key = "train"
         validation_key = "validation"
         total_loss = {train_key: 0, validation_key: 0}
-        criterion_names = {
-            key
-            for key in self.config.criterion.keys()
-            if not key.startswith("_") and not key.endswith("_")
-        }
+        criterion_names = self.criterion_names(self.config.criterion)
 
         prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}] ({train_key})"
         s = ""

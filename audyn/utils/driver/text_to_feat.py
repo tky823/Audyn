@@ -118,11 +118,7 @@ class TextToFeatTrainer(BaseTrainer):
         else:
             text_to_feat_key_mapping = key_mapping
 
-        criterion_names = {
-            key
-            for key in self.config.criterion.keys()
-            if not key.startswith("_") and not key.endswith("_")
-        }
+        criterion_names = self.criterion_names(self.config.criterion)
         validation_loss = {criterion_name: 0 for criterion_name in criterion_names}
         n_batch = 0
 

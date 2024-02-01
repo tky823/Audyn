@@ -79,11 +79,8 @@ class GANTrainer(BaseTrainer):
             total_loss = self.display_loss(train_loss, validation_loss)
 
             for model_type in [generator_key, discriminator_key]:
-                criterion_names = {
-                    key
-                    for key in self.config.criterion[model_type].keys()
-                    if not key.startswith("_") and not key.endswith("_")
-                }
+                criterion_names = self.criterion_names(self.config.criterion[model_type])
+
                 for criterion_name in criterion_names:
                     self.write_scalar_if_necessary(
                         f"{criterion_name} (epoch)/{train_key}",
@@ -134,16 +131,8 @@ class GANTrainer(BaseTrainer):
         train_key = "train"
         generator_key, discriminator_key = "generator", "discriminator"
 
-        generator_criterion_names = {
-            key
-            for key in criterion_config.generator.keys()
-            if not key.startswith("_") and not key.endswith("_")
-        }
-        discriminator_criterion_names = {
-            key
-            for key in criterion_config.discriminator.keys()
-            if not key.startswith("_") and not key.endswith("_")
-        }
+        generator_criterion_names = self.criterion_names(criterion_config.generator)
+        discriminator_criterion_names = self.criterion_names(criterion_config.discriminator)
 
         train_loss = {
             generator_key: {},
@@ -468,16 +457,8 @@ class GANTrainer(BaseTrainer):
         discriminator_key_mapping = self.config.train.key_mapping.validation.discriminator
         generator_key, discriminator_key = "generator", "discriminator"
 
-        generator_criterion_names = {
-            key
-            for key in criterion_config.generator.keys()
-            if not key.startswith("_") and not key.endswith("_")
-        }
-        discriminator_criterion_names = {
-            key
-            for key in criterion_config.discriminator.keys()
-            if not key.startswith("_") and not key.endswith("_")
-        }
+        generator_criterion_names = self.criterion_names(criterion_config.generator)
+        discriminator_criterion_names = self.criterion_names(criterion_config.discriminator)
 
         validation_loss = {
             generator_key: {},
@@ -744,11 +725,8 @@ class GANTrainer(BaseTrainer):
         s = ""
 
         for model_type in [generator_key, discriminator_key]:
-            criterion_names = {
-                key
-                for key in criterion_config[model_type].keys()
-                if not key.startswith("_") and not key.endswith("_")
-            }
+            criterion_names = self.criterion_names(criterion_config[model_type])
+
             for criterion_name in criterion_names:
                 weight = criterion_config[model_type][criterion_name].weight
                 loss = train_loss[model_type][criterion_name]
@@ -764,11 +742,8 @@ class GANTrainer(BaseTrainer):
         s = ""
 
         for model_type in [generator_key, discriminator_key]:
-            criterion_names = {
-                key
-                for key in criterion_config[model_type].keys()
-                if not key.startswith("_") and not key.endswith("_")
-            }
+            criterion_names = self.criterion_names(criterion_config[model_type])
+
             for criterion_name in criterion_names:
                 weight = criterion_config[model_type][criterion_name].weight
                 loss = validation_loss[model_type][criterion_name]
