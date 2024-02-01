@@ -6,6 +6,8 @@ import torch.nn.functional as F
 
 from audyn.modules.positional_encoding import AbsolutePositionalEncoding
 
+available_aggregations = ["cls", "pool", "none"]
+
 
 class _Transformer(nn.Module):
     cls_embedding: nn.Parameter
@@ -97,6 +99,8 @@ class _Transformer(nn.Module):
                 output = output.sum(dim=1) / length.unsqueeze(dim=1)
             else:
                 output = output.sum(dim=0) / length.unsqueeze(dim=0)
+        elif aggregation == "none":
+            output = input
         else:
             raise ValueError(f"{aggregation} is not supported as aggregation.")
 
@@ -118,7 +122,7 @@ class TextTransformer(_Transformer):
     ) -> None:
         super().__init__()
 
-        assert aggregation in ["cls", "pool"]
+        assert aggregation in available_aggregations
 
         encoder_layer = nn.TransformerEncoderLayer(
             embedding_dim,
@@ -161,7 +165,7 @@ class AudioTransformer(_Transformer):
     ) -> None:
         super().__init__()
 
-        assert aggregation in ["cls", "pool"]
+        assert aggregation in available_aggregations
 
         encoder_layer = nn.TransformerEncoderLayer(
             embedding_dim,
