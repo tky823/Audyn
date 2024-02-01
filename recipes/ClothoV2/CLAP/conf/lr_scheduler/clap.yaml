@@ -2,7 +2,7 @@
   lr_scheduler:
     _target_: audyn.optim.lr_scheduler.TransformerLRScheduler
     d_model: ${model.text_tower.backbone.embedding_dim}
-    warmup_steps: 10
+    warmup_steps: 4000
 - name: audio
   lr_scheduler:
     _target_: ${...0.lr_scheduler._target_}
