@@ -102,9 +102,9 @@ class _Transformer(nn.Module):
             length = torch.full((batch_size,), fill_value=max_length, **factory_kwargs)
 
         if batch_first:
-            cls_token, output = torch.split(input, [1, max_length - 1], dim=1)
+            cls_token, output = torch.split(input, [1, max_length], dim=1)
         else:
-            cls_token, output = torch.split(input, [1, max_length - 1], dim=0)
+            cls_token, output = torch.split(input, [1, max_length], dim=0)
 
         if aggregation == "cls":
             if batch_first:
