@@ -50,7 +50,7 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
 
     (
         . ./preprocess.sh \
-        --stage 1 \
+        --stage 0 \
         --stop-stage 3 \
         --data-root "${data_root}" \
         --dump-root "${dump_root}" \
