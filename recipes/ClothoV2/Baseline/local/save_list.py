@@ -33,6 +33,7 @@ def main(config: DictConfig) -> None:
 
     with open(list_path, mode="w") as f:
         for filename in filenames:
+            filename = filename.strip()
             f.write(filename + "\n")
 
 
