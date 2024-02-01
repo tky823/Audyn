@@ -70,16 +70,33 @@ class _Transformer(nn.Module):
         input: torch.Tensor,
         length: Optional[torch.LongTensor] = None,
     ) -> torch.Tensor:
+        """Aggregate sequence feature.
+
+        Args:
+            input (torch.Tensor): Input sequence including class token of shape
+                (batch_size, max_length + 1, embedding_dim) if ``batch_first=True``.
+                Otherwise, (batch_size, embedding_dim, max_length + 1).
+            length (torch.LongTensor, optional): Lengths of each sequence (batch_size,).
+
+        Returns:
+            torch.Tensor: Aggregated feature. If ``aggregation=cls``, class token of shape
+                (embedding_dim,) is returned. If ``aggregation=pool``, pooled feature of shape
+                (embedding_dim,) except for class token is returend. If ``aggregation=none``,
+                input sequence including class token is returned.
+
+        """
         aggregation = self.aggregation
         batch_first = self.batch_first
 
         factory_kwargs = {"device": input.device}
 
-        # NOTE: max_length includes cls token.
         if batch_first:
             batch_size, max_length, _ = input.size()
         else:
             max_length, batch_size, _ = input.size(0)
+
+        # NOTE: max_length includes cls token, so remove it.
+        max_length = max_length - 1
 
         if length is None:
             length = torch.full((batch_size,), fill_value=max_length, **factory_kwargs)
