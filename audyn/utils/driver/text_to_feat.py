@@ -207,7 +207,7 @@ class TextToFeatTrainer(BaseTrainer):
         return validation_loss
 
     @torch.no_grad()
-    def infer_one_batch(self) -> Dict[str, float]:
+    def infer_one_batch(self) -> None:
         """Inference using one batch."""
         if hasattr(self.config.train.key_mapping, "inference"):
             inference_key_mapping = self.config.train.key_mapping.inference
