@@ -55,6 +55,8 @@ fi
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     echo "Preprocess stage 2: Split data into training/validation/test"
 
+    mkdir -p "${list_dir}"
+
     for raw_subset in "development" "validation" "evaluation"; do
         if [ "${raw_subset}" = "development" ]; then
             subset="train"
