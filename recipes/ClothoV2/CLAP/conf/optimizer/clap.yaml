@@ -1,0 +1,11 @@
+- name: text
+  optimizer:
+    _target_: torch.optim.Adam
+    betas: [0.9, 0.98]
+    eps: 1.0e-9
+  modules:
+    - text_tower
+- name: audio
+  optimizer: ${..0.optimizer}
+  modules:
+    - audio_tower

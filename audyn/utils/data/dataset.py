@@ -29,7 +29,7 @@ class TorchObjectDataset(Dataset):
 
         with open(list_path) as f:
             for line in f:
-                self.filenames.append(line.strip())
+                self.filenames.append(line.strip("\n"))
 
     def __getitem__(self, idx: int) -> Dict[str, Any]:
         filename = self.filenames[idx]

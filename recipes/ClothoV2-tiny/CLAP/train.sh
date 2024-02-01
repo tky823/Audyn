@@ -1,0 +1,1 @@
+../../ClothoV2/CLAP/train.sh

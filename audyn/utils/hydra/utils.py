@@ -411,7 +411,7 @@ def instantiate_lr_scheduler(
     return lr_scheduler
 
 
-def instantiate_grad_clipper(config, module_or_params, *args, **kwargs) -> GradClipper:
+def instantiate_grad_clipper(config, params, *args, **kwargs) -> GradClipper:
     if hasattr(config, "_target_"):
         if config._target_ in TORCH_CLIP_GRAD_FN:
             # for backward compatibility
@@ -426,7 +426,7 @@ def instantiate_grad_clipper(config, module_or_params, *args, **kwargs) -> GradC
         else:
             overridden_config = config
 
-        grad_clipper = instantiate(overridden_config, module_or_params, *args, **kwargs)
+        grad_clipper = instantiate(overridden_config, params, *args, **kwargs)
 
         if isinstance(grad_clipper, DictConfig):
             grad_clipper = None

@@ -1,0 +1,13 @@
+_target_: audyn.criterion.base.MultiCriteria
+melspectrogram_loss:
+  _target_: audyn.criterion.base.BaseCriterionWrapper
+  criterion:
+    _target_: audyn.criterion.contrastive.IntraInfoNCELoss
+    dim: 0
+    reduction: mean
+  weight: 1
+  key_mapping:
+    estimated:
+      input: text_embedding
+      other: audio_embedding
+    target:
