@@ -1,0 +1,29 @@
+_target_: utils.models.clap.CLAP
+text_tower:
+  _target_: utils.models.clap.ModalTower
+  backbone:
+    _target_: utils.models.transformer.TextTransformer
+    vocab_size: ${const:audyn.utils.data.clotho.vocab_size}
+    embedding_dim: 256
+    nhead: 8
+    num_layers: 6
+    batch_first: true
+    aggregation: pool
+  out_proj:
+    _target_: torch.nn.Linear
+    in_features: ${..backbone.embedding_dim}
+    out_features: 128
+audio_tower:
+  _target_: utils.models.clap.ModalTower
+  backbone:
+    _target_: utils.models.transformer.AudioTransformer
+    embedding_dim: ${data.melspectrogram.n_mels}
+    nhead: ${...text_tower.backbone.nhead}
+    num_layers: ${...text_tower.backbone.num_layers}
+    batch_first: ${...text_tower.backbone.batch_first}
+    channels_last: false
+    aggregation: ${...text_tower.backbone.aggregation}
+  out_proj:
+    _target_: torch.nn.Linear
+    in_features: ${..backbone.embedding_dim}
+    out_features: ${...text_tower.out_proj.out_features}
