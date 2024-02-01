@@ -21,7 +21,6 @@ class _Transformer(nn.Module):
         input: torch.LongTensor,
         length: Optional[torch.LongTensor] = None,
     ) -> torch.Tensor:
-        aggregation = self.aggregation
         batch_first = self.batch_first
         cls_embedding = self.cls_embedding
 
@@ -60,10 +59,33 @@ class _Transformer(nn.Module):
 
         x = self.backbone(x, src_key_padding_mask=padding_mask)
 
+        output = self.aggregate(x, length=length)
+
+        return output
+
+    def aggregate(
+        self,
+        input: torch.Tensor,
+        length: Optional[torch.LongTensor] = None,
+    ) -> torch.Tensor:
+        aggregation = self.aggregation
+        batch_first = self.batch_first
+
+        factory_kwargs = {"device": input.device}
+
+        # NOTE: max_length includes cls token.
         if batch_first:
-            cls_token, output = torch.split(x, [1, max_length], dim=1)
+            batch_size, max_length, _ = input.size()
         else:
-            cls_token, output = torch.split(x, [1, max_length], dim=0)
+            max_length, batch_size, _ = input.size(0)
+
+        if length is None:
+            length = torch.full((batch_size,), fill_value=max_length, **factory_kwargs)
+
+        if batch_first:
+            cls_token, output = torch.split(input, [1, max_length - 1], dim=1)
+        else:
+            cls_token, output = torch.split(input, [1, max_length - 1], dim=0)
 
         if aggregation == "cls":
             if batch_first:
