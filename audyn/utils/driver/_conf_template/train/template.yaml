@@ -6,6 +6,18 @@ defaults:
   - _self_
   
 key_mapping:
+  train:
+    input:
+      input: waveform
+      local_conditioning: log_melspectrogram
+    output: estimated_waveform
+  validation: ${.train}
+  inference:
+    input:
+      initial_state: initial_waveform
+      local_conditioning: ${...train.input.local_conditioning}
+      max_length: max_waveform_length
+    output: estimated_waveform
 
 ddp_kwargs:
 
