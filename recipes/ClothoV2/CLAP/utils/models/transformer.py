@@ -93,7 +93,7 @@ class _Transformer(nn.Module):
         if batch_first:
             batch_size, max_length, _ = input.size()
         else:
-            max_length, batch_size, _ = input.size(0)
+            max_length, batch_size, _ = input.size()
 
         # NOTE: max_length includes cls token, so remove it.
         max_length = max_length - 1
