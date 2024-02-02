@@ -8,8 +8,10 @@ defaults:
 dataloader:
   train:
     batch_size: 64
+    drop_last: true  # for contrastive learning
   validation:
     batch_size: 64
+    drop_last: true  # for contrastive learning
 
 key_mapping:
   train:
