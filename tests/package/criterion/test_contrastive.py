@@ -2,7 +2,6 @@ import copy
 import itertools
 import os
 import tempfile
-import uuid
 from typing import Tuple
 
 import pytest
@@ -10,6 +9,7 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import torch.nn as nn
+from dummy.utils import select_random_port
 from torch.optim import SGD
 
 from audyn.criterion.contrastive import (
@@ -104,10 +104,7 @@ def test_info_nce_loss_ddp(dim: int) -> None:
     """Ensure InfoNCELoss works well for DDP."""
     pytest.skip("Skip temporarily")
 
-    seed = _uuid_seed()
-    torch.manual_seed(seed)
-
-    port = str(torch.randint(0, 2**16, ()).item())
+    port = str(select_random_port())
     seed = 0
     world_size = 4
 
@@ -583,10 +580,7 @@ def test_inter_info_nce_loss_ddp(dim: int) -> None:
     """Ensure InterInfoNCELoss works well for DDP."""
     pytest.skip("Skip temporarily")
 
-    seed = _uuid_seed()
-    torch.manual_seed(seed)
-
-    port = str(torch.randint(0, 2**16, ()).item())
+    port = str(select_random_port())
     seed = 0
     world_size = 4
 
@@ -884,11 +878,3 @@ def update_intra_info_nce_modules(
         optimizer.step()
 
     return loss
-
-
-def _uuid_seed(vmax: int = 2**16) -> int:
-    seed = str(uuid.uuid4())
-    seed = seed.replace("-", "")
-    seed = int(seed, 16)
-
-    return seed % vmax

@@ -1,10 +1,10 @@
 import os
 import tempfile
-import uuid
 
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
+from dummy.utils import select_random_port
 
 from audyn.metrics import MeanMetric
 
@@ -38,12 +38,7 @@ def test_mean_metric() -> None:
 
 
 def test_mean_metric_ddp() -> None:
-    torch.manual_seed(0)
-
-    seed = _uuid_seed()
-    torch.manual_seed(seed)
-
-    port = str(torch.randint(0, 2**16, ()).item())
+    port = str(select_random_port())
     seed = 0
     world_size = 4
 
@@ -133,11 +128,3 @@ def run_mean_metric(
     torch.save(state_dict, path)
 
     dist.destroy_process_group()
-
-
-def _uuid_seed(vmax: int = 2**16) -> int:
-    seed = str(uuid.uuid4())
-    seed = seed.replace("-", "")
-    seed = int(seed, 16)
-
-    return seed % vmax
