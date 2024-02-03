@@ -97,7 +97,6 @@ def run_mean_metric(
     seed: int = 0,
     path: str = None,
 ) -> None:
-
     os.environ["LOCAL_RANK"] = str(rank)
     os.environ["RANK"] = str(rank)
     os.environ["WORLD_SIZE"] = str(world_size)
