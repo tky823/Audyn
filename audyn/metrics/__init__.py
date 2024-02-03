@@ -45,8 +45,11 @@ class MeanMetric(StatefulMetric):
 
         if is_distributed:
             tensor = torch.tensor(value, device=self.device)
-            dist.all_reduce(tensor, op=dist.ReduceOp.SUM)
-            value = tensor.item()
+            gathered_tensor = [torch.zeros_like(tensor) for _ in range(world_size)]
+            dist.all_gather(gathered_tensor, tensor)
+            gathered_tensor = torch.stack(gathered_tensor, dim=0)
+            gathered_tensor = gathered_tensor.sum(dim=0)
+            value = gathered_tensor.item()
 
         self.num_samples = self.num_samples + world_size
         self.sum_value = self.sum_value + value
