@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional
 
 import torch
 
-__all__ = ["StatefulMetric", "BaseMetricWrapper"]
+__all__ = ["StatefulMetric", "BaseMetricWrapper", "MultiMetrics"]
 
 
 class StatefulMetric(ABC):
@@ -58,3 +58,24 @@ class BaseMetricWrapper(StatefulMetric):
     def to(self, device: torch.device) -> StatefulMetric:
         """Change device parameter."""
         self.metric.to(device=device)
+
+
+class MultiMetrics(StatefulMetric):
+    """Base class of dict-type multiple metrics."""
+
+    def __init__(self, device: Optional[torch.device] = None, **kwargs) -> None:
+        super().__init__(device=device)
+
+        self.metrics = {}
+
+        for k, v in kwargs.items():
+            assert isinstance(k, str), f"Invalid key {k} is found."
+            assert isinstance(v, StatefulMetric)
+
+            if v.device is not None:
+                v = v.to(device)
+
+            self.metrics[k] = v
+
+    def __getitem__(self, __key: str) -> StatefulMetric:
+        return self.metrics[__key]
