@@ -38,7 +38,7 @@ def test_mean_metric() -> None:
 
 
 def test_mean_metric_ddp() -> None:
-    port = str(select_random_port())
+    port = select_random_port()
     seed = 0
     world_size = 4
 

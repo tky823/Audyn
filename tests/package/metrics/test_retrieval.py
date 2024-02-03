@@ -343,7 +343,7 @@ def run_mean_average_precision(
     if isinstance(ranks, str):
         # use larger number as max_items for test
         max_items = k + 2
-        num_ranks = torch.randint(1, max_items, (num_queries,), dtype=torch.long)
+        num_ranks = torch.randint(1, max_items, (num_queries,), dtype=torch.long, generator=g)
         num_ranks = num_ranks.tolist()
         ranks = []
 
@@ -399,9 +399,9 @@ def run_median_rank(
     metric = MedianRank()
 
     if ranks == "oracle":
-        ranks = torch.full((num_queries,), fill_value=mink, dtype=torch.long)
+        ranks = torch.full((num_queries,), fill_value=mink, dtype=torch.long, generator=g)
     elif ranks == "random":
-        ranks = torch.randint(mink, num_queries, (num_queries,), dtype=torch.long)
+        ranks = torch.randint(mink, num_queries, (num_queries,), dtype=torch.long, generator=g)
     else:
         raise ValueError(f"{ranks} is not supported.")
 
