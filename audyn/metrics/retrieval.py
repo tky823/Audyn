@@ -1,14 +1,19 @@
 from typing import List, Optional, Union
 
 import torch
+import torch.distributed as dist
 
 from .base import StatefulMetric
 
-__all__ = ["MeanAveragePrecision"]
+__all__ = ["MeanAveragePrecision", "MedianRank"]
 
 
 class MeanAveragePrecision(StatefulMetric):
     """Mean average precision (mAP).
+
+    .. note::
+
+        This class supports distributed data parallel.
 
     Args:
         k (int): Threshold of retrieval rank. This parameter should be positive. For example,
@@ -64,6 +69,13 @@ class MeanAveragePrecision(StatefulMetric):
         if enforce_sorted is None:
             enforce_sorted = self.enforce_sorted
 
+        is_distributed = dist.is_available() and dist.is_initialized()
+
+        if is_distributed:
+            world_size = dist.get_world_size()
+        else:
+            world_size = 1
+
         if isinstance(ranks, int):
             ranks = [ranks]
         elif isinstance(ranks, list):
@@ -73,9 +85,16 @@ class MeanAveragePrecision(StatefulMetric):
         else:
             raise ValueError(f"Invalid type {type(ranks)} is given as ranks.")
 
-        self.num_samples = self.num_samples + 1
         ap = self._compute_average_precision(ranks, enforce_sorted=enforce_sorted)
-        self.sum_ap = self.sum_ap + ap / min(k, len(ranks))
+        normalized_ap = ap / min(k, len(ranks))
+
+        if is_distributed:
+            tensor = torch.tensor(normalized_ap, device=self.device)
+            dist.all_reduce(tensor, op=dist.ReduceOp.SUM)
+            normalized_ap = tensor.item()
+
+        self.num_samples = self.num_samples + world_size
+        self.sum_ap = self.sum_ap + normalized_ap
 
     def compute(self) -> torch.Tensor:
         map_k = torch.tensor(self.sum_ap / self.num_samples)
@@ -103,7 +122,13 @@ class MeanAveragePrecision(StatefulMetric):
 
 
 class MedianRank(StatefulMetric):
-    """Median rank (medR)."""
+    """Median rank (medR).
+
+    .. note::
+
+        This class supports distributed data parallel.
+
+    """
 
     def __init__(
         self,
@@ -117,15 +142,31 @@ class MedianRank(StatefulMetric):
         self.ranks = []
 
     def update(self, rank: Union[int, torch.Tensor]) -> None:
+        is_distributed = dist.is_available() and dist.is_initialized()
+
+        if is_distributed:
+            world_size = dist.get_world_size()
+        else:
+            world_size = 1
+
         if isinstance(rank, int):
-            self.ranks.append(rank)
+            pass
         elif isinstance(rank, torch.Tensor):
             assert rank.numel() == 1, "Only scalar is supported as rank."
 
             rank = rank.detach().item()
-            self.ranks.append(rank)
         else:
             raise ValueError(f"{type(rank)} is not supported as rank.")
+
+        if is_distributed:
+            tensor = torch.tensor(rank, device=self.device)
+            gathered_tensor = [torch.zeros_like(tensor) for _ in range(world_size)]
+            dist.all_gather(gathered_tensor, tensor)
+            gathered_tensor = torch.stack(gathered_tensor, dim=0)
+            ranks = gathered_tensor.tolist()
+            self.ranks.extend(ranks)
+        else:
+            self.ranks.append(rank)
 
     def compute(self) -> torch.LongTensor:
         ranks = torch.tensor(self.ranks)
