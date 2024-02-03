@@ -1,6 +1,7 @@
 from typing import Optional, Union
 
 import torch
+import torch.distributed as dist
 
 from .base import StatefulMetric
 
@@ -8,6 +9,14 @@ __all__ = ["MeanMetric"]
 
 
 class MeanMetric(StatefulMetric):
+    """Compute mean.
+
+    .. note::
+
+        This class supports distributed data parallel.
+
+    """
+
     def __init__(self, device: Optional[torch.device] = None) -> None:
         super().__init__(device=device)
 
@@ -18,6 +27,13 @@ class MeanMetric(StatefulMetric):
         self.sum_value = 0
 
     def update(self, value: Union[int, float, torch.Tensor]) -> None:
+        is_distributed = dist.is_available() and dist.is_initialized()
+
+        if is_distributed:
+            world_size = dist.get_world_size()
+        else:
+            world_size = 1
+
         if isinstance(value, torch.Tensor):
             assert value.numel() == 1, "Only scaler is supported."
 
@@ -27,7 +43,12 @@ class MeanMetric(StatefulMetric):
         else:
             raise ValueError(f"{type(value)} is not supported.")
 
-        self.num_samples = self.num_samples + 1
+        if is_distributed:
+            tensor = torch.tensor(value, device=self.device)
+            dist.all_reduce(tensor, op=dist.ReduceOp.SUM)
+            value = tensor.item()
+
+        self.num_samples = self.num_samples + world_size
         self.sum_value = self.sum_value + value
 
     def compute(self) -> torch.Tensor:
