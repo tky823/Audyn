@@ -90,8 +90,11 @@ class MeanAveragePrecision(StatefulMetric):
 
         if is_distributed:
             tensor = torch.tensor(normalized_ap, device=self.device)
-            dist.all_reduce(tensor, op=dist.ReduceOp.SUM)
-            normalized_ap = tensor.item()
+            gathered_tensor = [torch.zeros_like(tensor) for _ in range(world_size)]
+            dist.all_gather(gathered_tensor, tensor)
+            gathered_tensor = torch.stack(gathered_tensor, dim=0)
+            gathered_tensor = gathered_tensor.sum(dim=0)
+            normalized_ap = gathered_tensor.item()
 
         self.num_samples = self.num_samples + world_size
         self.sum_ap = self.sum_ap + normalized_ap
