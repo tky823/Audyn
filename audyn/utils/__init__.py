@@ -26,6 +26,7 @@ from .hydra.utils import (
     instantiate_gan_generator,
     instantiate_grad_clipper,
     instantiate_lr_scheduler,
+    instantiate_metrics,
     instantiate_model,
     instantiate_optimizer,
 )
@@ -45,6 +46,7 @@ __all__ = [
     "instantiate_lr_scheduler",
     "instantiate_grad_clipper",
     "instantiate_criterion",
+    "instantiate_metrics",
     "GradClipper",
     "GANGradClipper",
 ]

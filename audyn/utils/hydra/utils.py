@@ -27,6 +27,8 @@ __all__ = [
     "instantiate_optimizer",
     "instantiate_lr_scheduler",
     "instantiate_grad_clipper",
+    "instantiate_criterion",
+    "instantiate_metrics",
 ]
 
 TORCH_CLIP_GRAD_FN = ["torch.nn.utils.clip_grad_value_", "torch.nn.utils.clip_grad_norm_"]
@@ -485,6 +487,25 @@ def instantiate_criterion(
             criteria_kwargs.update({_name: _criterion_wrapper})
 
         criterion = MultiCriteria(**criteria_kwargs)
+    else:
+        raise TypeError(f"Invalid type of config ({type(config)}) is specified.")
+
+    return criterion
+
+
+def instantiate_metrics(
+    config: Union[DictConfig, ListConfig], *args, **kwargs
+) -> Optional[nn.Module]:
+    """Instantiate metrics.
+
+    .. note::
+
+        ``metrics`` is under beta version.
+
+    """
+
+    if isinstance(config, DictConfig):
+        criterion = instantiate(config, *args, **kwargs)
     else:
         raise TypeError(f"Invalid type of config ({type(config)}) is specified.")
 
