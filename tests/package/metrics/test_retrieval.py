@@ -29,8 +29,8 @@ def test_mean_average_precision() -> None:
     assert torch.allclose(map_k, expected_map_k)
 
     # examples
-    k, mink = 3, 1
-    ranks = [[1, 2], [2], [4, 2, 1, 3]]
+    k, mink = 3, 0
+    ranks = [[0, 1], [1], [3, 1, 0, 2]]
 
     metric = MeanAveragePrecision(k, mink=mink)
 
@@ -42,4 +42,15 @@ def test_mean_average_precision() -> None:
 
     assert torch.allclose(map_k, expected_map_k)
 
-    # TODO: add more tests
+    mink = 1
+    ranks = [[1, 2], [2], [4, 2, 1, 3]]
+
+    metric = MeanAveragePrecision(k, mink=mink)
+
+    for rank in ranks:
+        metric.update(rank, enforce_sorted=True)
+
+    map_k = metric.compute()
+    expected_map_k = torch.tensor(2.5 / 3)
+
+    assert torch.allclose(map_k, expected_map_k)
