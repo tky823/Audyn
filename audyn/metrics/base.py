@@ -9,3 +9,7 @@ class StatefulMetric(ABC):
     def update(self, *args, **kwargs) -> Any:
         """Update state of metric."""
         pass
+
+    @abstractmethod
+    def reset(self) -> None:
+        """Reset states."""
