@@ -23,8 +23,9 @@ class MeanAveragePrecision(StatefulMetric):
         k: int,
         mink: int = 0,
         enforce_sorted: bool = False,
+        device: torch.device = None,
     ) -> None:
-        super().__init__()
+        super().__init__(device=device)
 
         assert k > 0, "k should be positive."
 
@@ -77,7 +78,9 @@ class MeanAveragePrecision(StatefulMetric):
         self.sum_ap = self.sum_ap + ap / min(k, len(ranks))
 
     def compute(self) -> torch.Tensor:
-        return torch.tensor(self.sum_ap / self.num_samples)
+        map_k = torch.tensor(self.sum_ap / self.num_samples)
+
+        return map_k.to(self.device)
 
     def _compute_average_precision(
         self, rank: List[int], enforce_sorted: Optional[bool] = False
@@ -97,3 +100,35 @@ class MeanAveragePrecision(StatefulMetric):
             ap_at_k = ap_at_k + tp_k / (_rank - mink + 1)
 
         return ap_at_k
+
+
+class MedianRank(StatefulMetric):
+    """Median rank (medR)."""
+
+    def __init__(
+        self,
+        device: Optional[torch.device] = None,
+    ) -> None:
+        super().__init__(device=device)
+
+        self.reset()
+
+    def reset(self) -> None:
+        self.ranks = []
+
+    def update(self, rank: Union[int, torch.Tensor]) -> None:
+        if isinstance(rank, int):
+            self.ranks.append(rank)
+        elif isinstance(rank, torch.Tensor):
+            assert rank.numel() == 1, "Only scalar is supported as rank."
+
+            rank = rank.detach().item()
+            self.ranks.append(rank)
+        else:
+            raise ValueError(f"{type(rank)} is not supported as rank.")
+
+    def compute(self) -> torch.LongTensor:
+        ranks = torch.tensor(self.ranks)
+        med = torch.median(ranks)
+
+        return med.to(self.device)
