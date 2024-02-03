@@ -11,7 +11,6 @@ import torch
 import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
-from packaging import version
 from torch.cuda.amp import autocast
 from torch.optim import Optimizer
 from torch.utils.hooks import RemovableHandle
@@ -25,7 +24,18 @@ __all__ = [
     "GANOptimizer",
 ]
 
-IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
+try:
+    from torch.optim.optimizer import ParamsT
+
+    optimizer_args_type = "ParamsT"
+
+except ImportError:
+    try:
+        from torch.optim.optimizer import params_t
+
+        optimizer_args_type = "params_t"
+    except ImportError:
+        optimizer_args_type = "Iterable"
 
 
 class MovingAverageWrapper(Optimizer):
@@ -338,12 +348,29 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
     available_reset_source_keys = ["mru", "batch"]
     available_reset_scope_keys = ["least", "all"]
 
-    if IS_TORCH_LT_2_1:
+    if optimizer_args_type == "ParamsT":
 
         @overload
         def __init__(
             self,
-            params: Iterable,
+            params: ParamsT,
+            smooth: float = 0.999,
+            reset_step: Optional[int] = None,
+            reset_var: Optional[float] = None,
+            reset_ath: Optional[float] = None,
+            reset_rth: Optional[float] = None,
+            reset_rate: Optional[float] = None,
+            reset_source: Optional[str] = None,
+            reset_scope: Optional[Union[str, int]] = None,
+            seed: int = 0,
+        ) -> None: ...
+
+    elif optimizer_args_type == "params_t":
+
+        @overload
+        def __init__(
+            self,
+            params: params_t,
             smooth: float = 0.999,
             reset_step: Optional[int] = None,
             reset_var: Optional[float] = None,
@@ -356,12 +383,11 @@ class _ExponentialMovingAverageCodebookOptimizer(Optimizer):
         ) -> None: ...
 
     else:
-        from torch.optim.optimizer import params_t
 
         @overload
         def __init__(
             self,
-            params: params_t,
+            params: Iterable,
             smooth: float = 0.999,
             reset_step: Optional[int] = None,
             reset_var: Optional[float] = None,
@@ -767,12 +793,29 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
 
     """
 
-    if IS_TORCH_LT_2_1:
+    if optimizer_args_type == "ParamsT":
 
         @overload
         def __init__(
             self,
-            params: Iterable,
+            params: ParamsT,
+            smooth: float = 0.999,
+            reset_step: Optional[int] = None,
+            reset_var: Optional[float] = None,
+            reset_ath: Optional[float] = None,
+            reset_rth: Optional[float] = None,
+            reset_rate: Optional[float] = None,
+            reset_source: Optional[str] = None,
+            reset_scope: Optional[Union[str, int]] = None,
+            seed: int = 0,
+        ) -> None: ...
+
+    elif optimizer_args_type == "params_t":
+
+        @overload
+        def __init__(
+            self,
+            params: params_t,
             smooth: float = 0.999,
             reset_step: Optional[int] = None,
             reset_var: Optional[float] = None,
@@ -785,12 +828,11 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
         ) -> None: ...
 
     else:
-        from torch.optim.optimizer import params_t
 
         @overload
         def __init__(
             self,
-            params: params_t,
+            params: Iterable,
             smooth: float = 0.999,
             reset_step: Optional[int] = None,
             reset_var: Optional[float] = None,

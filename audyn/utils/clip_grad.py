@@ -1,12 +1,21 @@
 from typing import Iterable, overload
 
-import torch
 import torch.nn as nn
-from packaging import version
-
-IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
 __all__ = ["GradClipper"]
+
+try:
+    from torch.optim.optimizer import ParamsT
+
+    optimizer_args_type = "ParamsT"
+
+except ImportError:
+    try:
+        from torch.optim.optimizer import params_t
+
+        optimizer_args_type = "params_t"
+    except ImportError:
+        optimizer_args_type = "Iterable"
 
 
 class GradClipper:
@@ -41,12 +50,12 @@ class GradClipper:
 
     """
 
-    if IS_TORCH_LT_2_1:
+    if optimizer_args_type == "ParamsT":
 
         @overload
         def __init__(
             self,
-            params: Iterable,
+            params: ParamsT,
             mode: str = None,
             clip_value: float = None,
         ) -> None: ...
@@ -54,7 +63,27 @@ class GradClipper:
         @overload
         def __init__(
             self,
-            params: Iterable,
+            params: ParamsT,
+            mode: str = None,
+            max_norm: float = None,
+            norm_type: float = 2,
+            error_if_nonfinite: float = False,
+        ) -> None: ...
+
+    elif optimizer_args_type == "params_t":
+
+        @overload
+        def __init__(
+            self,
+            params: params_t,
+            mode: str = None,
+            clip_value: float = None,
+        ) -> None: ...
+
+        @overload
+        def __init__(
+            self,
+            params: params_t,
             mode: str = None,
             max_norm: float = None,
             norm_type: float = 2,
@@ -62,12 +91,11 @@ class GradClipper:
         ) -> None: ...
 
     else:
-        from torch.optim.optimizer import params_t
 
         @overload
         def __init__(
             self,
-            params: params_t,
+            params: Iterable,
             mode: str = None,
             clip_value: float = None,
         ) -> None: ...
@@ -75,7 +103,7 @@ class GradClipper:
         @overload
         def __init__(
             self,
-            params: params_t,
+            params: Iterable,
             mode: str = None,
             max_norm: float = None,
             norm_type: float = 2,
