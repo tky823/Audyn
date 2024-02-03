@@ -48,9 +48,11 @@ def test_mean_metric_ddp() -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
+        ctx = mp.get_context("spawn")
+
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            process = mp.Process(
+            process = ctx.Process(
                 target=run_mean_metric,
                 args=(rank, world_size, port),
                 kwargs={

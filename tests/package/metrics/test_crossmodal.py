@@ -70,9 +70,11 @@ def test_crossmodal_mean_average_precision_ddp_itemwise(mink: int, strategy: str
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
+        ctx = mp.get_context("spawn")
+
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            process = mp.Process(
+            process = ctx.Process(
                 target=run_crossmodal_mean_average_precision_itemwise,
                 args=(rank, world_size, port),
                 kwargs={
@@ -162,9 +164,11 @@ def test_crossmodal_mean_average_precision_ddp_batchwise(mink: int, strategy: st
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
+        ctx = mp.get_context("spawn")
+
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            process = mp.Process(
+            process = ctx.Process(
                 target=run_crossmodal_mean_average_precision_batchwise,
                 args=(rank, world_size, port),
                 kwargs={
@@ -296,9 +300,11 @@ def test_crossmodal_median_rank_ddp_itemwise(mink: int, strategy: str) -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
+        ctx = mp.get_context("spawn")
+
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            process = mp.Process(
+            process = ctx.Process(
                 target=run_crossmodal_median_rank_itemwise,
                 args=(rank, world_size, port),
                 kwargs={
@@ -386,9 +392,11 @@ def test_crossmodal_median_rank_ddp_batchwise(mink: int, strategy: str) -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
+        ctx = mp.get_context("spawn")
+
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            process = mp.Process(
+            process = ctx.Process(
                 target=run_crossmodal_median_rank_batchwise,
                 args=(rank, world_size, port),
                 kwargs={
