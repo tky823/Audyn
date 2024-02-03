@@ -399,7 +399,7 @@ def run_median_rank(
     metric = MedianRank()
 
     if ranks == "oracle":
-        ranks = torch.full((num_queries,), fill_value=mink, dtype=torch.long, generator=g)
+        ranks = torch.full((num_queries,), fill_value=mink, dtype=torch.long)
     elif ranks == "random":
         ranks = torch.randint(mink, num_queries, (num_queries,), dtype=torch.long, generator=g)
     else:
