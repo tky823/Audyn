@@ -11,13 +11,16 @@ from dummy.utils import select_random_port
 
 from audyn.metrics.retrieval import MeanAveragePrecision, MedianRank
 
+parameters_mink = [0, 1]
 
-def test_mean_average_precision() -> None:
+
+@pytest.mark.parametrize("mink", parameters_mink)
+def test_mean_average_precision_oracle(mink: int) -> None:
     torch.manual_seed(0)
 
     num_queries = 10
     max_items = 20
-    k, mink = 5, 0
+    k = 5
 
     num_ranks = torch.randint(1, max_items, (num_queries,), dtype=torch.long)
     num_ranks = num_ranks.tolist()
@@ -25,7 +28,7 @@ def test_mean_average_precision() -> None:
 
     # oracle recommendation
     for _num_ranks in num_ranks:
-        ranks.append(list(range(_num_ranks)))
+        ranks.append(list(range(mink, _num_ranks + mink)))
 
     metric = MeanAveragePrecision(k, mink=mink)
 
@@ -37,9 +40,13 @@ def test_mean_average_precision() -> None:
 
     assert torch.allclose(map_k, expected_map_k)
 
-    # examples where mAP@k is known
-    k, mink = 3, 0
-    ranks = [[0, 1], [1], [3, 1, 0, 2]]
+
+@pytest.mark.parametrize("mink", parameters_mink)
+def test_mean_average_precision_known_map(mink: int) -> None:
+    torch.manual_seed(0)
+
+    k = 3
+    ranks = [[0 + mink, 1 + mink], [1 + mink], [3 + mink, 1 + mink, 0 + mink, 2 + mink]]
 
     metric = MeanAveragePrecision(k, mink=mink)
 
@@ -51,29 +58,18 @@ def test_mean_average_precision() -> None:
 
     assert torch.allclose(map_k, expected_map_k)
 
-    mink = 1
-    ranks = [[1, 2], [2], [4, 2, 1, 3]]
 
-    metric = MeanAveragePrecision(k, mink=mink)
-
-    for rank in ranks:
-        metric.update(rank, enforce_sorted=True)
-
-    map_k = metric.compute()
-    expected_map_k = torch.tensor(2.5 / 3)
-
-    assert torch.allclose(map_k, expected_map_k)
-
-
-def test_mean_average_precision_ddp() -> None:
-    port = str(select_random_port())
+@pytest.mark.parametrize("mink", parameters_mink)
+def test_mean_average_precision_ddp_oracle(mink: int) -> None:
+    port = select_random_port()
     seed = 0
     world_size = 3
 
-    num_queries = 10
-    k, mink = 5, 0
-
     torch.manual_seed(seed)
+
+    num_queries = 10
+    k = 5
+
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -127,9 +123,17 @@ def test_mean_average_precision_ddp() -> None:
     assert torch.allclose(reference_map_k, gathered_map_k)
     assert torch.allclose(map_k, expected_map_k)
 
-    # examples where mAP@k is known
-    k, mink = 3, 0
-    ranks = [[0, 1], [1], [3, 1, 0, 2]]
+
+@pytest.mark.parametrize("mink", parameters_mink)
+def test_mean_average_precision_ddp_know_map(mink: int) -> None:
+    port = select_random_port()
+    seed = 0
+    world_size = 3
+
+    torch.manual_seed(seed)
+
+    k = 3
+    ranks = [[0 + mink, 1 + mink], [1 + mink], [3 + mink, 1 + mink, 0 + mink, 2 + mink]]
     expected_map_k = torch.tensor(2.5 / 3)
 
     assert len(ranks) == world_size
@@ -186,65 +190,8 @@ def test_mean_average_precision_ddp() -> None:
     assert torch.allclose(reference_map_k, gathered_map_k)
     assert torch.allclose(gathered_map_k, expected_map_k)
 
-    mink = 1
-    ranks = [[1, 2], [2], [4, 2, 1, 3]]
 
-    assert len(ranks) == world_size
-
-    processes = []
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        for process_rank in range(world_size):
-            path = os.path.join(temp_dir, f"{process_rank}.pth")
-            process = mp.Process(
-                target=run_mean_average_precision,
-                args=(process_rank, world_size, port),
-                kwargs={
-                    "ranks": ranks[process_rank : process_rank + 1],
-                    "k": k,
-                    "mink": mink,
-                    "num_queries": None,
-                    "seed": seed,
-                    "path": path,
-                },
-            )
-            process.start()
-            processes.append(process)
-
-        for process in processes:
-            process.join()
-
-        process_rank = 0
-        path = os.path.join(temp_dir, f"{process_rank}.pth")
-        reference_state_dict = torch.load(path, map_location="cpu")
-        reference_ranks = reference_state_dict["ranks"]
-        reference_map_k = reference_state_dict["map_k"]
-
-        gathered_ranks: List[int] = copy.deepcopy(reference_ranks)
-
-        for process_rank in range(1, world_size):
-            path = os.path.join(temp_dir, f"{process_rank}.pth")
-            state_dict = torch.load(path, map_location="cpu")
-            ranks = state_dict["ranks"]
-            map_k = state_dict["map_k"]
-
-            assert torch.allclose(reference_map_k, map_k)
-
-            gathered_ranks.extend(copy.deepcopy(ranks))
-
-    # confirm usage of DDP with single device for oracle retrieval
-    metric = MeanAveragePrecision(k, mink=mink)
-
-    for rank in gathered_ranks:
-        metric.update(rank, enforce_sorted=True)
-
-    gathered_map_k = metric.compute()
-
-    assert torch.allclose(reference_map_k, gathered_map_k)
-    assert torch.allclose(gathered_map_k, expected_map_k)
-
-
-@pytest.mark.parametrize("mink", [0, 1])
+@pytest.mark.parametrize("mink", parameters_mink)
 def test_median_rank(mink: int) -> None:
     torch.manual_seed(0)
 
@@ -296,9 +243,9 @@ def test_median_rank(mink: int) -> None:
 
 
 @pytest.mark.parametrize("ranks", ["oracle", "random"])
-@pytest.mark.parametrize("mink", [0, 1])
+@pytest.mark.parametrize("mink", parameters_mink)
 def test_median_rank_ddp(ranks: str, mink: int) -> None:
-    port = str(select_random_port())
+    port = select_random_port()
     seed = 0
     world_size = 4
 
@@ -402,7 +349,7 @@ def run_mean_average_precision(
 
         # oracle recommendation
         for _num_ranks in num_ranks:
-            ranks.append(list(range(_num_ranks)))
+            ranks.append(list(range(mink, _num_ranks + mink)))
     elif isinstance(ranks, list):
         # use given ranks
         assert num_queries is None
