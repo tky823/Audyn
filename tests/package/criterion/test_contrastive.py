@@ -104,7 +104,7 @@ def test_info_nce_loss_ddp(dim: int) -> None:
     """Ensure InfoNCELoss works well for DDP."""
     pytest.skip("Skip temporarily")
 
-    port = str(select_random_port())
+    port = select_random_port()
     seed = 0
     world_size = 4
 
@@ -580,7 +580,7 @@ def test_inter_info_nce_loss_ddp(dim: int) -> None:
     """Ensure InterInfoNCELoss works well for DDP."""
     pytest.skip("Skip temporarily")
 
-    port = str(select_random_port())
+    port = select_random_port()
     seed = 0
     world_size = 4
 
