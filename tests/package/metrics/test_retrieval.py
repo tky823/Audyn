@@ -125,7 +125,7 @@ def test_mean_average_precision_ddp_oracle(mink: int) -> None:
 
 
 @pytest.mark.parametrize("mink", parameters_mink)
-def test_mean_average_precision_ddp_know_map(mink: int) -> None:
+def test_mean_average_precision_ddp_known_map(mink: int) -> None:
     port = select_random_port()
     seed = 0
     world_size = 3
