@@ -1,5 +1,6 @@
 import os
 import tempfile
+from datetime import timedelta
 
 import pytest
 import torch
@@ -496,7 +497,7 @@ def run_crossmodal_mean_average_precision_itemwise(
     num_threads = max(num_threads // world_size, 1)
     torch.set_num_threads(num_threads)
 
-    dist.init_process_group(backend="gloo")
+    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
     torch.manual_seed(seed)
 
     g = torch.Generator()
@@ -553,7 +554,7 @@ def run_crossmodal_mean_average_precision_batchwise(
     num_threads = max(num_threads // world_size, 1)
     torch.set_num_threads(num_threads)
 
-    dist.init_process_group(backend="gloo")
+    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
     torch.manual_seed(seed)
 
     g = torch.Generator()
@@ -608,7 +609,7 @@ def run_crossmodal_median_rank_itemwise(
     num_threads = max(num_threads // world_size, 1)
     torch.set_num_threads(num_threads)
 
-    dist.init_process_group(backend="gloo")
+    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
     torch.manual_seed(seed)
 
     g = torch.Generator()
@@ -664,7 +665,7 @@ def run_crossmodal_median_rank_batchwise(
     num_threads = max(num_threads // world_size, 1)
     torch.set_num_threads(num_threads)
 
-    dist.init_process_group(backend="gloo")
+    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
     torch.manual_seed(seed)
 
     g = torch.Generator()

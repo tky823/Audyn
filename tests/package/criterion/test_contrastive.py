@@ -2,6 +2,7 @@ import copy
 import itertools
 import os
 import tempfile
+from datetime import timedelta
 from typing import Tuple
 
 import pytest
@@ -750,7 +751,7 @@ def run_info_nce_loss(
     num_threads = max(num_threads // world_size, 1)
     torch.set_num_threads(num_threads)
 
-    dist.init_process_group(backend="gloo")
+    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
     torch.manual_seed(seed)
 
     g = torch.Generator()
@@ -797,7 +798,7 @@ def run_intra_info_nce_loss(
     num_threads = max(num_threads // world_size, 1)
     torch.set_num_threads(num_threads)
 
-    dist.init_process_group(backend="gloo")
+    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
     torch.manual_seed(seed)
 
     g = torch.Generator()

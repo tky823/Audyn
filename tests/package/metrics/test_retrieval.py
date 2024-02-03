@@ -1,6 +1,7 @@
 import copy
 import os
 import tempfile
+from datetime import timedelta
 from typing import List, Union
 
 import pytest
@@ -340,7 +341,7 @@ def run_mean_average_precision(
     num_threads = max(num_threads // world_size, 1)
     torch.set_num_threads(num_threads)
 
-    dist.init_process_group(backend="gloo")
+    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
     torch.manual_seed(seed)
 
     g = torch.Generator()
@@ -396,7 +397,7 @@ def run_median_rank(
     num_threads = max(num_threads // world_size, 1)
     torch.set_num_threads(num_threads)
 
-    dist.init_process_group(backend="gloo")
+    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
     torch.manual_seed(seed)
 
     g = torch.Generator()

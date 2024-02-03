@@ -1,6 +1,7 @@
 import importlib
 import os
 import tempfile
+from datetime import timedelta
 from os.path import dirname, join, realpath, relpath
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -275,7 +276,9 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
 
         convert_dataloader_to_ddp_if_possible(config)
 
-        dist.init_process_group(backend=config.system.distributed.backend)
+        dist.init_process_group(
+            backend=config.system.distributed.backend, timeout=timedelta(minutes=1)
+        )
         torch.manual_seed(config.system.seed)
 
         assert config.system.distributed.enable
@@ -990,7 +993,9 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str, dataloader_t
                 == "audyn.utils.data.dataloader.DistributedDataLoader"
             )
 
-        dist.init_process_group(backend=config.system.distributed.backend)
+        dist.init_process_group(
+            backend=config.system.distributed.backend, timeout=timedelta(minutes=1)
+        )
         torch.manual_seed(config.system.seed)
 
         train_dataset = hydra.utils.instantiate(

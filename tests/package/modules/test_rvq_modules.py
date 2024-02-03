@@ -1,6 +1,7 @@
 import copy
 import os
 import tempfile
+from datetime import timedelta
 from typing import Tuple
 
 import torch
@@ -263,7 +264,7 @@ def train_dummy_rvqvae(
 
     config = OmegaConf.create(config)
 
-    dist.init_process_group(backend=config.distributed.backend)
+    dist.init_process_group(backend=config.distributed.backend, timeout=timedelta(minutes=1))
     torch.manual_seed(config.seed)
 
     g = torch.Generator()

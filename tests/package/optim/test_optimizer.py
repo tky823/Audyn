@@ -2,6 +2,7 @@ import copy
 import math
 import os
 import tempfile
+from datetime import timedelta
 from typing import Callable, List, Optional, Tuple, Union
 
 import pytest
@@ -602,7 +603,7 @@ def train_exponential_moving_average_codebook_optimizer(
 
     config = OmegaConf.create(config)
 
-    dist.init_process_group(backend=config.distributed.backend)
+    dist.init_process_group(backend=config.distributed.backend, timeout=timedelta(minutes=1))
     torch.manual_seed(config.seed)
 
     g = torch.Generator()
