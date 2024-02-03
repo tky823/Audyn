@@ -26,6 +26,7 @@ class MeanMetric(StatefulMetric):
         self.num_samples = 0
         self.sum_value = 0
 
+    @torch.no_grad()
     def update(self, value: Union[int, float, torch.Tensor]) -> None:
         is_distributed = dist.is_available() and dist.is_initialized()
 
@@ -54,6 +55,7 @@ class MeanMetric(StatefulMetric):
         self.num_samples = self.num_samples + world_size
         self.sum_value = self.sum_value + value
 
+    @torch.no_grad()
     def compute(self) -> torch.Tensor:
         mean = torch.tensor(self.sum_value / self.num_samples, device=self.device)
 

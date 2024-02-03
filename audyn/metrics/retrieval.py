@@ -45,6 +45,7 @@ class MeanAveragePrecision(StatefulMetric):
         self.num_samples = 0
         self.sum_ap = 0
 
+    @torch.no_grad()
     def update(
         self,
         ranks: Union[int, List[int], torch.LongTensor],
@@ -99,6 +100,7 @@ class MeanAveragePrecision(StatefulMetric):
         self.num_samples = self.num_samples + world_size
         self.sum_ap = self.sum_ap + normalized_ap
 
+    @torch.no_grad()
     def compute(self) -> torch.Tensor:
         map_k = torch.tensor(self.sum_ap / self.num_samples)
 
@@ -144,6 +146,7 @@ class MedianRank(StatefulMetric):
     def reset(self) -> None:
         self.ranks = []
 
+    @torch.no_grad()
     def update(self, rank: Union[int, torch.Tensor]) -> None:
         is_distributed = dist.is_available() and dist.is_initialized()
 
@@ -171,6 +174,7 @@ class MedianRank(StatefulMetric):
         else:
             self.ranks.append(rank)
 
+    @torch.no_grad()
     def compute(self) -> torch.LongTensor:
         ranks = torch.tensor(self.ranks)
         med = torch.median(ranks)
