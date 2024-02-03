@@ -11,6 +11,7 @@ from torch.optim import Optimizer
 
 from ... import __version__ as _version
 from ...criterion.gan import GANCriterion
+from ...metrics import MeanMetric
 from ...models.gan import BaseGAN
 from ...optim.lr_scheduler import GANLRScheduler
 from ...optim.optimizer import GANOptimizer, MovingAverageWrapper, MultiOptimizers
@@ -133,17 +134,12 @@ class GANTrainer(BaseTrainer):
 
         generator_criterion_names = self.criterion_names(criterion_config.generator)
         discriminator_criterion_names = self.criterion_names(criterion_config.discriminator)
-
-        train_loss = {
-            generator_key: {},
-            discriminator_key: {},
+        generator_mean_metrics = {
+            criterion_name: MeanMetric() for criterion_name in generator_criterion_names
         }
-
-        for criterion_name in generator_criterion_names:
-            train_loss[generator_key][criterion_name] = 0
-
-        for criterion_name in discriminator_criterion_names:
-            train_loss[discriminator_key][criterion_name] = 0
+        discriminator_mean_metrics = {
+            criterion_name: MeanMetric() for criterion_name in discriminator_criterion_names
+        }
 
         n_batch = 0
         n_remain = self.iteration_idx % len(self.loaders.train)
@@ -228,9 +224,8 @@ class GANTrainer(BaseTrainer):
                 total_discriminator_loss = (
                     total_discriminator_loss + weight * discriminator_loss[criterion_name]
                 )
-                train_loss[discriminator_key][criterion_name] = (
-                    train_loss[discriminator_key][criterion_name]
-                    + discriminator_loss[criterion_name].item()
+                discriminator_mean_metrics[criterion_name].update(
+                    discriminator_loss[criterion_name].item()
                 )
 
                 self.write_scalar_if_necessary(
@@ -315,9 +310,8 @@ class GANTrainer(BaseTrainer):
                 total_generator_loss = (
                     total_generator_loss + weight * generator_loss[criterion_name]
                 )
-                train_loss[generator_key][criterion_name] = (
-                    train_loss[generator_key][criterion_name]
-                    + generator_loss[criterion_name].item()
+                generator_mean_metrics[criterion_name].update(
+                    generator_loss[criterion_name].item()
                 )
 
                 self.write_scalar_if_necessary(
@@ -437,15 +431,18 @@ class GANTrainer(BaseTrainer):
         if self.config.train.steps.lr_scheduler.discriminator == "epoch":
             self.lr_scheduler.discriminator.step()
 
+        train_loss = {
+            generator_key: {},
+            discriminator_key: {},
+        }
+
         for criterion_name in generator_criterion_names:
-            train_loss[generator_key][criterion_name] = (
-                train_loss[generator_key][criterion_name] / n_batch
-            )
+            loss = generator_mean_metrics[criterion_name].compute()
+            train_loss[generator_key][criterion_name] = loss.item()
 
         for criterion_name in discriminator_criterion_names:
-            train_loss[discriminator_key][criterion_name] = (
-                train_loss[discriminator_key][criterion_name] / n_batch
-            )
+            loss = discriminator_mean_metrics[criterion_name].compute()
+            train_loss[discriminator_key][criterion_name] = loss.item()
 
         return train_loss
 
@@ -459,17 +456,12 @@ class GANTrainer(BaseTrainer):
 
         generator_criterion_names = self.criterion_names(criterion_config.generator)
         discriminator_criterion_names = self.criterion_names(criterion_config.discriminator)
-
-        validation_loss = {
-            generator_key: {},
-            discriminator_key: {},
+        generator_mean_metrics = {
+            criterion_name: MeanMetric() for criterion_name in generator_criterion_names
         }
-
-        for criterion_name in generator_criterion_names:
-            validation_loss[generator_key][criterion_name] = 0
-
-        for criterion_name in discriminator_criterion_names:
-            validation_loss[discriminator_key][criterion_name] = 0
+        discriminator_mean_metrics = {
+            criterion_name: MeanMetric() for criterion_name in discriminator_criterion_names
+        }
 
         n_batch = 0
 
@@ -550,9 +542,8 @@ class GANTrainer(BaseTrainer):
                     **named_discriminator_estimated[criterion_name],
                     **named_discriminator_target[criterion_name],
                 )
-                validation_loss[discriminator_key][criterion_name] = (
-                    validation_loss[discriminator_key][criterion_name]
-                    + discriminator_loss[criterion_name].item()
+                discriminator_mean_metrics[criterion_name].update(
+                    discriminator_loss[criterion_name].item()
                 )
 
             generator_loss = {}
@@ -562,9 +553,8 @@ class GANTrainer(BaseTrainer):
                     **named_generator_estimated[criterion_name],
                     **named_generator_target[criterion_name],
                 )
-                validation_loss[generator_key][criterion_name] = (
-                    validation_loss[generator_key][criterion_name]
-                    + generator_loss[criterion_name].item()
+                generator_mean_metrics[criterion_name].update(
+                    generator_loss[criterion_name].item()
                 )
 
             self.write_validation_spectrogram_if_necessary(
@@ -594,15 +584,18 @@ class GANTrainer(BaseTrainer):
 
             n_batch += 1
 
+        validation_loss = {
+            generator_key: {},
+            discriminator_key: {},
+        }
+
         for criterion_name in generator_criterion_names:
-            validation_loss[generator_key][criterion_name] = (
-                validation_loss[generator_key][criterion_name] / n_batch
-            )
+            loss = generator_mean_metrics[criterion_name].compute()
+            validation_loss[generator_key][criterion_name] = loss.item()
 
         for criterion_name in discriminator_criterion_names:
-            validation_loss[discriminator_key][criterion_name] = (
-                validation_loss[discriminator_key][criterion_name] / n_batch
-            )
+            loss = discriminator_mean_metrics[criterion_name].compute()
+            validation_loss[discriminator_key][criterion_name] = loss.item()
 
         return validation_loss
 

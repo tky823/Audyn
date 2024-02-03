@@ -18,6 +18,7 @@ from torch.optim.lr_scheduler import _LRScheduler
 from torch.utils.data import DataLoader
 
 from ... import __version__ as _version
+from ...metrics import MeanMetric
 from ...optim.optimizer import (
     ExponentialMovingAverageCodebookOptimizer,
     MovingAverageWrapper,
@@ -469,7 +470,7 @@ class BaseTrainer(BaseDriver):
         """Train model for one epoch."""
         record_config = self.config.train.record
         criterion_names = self.criterion_names(self.config.criterion)
-        train_loss = {criterion_name: 0 for criterion_name in criterion_names}
+        mean_metrics = {criterion_name: MeanMetric() for criterion_name in criterion_names}
         n_batch = 0
         n_remain = self.iteration_idx % len(self.loaders.train)
 
@@ -508,9 +509,7 @@ class BaseTrainer(BaseDriver):
                     total_loss = total_loss + weight * loss[criterion_name]
 
             for criterion_name in criterion_names:
-                train_loss[criterion_name] = (
-                    train_loss[criterion_name] + loss[criterion_name].item()
-                )
+                mean_metrics[criterion_name].update(loss[criterion_name].item())
                 self.write_scalar_if_necessary(
                     f"{criterion_name} (iteration)/train",
                     loss[criterion_name].item(),
@@ -620,8 +619,11 @@ class BaseTrainer(BaseDriver):
         if self.config.train.steps.lr_scheduler == "epoch":
             self.lr_scheduler.step()
 
+        train_loss = {}
+
         for criterion_name in criterion_names:
-            train_loss[criterion_name] = train_loss[criterion_name] / n_batch
+            loss = mean_metrics[criterion_name].compute()
+            train_loss[criterion_name] = loss.item()
 
         return train_loss
 
@@ -629,7 +631,7 @@ class BaseTrainer(BaseDriver):
     def validate_one_epoch(self) -> Dict[str, float]:
         """Validate model for one epoch."""
         criterion_names = self.criterion_names(self.config.criterion)
-        validation_loss = {criterion_name: 0 for criterion_name in criterion_names}
+        mean_metrics = {criterion_name: MeanMetric() for criterion_name in criterion_names}
         n_batch = 0
 
         self.model.eval()
@@ -652,9 +654,7 @@ class BaseTrainer(BaseDriver):
                 loss[criterion_name] = self.criterion[criterion_name](
                     **named_estimated[criterion_name], **named_target[criterion_name]
                 )
-                validation_loss[criterion_name] = (
-                    validation_loss[criterion_name] + loss[criterion_name].item()
-                )
+                mean_metrics[criterion_name].update(loss[criterion_name].item())
 
             self.write_validation_spectrogram_if_necessary(
                 named_output,
@@ -683,8 +683,11 @@ class BaseTrainer(BaseDriver):
 
             n_batch += 1
 
+        validation_loss = {}
+
         for criterion_name in criterion_names:
-            validation_loss[criterion_name] = validation_loss[criterion_name] / n_batch
+            loss = mean_metrics[criterion_name].compute()
+            validation_loss[criterion_name] = loss.item()
 
         return validation_loss
 
