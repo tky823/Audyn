@@ -1,7 +1,9 @@
 from typing import Any, Dict, Union
 
 import torch.nn as nn
+from torch.nn.parallel import DataParallel, DistributedDataParallel
 
+from ...criterion.base import MultiCriteria
 from ...metrics.base import StatefulMetric
 from ..data import select_device
 from ..parallel import is_dp_or_ddp
@@ -14,7 +16,7 @@ def set_device(
     accelerator: str,
     is_distributed: bool = False,
     ddp_kwargs: Dict[str, Any] = None,
-) -> Union[nn.Module, nn.parallel.DistributedDataParallel]:
+) -> Union[nn.Module, DistributedDataParallel]:
     """Set device of module.
 
     Args:
@@ -39,7 +41,17 @@ def set_device(
             if ddp_kwargs is None:
                 ddp_kwargs = {}
 
-            module = nn.parallel.DistributedDataParallel(module, device_ids=[device], **ddp_kwargs)
+            if isinstance(module, MultiCriteria):
+                for criterion_name in module.keys():
+                    criterion = module[criterion_name]
+                    trainable = any(p.requires_grad for p in criterion.parameters())
+
+                    if trainable:
+                        module[criterion_name] = DistributedDataParallel(
+                            criterion, device_ids=[device], **ddp_kwargs
+                        )
+            else:
+                module = DistributedDataParallel(module, device_ids=[device], **ddp_kwargs)
     elif isinstance(module, StatefulMetric):
         pass
     else:
@@ -50,7 +62,7 @@ def set_device(
 
 def unwrap(module: nn.Module) -> nn.Module:
     if is_dp_or_ddp(module):
-        module: Union[nn.parallel.DataParallel, nn.parallel.DistributedDataParallel]
+        module: Union[DataParallel, DistributedDataParallel]
         return module.module
     else:
         return module
