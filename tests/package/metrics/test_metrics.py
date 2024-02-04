@@ -49,7 +49,7 @@ def test_mean_metric_ddp() -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        ctx = mp.get_context("spawn")
+        ctx = mp.get_context("fork")
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")

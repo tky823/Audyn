@@ -74,7 +74,7 @@ def test_mean_average_precision_ddp_oracle(mink: int) -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        ctx = mp.get_context("spawn")
+        ctx = mp.get_context("fork")
 
         for process_rank in range(world_size):
             path = os.path.join(temp_dir, f"{process_rank}.pth")
@@ -144,7 +144,7 @@ def test_mean_average_precision_ddp_known_map(mink: int) -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        ctx = mp.get_context("spawn")
+        ctx = mp.get_context("fork")
 
         for process_rank in range(world_size):
             path = os.path.join(temp_dir, f"{process_rank}.pth")
@@ -265,7 +265,7 @@ def test_median_rank_ddp(ranks: str, mink: int) -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        ctx = mp.get_context("spawn")
+        ctx = mp.get_context("fork")
 
         for process_rank in range(world_size):
             path = os.path.join(temp_dir, f"{process_rank}.pth")

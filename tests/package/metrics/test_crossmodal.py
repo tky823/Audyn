@@ -69,7 +69,7 @@ def test_crossmodal_mean_average_precision_ddp_itemwise(strategy: str) -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        ctx = mp.get_context("spawn")
+        ctx = mp.get_context("fork")
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
@@ -161,7 +161,7 @@ def test_crossmodal_mean_average_precision_ddp_batchwise(strategy: str) -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        ctx = mp.get_context("spawn")
+        ctx = mp.get_context("fork")
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
@@ -296,7 +296,7 @@ def test_crossmodal_median_rank_ddp_itemwise(mink: int, strategy: str) -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        ctx = mp.get_context("spawn")
+        ctx = mp.get_context("fork")
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
@@ -388,7 +388,7 @@ def test_crossmodal_median_rank_ddp_batchwise(mink: int, strategy: str) -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        ctx = mp.get_context("spawn")
+        ctx = mp.get_context("fork")
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
