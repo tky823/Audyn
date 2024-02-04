@@ -21,7 +21,7 @@ from audyn.utils.logging import get_logger
 
 
 class EmbeddingSaver(BaseDriver):
-    def __init__(self, loader: DataLoader, model: CLAP, config: DictConfig) -> None:
+    def __init__(self, loader: DataLoader, model: CLAP, config: DictConfig = None) -> None:
         self.loader = loader
         self.model = model
 
@@ -55,9 +55,9 @@ class EmbeddingSaver(BaseDriver):
         else:
             pbar = self.loader
 
-        for named_batch in pbar:
-            named_batch = self.move_data_to_device(named_batch, self.device)
-            named_input = self.map_to_named_input(named_batch, key_mapping=test_key_mapping)
+        for named_data in pbar:
+            named_data = self.move_data_to_device(named_data, self.device)
+            named_input = self.map_to_named_input(named_data, key_mapping=test_key_mapping)
 
             with autocast(enabled=self.enable_amp):
                 output = self.model(**named_input)
@@ -71,7 +71,7 @@ class EmbeddingSaver(BaseDriver):
 
             for save_key in test_key_mapping.save.input.keys():
                 input_key = test_key_mapping.save.input[save_key]
-                data[save_key] = named_batch[input_key]
+                data[save_key] = named_data[input_key]
 
             for save_key in test_key_mapping.save.output.keys():
                 output_key = test_key_mapping.save.output[save_key]
