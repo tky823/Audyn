@@ -19,7 +19,6 @@ class CrossModalEmbeddingMeanAveragePrecision(MeanAveragePrecision):
     Args:
         k (int): Threshold of retrieval rank. This parameter should be positive. For example,
             to evaluate mAP@5, set 5 as ``k``.
-        mink (int): Start index of rank. This is useful to specify top rank is 0 or 1.
         enforce_sorted (bool): If ``True``, rank is sorted for ``update``. Default: ``False``.
 
     """
@@ -27,9 +26,9 @@ class CrossModalEmbeddingMeanAveragePrecision(MeanAveragePrecision):
     def __init__(
         self,
         k: int,
-        mink: int = 0,
     ) -> None:
-        super().__init__(k, mink=mink, enforce_sorted=False)
+        # NOTE: Top rank is 0 in torch.
+        super().__init__(k, mink=0, enforce_sorted=False)
 
     @torch.no_grad()
     def update(
