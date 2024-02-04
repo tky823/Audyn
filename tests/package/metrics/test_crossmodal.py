@@ -16,8 +16,7 @@ from audyn.metrics.crossmodal import (
 parameters_mink = [0, 1]
 
 
-@pytest.mark.parametrize("mink", parameters_mink)
-def test_crossmodal_mean_average_precision(mink: int) -> None:
+def test_crossmodal_mean_average_precision() -> None:
     torch.manual_seed(0)
 
     k = 5
@@ -31,7 +30,7 @@ def test_crossmodal_mean_average_precision(mink: int) -> None:
     expected_map_k = torch.tensor(1.0)
 
     # item-wise operation
-    metric = CrossModalEmbeddingMeanAveragePrecision(k, mink=mink)
+    metric = CrossModalEmbeddingMeanAveragePrecision(k)
 
     for sample_idx, _key in enumerate(key):
         _query = _key  # i.e. oracle
@@ -43,7 +42,7 @@ def test_crossmodal_mean_average_precision(mink: int) -> None:
     assert torch.allclose(map_k, expected_map_k)
 
     # batch-wise operation
-    metric = CrossModalEmbeddingMeanAveragePrecision(k, mink=mink)
+    metric = CrossModalEmbeddingMeanAveragePrecision(k)
 
     for start_idx in range(0, num_total_samples, batch_size):
         _key = key[start_idx : start_idx + batch_size]
@@ -56,9 +55,8 @@ def test_crossmodal_mean_average_precision(mink: int) -> None:
     assert torch.allclose(map_k, expected_map_k)
 
 
-@pytest.mark.parametrize("mink", parameters_mink)
 @pytest.mark.parametrize("strategy", ["oracle", "random"])
-def test_crossmodal_mean_average_precision_ddp_itemwise(mink: int, strategy: str) -> None:
+def test_crossmodal_mean_average_precision_ddp_itemwise(strategy: str) -> None:
     port = select_random_port()
     seed = 0
     world_size = 4
@@ -83,7 +81,6 @@ def test_crossmodal_mean_average_precision_ddp_itemwise(mink: int, strategy: str
                     "embedding_dim": embedding_dim,
                     "strategy": strategy,
                     "k": k,
-                    "mink": mink,
                     "seed": seed,
                     "path": path,
                 },
@@ -136,7 +133,7 @@ def test_crossmodal_mean_average_precision_ddp_itemwise(mink: int, strategy: str
         expected_map_k = None
 
     # single device
-    metric = CrossModalEmbeddingMeanAveragePrecision(k, mink=mink)
+    metric = CrossModalEmbeddingMeanAveragePrecision(k)
 
     for _query, _index in zip(query, index):
         metric.update(_query, key, index=_index)
@@ -149,9 +146,8 @@ def test_crossmodal_mean_average_precision_ddp_itemwise(mink: int, strategy: str
     assert torch.allclose(map_k, reference_map_k)
 
 
-@pytest.mark.parametrize("mink", parameters_mink)
 @pytest.mark.parametrize("strategy", ["oracle", "random"])
-def test_crossmodal_mean_average_precision_ddp_batchwise(mink: int, strategy: str) -> None:
+def test_crossmodal_mean_average_precision_ddp_batchwise(strategy: str) -> None:
     port = select_random_port()
     seed = 0
     world_size = 4
@@ -178,7 +174,6 @@ def test_crossmodal_mean_average_precision_ddp_batchwise(mink: int, strategy: st
                     "embedding_dim": embedding_dim,
                     "strategy": strategy,
                     "k": k,
-                    "mink": mink,
                     "seed": seed,
                     "path": path,
                 },
@@ -233,7 +228,7 @@ def test_crossmodal_mean_average_precision_ddp_batchwise(mink: int, strategy: st
         expected_map_k = None
 
     # single device
-    metric = CrossModalEmbeddingMeanAveragePrecision(k, mink=mink)
+    metric = CrossModalEmbeddingMeanAveragePrecision(k)
 
     for start_idx in range(0, world_size * num_total_samples, batch_size):
         _query = query[start_idx : start_idx + batch_size]
@@ -483,7 +478,6 @@ def run_crossmodal_mean_average_precision_itemwise(
     embedding_dim: int = 3,
     strategy: str = "oracle",
     k: int = 5,
-    mink: int = 0,
     seed: int = 0,
     path: str = None,
 ) -> None:
@@ -503,7 +497,7 @@ def run_crossmodal_mean_average_precision_itemwise(
     g = torch.Generator()
     g.manual_seed(rank)
 
-    metric = CrossModalEmbeddingMeanAveragePrecision(k, mink=mink)
+    metric = CrossModalEmbeddingMeanAveragePrecision(k)
     key = torch.randn((batch_size, embedding_dim), generator=g)
 
     if strategy == "oracle":
@@ -540,7 +534,6 @@ def run_crossmodal_mean_average_precision_batchwise(
     embedding_dim: int = 3,
     strategy: str = "oracle",
     k: int = 5,
-    mink: int = 0,
     seed: int = 0,
     path: str = None,
 ) -> None:
@@ -560,7 +553,7 @@ def run_crossmodal_mean_average_precision_batchwise(
     g = torch.Generator()
     g.manual_seed(rank)
 
-    metric = CrossModalEmbeddingMeanAveragePrecision(k, mink=mink)
+    metric = CrossModalEmbeddingMeanAveragePrecision(k)
     key = torch.randn((num_total_samples, embedding_dim), generator=g)
 
     if strategy == "oracle":
