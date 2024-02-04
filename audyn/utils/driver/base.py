@@ -3,7 +3,7 @@ import os
 import subprocess
 import warnings
 from logging import Logger
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import hydra
 import matplotlib.pyplot as plt
@@ -52,11 +52,12 @@ class BaseDriver:
         """Unwrapped model to access attributes directly."""
         return unwrap(self.model)
 
-    def criterion_names(self, config: Optional[DictConfig] = None) -> Set[str]:
+    def criterion_names(self, config: Optional[DictConfig] = None) -> List[str]:
         if config is None:
             config = self.config.criterion
 
-        names = {key for key in config.keys() if not key.startswith("_") and not key.endswith("_")}
+        names = [key for key in config.keys() if not key.startswith("_") and not key.endswith("_")]
+        names = sorted(names)
 
         return names
 

@@ -1,7 +1,7 @@
 # based on https://github.com/tky823/Audyn/blob/02ead2dc37f377dac0a60ae9adb1c71f019945d2/recipes/DCASE2023FoleySoundSynthesis/Baseline/utils/driver.py  # noqa: E501
 import copy
 import os
-from typing import Dict, Optional, Set, Union
+from typing import Dict, List, Optional, Union
 
 import torch
 from omegaconf import DictConfig, OmegaConf
@@ -110,11 +110,12 @@ class RetrievalTester(BaseDriver):
 
         self._reset(config)
 
-    def metric_names(self, config: Optional[DictConfig] = None) -> Set[str]:
+    def metric_names(self, config: Optional[DictConfig] = None) -> List[str]:
         if config is None:
             config = self.config.test.metrics
 
-        names = {key for key in config.keys() if not key.startswith("_") and not key.endswith("_")}
+        names = [key for key in config.keys() if not key.startswith("_") and not key.endswith("_")]
+        names = sorted(names)
 
         return names
 
