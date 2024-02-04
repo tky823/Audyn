@@ -164,7 +164,7 @@ class _InfoNCELoss(nn.Module):
         input = self.permute_along_dim(input)
         other = self.permute_along_dim(other)
 
-        if should_gather:
+        if self.training and should_gather:
             # gather input and other along dim
             input = SyncFunction.apply(input, -2)
             other = SyncFunction.apply(other, -2)
@@ -306,7 +306,7 @@ class _NTXentLoss(nn.Module):
         input = self.permute_along_dim(input)
         other = self.permute_along_dim(other)
 
-        if should_gather:
+        if self.training and should_gather:
             # gather input and other along dim
             input = SyncFunction.apply(input, -2)
             other = SyncFunction.apply(other, -2)
