@@ -5,7 +5,6 @@ import hydra
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig, ListConfig, OmegaConf
-from packaging import version
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 
@@ -30,28 +29,38 @@ __all__ = [
     "instantiate_grad_clipper",
 ]
 
-IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
-
 TORCH_CLIP_GRAD_FN = ["torch.nn.utils.clip_grad_value_", "torch.nn.utils.clip_grad_norm_"]
 
+try:
+    from torch.optim.optimizer import ParamsT
 
-if IS_TORCH_LT_2_1:
+    optimizer_args_type = "ParamsT"
+
+except ImportError:
+    try:
+        from torch.optim.optimizer import params_t
+
+        optimizer_args_type = "params_t"
+    except ImportError:
+        optimizer_args_type = "Iterable"
+
+
+if optimizer_args_type == "ParamsT":
 
     @overload
     def instantiate_optimizer(
         config: Union[DictConfig, ListConfig],
-        module_or_params: Union[Iterable, nn.Module],
+        module_or_params: Union[ParamsT, nn.Module],
         *args,
         **kwargs,
     ) -> Optimizer: ...
 
     @overload
     def instantiate_grad_clipper(
-        config: DictConfig, module_or_params: Iterable, *args, **kwargs
+        config: DictConfig, module_or_params: ParamsT, *args, **kwargs
     ) -> GradClipper: ...
 
-else:
-    from torch.optim.optimizer import params_t
+elif optimizer_args_type == "params_t":
 
     @overload
     def instantiate_optimizer(
@@ -64,6 +73,21 @@ else:
     @overload
     def instantiate_grad_clipper(
         config: DictConfig, module_or_params: params_t, *args, **kwargs
+    ) -> GradClipper: ...
+
+else:
+
+    @overload
+    def instantiate_optimizer(
+        config: Union[DictConfig, ListConfig],
+        module_or_params: Union[Iterable, nn.Module],
+        *args,
+        **kwargs,
+    ) -> Optimizer: ...
+
+    @overload
+    def instantiate_grad_clipper(
+        config: DictConfig, module_or_params: Iterable, *args, **kwargs
     ) -> GradClipper: ...
 
 
