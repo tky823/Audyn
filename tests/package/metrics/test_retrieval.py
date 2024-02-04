@@ -8,7 +8,7 @@ import pytest
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
-from dummy.utils import select_random_port
+from dummy.utils import select_random_port, set_ddp_environment
 
 from audyn.metrics.retrieval import MeanAveragePrecision, MedianRank
 
@@ -331,15 +331,7 @@ def run_mean_average_precision(
     seed: int = 0,
     path: str = None,
 ) -> None:
-    os.environ["LOCAL_RANK"] = str(process_rank)
-    os.environ["RANK"] = str(process_rank)
-    os.environ["WORLD_SIZE"] = str(world_size)
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = str(port)
-
-    num_threads = torch.get_num_threads()
-    num_threads = max(num_threads // world_size, 1)
-    torch.set_num_threads(num_threads)
+    set_ddp_environment(process_rank, world_size, port)
 
     dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
     torch.manual_seed(seed)
@@ -387,15 +379,7 @@ def run_median_rank(
     seed: int = 0,
     path: str = None,
 ) -> None:
-    os.environ["LOCAL_RANK"] = str(process_rank)
-    os.environ["RANK"] = str(process_rank)
-    os.environ["WORLD_SIZE"] = str(world_size)
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = str(port)
-
-    num_threads = torch.get_num_threads()
-    num_threads = max(num_threads // world_size, 1)
-    torch.set_num_threads(num_threads)
+    set_ddp_environment(process_rank, world_size, port)
 
     dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
     torch.manual_seed(seed)

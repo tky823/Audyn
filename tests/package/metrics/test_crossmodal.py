@@ -6,7 +6,7 @@ import pytest
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
-from dummy.utils import select_random_port
+from dummy.utils import select_random_port, set_ddp_environment
 
 from audyn.metrics.crossmodal import (
     CrossModalEmbeddingMeanAveragePrecision,
@@ -481,15 +481,7 @@ def run_crossmodal_mean_average_precision_itemwise(
     seed: int = 0,
     path: str = None,
 ) -> None:
-    os.environ["LOCAL_RANK"] = str(rank)
-    os.environ["RANK"] = str(rank)
-    os.environ["WORLD_SIZE"] = str(world_size)
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = str(port)
-
-    num_threads = torch.get_num_threads()
-    num_threads = max(num_threads // world_size, 1)
-    torch.set_num_threads(num_threads)
+    set_ddp_environment(rank, world_size, port)
 
     dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
     torch.manual_seed(seed)
@@ -537,15 +529,7 @@ def run_crossmodal_mean_average_precision_batchwise(
     seed: int = 0,
     path: str = None,
 ) -> None:
-    os.environ["LOCAL_RANK"] = str(rank)
-    os.environ["RANK"] = str(rank)
-    os.environ["WORLD_SIZE"] = str(world_size)
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = str(port)
-
-    num_threads = torch.get_num_threads()
-    num_threads = max(num_threads // world_size, 1)
-    torch.set_num_threads(num_threads)
+    set_ddp_environment(rank, world_size, port)
 
     dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
     torch.manual_seed(seed)
@@ -592,15 +576,7 @@ def run_crossmodal_median_rank_itemwise(
     seed: int = 0,
     path: str = None,
 ) -> None:
-    os.environ["LOCAL_RANK"] = str(rank)
-    os.environ["RANK"] = str(rank)
-    os.environ["WORLD_SIZE"] = str(world_size)
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = str(port)
-
-    num_threads = torch.get_num_threads()
-    num_threads = max(num_threads // world_size, 1)
-    torch.set_num_threads(num_threads)
+    set_ddp_environment(rank, world_size, port)
 
     dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
     torch.manual_seed(seed)
@@ -648,15 +624,7 @@ def run_crossmodal_median_rank_batchwise(
     seed: int = 0,
     path: str = None,
 ) -> None:
-    os.environ["LOCAL_RANK"] = str(rank)
-    os.environ["RANK"] = str(rank)
-    os.environ["WORLD_SIZE"] = str(world_size)
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = str(port)
-
-    num_threads = torch.get_num_threads()
-    num_threads = max(num_threads // world_size, 1)
-    torch.set_num_threads(num_threads)
+    set_ddp_environment(rank, world_size, port)
 
     dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
     torch.manual_seed(seed)
