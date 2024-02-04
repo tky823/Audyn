@@ -68,7 +68,8 @@ class MultiMetrics(StatefulMetric):
 
         self.metrics: Dict[str, StatefulMetric] = {}
 
-        for k, v in kwargs.items():
+        for k in sorted(kwargs.keys()):
+            v = kwargs[k]
             assert isinstance(k, str), f"Invalid key {k} is found."
             assert isinstance(v, StatefulMetric)
 
@@ -81,7 +82,7 @@ class MultiMetrics(StatefulMetric):
         return self.metrics[__key]
 
     def reset(self, *args, **kwargs) -> None:
-        for k in self.metrics.keys():
+        for k in sorted(self.metrics.keys()):
             self.metrics[k].reset(*args, **kwargs)
 
     def update(self, *args, **kwargs) -> None:
@@ -91,7 +92,7 @@ class MultiMetrics(StatefulMetric):
         raise NotImplementedError("compute is not supported.")
 
     def to(self, device: Optional[torch.device] = None) -> "MultiMetrics":
-        for k in self.metrics.keys():
+        for k in sorted(self.metrics.keys()):
             self.metrics[k].to(device)
 
         return self
