@@ -3,9 +3,9 @@ from typing import Optional, Union
 import torch
 import torch.distributed as dist
 
-from .base import StatefulMetric
+from .base import BaseMetricWrapper, MultiMetrics, StatefulMetric
 
-__all__ = ["MeanMetric"]
+__all__ = ["StatefulMetric", "BaseMetricWrapper", "MultiMetrics", "MeanMetric"]
 
 
 class MeanMetric(StatefulMetric):
