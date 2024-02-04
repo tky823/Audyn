@@ -10,7 +10,5 @@ key_mapping:
   target:
     - audio_embedding
 
-checkpoint: ??
-
 output:
   exp_dir: "./exp"
