@@ -27,6 +27,7 @@ class _InfoNCELoss(nn.Module):
         min_temperature: Optional[float] = None,
         max_temperature: Optional[float] = None,
         reduction: str = "mean",
+        gather_in_eval: Optional[bool] = None,
     ) -> None:
         super().__init__()
 
@@ -39,6 +40,7 @@ class _InfoNCELoss(nn.Module):
         self.reduction = reduction
 
         self.gather_if_necessary = None
+        self.gather_in_eval = gather_in_eval
 
     def validate_input_shape(self, input: torch.Tensor) -> int:
         dim = self.dim
@@ -146,7 +148,10 @@ class _InfoNCELoss(nn.Module):
             world_size = 1
 
         if world_size > 1 and gather_if_necessary:
-            should_gather = True
+            if self.training or self.gather_in_eval:
+                should_gather = True
+            else:
+                should_gather = False
         else:
             should_gather = False
 
@@ -164,7 +169,7 @@ class _InfoNCELoss(nn.Module):
         input = self.permute_along_dim(input)
         other = self.permute_along_dim(other)
 
-        if self.training and should_gather:
+        if should_gather:
             # gather input and other along dim
             input = SyncFunction.apply(input, -2)
             other = SyncFunction.apply(other, -2)
@@ -194,6 +199,7 @@ class _NTXentLoss(nn.Module):
         min_temperature: Optional[float] = None,
         max_temperature: Optional[float] = None,
         reduction: str = "mean",
+        gather_in_eval: Optional[bool] = None,
     ) -> None:
         super().__init__()
 
@@ -206,6 +212,7 @@ class _NTXentLoss(nn.Module):
         self.reduction = reduction
 
         self.gather_if_necessary = None
+        self.gather_in_eval = gather_in_eval
 
     def validate_input_shape(self, input: torch.Tensor) -> int:
         dim = self.dim
@@ -288,7 +295,10 @@ class _NTXentLoss(nn.Module):
             world_size = 1
 
         if world_size > 1 and gather_if_necessary:
-            should_gather = True
+            if self.training or self.gather_in_eval:
+                should_gather = True
+            else:
+                should_gather = False
         else:
             should_gather = False
 
@@ -306,7 +316,7 @@ class _NTXentLoss(nn.Module):
         input = self.permute_along_dim(input)
         other = self.permute_along_dim(other)
 
-        if self.training and should_gather:
+        if should_gather:
             # gather input and other along dim
             input = SyncFunction.apply(input, -2)
             other = SyncFunction.apply(other, -2)
@@ -343,6 +353,7 @@ class InfoNCELoss(_InfoNCELoss):
         min_temperature: Optional[float] = None,
         max_temperature: Optional[float] = None,
         reduction: str = "mean",
+        gather_in_eval: Optional[bool] = None,
     ) -> None:
         super().__init__(
             dim,
@@ -351,6 +362,7 @@ class InfoNCELoss(_InfoNCELoss):
             min_temperature=min_temperature,
             max_temperature=max_temperature,
             reduction=reduction,
+            gather_in_eval=gather_in_eval,
         )
 
         assert dim >= 0, f"dim ({dim}) should be non-negative."
@@ -359,6 +371,9 @@ class InfoNCELoss(_InfoNCELoss):
             self.gather_if_necessary = True
         else:
             self.gather_if_necessary = False
+
+        if self.gather_in_eval is None:
+            self.gather_in_eval = self.gather_if_necessary
 
 
 class NTXentLoss(_NTXentLoss):
@@ -372,6 +387,7 @@ class NTXentLoss(_NTXentLoss):
         min_temperature: Optional[float] = None,
         max_temperature: Optional[float] = None,
         reduction: str = "mean",
+        gather_in_eval: Optional[bool] = None,
     ) -> None:
         super().__init__(
             dim,
@@ -380,6 +396,7 @@ class NTXentLoss(_NTXentLoss):
             min_temperature=min_temperature,
             max_temperature=max_temperature,
             reduction=reduction,
+            gather_in_eval=gather_in_eval,
         )
 
         assert dim >= 0, f"dim ({dim}) should be non-negative."
@@ -388,6 +405,9 @@ class NTXentLoss(_NTXentLoss):
             self.gather_if_necessary = True
         else:
             self.gather_if_necessary = False
+
+        if self.gather_in_eval is None:
+            self.gather_in_eval = self.gather_if_necessary
 
 
 class IntraInfoNCELoss(_InfoNCELoss):
@@ -409,6 +429,7 @@ class IntraInfoNCELoss(_InfoNCELoss):
             min_temperature=min_temperature,
             max_temperature=max_temperature,
             reduction=reduction,
+            gather_in_eval=False,
         )
 
         self.gather_if_necessary = False
@@ -425,6 +446,7 @@ class InterInfoNCELoss(_InfoNCELoss):
         min_temperature: Optional[float] = None,
         max_temperature: Optional[float] = None,
         reduction: str = "mean",
+        gather_in_eval: Optional[bool] = True,
     ) -> None:
         super().__init__(
             dim,
@@ -433,6 +455,7 @@ class InterInfoNCELoss(_InfoNCELoss):
             min_temperature=min_temperature,
             max_temperature=max_temperature,
             reduction=reduction,
+            gather_in_eval=gather_in_eval,
         )
 
         self.gather_if_necessary = True
@@ -457,6 +480,7 @@ class IntraNTXentLoss(_NTXentLoss):
             min_temperature=min_temperature,
             max_temperature=max_temperature,
             reduction=reduction,
+            gather_in_eval=False,
         )
 
         self.gather_if_necessary = False
@@ -473,6 +497,7 @@ class InterNTXentLoss(_NTXentLoss):
         min_temperature: Optional[float] = None,
         max_temperature: Optional[float] = None,
         reduction: str = "mean",
+        gather_in_eval: bool = True,
     ) -> None:
         super().__init__(
             dim,
@@ -481,6 +506,7 @@ class InterNTXentLoss(_NTXentLoss):
             min_temperature=min_temperature,
             max_temperature=max_temperature,
             reduction=reduction,
+            gather_in_eval=gather_in_eval,
         )
 
         self.gather_if_necessary = True
