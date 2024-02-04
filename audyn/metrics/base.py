@@ -66,7 +66,7 @@ class MultiMetrics(StatefulMetric):
     def __init__(self, device: Optional[torch.device] = None, **kwargs) -> None:
         super().__init__(device=device)
 
-        self.metrics = {}
+        self.metrics: Dict[str, StatefulMetric] = {}
 
         for k, v in kwargs.items():
             assert isinstance(k, str), f"Invalid key {k} is found."
@@ -79,3 +79,11 @@ class MultiMetrics(StatefulMetric):
 
     def __getitem__(self, __key: str) -> StatefulMetric:
         return self.metrics[__key]
+
+    def reset(self, *args, **kwargs) -> None:
+        for k in self.metrics.keys():
+            self.metrics[k].reset(*args, **kwargs)
+
+    def to(self, device: Optional[torch.device] = None) -> StatefulMetric:
+        for k in self.metrics.keys():
+            self.metrics[k].to(device)
