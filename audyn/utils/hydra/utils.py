@@ -503,10 +503,9 @@ def instantiate_metrics(
         ``metrics`` is under beta version.
 
     """
-
     if isinstance(config, DictConfig):
-        criterion = instantiate(config, *args, **kwargs)
+        metrics = instantiate(config, *args, **kwargs)
     else:
         raise TypeError(f"Invalid type of config ({type(config)}) is specified.")
 
-    return criterion
+    return metrics
