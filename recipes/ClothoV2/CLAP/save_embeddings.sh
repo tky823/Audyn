@@ -33,17 +33,23 @@ cmd=$(
     system="${system}"
 )
 
-${cmd} ./local/save_embeddings.py \
---config-dir "./conf" \
-hydra.run.dir="${exp_dir}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
-system="${system}" \
-preprocess="${preprocess}" \
-data="${data}" \
-test="${test}" \
-model="${model}" \
-preprocess.dump_format="${dump_format}" \
-preprocess.feature_dir="${save_dir}" \
-test.dataset.test.list_path="${list_dir}/test.txt" \
-test.dataset.test.feature_dir="${feature_dir}/test" \
-test.checkpoint="${checkpoint}" \
-test.output.exp_dir="${exp_dir}/${tag}"
+for subset in "train" "validation" "test"; do
+    subset_save_dir="${save_dir}/${subset}"
+    subset_list_path="${list_dir}/${subset}.txt"
+    subset_feature_dir="${feature_dir}/${subset}"
+
+    ${cmd} ./local/save_embeddings.py \
+    --config-dir "./conf" \
+    hydra.run.dir="${exp_dir}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
+    system="${system}" \
+    preprocess="${preprocess}" \
+    data="${data}" \
+    test="${test}" \
+    model="${model}" \
+    preprocess.dump_format="${dump_format}" \
+    preprocess.feature_dir="${subset_save_dir}" \
+    test.dataset.test.list_path="${subset_list_path}" \
+    test.dataset.test.feature_dir="${subset_feature_dir}" \
+    test.checkpoint="${checkpoint}" \
+    test.output.exp_dir="${exp_dir}/${tag}"
+done

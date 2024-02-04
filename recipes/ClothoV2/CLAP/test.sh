@@ -33,15 +33,20 @@ cmd=$(
     system="${system}"
 )
 
-${cmd} ./local/test.py \
---config-dir "./conf" \
-hydra.run.dir="${exp_dir}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
-system="${system}" \
-preprocess="${preprocess}" \
-data="${data}" \
-test="${test}" \
-model="${model}" \
-preprocess.dump_format="${dump_format}" \
-test.dataset.test.list_path="${list_dir}/test.txt" \
-test.dataset.test.feature_dir="${save_dir}" \
-test.output.exp_dir="${exp_dir}/${tag}"
+for subset in "train" "validation" "test"; do
+    subset_feature_dir="${save_dir}/${subset}"
+    subset_list_path="${list_dir}/${subset}.txt"
+
+    ${cmd} ./local/test.py \
+    --config-dir "./conf" \
+    hydra.run.dir="${exp_dir}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
+    system="${system}" \
+    preprocess="${preprocess}" \
+    data="${data}" \
+    test="${test}" \
+    model="${model}" \
+    preprocess.dump_format="${dump_format}" \
+    test.dataset.test.list_path="${subset_list_path}" \
+    test.dataset.test.feature_dir="${subset_feature_dir}" \
+    test.output.exp_dir="${exp_dir}/${tag}"
+done
