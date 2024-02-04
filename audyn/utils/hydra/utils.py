@@ -10,6 +10,7 @@ from torch.optim.lr_scheduler import _LRScheduler
 
 from audyn.criterion.base import BaseCriterionWrapper, MultiCriteria
 
+from ...metrics.base import StatefulMetric
 from ...models.text_to_wave import CascadeTextToWave
 from ...modules.rvq import ResidualVectorQuantizer
 from ...modules.vqvae import VectorQuantizer
@@ -495,7 +496,7 @@ def instantiate_criterion(
 
 def instantiate_metrics(
     config: Union[DictConfig, ListConfig], *args, **kwargs
-) -> Optional[nn.Module]:
+) -> Optional[StatefulMetric]:
     """Instantiate metrics.
 
     .. note::
