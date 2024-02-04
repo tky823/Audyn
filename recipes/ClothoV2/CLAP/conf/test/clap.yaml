@@ -1,0 +1,16 @@
+defaults:
+  - defaults
+  - metrics: clap
+  - override dataset: torch
+  - _self_
+
+key_mapping:
+  query:
+    - text_embedding
+  target:
+    - audio_embedding
+
+checkpoint: ??
+
+output:
+  exp_dir: "./exp"
