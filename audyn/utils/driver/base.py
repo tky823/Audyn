@@ -469,7 +469,9 @@ class BaseTrainer(BaseDriver):
         """Train model for one epoch."""
         record_config = self.config.train.record
         criterion_names = self.criterion_names(self.config.criterion)
-        mean_metrics = {criterion_name: MeanMetric() for criterion_name in criterion_names}
+        mean_metrics = {
+            criterion_name: MeanMetric(device=self.device) for criterion_name in criterion_names
+        }
         n_batch = 0
         n_remain = self.iteration_idx % len(self.loaders.train)
 
@@ -630,7 +632,9 @@ class BaseTrainer(BaseDriver):
     def validate_one_epoch(self) -> Dict[str, float]:
         """Validate model for one epoch."""
         criterion_names = self.criterion_names(self.config.criterion)
-        mean_metrics = {criterion_name: MeanMetric() for criterion_name in criterion_names}
+        mean_metrics = {
+            criterion_name: MeanMetric(device=self.device) for criterion_name in criterion_names
+        }
         n_batch = 0
 
         self.model.eval()

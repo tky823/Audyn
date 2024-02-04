@@ -135,10 +135,12 @@ class GANTrainer(BaseTrainer):
         generator_criterion_names = self.criterion_names(criterion_config.generator)
         discriminator_criterion_names = self.criterion_names(criterion_config.discriminator)
         generator_mean_metrics = {
-            criterion_name: MeanMetric() for criterion_name in generator_criterion_names
+            criterion_name: MeanMetric(device=self.device)
+            for criterion_name in generator_criterion_names
         }
         discriminator_mean_metrics = {
-            criterion_name: MeanMetric() for criterion_name in discriminator_criterion_names
+            criterion_name: MeanMetric(device=self.device)
+            for criterion_name in discriminator_criterion_names
         }
 
         n_batch = 0
@@ -457,10 +459,12 @@ class GANTrainer(BaseTrainer):
         generator_criterion_names = self.criterion_names(criterion_config.generator)
         discriminator_criterion_names = self.criterion_names(criterion_config.discriminator)
         generator_mean_metrics = {
-            criterion_name: MeanMetric() for criterion_name in generator_criterion_names
+            criterion_name: MeanMetric(device=self.device)
+            for criterion_name in generator_criterion_names
         }
         discriminator_mean_metrics = {
-            criterion_name: MeanMetric() for criterion_name in discriminator_criterion_names
+            criterion_name: MeanMetric(device=self.device)
+            for criterion_name in discriminator_criterion_names
         }
 
         n_batch = 0

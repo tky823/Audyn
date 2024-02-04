@@ -120,7 +120,9 @@ class TextToFeatTrainer(BaseTrainer):
             text_to_feat_key_mapping = key_mapping
 
         criterion_names = self.criterion_names(self.config.criterion)
-        mean_metrics = {criterion_name: MeanMetric() for criterion_name in criterion_names}
+        mean_metrics = {
+            criterion_name: MeanMetric(device=self.device) for criterion_name in criterion_names
+        }
         n_batch = 0
 
         self.model.eval()
