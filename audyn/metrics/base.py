@@ -90,6 +90,8 @@ class MultiMetrics(StatefulMetric):
     def compute(self, *args, **kwargs) -> None:
         raise NotImplementedError("compute is not supported.")
 
-    def to(self, device: Optional[torch.device] = None) -> StatefulMetric:
+    def to(self, device: Optional[torch.device] = None) -> "MultiMetrics":
         for k in self.metrics.keys():
             self.metrics[k].to(device)
+
+        return self
