@@ -53,7 +53,7 @@ class BaseMetricWrapper(StatefulMetric):
 
     def compute(self, *args, **kwargs) -> Any:
         """Compute metric by current states."""
-        self.metric.compute(*args, **kwargs)
+        return self.metric.compute(*args, **kwargs)
 
     def to(self, device: torch.device) -> StatefulMetric:
         """Change device parameter."""
