@@ -25,6 +25,9 @@ jobs:
             torch-version: "1.9.0"
           - python-version: "3.11"
             torch-version: "1.11.0"
+          - python-version: "3.11"
+            os: macos-latest
+            torch-version: "2.2.0"
           - os: windows-latest
             torch-version: "2.2.0"
     steps:
