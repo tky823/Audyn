@@ -1,15 +1,11 @@
 import os
-import uuid
 
+import pytest
 import torch
 
 
-def select_random_port(max_number: int = 2**16) -> int:
-    seed = str(uuid.uuid4())
-    seed = seed.replace("-", "")
-    seed = int(seed, 16)
-
-    return seed % max_number
+def select_random_port() -> int:
+    return pytest.random_port
 
 
 def set_ddp_environment(
