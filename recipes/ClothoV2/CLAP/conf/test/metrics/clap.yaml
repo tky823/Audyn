@@ -16,12 +16,6 @@ map_5:  # mAP@5
     _target_: audyn.metrics.crossmodal.CrossModalEmbeddingMeanAveragePrecision
     k: 5
   key_mapping: ${..map_1.key_mapping}
-medR:
-  _target_: audyn.metrics.base.BaseMetricWrapper
-  metric:
-    _target_: audyn.metrics.crossmodal.CrossModalEmbeddingMedianRank
-    mink: 1
-  key_mapping: ${..map_1.key_mapping}
 map_5:  # mAP@10
   _target_: audyn.metrics.base.BaseMetricWrapper
   metric:
