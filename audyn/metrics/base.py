@@ -84,6 +84,12 @@ class MultiMetrics(StatefulMetric):
         for k in self.metrics.keys():
             self.metrics[k].reset(*args, **kwargs)
 
+    def update(self, *args, **kwargs) -> None:
+        raise NotImplementedError("update is not supported.")
+
+    def compute(self, *args, **kwargs) -> None:
+        raise NotImplementedError("compute is not supported.")
+
     def to(self, device: Optional[torch.device] = None) -> StatefulMetric:
         for k in self.metrics.keys():
             self.metrics[k].to(device)
