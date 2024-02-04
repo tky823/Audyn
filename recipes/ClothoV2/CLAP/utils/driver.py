@@ -11,6 +11,8 @@ from tqdm import tqdm
 from utils.models.clap import CLAP
 
 from audyn.metrics import MultiMetrics, StatefulMetric
+from audyn.utils.driver.base import BaseDriver
+from audyn.utils.logging import get_logger
 
 try:
     from tqdm import tqdm  # noqa: F811
@@ -18,10 +20,6 @@ try:
     IS_TQDM_AVAILABLE = True
 except ImportError:
     IS_TQDM_AVAILABLE = False
-
-
-from audyn.utils.driver.base import BaseDriver
-from audyn.utils.logging import get_logger
 
 
 class EmbeddingSaver(BaseDriver):
