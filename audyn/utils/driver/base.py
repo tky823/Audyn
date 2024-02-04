@@ -56,11 +56,9 @@ class BaseDriver:
         if config is None:
             config = self.config.criterion
 
-        criterion_names = {
-            key for key in config.keys() if not key.startswith("_") and not key.endswith("_")
-        }
+        names = {key for key in config.keys() if not key.startswith("_") and not key.endswith("_")}
 
-        return criterion_names
+        return names
 
     def count_num_parameters(self) -> int:
         """Count number of parameters.
