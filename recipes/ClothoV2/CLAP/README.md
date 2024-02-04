@@ -59,9 +59,12 @@ model="clap_cls"  # or "clap_pool"
 
 ### Stage 3: Generate conditional audio samples
 
+Only `system=cpu` is supported in this stage.
+
 ```sh
 dump_format="torch"
 
+system="cpu"
 data="clotho-v2_mel64"  # or "clotho-v2_mel128", "clotho-v2_mel256"
 test="clap"
 model="clap_cls"  # or "clap_pool"
@@ -71,6 +74,7 @@ model="clap_cls"  # or "clap_pool"
 --stop-stage 3 \
 --tag <TAG> \
 --dump-format "${dump_format}" \
+--system "${system}" \
 --data "${data}" \
 --test "${test}" \
 --model "${model}"
