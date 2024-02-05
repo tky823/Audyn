@@ -57,7 +57,7 @@ model="clap_cls"  # or "clap_pool"
 --model "${model}"
 ```
 
-### Stage 3: Generate conditional audio samples
+### Stage 3: Evaluate retrieval results
 
 Only `system=cpu` is supported in this stage.
 
