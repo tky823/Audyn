@@ -30,12 +30,12 @@ def main(config: DictConfig) -> None:
     train_loader = instantiate(
         config.train.dataloader.train,
         train_dataset,
-        collate_fn=functools.partial(collate_fn),
+        collate_fn=functools.partial(collate_fn, random_caption=True),
     )
     validation_loader = instantiate(
         config.train.dataloader.validation,
         validation_dataset,
-        collate_fn=functools.partial(collate_fn),
+        collate_fn=functools.partial(collate_fn, random_caption=False),
     )
     loaders = BaseDataLoaders(train_loader, validation_loader)
 
@@ -71,6 +71,7 @@ def main(config: DictConfig) -> None:
 
 def collate_fn(
     batch: List[Dict[str, torch.Tensor]],
+    random_caption: bool = True,
     keys: Optional[Iterable[str]] = None,
 ) -> Dict[str, torch.Tensor]:
     """Generate dict-based batch.
@@ -78,6 +79,8 @@ def collate_fn(
     Args:
         batch (list): Single batch to be collated.
             Type of each data is expected ``Dict[str, torch.Tensor]``.
+        random_caption (bool): If ``True``, random caption is used. Otherwise,
+            first caption is used, which is useful for validation.
         keys (iterable, optional): Keys to generate batch.
             If ``None`` is given, all keys detected in ``batch`` are used.
             Default: ``None``.
@@ -90,9 +93,14 @@ def collate_fn(
         sample = batch[sample_idx]
         tokens = sample.pop("tokens")
         tokens, tokens_length = nn.utils.rnn.pad_packed_sequence(tokens, batch_first=True)
-        idx = torch.randint(0, len(tokens), ()).item()
-        sample["text"] = tokens[idx]
-        sample["text_length"] = tokens_length[idx]
+
+        if random_caption:
+            caption_idx = torch.randint(0, len(tokens), ()).item()
+        else:
+            caption_idx = 0
+
+        sample["text"] = tokens[caption_idx]
+        sample["text_length"] = tokens_length[caption_idx]
 
     dict_batch = default_collate_fn(batch, keys=keys)
     dict_batch.pop("waveform")

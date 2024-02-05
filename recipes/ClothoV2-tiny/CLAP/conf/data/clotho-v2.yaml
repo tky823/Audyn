@@ -1,1 +1,20 @@
-../../../../ClothoV2/CLAP/conf/data/clotho-v2.yaml
+defaults:
+  - defaults
+
+audio:
+  sample_rate: 44100
+spectrogram:
+  sample_rate: ${..audio.sample_rate}
+  n_fft: 2048
+  hop_length: 1024
+melspectrogram:
+  sample_rate: ${..audio.sample_rate}
+  n_fft: ${..spectrogram.n_fft}
+  hop_length: ${..spectrogram.hop_length}
+  f_min: 0
+  f_max:
+  n_mels: 64
+
+text:
+  preprocessor:
+    _target_: audyn.utils.data.clotho.ClothoTextPreprocessor

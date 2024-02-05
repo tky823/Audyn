@@ -6,6 +6,7 @@ from omegaconf import DictConfig, OmegaConf
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 
+from ...metrics import MeanMetric
 from ..clip_grad import GradClipper
 from ..data import BaseDataLoaders
 from ..hydra.utils import instantiate_model
@@ -119,7 +120,9 @@ class TextToFeatTrainer(BaseTrainer):
             text_to_feat_key_mapping = key_mapping
 
         criterion_names = self.criterion_names(self.config.criterion)
-        validation_loss = {criterion_name: 0 for criterion_name in criterion_names}
+        mean_metrics = {
+            criterion_name: MeanMetric(device=self.device) for criterion_name in criterion_names
+        }
         n_batch = 0
 
         self.model.eval()
@@ -170,9 +173,7 @@ class TextToFeatTrainer(BaseTrainer):
                 loss[criterion_name] = self.criterion[criterion_name](
                     **named_estimated[criterion_name], **named_target[criterion_name]
                 )
-                validation_loss[criterion_name] = (
-                    validation_loss[criterion_name] + loss[criterion_name].item()
-                )
+                mean_metrics[criterion_name].update(loss[criterion_name].item())
 
             self.write_validation_spectrogram_if_necessary(
                 named_output,
@@ -201,13 +202,16 @@ class TextToFeatTrainer(BaseTrainer):
 
             n_batch += 1
 
+        validation_loss = {}
+
         for criterion_name in criterion_names:
-            validation_loss[criterion_name] = validation_loss[criterion_name] / n_batch
+            loss = mean_metrics[criterion_name].compute()
+            validation_loss[criterion_name] = loss.item()
 
         return validation_loss
 
     @torch.no_grad()
-    def infer_one_batch(self) -> Dict[str, float]:
+    def infer_one_batch(self) -> None:
         """Inference using one batch."""
         if hasattr(self.config.train.key_mapping, "inference"):
             inference_key_mapping = self.config.train.key_mapping.inference

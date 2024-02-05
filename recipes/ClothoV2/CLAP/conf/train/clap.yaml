@@ -8,8 +8,10 @@ defaults:
 dataloader:
   train:
     batch_size: 64
+    drop_last: true  # for contrastive learning
   validation:
     batch_size: 64
+    drop_last: true  # for contrastive learning
 
 key_mapping:
   train:
@@ -23,6 +25,9 @@ key_mapping:
       - audio_embedding
   validation: ${.train}
   inference: ${.train}
+
+ddp_kwargs:
+  find_unused_parameters: true
 
 resume:
   continue_from:

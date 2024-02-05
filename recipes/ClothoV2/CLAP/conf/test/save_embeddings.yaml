@@ -1,0 +1,26 @@
+defaults:
+  - defaults
+  - override dataset: torch
+  - _self_
+
+key_mapping:
+  input:
+    text: text
+    audio: log_melspectrogram
+    text_length: text_length
+    audio_length: melspectrogram_length
+  output:
+    - text_embedding
+    - audio_embedding
+  save:
+    input:
+      identifier: filename
+      text: text
+    output:
+      text_embedding: text_embedding
+      audio_embedding: audio_embedding
+
+checkpoint: ??
+
+output:
+  exp_dir: "./exp"

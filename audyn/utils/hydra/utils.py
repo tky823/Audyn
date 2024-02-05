@@ -10,6 +10,7 @@ from torch.optim.lr_scheduler import _LRScheduler
 
 from audyn.criterion.base import BaseCriterionWrapper, MultiCriteria
 
+from ...metrics.base import StatefulMetric
 from ...models.text_to_wave import CascadeTextToWave
 from ...modules.rvq import ResidualVectorQuantizer
 from ...modules.vqvae import VectorQuantizer
@@ -27,6 +28,8 @@ __all__ = [
     "instantiate_optimizer",
     "instantiate_lr_scheduler",
     "instantiate_grad_clipper",
+    "instantiate_criterion",
+    "instantiate_metrics",
 ]
 
 TORCH_CLIP_GRAD_FN = ["torch.nn.utils.clip_grad_value_", "torch.nn.utils.clip_grad_norm_"]
@@ -489,3 +492,21 @@ def instantiate_criterion(
         raise TypeError(f"Invalid type of config ({type(config)}) is specified.")
 
     return criterion
+
+
+def instantiate_metrics(
+    config: Union[DictConfig, ListConfig], *args, **kwargs
+) -> Optional[StatefulMetric]:
+    """Instantiate metrics.
+
+    .. note::
+
+        ``metrics`` is under beta version.
+
+    """
+    if isinstance(config, DictConfig):
+        metrics = instantiate(config, *args, **kwargs)
+    else:
+        raise TypeError(f"Invalid type of config ({type(config)}) is specified.")
+
+    return metrics

@@ -8,6 +8,7 @@ stop_stage=-1
 
 tag=""
 continue_from=""
+checkpoint=""
 
 exp_dir="./exp"
 
@@ -21,10 +22,12 @@ system="defaults"
 preprocess="clotho-v2"
 data="clotho-v2"
 train="clap"
+test=""
 model="clap"
 optimizer="clap"
 lr_scheduler="clap"
 criterion="info_nce"
+metrics="clap"
 
 n_train=50
 n_validation=10
@@ -86,5 +89,41 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         --optimizer "${optimizer}" \
         --lr-scheduler "${lr_scheduler}" \
         --criterion "${criterion}"
+    )
+fi
+
+if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
+    echo "Stage 2: Save embeddings of text and audio"
+
+    (
+        . ./save_embeddings.sh \
+        --tag "${tag}" \
+        --checkpoint "${checkpoint}" \
+        --exp-dir "${exp_dir}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
+        --system "${system}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --test "${test}" \
+        --model "${model}"
+    )
+fi
+
+if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
+    echo "Stage 3: Test"
+
+    (
+        . ./test.sh \
+        --tag "${tag}" \
+        --exp-dir "${exp_dir}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
+        --system "${system}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --test "${test}" \
+        --model "${model}" \
+        --metrics "${metrics}"
     )
 fi

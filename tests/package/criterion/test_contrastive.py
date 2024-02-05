@@ -2,7 +2,7 @@ import copy
 import itertools
 import os
 import tempfile
-import uuid
+from datetime import timedelta
 from typing import Tuple
 
 import pytest
@@ -10,6 +10,7 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import torch.nn as nn
+from dummy.utils import select_random_port, set_ddp_environment
 from torch.optim import SGD
 
 from audyn.criterion.contrastive import (
@@ -104,10 +105,7 @@ def test_info_nce_loss_ddp(dim: int) -> None:
     """Ensure InfoNCELoss works well for DDP."""
     pytest.skip("Skip temporarily")
 
-    seed = _uuid_seed()
-    torch.manual_seed(seed)
-
-    port = str(torch.randint(0, 2**16, ()).item())
+    port = select_random_port()
     seed = 0
     world_size = 4
 
@@ -583,10 +581,7 @@ def test_inter_info_nce_loss_ddp(dim: int) -> None:
     """Ensure InterInfoNCELoss works well for DDP."""
     pytest.skip("Skip temporarily")
 
-    seed = _uuid_seed()
-    torch.manual_seed(seed)
-
-    port = str(torch.randint(0, 2**16, ()).item())
+    port = select_random_port()
     seed = 0
     world_size = 4
 
@@ -746,17 +741,9 @@ def run_info_nce_loss(
     in_channels = 8
     height, width = 6, 5
 
-    os.environ["LOCAL_RANK"] = str(rank)
-    os.environ["RANK"] = str(rank)
-    os.environ["WORLD_SIZE"] = str(world_size)
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = str(port)
+    set_ddp_environment(rank, world_size, port)
 
-    num_threads = torch.get_num_threads()
-    num_threads = max(num_threads // world_size, 1)
-    torch.set_num_threads(num_threads)
-
-    dist.init_process_group(backend="gloo")
+    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
     torch.manual_seed(seed)
 
     g = torch.Generator()
@@ -793,17 +780,9 @@ def run_intra_info_nce_loss(
 ) -> None:
     length = 5
 
-    os.environ["LOCAL_RANK"] = str(rank)
-    os.environ["RANK"] = str(rank)
-    os.environ["WORLD_SIZE"] = str(world_size)
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = str(port)
+    set_ddp_environment(rank, world_size, port)
 
-    num_threads = torch.get_num_threads()
-    num_threads = max(num_threads // world_size, 1)
-    torch.set_num_threads(num_threads)
-
-    dist.init_process_group(backend="gloo")
+    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
     torch.manual_seed(seed)
 
     g = torch.Generator()
@@ -884,11 +863,3 @@ def update_intra_info_nce_modules(
         optimizer.step()
 
     return loss
-
-
-def _uuid_seed(vmax: int = 2**16) -> int:
-    seed = str(uuid.uuid4())
-    seed = seed.replace("-", "")
-    seed = int(seed, 16)
-
-    return seed % vmax

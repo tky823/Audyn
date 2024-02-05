@@ -1,0 +1,8 @@
+defaults:
+  - clotho-v2
+
+spectrogram:
+  n_fft: 1024
+  hop_length: 256
+melspectrogram:
+  n_mels: 64

@@ -24,6 +24,9 @@ key_mapping:
   validation: ${.train}
   inference: ${.train}
 
+ddp_kwargs:
+  find_unused_parameters: true
+
 resume:
   continue_from:
 

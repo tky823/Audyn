@@ -43,7 +43,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
         preprocess="${preprocess}" \
         data="${data}" \
-        preprocess.captions_path="${clotho_root}/clotho_captions_${raw_subset}.csv" \
+        preprocess.captions_path="${csv_path}" \
         preprocess.text_dir="${text_dir}/${subset}"
     done
 fi
@@ -67,7 +67,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
         preprocess="${preprocess}" \
         preprocess.list_path="${list_dir}/${subset}.txt" \
-        preprocess.captions_path="${clotho_root}/clotho_captions_${raw_subset}.csv"
+        preprocess.captions_path="${csv_path}"
     done
 fi
 
