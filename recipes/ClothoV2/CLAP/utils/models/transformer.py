@@ -135,6 +135,7 @@ class TextTransformer(_Transformer):
         nhead: int,
         num_layers: int = 6,
         batch_first: bool = True,
+        sequence_dropout: float = 0.0,
         aggregation: str = "cls",
     ) -> None:
         super().__init__()
@@ -155,6 +156,7 @@ class TextTransformer(_Transformer):
 
         self.embedding_dim = embedding_dim
         self.batch_first = batch_first
+        self.sequence_dropout = sequence_dropout
         self.aggregation = aggregation
 
         self._reset_parameters()
@@ -164,7 +166,19 @@ class TextTransformer(_Transformer):
         input: torch.LongTensor,
         length: Optional[torch.LongTensor] = None,
     ) -> torch.Tensor:
+        sequence_dropout = self.sequence_dropout
+
         x = self.word_embedding(input)
+
+        if sequence_dropout > 0:
+            factory_kwargs = {
+                "dtype": input.dtype,
+                "device": input.device,
+            }
+            ones = torch.ones(x.size()[:2], **factory_kwargs)
+            non_padding_mask = F.dropout(ones, p=sequence_dropout, training=self.training)
+            x = x * non_padding_mask.unsqueeze(dim=-1)
+
         output = self.transformer_forward(x, length=length)
 
         return output
@@ -178,6 +192,7 @@ class AudioTransformer(_Transformer):
         num_layers: int = 6,
         batch_first: bool = True,
         channels_last: bool = True,
+        sequence_dropout: float = 0.0,
         aggregation: str = "cls",
     ) -> None:
         super().__init__()
@@ -198,6 +213,7 @@ class AudioTransformer(_Transformer):
         self.embedding_dim = embedding_dim
         self.channels_last = channels_last
         self.batch_first = batch_first
+        self.sequence_dropout = sequence_dropout
         self.aggregation = aggregation
 
         if (not batch_first) and (not channels_last):
@@ -210,9 +226,22 @@ class AudioTransformer(_Transformer):
         input: torch.LongTensor,
         length: Optional[torch.LongTensor] = None,
     ) -> torch.Tensor:
-        if not self.channels_last:
-            input = input.transpose(-2, -1).contiguous()
+        sequence_dropout = self.sequence_dropout
 
-        output = self.transformer_forward(input, length=length)
+        if self.channels_last:
+            x = input
+        else:
+            x = input.transpose(-2, -1).contiguous()
+
+        if sequence_dropout > 0:
+            factory_kwargs = {
+                "dtype": input.dtype,
+                "device": input.device,
+            }
+            ones = torch.ones(x.size()[:2], **factory_kwargs)
+            non_padding_mask = F.dropout(ones, p=sequence_dropout, training=self.training)
+            x = x * non_padding_mask.unsqueeze(dim=-1)
+
+        output = self.transformer_forward(x, length=length)
 
         return output
