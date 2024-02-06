@@ -1,0 +1,1 @@
+../../ClothoV2/CLAP/train_text_tower.sh

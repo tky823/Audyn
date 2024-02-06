@@ -21,12 +21,12 @@ dump_format="torch"
 system="defaults"
 preprocess="clotho-v2"
 data="clotho-v2"
-train="clap"
+train=""
 test=""
-model="clap"
-optimizer="clap"
-lr_scheduler="clap"
-criterion="info_nce"
+model=""
+optimizer=""
+lr_scheduler=""
+criterion=""
 metrics="clap"
 
 n_train=50
@@ -68,6 +68,27 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
         --n-train ${n_train} \
         --n-validation ${n_validation} \
         --n-test ${n_test}
+    )
+fi
+
+if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
+    echo "Stage 1: Pretraining text encoder"
+
+    (
+        . ./train_text_tower.sh \
+        --tag "${tag}" \
+        --continue-from "${continue_from}" \
+        --exp-dir "${exp_dir}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
+        --system "${system}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --train "${train}" \
+        --model "${model}" \
+        --optimizer "${optimizer}" \
+        --lr-scheduler "${lr_scheduler}" \
+        --criterion "${criterion}"
     )
 fi
 
