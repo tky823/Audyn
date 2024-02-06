@@ -18,3 +18,4 @@ melspectrogram:
 text:
   preprocessor:
     _target_: audyn.utils.data.clotho.ClothoTextPreprocessor
+    include_mask_token: true
