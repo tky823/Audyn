@@ -16,6 +16,7 @@ melspectrogram:
   n_mels: 64
 
 text:
+  ignore_index: -1
   selection_rate: 0.15
   mask_rate: 0.8
   replace_rate: 0.1
