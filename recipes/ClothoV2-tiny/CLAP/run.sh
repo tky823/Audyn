@@ -75,7 +75,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
     echo "Stage 3: Training CLAP"
 
     (
-        . ./train.sh \
+        . ./train_clap.sh \
         --tag "${tag}" \
         --continue-from "${continue_from}" \
         --exp-dir "${exp_dir}" \

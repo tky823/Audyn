@@ -34,7 +34,7 @@ cmd=$(
     system="${system}"
 )
 
-${cmd} ./local/train.py \
+${cmd} ./local/train_clap.py \
 --config-dir "./conf" \
 hydra.run.dir="${exp_dir}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
 system="${system}" \
