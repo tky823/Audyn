@@ -32,6 +32,7 @@ def main(config: DictConfig) -> None:
 
     collate_fn_kwargs = {
         "vocab_size": text_preprocessor.vocab_size,
+        "ignore_index": text_config.ignore_index,
         "mask_index": text_preprocessor.mask_index,
         "selection_rate": text_config.selection_rate,
         "mask_rate": text_config.mask_rate,
@@ -93,6 +94,7 @@ def collate_fn(
     random_caption: bool = True,
     vocab_size: int = None,
     mask_index: int = None,
+    ignore_index: int = -1,
     selection_rate: float = 0.15,
     mask_rate: float = 0.8,
     replace_rate: float = 0.1,
@@ -150,16 +152,24 @@ def collate_fn(
         masking_mask = selection_mask & (rand_value < mask_rate)
         replacement_mask = selection_mask & ((1 - rand_value) < replace_rate)
         replacement_index = torch.randint(0, vocab_size, text.size())
+        keeping_mask = torch.logical_not(selection_mask)
 
         masking_mask = masking_mask.to(device)
         replacement_mask = replacement_mask.to(device)
         replacement_index = replacement_index.to(device)
+        keeping_mask = keeping_mask.to(device)
 
         masked_text = torch.where(masking_mask, mask_index, text)
         masked_text = torch.where(replacement_mask, replacement_index, masked_text)
 
+        # Tokens where index is larger than that of mask is shifted because target
+        # does not include mask.
+        target_text = torch.where(text > mask_index, text - 1, text)
+        target_text = target_text.masked_fill(keeping_mask, ignore_index)
+
         sample["text"] = text
         sample["masked_text"] = masked_text
+        sample["target_text"] = target_text
         sample["text_length"] = text_length
 
     dict_batch = default_collate_fn(batch, keys=keys)
