@@ -10,10 +10,14 @@ __all__ = ["vocab_size", "ClothoTextNormalizer", "ClothoTextTokenizer", "ClothoT
 
 
 class ClothoTextPreprocessor(TextPreprocessor):
-    def __init__(self, root: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        root: Optional[str] = None,
+        include_mask_token: bool = False,
+    ) -> None:
         normalizer = ClothoTextNormalizer()
         tokenizer = ClothoTextTokenizer()
-        indexer = ClothoTextIndexer(root)
+        indexer = ClothoTextIndexer(root, include_mask_token=include_mask_token)
 
         super().__init__(
             normalizer=normalizer,

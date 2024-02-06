@@ -6,7 +6,7 @@ from torchtext.vocab import build_vocab_from_iterator
 from .....utils import audyn_cache_dir
 from .....utils.github import download_file_from_github_release
 from ....text.indexing import BaseTextIndexer
-from .symbols import BOS_SYMBOL, EOS_SYMBOL, vocab_size
+from .symbols import BOS_SYMBOL, EOS_SYMBOL, MASK_SYMBOL, vocab_size
 
 __all__ = ["ClothoTextIndexer"]
 
@@ -19,7 +19,11 @@ class ClothoTextIndexer(BaseTextIndexer):
         "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev1/clotho-v2-vocab.txt"
     ]
 
-    def __init__(self, root: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        root: Optional[str] = None,
+        include_mask_token: bool = False,
+    ) -> None:
         super().__init__()
 
         if root is None:
@@ -38,11 +42,21 @@ class ClothoTextIndexer(BaseTextIndexer):
 
                 break
 
-        self.vocab = build_vocab_from_iterator(self.build_vocab(path))
+        specials = [BOS_SYMBOL, EOS_SYMBOL]
+
+        if include_mask_token:
+            specials.insert(0, MASK_SYMBOL)
+
+        self.vocab = build_vocab_from_iterator(
+            self.build_vocab(path, include_mask_token=include_mask_token),
+            specials=specials,
+        )
+
+        actual_vocab_size = vocab_size + 1 if include_mask_token else vocab_size
 
         assert (
-            len(self.vocab) == vocab_size
-        ), f"Vocab size is expected {vocab_size}, but {len(self.vocab)} is given."
+            len(self.vocab) == actual_vocab_size
+        ), f"Vocab size is expected {actual_vocab_size}, but {len(self.vocab)} is given."
 
     def index(
         self,
@@ -76,7 +90,13 @@ class ClothoTextIndexer(BaseTextIndexer):
         return phonemes
 
     @staticmethod
-    def build_vocab(path: str) -> Iterable[List[str]]:
+    def build_vocab(
+        path: str,
+        include_mask_token: bool = False,
+    ) -> Iterable[List[str]]:
         with open(path) as f:
             for line in f:
                 yield [line.strip()]
+
+        if include_mask_token:
+            yield [MASK_SYMBOL]
