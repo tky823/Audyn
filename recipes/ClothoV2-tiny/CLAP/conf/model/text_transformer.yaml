@@ -1,0 +1,12 @@
+_target_: utils.models.transformer.TransformerWrapper
+backbone:
+  _target_: utils.models.transformer.TextTransformer
+  vocab_size: ${const:audyn.utils.data.clotho.vocab_size + 1}
+  embedding_dim: 64
+  nhead: 2
+  num_layers: 2
+  batch_first: true
+out_proj:
+  _target_: torch.nn.Linear
+  in_features: ${..backbone.embedding_dim}
+  out_features: ${const:audyn.utils.data.clotho.vocab_size}
