@@ -16,7 +16,7 @@ data="clotho-v2_mel64"  # or "clotho-v2_mel128", "clotho-v2_mel256"
 --data "${data}"
 ```
 
-### Stage 1: Train CLAP
+### Stage 3: Train CLAP
 
 ```sh
 dump_format="torch"
@@ -26,8 +26,8 @@ train="clap"
 model="clap_cls"  # or "clap_pool"
 
 . ./run.sh \
---stage 1 \
---stop-stage 1 \
+--stage 3 \
+--stop-stage 3 \
 --tag <TAG> \
 --dump-format "${dump_format}" \
 --data "${data}" \
@@ -35,7 +35,7 @@ model="clap_cls"  # or "clap_pool"
 --model "${model}"
 ```
 
-### Stage 2: Save text and audio embeddings of CLAP
+### Stage 4: Save text and audio embeddings of CLAP
 
 ```sh
 dump_format="torch"
@@ -47,8 +47,8 @@ test="save_embeddings"
 model="clap_cls"  # or "clap_pool"
 
 . ./run.sh \
---stage 2 \
---stop-stage 2 \
+--stage 4 \
+--stop-stage 4 \
 --tag <TAG> \
 --dump-format "${dump_format}" \
 --checkpoint "${checkpoint}" \
@@ -57,7 +57,7 @@ model="clap_cls"  # or "clap_pool"
 --model "${model}"
 ```
 
-### Stage 3: Evaluate retrieval results
+### Stage 5: Evaluate retrieval results
 
 Only `system=cpu` is supported in this stage.
 
@@ -70,8 +70,8 @@ test="clap"
 model="clap_cls"  # or "clap_pool"
 
 . ./run.sh \
---stage 3 \
---stop-stage 3 \
+--stage 5 \
+--stop-stage 5 \
 --tag <TAG> \
 --dump-format "${dump_format}" \
 --system "${system}" \

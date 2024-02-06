@@ -71,8 +71,8 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
     )
 fi
 
-if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
-    echo "Stage 1: Training"
+if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
+    echo "Stage 3: Training CLAP"
 
     (
         . ./train.sh \
@@ -92,8 +92,8 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     )
 fi
 
-if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
-    echo "Stage 2: Save embeddings of text and audio"
+if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
+    echo "Stage 4: Save embeddings of text and audio"
 
     (
         . ./save_embeddings.sh \
@@ -110,8 +110,8 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     )
 fi
 
-if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
-    echo "Stage 3: Test"
+if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
+    echo "Stage 5: Test"
 
     (
         . ./test.sh \
