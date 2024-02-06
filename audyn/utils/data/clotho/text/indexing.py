@@ -89,6 +89,17 @@ class ClothoTextIndexer(BaseTextIndexer):
 
         return phonemes
 
+    @property
+    def vocab_size(self) -> int:
+        return len(self.vocab)
+
+    @property
+    def mask_index(self) -> int:
+        if MASK_SYMBOL not in self.vocab:
+            raise ValueError("mask_index is not included in vocab.")
+
+        return self.vocab[MASK_SYMBOL]
+
     @staticmethod
     def build_vocab(
         path: str,

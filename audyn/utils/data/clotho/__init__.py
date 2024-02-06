@@ -10,6 +10,8 @@ __all__ = ["vocab_size", "ClothoTextNormalizer", "ClothoTextTokenizer", "ClothoT
 
 
 class ClothoTextPreprocessor(TextPreprocessor):
+    indexer: ClothoTextIndexer
+
     def __init__(
         self,
         root: Optional[str] = None,
@@ -25,3 +27,11 @@ class ClothoTextPreprocessor(TextPreprocessor):
             phonemizer=None,
             indexer=indexer,
         )
+
+    @property
+    def vocab_size(self) -> int:
+        return self.indexer.vocab_size
+
+    @property
+    def mask_index(self) -> int:
+        return self.indexer.mask_index
