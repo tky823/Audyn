@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 
 import torch
 import torch.nn as nn
@@ -59,16 +59,41 @@ class _Transformer(nn.Module):
 
         padding_mask = F.pad(padding_mask, (1, 0), value=False)
 
-        x = self.backbone(x, src_key_padding_mask=padding_mask)
-
-        output = self.aggregate(x, length=length)
+        output = self.backbone(x, src_key_padding_mask=padding_mask)
 
         return output
 
-    def aggregate(
+    def _reset_parameters(self) -> None:
+        self.cls_embedding.data.normal_()
+
+
+class SequenceAggregator(nn.Module):
+    """Wrapper of transformer to aggregate sequence feature.
+
+    Args:
+        backbone (nn.Module): Backbone transformer module.
+        batch_first (bool): Whether to batch dimension is first or not.
+        aggregation (str): Aggregation type.
+
+    """
+
+    def __init__(
         self,
-        input: torch.Tensor,
-        length: Optional[torch.LongTensor] = None,
+        backbone: nn.Module,
+        batch_first: bool = True,
+        aggregation: str = "pool",
+    ) -> None:
+        super().__init__()
+
+        self.backbone = backbone
+
+        self.batch_first = batch_first
+        self.aggregation = aggregation
+
+    def forward(
+        self,
+        input: Union[torch.LongTensor, torch.Tensor],
+        length: Optional[torch.BoolTensor] = None,
     ) -> torch.Tensor:
         """Aggregate sequence feature.
 
@@ -123,8 +148,32 @@ class _Transformer(nn.Module):
 
         return output
 
-    def _reset_parameters(self) -> None:
-        self.cls_embedding.data.normal_()
+
+class TransformerWrapper(nn.Module):
+    def __init__(
+        self,
+        backbone: _Transformer,
+        out_proj: nn.Linear,
+    ) -> None:
+        super().__init__()
+
+        if isinstance(backbone, _Transformer):
+            pass
+        else:
+            raise ValueError(f"{type(backbone)} is not supported as backbone.")
+
+        self.backbone = backbone
+        self.out_proj = out_proj
+
+    def forward(
+        self,
+        input: Union[torch.LongTensor, torch.Tensor],
+        length: Optional[torch.BoolTensor] = None,
+    ) -> torch.Tensor:
+        x = self.backbone(input, length=length)
+        output = self.out_proj(x)
+
+        return output
 
 
 class TextTransformer(_Transformer):
@@ -136,11 +185,8 @@ class TextTransformer(_Transformer):
         num_layers: int = 6,
         batch_first: bool = True,
         sequence_dropout: float = 0.0,
-        aggregation: str = "cls",
     ) -> None:
         super().__init__()
-
-        assert aggregation in available_aggregations
 
         encoder_layer = nn.TransformerEncoderLayer(
             embedding_dim,
@@ -157,7 +203,6 @@ class TextTransformer(_Transformer):
         self.embedding_dim = embedding_dim
         self.batch_first = batch_first
         self.sequence_dropout = sequence_dropout
-        self.aggregation = aggregation
 
         self._reset_parameters()
 
@@ -193,11 +238,8 @@ class AudioTransformer(_Transformer):
         batch_first: bool = True,
         channels_last: bool = True,
         sequence_dropout: float = 0.0,
-        aggregation: str = "cls",
     ) -> None:
         super().__init__()
-
-        assert aggregation in available_aggregations
 
         encoder_layer = nn.TransformerEncoderLayer(
             embedding_dim,
@@ -214,7 +256,6 @@ class AudioTransformer(_Transformer):
         self.channels_last = channels_last
         self.batch_first = batch_first
         self.sequence_dropout = sequence_dropout
-        self.aggregation = aggregation
 
         if (not batch_first) and (not channels_last):
             raise ValueError("Either of batch_first or channels_last should be True.")
