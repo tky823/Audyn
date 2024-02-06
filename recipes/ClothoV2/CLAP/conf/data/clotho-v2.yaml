@@ -16,6 +16,9 @@ melspectrogram:
   n_mels: ??
 
 text:
+  selection_rate: 0.15
+  mask_rate: 0.8
+  replace_rate: 0.1
   preprocessor:
     _target_: audyn.utils.data.clotho.ClothoTextPreprocessor
     include_mask_token: true
