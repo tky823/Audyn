@@ -7,9 +7,9 @@ defaults:
 
 dataloader:
   train:
-    batch_size: 64
+    batch_size: 128
   validation:
-    batch_size: 64
+    batch_size: 128
 
 key_mapping:
   train:
