@@ -24,9 +24,9 @@ dump_format="torch"
 data="clotho-v2_mel64"  # or "clotho-v2_mel128", "clotho-v2_mel256"
 train="text_transformer"
 model="text_transformer"
-criterion="text_mlm"
 optimizer="text_transformer"
 lr_scheduler="text_transformer"
+criterion="text_mlm"
 
 . ./run.sh \
 --stage 1 \
@@ -49,9 +49,9 @@ dump_format="torch"
 data="clotho-v2_mel64"  # or "clotho-v2_mel128", "clotho-v2_mel256"
 train="audio_transformer"
 model="audio_transformer"
-criterion="audio_mlm"
 optimizer="audio_transformer"
 lr_scheduler="audio_transformer"
+criterion="audio_mlm"
 
 . ./run.sh \
 --stage 2 \
