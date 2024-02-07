@@ -232,6 +232,7 @@ class TextTransformer(_Transformer):
 class AudioTransformer(_Transformer):
     def __init__(
         self,
+        in_channels: int,
         embedding_dim: int,
         nhead: int,
         num_layers: int = 6,
@@ -249,6 +250,7 @@ class AudioTransformer(_Transformer):
         )
 
         self.cls_embedding = nn.Parameter(torch.empty((embedding_dim,)))
+        self.linear = nn.Linear(in_channels, embedding_dim)
         self.positional_encoding = AbsolutePositionalEncoding(batch_first=batch_first)
         self.backbone = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
@@ -283,6 +285,7 @@ class AudioTransformer(_Transformer):
             non_padding_mask = F.dropout(ones, p=sequence_dropout, training=self.training)
             x = x * non_padding_mask.unsqueeze(dim=-1)
 
+        x = self.linear(x)
         output = self.transformer_forward(x, length=length)
 
         return output
