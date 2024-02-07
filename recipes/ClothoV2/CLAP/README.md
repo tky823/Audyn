@@ -16,6 +16,56 @@ data="clotho-v2_mel64"  # or "clotho-v2_mel128", "clotho-v2_mel256"
 --data "${data}"
 ```
 
+### Stage 1: Train text tower
+
+```sh
+dump_format="torch"
+
+data="clotho-v2_mel64"  # or "clotho-v2_mel128", "clotho-v2_mel256"
+train="text_transformer"
+model="text_transformer"
+criterion="text_mlm"
+optimizer="text_transformer"
+lr_scheduler="text_transformer"
+
+. ./run.sh \
+--stage 1 \
+--stop-stage 1 \
+--tag <TAG> \
+--dump-format "${dump_format}" \
+--data "${data}" \
+--train "${train}" \
+--model "${model}" \
+--optimizer "${optimizer}" \
+--lr-scheduler "${lr_scheduler}" \
+--criterion "${criterion}"
+```
+
+### Stage 2: Train Audio tower
+
+```sh
+dump_format="torch"
+
+data="clotho-v2_mel64"  # or "clotho-v2_mel128", "clotho-v2_mel256"
+train="audio_transformer"
+model="audio_transformer"
+criterion="audio_mlm"
+optimizer="audio_transformer"
+lr_scheduler="audio_transformer"
+
+. ./run.sh \
+--stage 2 \
+--stop-stage 2 \
+--tag <TAG> \
+--dump-format "${dump_format}" \
+--data "${data}" \
+--train "${train}" \
+--model "${model}" \
+--optimizer "${optimizer}" \
+--lr-scheduler "${lr_scheduler}" \
+--criterion "${criterion}"
+```
+
 ### Stage 3: Train CLAP
 
 ```sh
@@ -24,6 +74,9 @@ dump_format="torch"
 data="clotho-v2_mel64"  # or "clotho-v2_mel128", "clotho-v2_mel256"
 train="clap"
 model="clap_cls"  # or "clap_pool"
+criterion="clap"
+optimizer="clap"
+lr_scheduler="clap"
 
 . ./run.sh \
 --stage 3 \
