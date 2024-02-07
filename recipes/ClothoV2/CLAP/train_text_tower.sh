@@ -15,7 +15,7 @@ train="text_tower"
 model="text_tower"
 optimizer="text_tower"
 lr_scheduler="text_tower"
-criterion="text_tower"
+criterion="text_mlm"
 
 . ../../_common/parse_options.sh || exit 1;
 
