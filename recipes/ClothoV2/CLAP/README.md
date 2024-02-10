@@ -51,7 +51,7 @@ train="audio_transformer"
 model="audio_transformer"
 optimizer="audio_transformer"
 lr_scheduler="audio_transformer"
-criterion="audio_mlm"
+criterion="audio_mpm"
 
 . ./run.sh \
 --stage 2 \
