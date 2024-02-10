@@ -71,6 +71,9 @@ criterion="audio_mpm"
 ```sh
 dump_format="torch"
 
+text_tower_checkpoint="<PATH/TO/PRETRAINED/TEXT/TOWER>"
+audio_tower_checkpoint="<PATH/TO/PRETRAINED/AUDIO/TOWER>"
+
 data="clotho-v2_mel64"  # or "clotho-v2_mel128", "clotho-v2_mel256"
 train="clap"
 model="clap_cls"  # or "clap_pool"
@@ -83,9 +86,14 @@ lr_scheduler="clap"
 --stop-stage 3 \
 --tag <TAG> \
 --dump-format "${dump_format}" \
+--text-tower-checkpoint "${text_tower_checkpoint}" \
+--audio-tower-checkpoint "${audio_tower_checkpoint}" \
 --data "${data}" \
 --train "${train}" \
---model "${model}"
+--model "${model}" \
+--optimizer "${optimizer}" \
+--lr-scheduler "${lr_scheduler}" \
+--criterion "${criterion}"
 ```
 
 ### Stage 4: Save text and audio embeddings of CLAP
