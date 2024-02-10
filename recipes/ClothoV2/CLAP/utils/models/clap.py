@@ -42,6 +42,18 @@ class CLAP(nn.Module):
 
         return text_embedding, audio_embedding
 
+    def no_aggregation_forward(
+        self,
+        text: torch.LongTensor,
+        audio: torch.Tensor,
+        text_length: Optional[torch.LongTensor] = None,
+        audio_length: Optional[torch.LongTensor] = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        text_output = self.text_tower.no_aggregation_forward(text, length=text_length)
+        audio_output = self.audio_tower.no_aggregation_forward(audio, length=audio_length)
+
+        return text_output, audio_output
+
 
 class ModalTransformerTower(nn.Module):
     """Base class of TransformerTower."""
