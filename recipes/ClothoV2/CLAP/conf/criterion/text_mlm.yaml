@@ -9,6 +9,6 @@ cross_entropy:
   key_mapping:
     estimated:
       input: log_probs
-    target:
       target: target_text
+    target:
       length: text_length
