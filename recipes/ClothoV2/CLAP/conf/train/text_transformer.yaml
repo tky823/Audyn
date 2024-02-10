@@ -14,9 +14,11 @@ dataloader:
 key_mapping:
   train:
     input:
-      input: masked_text
+      input: text
       length: text_length
-    output: log_probs
+    output:
+      - log_probs
+      - target_text
   validation: ${.train}
   inference: ${.train}
 
