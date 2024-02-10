@@ -1,12 +1,14 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
+from utils.models.aggregator import Aggregator
 from utils.models.transformer import (
     AudioTransformerBackbone,
     AudioTransformerMaskedPatchModelBackbone,
     TextTransformerBackbone,
     TextTransformerMaskedLanguageModelBackbone,
+    TransformerBackbone,
 )
 
 
@@ -34,23 +36,24 @@ class CLAP(nn.Module):
         return text_embedding, audio_embedding
 
 
-class TextTransformerTower(nn.Module):
+class ModalTransformerTower(nn.Module):
+    """Base class of TransformerTower."""
+
     def __init__(
         self,
-        backbone: TextTransformerBackbone,
-        aggregator: nn.Module,
+        backbone: TransformerBackbone,
+        aggregator: Aggregator,
     ) -> None:
         super().__init__()
 
-        assert isinstance(backbone, TextTransformerBackbone)
-        assert not isinstance(backbone, TextTransformerMaskedLanguageModelBackbone)
+        assert isinstance(backbone, TransformerBackbone)
 
         self.backbone = backbone
         self.aggregator = aggregator
 
     def forward(
         self,
-        input: torch.LongTensor,
+        input: Union[torch.Tensor, torch.LongTensor],
         length: Optional[torch.LongTensor] = None,
     ) -> torch.Tensor:
         x = self.backbone(input, length=length)
@@ -60,7 +63,7 @@ class TextTransformerTower(nn.Module):
 
     def no_aggregation_forward(
         self,
-        input: torch.LongTensor,
+        input: torch.Tensor,
         length: Optional[torch.LongTensor] = None,
     ) -> torch.Tensor:
         batch_first = self.backbone.batch_first
@@ -78,45 +81,23 @@ class TextTransformerTower(nn.Module):
         return output
 
 
-class AudioTransformerTower(nn.Module):
+class TextTransformerTower(ModalTransformerTower):
+    def __init__(
+        self,
+        backbone: TextTransformerBackbone,
+        aggregator: Aggregator,
+    ) -> None:
+        super().__init__(backbone, aggregator)
+
+        assert not isinstance(backbone, TextTransformerMaskedLanguageModelBackbone)
+
+
+class AudioTransformerTower(ModalTransformerTower):
     def __init__(
         self,
         backbone: AudioTransformerBackbone,
-        aggregator: nn.Module,
+        aggregator: Aggregator,
     ) -> None:
-        super().__init__()
+        super().__init__(backbone, aggregator)
 
-        assert isinstance(backbone, AudioTransformerBackbone)
         assert not isinstance(backbone, AudioTransformerMaskedPatchModelBackbone)
-
-        self.backbone = backbone
-        self.aggregator = aggregator
-
-    def forward(
-        self,
-        input: torch.Tensor,
-        length: Optional[torch.LongTensor] = None,
-    ) -> torch.Tensor:
-        x = self.backbone(input, length=length)
-        output = self.aggregator(x)
-
-        return output
-
-    def no_aggregation_forward(
-        self,
-        input: torch.Tensor,
-        length: Optional[torch.LongTensor] = None,
-    ) -> torch.Tensor:
-        batch_first = self.backbone.batch_first
-
-        x = self.backbone(input, length=length)
-
-        if batch_first:
-            dim = 1
-        else:
-            dim = 0
-
-        max_length = x.size(dim) - 1
-        _, output = torch.split(x, [1, max_length], dim=dim)
-
-        return output
