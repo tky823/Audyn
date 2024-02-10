@@ -1,15 +1,22 @@
+import importlib
+from collections import OrderedDict
 from typing import Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
+from omegaconf import OmegaConf
 from utils.models.aggregator import Aggregator
 from utils.models.transformer import (
     AudioTransformerBackbone,
+    AudioTransformerMaskedPatchModel,
     AudioTransformerMaskedPatchModelBackbone,
     TextTransformerBackbone,
+    TextTransformerMaskedLanguageModel,
     TextTransformerMaskedLanguageModelBackbone,
     TransformerBackbone,
 )
+
+from audyn.utils import instantiate_model
 
 
 class CLAP(nn.Module):
@@ -83,6 +90,100 @@ class ModalTransformerTower(nn.Module):
         output = self.out_proj(x)
 
         return output
+
+    @classmethod
+    def build_from_pretrained(
+        cls,
+        path: str,
+        aggregation: str,
+        out_channels: Optional[int] = None,
+    ) -> "ModalTransformerTower":
+        state_dict = torch.load(path, map_location=lambda storage, loc: storage)
+        resolved_config = state_dict["resolved_config"]
+        resolved_config = OmegaConf.create(resolved_config)
+        model_state_dict = state_dict["model"]
+
+        mod_name, var_name = resolved_config.model._target_.rsplit(".", maxsplit=1)
+        saved_cls = getattr(importlib.import_module(mod_name), var_name)
+
+        if saved_cls is ModalTransformerTower:
+            model = instantiate_model(resolved_config.model)
+        elif saved_cls is TextTransformerMaskedLanguageModel:
+            required_keys = {
+                "vocab_size",
+                "embedding_dim",
+                "nhead",
+            }
+            optional_keys = {
+                "num_layers",
+                "batch_first",
+            }
+            backbone_config = {"_target_": "utils.models.transformer.TextTransformerBackbone"}
+
+            for key in required_keys:
+                backbone_config[key] = resolved_config.model.backbone[key]
+
+            for key in optional_keys:
+                if key in resolved_config.model.backbone:
+                    backbone_config[key] = resolved_config.model.backbone[key]
+
+            backbone_config = OmegaConf.create(backbone_config)
+            model: TextTransformerBackbone = instantiate_model(backbone_config)
+        elif saved_cls is AudioTransformerMaskedPatchModel:
+            required_keys = {
+                "in_channels",
+                "embedding_dim",
+                "frames_per_patch",
+                "nhead",
+            }
+            optional_keys = {
+                "num_layers",
+                "batch_first",
+                "channels_last",
+            }
+            backbone_config = {"_target_": "utils.models.transformer.AudioTransformerBackbone"}
+
+            for key in required_keys:
+                backbone_config[key] = resolved_config.model.backbone[key]
+
+            for key in optional_keys:
+                if key in resolved_config.model.backbone:
+                    backbone_config[key] = resolved_config.model.backbone[key]
+
+            backbone_config = OmegaConf.create(backbone_config)
+            model: AudioTransformerBackbone = instantiate_model(backbone_config)
+        else:
+            raise ValueError(f"Unsupported {saved_cls} is detected.")
+
+        if isinstance(model, (TextTransformerBackbone, AudioTransformerBackbone)):
+            backbone: Union[TextTransformerBackbone, AudioTransformerBackbone] = model
+
+            batch_first = backbone.batch_first
+            aggregator = Aggregator(batch_first=batch_first, aggregation=aggregation)
+
+            if out_channels is None:
+                raise ValueError("out_channels is required.")
+            else:
+                prefix = "backbone."
+                backbone_state_dict = OrderedDict()
+
+                for key in list(model_state_dict.keys()):
+                    if key.startswith(prefix):
+                        backbone_key = key[len(prefix) :]
+                        backbone_state_dict[backbone_key] = model_state_dict[key]
+                    else:
+                        model_state_dict.pop(key)
+
+                backbone.load_state_dict(backbone_state_dict)
+                embedding_dim = backbone.embedding_dim
+                out_proj = nn.Linear(embedding_dim, out_channels)
+
+            model = cls(backbone, aggregator, out_proj)
+        else:
+            model: ModalTransformerTower
+            model.load_state_dict(model_state_dict)
+
+        return model
 
 
 class TextTransformerTower(ModalTransformerTower):
