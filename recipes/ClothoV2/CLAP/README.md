@@ -101,7 +101,7 @@ lr_scheduler="clap"
 ```sh
 dump_format="torch"
 
-checkpoint="<PATH/TO/PRETRAINED/CLAP>"
+clap_checkpoint="<PATH/TO/PRETRAINED/CLAP>"
 
 data="clotho-v2_mel64"  # or "clotho-v2_mel128", "clotho-v2_mel256"
 test="save_embeddings"
@@ -112,7 +112,7 @@ model="clap_cls"  # or "clap_pool"
 --stop-stage 4 \
 --tag <TAG> \
 --dump-format "${dump_format}" \
---checkpoint "${checkpoint}" \
+--clap-checkpoint "${clap_checkpoint}" \
 --data "${data}" \
 --test "${test}" \
 --model "${model}"

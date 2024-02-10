@@ -10,7 +10,7 @@ tag=""
 continue_from=""
 text_tower_checkpoint=""
 audio_tower_checkpoint=""
-checkpoint=""
+clap_checkpoint=""
 
 exp_dir="./exp"
 
@@ -137,7 +137,7 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
     (
         . ./save_embeddings.sh \
         --tag "${tag}" \
-        --checkpoint "${checkpoint}" \
+        --checkpoint "${clap_checkpoint}" \
         --exp-dir "${exp_dir}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
