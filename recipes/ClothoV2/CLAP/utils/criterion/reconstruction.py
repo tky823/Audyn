@@ -11,7 +11,10 @@ class ReconstructionLoss(nn.Module):
         self.reduction = reduction
 
     def forward(
-        self, input: torch.Tensor, target: torch.Tensor, length: Optional[torch.LongTensor] = None
+        self,
+        input: torch.Tensor,
+        target: torch.Tensor,
+        length: Optional[torch.LongTensor] = None,
     ) -> torch.Tensor:
         """Forward pass of ReconstructionLoss.
 

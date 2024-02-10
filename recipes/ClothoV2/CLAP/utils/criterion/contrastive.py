@@ -22,7 +22,10 @@ class IntraInfoNCELoss(BaseIntraInfoNCELoss):
         )
 
     def forward(
-        self, input: torch.Tensor, target: torch.Tensor, length: Optional[torch.LongTensor] = None
+        self,
+        input: torch.Tensor,
+        target: torch.Tensor,
+        length: Optional[torch.LongTensor] = None,
     ) -> torch.Tensor:
         """Forward pass of _InfoNCELoss.
 
@@ -38,6 +41,7 @@ class IntraInfoNCELoss(BaseIntraInfoNCELoss):
         n_dims = input.dim()
 
         self.validate_input_shape(input)
+        self.validate_input_shape(target)
 
         if dim < 0:
             dim = n_dims + dim
