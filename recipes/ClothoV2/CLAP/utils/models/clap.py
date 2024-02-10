@@ -1,12 +1,21 @@
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
-from utils.models.transformer import _Transformer
+from utils.models.transformer import (
+    AudioTransformerBackbone,
+    AudioTransformerMaskedPatchModelBackbone,
+    TextTransformerBackbone,
+    TextTransformerMaskedLanguageModelBackbone,
+)
 
 
 class CLAP(nn.Module):
-    def __init__(self, text_tower: "ModalTower", audio_tower: "ModalTower") -> None:
+    def __init__(
+        self,
+        text_tower: "TextTransformerTower",
+        audio_tower: "AudioTransformerTower",
+    ) -> None:
         super().__init__()
 
         self.text_tower = text_tower
@@ -25,24 +34,89 @@ class CLAP(nn.Module):
         return text_embedding, audio_embedding
 
 
-class ModalTower(nn.Module):
-    def __init__(self, backbone: nn.Module, out_proj: nn.Linear) -> None:
+class TextTransformerTower(nn.Module):
+    def __init__(
+        self,
+        backbone: TextTransformerBackbone,
+        aggregator: nn.Module,
+    ) -> None:
         super().__init__()
 
-        if isinstance(backbone, _Transformer):
-            pass
-        else:
-            raise ValueError(f"{type(backbone)} is not supported as backbone.")
+        assert isinstance(backbone, TextTransformerBackbone)
+        assert not isinstance(backbone, TextTransformerMaskedLanguageModelBackbone)
 
         self.backbone = backbone
-        self.out_proj = out_proj
+        self.aggregator = aggregator
 
     def forward(
         self,
-        input: Union[torch.LongTensor, torch.Tensor],
-        length: Optional[torch.BoolTensor] = None,
+        input: torch.LongTensor,
+        length: Optional[torch.LongTensor] = None,
     ) -> torch.Tensor:
         x = self.backbone(input, length=length)
-        output = self.out_proj(x)
+        output = self.aggregator(x, length=length)
+
+        return output
+
+    def no_aggregation_forward(
+        self,
+        input: torch.LongTensor,
+        length: Optional[torch.LongTensor] = None,
+    ) -> torch.Tensor:
+        batch_first = self.backbone.batch_first
+
+        x = self.backbone(input, length=length)
+
+        if batch_first:
+            dim = 1
+        else:
+            dim = 0
+
+        max_length = x.size(dim) - 1
+        _, output = torch.split(x, [1, max_length], dim=dim)
+
+        return output
+
+
+class AudioTransformerTower(nn.Module):
+    def __init__(
+        self,
+        backbone: AudioTransformerBackbone,
+        aggregator: nn.Module,
+    ) -> None:
+        super().__init__()
+
+        assert isinstance(backbone, AudioTransformerBackbone)
+        assert not isinstance(backbone, AudioTransformerMaskedPatchModelBackbone)
+
+        self.backbone = backbone
+        self.aggregator = aggregator
+
+    def forward(
+        self,
+        input: torch.Tensor,
+        length: Optional[torch.LongTensor] = None,
+    ) -> torch.Tensor:
+        x = self.backbone(input, length=length)
+        output = self.aggregator(x)
+
+        return output
+
+    def no_aggregation_forward(
+        self,
+        input: torch.Tensor,
+        length: Optional[torch.LongTensor] = None,
+    ) -> torch.Tensor:
+        batch_first = self.backbone.batch_first
+
+        x = self.backbone(input, length=length)
+
+        if batch_first:
+            dim = 1
+        else:
+            dim = 0
+
+        max_length = x.size(dim) - 1
+        _, output = torch.split(x, [1, max_length], dim=dim)
 
         return output

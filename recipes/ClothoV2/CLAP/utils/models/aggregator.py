@@ -63,22 +63,24 @@ class Aggregator(nn.Module):
             length = torch.full((batch_size,), fill_value=max_length, **factory_kwargs)
 
         if batch_first:
-            cls_token, output = torch.split(input, [1, max_length], dim=1)
+            dim = 1
         else:
-            cls_token, output = torch.split(input, [1, max_length], dim=0)
+            dim = 0
+
+        cls_token, x = torch.split(input, [1, max_length], dim=dim)
 
         if aggregation == "cls":
-            if batch_first:
-                output = cls_token.squeeze(dim=1)
-            else:
-                output = cls_token.squeeze(dim=0)
+            output = cls_token.squeeze(dim=dim)
         elif aggregation == "pool":
+            indices = torch.arange(max_length, **factory_kwargs)
+
             if batch_first:
-                output = output.sum(dim=1) / length.unsqueeze(dim=1)
+                padding_mask = indices >= length.unsqueeze(dim=-1)
             else:
-                output = output.sum(dim=0) / length.unsqueeze(dim=0)
-        elif aggregation == "none":
-            output = input
+                padding_mask = indices.unsqueeze(dim=-1) >= length
+
+            x = x.masked_fill(padding_mask.unsqueeze(dim=-1), 0)
+            output = x.sum(dim=dim) / length.unsqueeze(dim=dim)
         else:
             raise ValueError(f"{aggregation} is not supported as aggregation.")
 

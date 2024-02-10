@@ -260,31 +260,6 @@ class TextTransformerMaskedLanguageModel(nn.Module):
         return output, target
 
 
-class TextTransformerTower(nn.Module):
-    def __init__(
-        self,
-        backbone: TextTransformerBackbone,
-        aggregator: nn.Module,
-    ) -> None:
-        super().__init__()
-
-        assert isinstance(backbone, TextTransformerBackbone)
-        assert not isinstance(backbone, TextTransformerMaskedLanguageModelBackbone)
-
-        self.backbone = backbone
-        self.aggregator = aggregator
-
-    def forward(
-        self,
-        input: torch.LongTensor,
-        length: Optional[torch.LongTensor] = None,
-    ) -> torch.Tensor:
-        x = self.backbone(input, length=length)
-        output = self.aggregator(x)
-
-        return output
-
-
 class AudioTransformerBackbone(TransformerBackbone):
     """Backbone of audio transformer.
 
@@ -556,28 +531,3 @@ class AudioTransformerMaskedPatchModel(nn.Module):
         reconstructed = self.reconstructor(x)
 
         return (classified, reconstructed), target, length
-
-
-class AudioTransformerTower(nn.Module):
-    def __init__(
-        self,
-        backbone: AudioTransformerBackbone,
-        aggregator: nn.Module,
-    ) -> None:
-        super().__init__()
-
-        assert isinstance(backbone, AudioTransformerBackbone)
-        assert not isinstance(backbone, AudioTransformerMaskedPatchModelBackbone)
-
-        self.backbone = backbone
-        self.aggregator = aggregator
-
-    def forward(
-        self,
-        input: torch.Tensor,
-        length: Optional[torch.LongTensor] = None,
-    ) -> torch.Tensor:
-        x = self.backbone(input, length=length)
-        output = self.aggregator(x)
-
-        return output
