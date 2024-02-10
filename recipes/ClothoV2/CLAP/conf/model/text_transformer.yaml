@@ -1,11 +1,16 @@
-_target_: utils.models.transformer.TransformerWrapper
+_target_: utils.models.transformer.TextTransformerMaskedLanguageModel
 backbone:
-  _target_: utils.models.transformer.TextTransformer
-  vocab_size: ${const:audyn.utils.data.clotho.vocab_size + 1}
+  _target_: utils.models.transformer.TextTransformerMaskedLanguageModelBackbone
+  vocab_size: ${const:audyn.utils.data.clotho.vocab_size}
   embedding_dim: 256
   nhead: 8
   num_layers: 6
   batch_first: true
+  mask_index: ${data.text.mask_index}
+  ignore_index: ${data.text.ignore_index}
+  selection_rate: ${data.text.selection_rate}
+  mask_rate: ${data.text.mask_rate}
+  replace_rate: ${data.text.replace_rate}
 out_proj:
   _target_: torch.nn.Linear
   in_features: ${..backbone.embedding_dim}
