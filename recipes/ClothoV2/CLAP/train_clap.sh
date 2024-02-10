@@ -5,6 +5,8 @@ exp_dir="./exp"
 
 tag=""
 continue_from=""
+text_tower_checkpoint=""
+audio_tower_checkpoint=""
 
 dump_format="torch"
 
@@ -51,5 +53,7 @@ train.dataset.train.feature_dir="${feature_dir}/train" \
 train.dataset.validation.list_path="${list_dir}/validation.txt" \
 train.dataset.validation.feature_dir="${feature_dir}/validation" \
 train.resume.continue_from="${continue_from}" \
-train.output.exp_dir="${exp_dir}/${tag}" \
-train.output.tensorboard_dir="tensorboard/${tag}"
+train.output.exp_dir="${exp_dir}/${tag}/clap" \
+train.output.tensorboard_dir="tensorboard/${tag}/clap" \
+model.text_tower.path="${text_tower_checkpoint}" \
+model.audio_tower.path="${audio_tower_checkpoint}"

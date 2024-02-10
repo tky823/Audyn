@@ -8,6 +8,8 @@ stop_stage=-1
 
 tag=""
 continue_from=""
+text_tower_checkpoint=""
+audio_tower_checkpoint=""
 checkpoint=""
 
 exp_dir="./exp"
@@ -120,6 +122,8 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
         . ./train_clap.sh \
         --tag "${tag}" \
         --continue-from "${continue_from}" \
+        --text-tower-checkpoint "${text_tower_checkpoint}" \
+        --audio-tower-checkpoint "${audio_tower_checkpoint}" \
         --exp-dir "${exp_dir}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
