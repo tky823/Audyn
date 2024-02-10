@@ -92,6 +92,27 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     )
 fi
 
+if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
+    echo "Stage 2: Pretraining audio encoder"
+
+    (
+        . ./train_audio_tower.sh \
+        --tag "${tag}" \
+        --continue-from "${continue_from}" \
+        --exp-dir "${exp_dir}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
+        --system "${system}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --train "${train}" \
+        --model "${model}" \
+        --optimizer "${optimizer}" \
+        --lr-scheduler "${lr_scheduler}" \
+        --criterion "${criterion}"
+    )
+fi
+
 if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
     echo "Stage 3: Training CLAP"
 
