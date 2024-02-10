@@ -260,6 +260,31 @@ class TextTransformerMaskedLanguageModel(nn.Module):
         return output, target
 
 
+class TextTransformerTower(nn.Module):
+    def __init__(
+        self,
+        backbone: TextTransformerBackbone,
+        aggregator: nn.Module,
+    ) -> None:
+        super().__init__()
+
+        assert isinstance(backbone, TextTransformerBackbone)
+        assert not isinstance(backbone, TextTransformerMaskedLanguageModelBackbone)
+
+        self.backbone = backbone
+        self.aggregator = aggregator
+
+    def forward(
+        self,
+        input: torch.LongTensor,
+        length: Optional[torch.LongTensor] = None,
+    ) -> torch.Tensor:
+        x = self.backbone(input, length=length)
+        output = self.aggregator(x)
+
+        return output
+
+
 class AudioTransformerBackbone(TransformerBackbone):
     """Backbone of audio transformer.
 
@@ -310,7 +335,7 @@ class AudioTransformerBackbone(TransformerBackbone):
 
     def forward(
         self,
-        input: torch.LongTensor,
+        input: torch.Tensor,
         length: Optional[torch.LongTensor] = None,
     ) -> torch.Tensor:
         frames_per_patch = self.frames_per_patch
@@ -405,7 +430,7 @@ class AudioTransformerMaskedPatchModelBackbone(AudioTransformerBackbone):
 
     def forward(
         self,
-        input: torch.LongTensor,
+        input: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.LongTensor]:
         embedding_dim = self.embedding_dim
         frames_per_patch = self.frames_per_patch
@@ -518,7 +543,7 @@ class AudioTransformerMaskedPatchModel(nn.Module):
 
     def forward(
         self,
-        input: torch.LongTensor,
+        input: torch.Tensor,
     ) -> Tuple[Tuple[torch.Tensor, torch.Tensor], torch.Tensor, torch.LongTensor]:
         x, target, length = self.backbone(input)
         max_length = x.size(-2) - 1
@@ -549,7 +574,7 @@ class AudioTransformerTower(nn.Module):
 
     def forward(
         self,
-        input: torch.LongTensor,
+        input: torch.Tensor,
         length: Optional[torch.LongTensor] = None,
     ) -> torch.Tensor:
         x = self.backbone(input, length=length)
