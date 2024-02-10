@@ -15,7 +15,7 @@ train="audio_tower"
 model="audio_tower"
 optimizer="audio_tower"
 lr_scheduler="audio_tower"
-criterion="audio_mlm"
+criterion="audio_mpm"
 
 . ../../_common/parse_options.sh || exit 1;
 
