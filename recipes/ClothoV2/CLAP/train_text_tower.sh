@@ -51,5 +51,5 @@ train.dataset.train.feature_dir="${feature_dir}/train" \
 train.dataset.validation.list_path="${list_dir}/validation.txt" \
 train.dataset.validation.feature_dir="${feature_dir}/validation" \
 train.resume.continue_from="${continue_from}" \
-train.output.exp_dir="${exp_dir}/${tag}" \
-train.output.tensorboard_dir="tensorboard/${tag}"
+train.output.exp_dir="${exp_dir}/${tag}/text" \
+train.output.tensorboard_dir="tensorboard/${tag}/text"
