@@ -243,6 +243,8 @@ class TextTransformerMaskedLanguageModel(nn.Module):
         self.backbone = backbone
         self.out_proj = out_proj
 
+        assert self.backbone.batch_first, "Only batch_first=True is supported."
+
     def forward(
         self,
         input: torch.LongTensor,
@@ -399,6 +401,8 @@ class AudioTransformerMaskedPatchModelBackbone(AudioTransformerBackbone):
         self.selection_rate = selection_rate
         self.cluster_size = cluster_size
 
+        assert self.batch_first, "Only batch_first=True is supported."
+
     def forward(
         self,
         input: torch.LongTensor,
@@ -509,6 +513,8 @@ class AudioTransformerMaskedPatchModel(nn.Module):
         self.backbone = backbone
         self.classifier = classifier
         self.reconstructor = reconstructor
+
+        assert self.backbone.batch_first, "Only batch_first=True is supported."
 
     def forward(
         self,
