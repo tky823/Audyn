@@ -27,17 +27,9 @@ def main(config: DictConfig) -> None:
     train_dataset = instantiate(config.train.dataset.train)
     validation_dataset = instantiate(config.train.dataset.validation)
 
-    text_config = config.data.text
-    text_preprocessor = instantiate(text_config.preprocessor)
+    text_preprocessor = instantiate(config.data.text.preprocessor)
 
-    collate_fn_kwargs = {
-        "vocab_size": text_preprocessor.vocab_size,
-        "ignore_index": text_config.ignore_index,
-        "mask_index": text_preprocessor.mask_index,
-        "selection_rate": text_config.selection_rate,
-        "mask_rate": text_config.mask_rate,
-        "replace_rate": text_config.replace_rate,
-    }
+    assert config.data.text.mask_index == text_preprocessor.mask_index
 
     train_loader = instantiate(
         config.train.dataloader.train,
@@ -45,7 +37,6 @@ def main(config: DictConfig) -> None:
         collate_fn=functools.partial(
             collate_fn,
             random_caption=True,
-            **collate_fn_kwargs,
         ),
     )
     validation_loader = instantiate(
@@ -54,7 +45,6 @@ def main(config: DictConfig) -> None:
         collate_fn=functools.partial(
             collate_fn,
             random_caption=False,
-            **collate_fn_kwargs,
         ),
     )
     loaders = BaseDataLoaders(train_loader, validation_loader)
@@ -92,12 +82,6 @@ def main(config: DictConfig) -> None:
 def collate_fn(
     batch: List[Dict[str, torch.Tensor]],
     random_caption: bool = True,
-    vocab_size: int = None,
-    mask_index: int = None,
-    ignore_index: int = -1,
-    selection_rate: float = 0.15,
-    mask_rate: float = 0.8,
-    replace_rate: float = 0.1,
     keys: Optional[Iterable[str]] = None,
 ) -> Dict[str, torch.Tensor]:
     """Generate dict-based batch.
@@ -107,11 +91,6 @@ def collate_fn(
             Type of each data is expected ``Dict[str, torch.Tensor]``.
         random_caption (bool): If ``True``, random caption is used. Otherwise,
             first caption is used, which is useful for validation.
-        vocab_size: Vocabulary size.
-        mask_index: Index of <MASK> token.
-        selection_rate (float): Selection probability to mask or replace.
-        mask_rate (float): Masking probability of selected tokens.
-        replace_rate (float): Replacement probability of selected tokens.
         keys (iterable, optional): Keys to generate batch.
             If ``None`` is given, all keys detected in ``batch`` are used.
             Default: ``None``.
@@ -120,17 +99,6 @@ def collate_fn(
         Dict of batch.
 
     """
-    if vocab_size is None:
-        raise ValueError("Set vocab_size.")
-
-    if mask_index is None:
-        raise ValueError("Set mask_index.")
-
-    assert 0 <= selection_rate <= 1
-    assert 0 <= mask_rate <= 1
-    assert 0 <= replace_rate <= 1
-    assert 0 <= mask_rate + replace_rate <= 1
-
     for sample_idx in range(len(batch)):
         sample = batch[sample_idx]
         tokens = sample.pop("tokens")
@@ -141,36 +109,8 @@ def collate_fn(
         else:
             caption_idx = 0
 
-        text = tokens[caption_idx]
-        text_length = tokens_length[caption_idx]
-
-        device = text.device
-
-        rand_value = torch.rand(text.size())
-        selection_mask = rand_value < selection_rate
-        rand_value = torch.rand(text.size())
-        masking_mask = selection_mask & (rand_value < mask_rate)
-        replacement_mask = selection_mask & ((1 - rand_value) < replace_rate)
-        replacement_index = torch.randint(0, vocab_size, text.size())
-        keeping_mask = torch.logical_not(selection_mask)
-
-        masking_mask = masking_mask.to(device)
-        replacement_mask = replacement_mask.to(device)
-        replacement_index = replacement_index.to(device)
-        keeping_mask = keeping_mask.to(device)
-
-        masked_text = torch.where(masking_mask, mask_index, text)
-        masked_text = torch.where(replacement_mask, replacement_index, masked_text)
-
-        # Tokens where index is larger than that of mask is shifted because target
-        # does not include mask.
-        target_text = torch.where(text > mask_index, text - 1, text)
-        target_text = target_text.masked_fill(keeping_mask, ignore_index)
-
-        sample["text"] = text
-        sample["masked_text"] = masked_text
-        sample["target_text"] = target_text
-        sample["text_length"] = text_length
+        sample["text"] = tokens[caption_idx]
+        sample["text_length"] = tokens_length[caption_idx]
 
     dict_batch = default_collate_fn(batch, keys=keys)
     dict_batch.pop("waveform")
