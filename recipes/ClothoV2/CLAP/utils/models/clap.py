@@ -43,6 +43,7 @@ class ModalTransformerTower(nn.Module):
         self,
         backbone: TransformerBackbone,
         aggregator: Aggregator,
+        out_proj: nn.Linear,
     ) -> None:
         super().__init__()
 
@@ -50,6 +51,7 @@ class ModalTransformerTower(nn.Module):
 
         self.backbone = backbone
         self.aggregator = aggregator
+        self.out_proj = out_proj
 
     def forward(
         self,
@@ -57,7 +59,8 @@ class ModalTransformerTower(nn.Module):
         length: Optional[torch.LongTensor] = None,
     ) -> torch.Tensor:
         x = self.backbone(input, length=length)
-        output = self.aggregator(x, length=length)
+        x = self.aggregator(x, length=length)
+        output = self.out_proj(x)
 
         return output
 
@@ -76,7 +79,8 @@ class ModalTransformerTower(nn.Module):
             dim = 0
 
         max_length = x.size(dim) - 1
-        _, output = torch.split(x, [1, max_length], dim=dim)
+        _, x = torch.split(x, [1, max_length], dim=dim)
+        output = self.out_proj(x)
 
         return output
 
@@ -86,8 +90,9 @@ class TextTransformerTower(ModalTransformerTower):
         self,
         backbone: TextTransformerBackbone,
         aggregator: Aggregator,
+        out_proj: nn.Linear,
     ) -> None:
-        super().__init__(backbone, aggregator)
+        super().__init__(backbone, aggregator, out_proj)
 
         assert not isinstance(backbone, TextTransformerMaskedLanguageModelBackbone)
 
@@ -97,7 +102,8 @@ class AudioTransformerTower(ModalTransformerTower):
         self,
         backbone: AudioTransformerBackbone,
         aggregator: Aggregator,
+        out_proj: nn.Linear,
     ) -> None:
-        super().__init__(backbone, aggregator)
+        super().__init__(backbone, aggregator, out_proj)
 
         assert not isinstance(backbone, AudioTransformerMaskedPatchModelBackbone)
