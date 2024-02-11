@@ -7,7 +7,7 @@ from .utils.hydra import main
 
 __all__ = ["__version__", "main"]
 
-__version__ = "0.0.1.dev1"
+__version__ = "0.0.1.dev2"
 
 
 def _constant_resolver(full_var_name: str) -> Any:
