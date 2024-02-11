@@ -1,3 +1,4 @@
+# TODO: improve
 _target_: audyn.optim.lr_scheduler.TransformerLRScheduler
 d_model: ${model.backbone.embedding_dim}
 warmup_steps: 100
