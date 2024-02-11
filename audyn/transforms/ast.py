@@ -22,6 +22,8 @@ class SelfSupervisedAudioSpectrogramTransformerMelSpectrogram(nn.Module):
             torchaudio.compliance.kaldi.fbank.
         n_frames (int, optional): Number of time frames. Shorter spectrogram is padded
             with 0. Longer spectrogram is trimed.
+        mean (float): Mean of spectrogram in dataset. Default: ``0``.
+        std (float): Standard deviation of spectrogram in dataset. Default: ``1``.
         take_log (bool): Whether to take log features.
 
     """
@@ -33,11 +35,15 @@ class SelfSupervisedAudioSpectrogramTransformerMelSpectrogram(nn.Module):
         sample_rate: int,
         n_mels: Optional[int] = None,
         n_frames: Optional[int] = None,
+        mean: float = 0,
+        std: float = 1,
         take_log: bool = True,
     ) -> None:
         super().__init__()
 
         self.n_frames = n_frames
+        self.mean = mean
+        self.std = std
         self.take_log = take_log
 
         fbank_kwargs = {
@@ -63,17 +69,21 @@ class SelfSupervisedAudioSpectrogramTransformerMelSpectrogram(nn.Module):
 
         """
         n_frames = self.n_frames
+        mean = self.mean
+        std = self.std
         take_log = self.take_log
 
         waveform = waveform - waveform.mean(dim=-1, keepdim=True)
         spectrogram = self.transform(waveform)
 
-        if not take_log:
-            spectrogram = torch.exp(spectrogram)
-
         if n_frames is not None:
             padding = n_frames - spectrogram.size(-1)
             spectrogram = F.pad(spectrogram, (0, padding))
+
+        spectrogram = (spectrogram - mean) / (2 * std)
+
+        if not take_log:
+            spectrogram = torch.exp(spectrogram)
 
         return spectrogram
 
