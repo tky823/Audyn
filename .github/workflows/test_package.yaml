@@ -80,6 +80,8 @@ jobs:
         run: |
           python tests/scripts/verify_torch_version.py --torch-version ${TORCH_VERSION}
       - name: Pytest
+        env:
+          GITHUB_ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
           pytest -vvv --cov=audyn/ --cov-report=xml tests/package/
       - name: Upload coverage reports to Codecov
