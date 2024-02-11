@@ -28,6 +28,10 @@ class SelfSupervisedAudioSpectrogramTransformerMelSpectrogram(nn.Module):
 
     """
 
+    # ported from
+    # https://github.com/YuanGongND/ssast/blob/a1a3eecb94731e226308a6812f2fbf268d789caf/src/dataloader.py#L95-L144
+    # and
+    # https://github.com/YuanGongND/ssast/blob/a1a3eecb94731e226308a6812f2fbf268d789caf/src/dataloader.py#L198-L202
     # TODO: Mel-spectrogram transform for AST
 
     def __init__(
