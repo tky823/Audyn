@@ -149,11 +149,18 @@ class KaldiMelSpectrogram(nn.Module):
 
         """
         fbank_kwargs = self.fbank_kwargs
+        n_dims = waveform.dim()
+
+        if n_dims == 1:
+            waveform = waveform.unsqueeze(dim=0)
 
         if IS_TORCH_LT_2_0_0:
             spectrogram = self._sequential_fbank(waveform, **fbank_kwargs)
         else:
             spectrogram = self._parallel_fbank(waveform, **fbank_kwargs)
+
+        if n_dims == 1:
+            spectrogram == spectrogram.squeeze(dim=0)
 
         return spectrogram
 
