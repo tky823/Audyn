@@ -52,6 +52,8 @@ class SelfSupervisedAudioSpectrogramTransformerMelSpectrogram(nn.Module):
     ) -> None:
         super().__init__()
 
+        self.sample_rate = sample_rate
+        self.n_mels = n_mels
         self.n_frames = n_frames
         self.mean = mean
         self.std = std
