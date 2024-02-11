@@ -10,6 +10,7 @@ from omegaconf import DictConfig
 from tqdm import tqdm
 
 import audyn
+from audyn.utils import instantiate
 from audyn.utils.text import TextPreprocessor
 
 
@@ -25,8 +26,8 @@ def main(config: DictConfig) -> None:
     assert text_dir is not None, "Specify preprocess.text_dir."
     assert feature_dir is not None, "Specify preprocess.feature_dir."
 
-    melspectrogram_transform = aT.MelSpectrogram(**config.data.melspectrogram)
-    text_preprocessor = audyn.utils.instantiate(config.data.text.preprocessor)
+    melspectrogram_transform = instantiate(config.data.melspectrogram)
+    text_preprocessor = instantiate(config.data.text.preprocessor)
 
     os.makedirs(feature_dir, exist_ok=True)
 
