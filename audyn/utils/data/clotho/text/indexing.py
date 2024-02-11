@@ -1,10 +1,10 @@
 import os
-import urllib
-from typing import List, Optional
+from typing import Iterable, List, Optional
 
 from torchtext.vocab import build_vocab_from_iterator
 
 from .....utils import audyn_cache_dir
+from .....utils.github import download_file_from_github_release
 from ....text.indexing import BaseTextIndexer
 from .symbols import BOS_SYMBOL, EOS_SYMBOL, vocab_size
 
@@ -34,10 +34,7 @@ class ClothoTextIndexer(BaseTextIndexer):
             os.makedirs(root, exist_ok=True)
 
             for url in self.chotho_vocab_urls:
-                data = urllib.request.urlopen(url).read()
-
-                with open(path, mode="wb") as f:
-                    f.write(data)
+                download_file_from_github_release(url, path)
 
                 break
 
@@ -79,7 +76,7 @@ class ClothoTextIndexer(BaseTextIndexer):
         return phonemes
 
     @staticmethod
-    def build_vocab(path: str) -> List[str]:
+    def build_vocab(path: str) -> Iterable[List[str]]:
         with open(path) as f:
             for line in f:
                 yield [line.strip()]
