@@ -4,16 +4,16 @@ import torch
 from audyn.transforms.ast import SelfSupervisedAudioSpectrogramTransformerMelSpectrogram
 
 
+@pytest.mark.parametrize("duration", [2.0, 4.0])
 @pytest.mark.parametrize("n_frames", [None, 256])
 @pytest.mark.parametrize("take_log", [True, False])
-def test_ssast_melspectrogram(n_frames: int, take_log: bool) -> None:
+def test_ssast_melspectrogram(duration: float, n_frames: int, take_log: bool) -> None:
     torch.manual_seed(0)
 
     sample_rate = 16000
     n_mels = 128
 
     batch_size = 8
-    duration = 4.0
     timesteps = int(duration * sample_rate)
 
     melspectrogram_transform = SelfSupervisedAudioSpectrogramTransformerMelSpectrogram(
