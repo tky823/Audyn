@@ -118,6 +118,10 @@ def slice_feautures(
         sliced_feature_length = math.ceil(slice_length / hop_length)
         _length_dim = _compute_dim_without_batch(length_dim)
 
+        if _length_dim < 0:
+            # set _length_dim to be non-negative
+            _length_dim = feature.dim() + _length_dim
+
         length = _compute_length(
             output_batch,
             key,
@@ -142,7 +146,15 @@ def slice_feautures(
                 # append padding
                 padding = sliced_feature_length - length
                 pad_value = pad_values[key]
+
+                if _length_dim != feature.dim() - 1:
+                    feature = feature.transpose(_length_dim, -1)
+
                 sliced_feature = F.pad(feature, (0, padding), value=pad_value)
+
+                if _length_dim != feature.dim() - 1:
+                    sliced_feature = sliced_feature.transpose(_length_dim, -1)
+
                 low_start_idx = 0
         else:
             if random_slice:
@@ -181,6 +193,10 @@ def slice_feautures(
             sliced_feature_length = math.ceil(slice_length / hop_length)
             _length_dim = _compute_dim_without_batch(length_dim)
 
+            if _length_dim < 0:
+                # set _length_dim to be non-negative
+                _length_dim = feature.dim() + _length_dim
+
             length = _compute_length(
                 output_batch,
                 key,
@@ -198,7 +214,14 @@ def slice_feautures(
                 # append padding
                 padding = sliced_feature_length - length
                 pad_value = pad_values[key]
+
+                if _length_dim != feature.dim() - 1:
+                    feature = feature.transpose(_length_dim, -1)
+
                 sliced_feature = F.pad(feature, (0, padding), value=pad_value)
+
+                if _length_dim != feature.dim() - 1:
+                    sliced_feature = sliced_feature.transpose(_length_dim, -1)
             else:
                 start_idx = low_start_idx * hop_lengths[low_resolution_key]
                 start_idx = start_idx // hop_length
