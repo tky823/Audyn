@@ -7,7 +7,7 @@
 ```sh
 dump_format="torch"
 
-data="clotho-v2_mel64"  # or "clotho-v2_mel128", "clotho-v2_mel256"
+data="clotho-v2_mel64"  # or "clotho-v2_mel128", "clotho-v2_mel256", "clotho-v2_bert-ssast"
 
 . ./run.sh \
 --stage 0 \
@@ -17,6 +17,8 @@ data="clotho-v2_mel64"  # or "clotho-v2_mel128", "clotho-v2_mel256"
 ```
 
 ### Stage 1: Train text tower
+
+**NOTE**: If you use pretrained BERT and SSAST, you can skip this stage.
 
 ```sh
 dump_format="torch"
@@ -43,6 +45,8 @@ criterion="text_mlm"
 
 ### Stage 2: Train Audio tower
 
+**NOTE**: If you use pretrained BERT and SSAST, you can skip this stage.
+
 ```sh
 dump_format="torch"
 
@@ -68,15 +72,17 @@ criterion="audio_mpm"
 
 ### Stage 3: Train CLAP
 
+**NOTE**: If you use pretrained BERT and SSAST, you don't have to set neither of `text_tower_checkpoint` and `audio_tower_checkpoint`.
+
 ```sh
 dump_format="torch"
 
 text_tower_checkpoint="<PATH/TO/PRETRAINED/TEXT/TOWER>"
 audio_tower_checkpoint="<PATH/TO/PRETRAINED/AUDIO/TOWER>"
 
-data="clotho-v2_mel64"  # or "clotho-v2_mel128", "clotho-v2_mel256"
-train="clap"
-model="clap_cls"  # or "clap_pool"
+data="clotho-v2_mel64"  # or "clotho-v2_mel128", "clotho-v2_mel256", "clotho-v2_bert-ssast"
+train="clap" # or "clap_bert-ssast"
+model="clap_cls"  # or "clap_pool", "clap_bert-ssast"
 criterion="clap"
 optimizer="clap"
 lr_scheduler="clap"
