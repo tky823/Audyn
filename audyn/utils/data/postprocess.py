@@ -2,6 +2,7 @@ import math
 from typing import Any, Callable, Dict, Optional, Union
 
 import torch
+import torch.nn.functional as F
 
 __all__ = ["slice_feautures", "take_log_features", "make_noise"]
 
@@ -14,6 +15,7 @@ def slice_feautures(
     length_mapping: Optional[Dict[str, str]] = None,
     length_dims: Optional[Union[int, Dict[str, int]]] = None,
     random_slice: bool = False,
+    pad_values: Optional[Dict[str, Any]] = None,
     inplace: bool = True,
 ) -> Dict[str, Any]:
     """Add sliced features from given batch.
@@ -26,6 +28,7 @@ def slice_feautures(
         length_mapping  (dict, optional): Length mapping of features.
         length_dims (int or dict, optional): Dimension to get length of features.
         random_slice (bool): If ``True``, slice section is selected at random.
+        pad_values (dict, optional): If given, shorter features are padded by these values.
         inplace (bool): If ``True``, sliced features are saved in given batch.
             Otherwise, new dictionary is prepared to avoid inplace operation.
 
@@ -123,31 +126,40 @@ def slice_feautures(
             length_dim=_length_dim,
         )
 
-        if random_slice:
-            if length < sliced_feature_length:
+        if length < sliced_feature_length:
+            if pad_values is None or pad_values.get(key) is None:
+                padding = sliced_feature_length - length
+                sliced_feature = F.pad(feature, (0, padding))
+            else:
                 raise ValueError(
                     f"Input length ({length}) is shorter "
                     f"than slice length ({sliced_feature_length}) "
                     f"for {key} key."
                 )
-            elif length == sliced_feature_length:
-                low_start_idx = 0
-            else:
-                low_start_idx = torch.randint(
-                    0, length - sliced_feature_length, (), dtype=torch.long
-                ).item()
         else:
-            low_start_idx = length // 2 - sliced_feature_length // 2
+            if random_slice:
+                if length == sliced_feature_length:
+                    low_start_idx = 0
+                else:
+                    low_start_idx = torch.randint(
+                        0, length - sliced_feature_length, (), dtype=torch.long
+                    ).item()
+            else:
+                low_start_idx = length // 2 - sliced_feature_length // 2
 
-        low_end_idx = low_start_idx + sliced_feature_length
+            low_end_idx = low_start_idx + sliced_feature_length
+
+            _, sliced_feature, _ = torch.split(
+                feature,
+                [
+                    low_start_idx,
+                    low_end_idx - low_start_idx,
+                    feature.size(_length_dim) - low_end_idx,
+                ],
+                dim=_length_dim,
+            )
+
         slice_key = key_mapping[key]
-
-        _, sliced_feature, _ = torch.split(
-            feature,
-            [low_start_idx, low_end_idx - low_start_idx, feature.size(_length_dim) - low_end_idx],
-            dim=_length_dim,
-        )
-
         output_batch[slice_key].append(sliced_feature)
 
         for key in key_mapping.keys():
