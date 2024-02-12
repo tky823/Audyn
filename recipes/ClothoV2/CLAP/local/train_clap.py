@@ -164,6 +164,11 @@ def collate_fn(
 
     log_melspectrogram_slice = dict_batch["log_melspectrogram_slice"]
     spectrogram_dims = log_melspectrogram_slice.dim()
+
+    # to support torchaudio < 2.1.0
+    if spectrogram_dims == 3:
+        log_melspectrogram_slice = log_melspectrogram_slice.unsqueeze(dim=-3)
+
     masking_kwargs = {
         "mask_value": 0.0,
         "p": 1,
@@ -173,7 +178,7 @@ def collate_fn(
         log_melspectrogram_slice = aF.mask_along_axis_iid(
             log_melspectrogram_slice,
             freq_mask_param,
-            axis=spectrogram_dims - 2,
+            axis=log_melspectrogram_slice.dim() - 2,
             **masking_kwargs,
         )
 
@@ -181,9 +186,12 @@ def collate_fn(
         log_melspectrogram_slice = aF.mask_along_axis_iid(
             log_melspectrogram_slice,
             time_mask_param,
-            axis=spectrogram_dims - 1,
+            axis=log_melspectrogram_slice.dim() - 1,
             **masking_kwargs,
         )
+
+    if spectrogram_dims == 3:
+        log_melspectrogram_slice = log_melspectrogram_slice.squeeze(dim=-3)
 
     dict_batch["log_melspectrogram_slice"] = log_melspectrogram_slice
 
