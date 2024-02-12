@@ -3,7 +3,6 @@ from typing import Dict, Iterable, List, Optional
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from omegaconf import DictConfig
 
 import audyn
