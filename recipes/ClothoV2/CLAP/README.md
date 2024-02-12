@@ -84,8 +84,8 @@ data="clotho-v2_mel64"  # or "clotho-v2_mel128", "clotho-v2_mel256", "clotho-v2_
 train="clap" # or "clap_bert-ssast"
 model="clap_cls"  # or "clap_pool", "clap_bert-ssast"
 criterion="clap"
-optimizer="clap"
-lr_scheduler="clap"
+optimizer="clap"  # or "clap_bert-ssast"
+lr_scheduler="clap"  # or "clap_bert-ssast"
 
 . ./run.sh \
 --stage 3 \
