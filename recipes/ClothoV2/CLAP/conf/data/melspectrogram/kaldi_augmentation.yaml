@@ -1,0 +1,6 @@
+defaults:
+  - kaldi
+  - _self_
+
+freq_mask_param: 48
+time_mask_param: 192
