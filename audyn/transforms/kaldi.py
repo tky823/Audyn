@@ -160,7 +160,7 @@ class KaldiMelSpectrogram(nn.Module):
             spectrogram = self._parallel_fbank(waveform, **fbank_kwargs)
 
         if n_dims == 1:
-            spectrogram == spectrogram.squeeze(dim=0)
+            spectrogram = spectrogram.squeeze(dim=0)
 
         return spectrogram
 
