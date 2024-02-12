@@ -29,18 +29,32 @@ from audyn.utils.model import set_device
 def main(config: DictConfig) -> None:
     setup_system(config)
 
-    train_dataset = instantiate(config.train.dataset.train)
-    validation_dataset = instantiate(config.train.dataset.validation)
+    dataset_config = config.train.dataset
+    dataloader_config = config.train.dataloader
+    audio_config = config.data.audio
+
+    train_dataset = instantiate(dataset_config.train)
+    validation_dataset = instantiate(dataset_config.validation)
 
     train_loader = instantiate(
-        config.train.dataloader.train,
+        dataloader_config.train,
         train_dataset,
-        collate_fn=functools.partial(collate_fn, random_caption=True),
+        collate_fn=functools.partial(
+            collate_fn,
+            slice_length=audio_config.slice_length,
+            random_caption=True,
+            random_slice=True,
+        ),
     )
     validation_loader = instantiate(
-        config.train.dataloader.validation,
+        dataloader_config.validation,
         validation_dataset,
-        collate_fn=functools.partial(collate_fn, random_caption=False),
+        collate_fn=functools.partial(
+            collate_fn,
+            slice_length=audio_config.slice_length,
+            random_caption=False,
+            random_slice=False,
+        ),
     )
     loaders = BaseDataLoaders(train_loader, validation_loader)
 
@@ -97,10 +111,6 @@ def collate_fn(
         Dict of batch.
 
     """
-
-    def flooring_fn(x: torch.Tensor) -> torch.Tensor:
-        return torch.clamp(x, min=1e-10)
-
     for sample_idx in range(len(batch)):
         sample = batch[sample_idx]
         tokens = sample.pop("tokens")
@@ -137,8 +147,11 @@ def collate_fn(
         key_mapping={
             "melspectrogram_slice": "log_melspectrogram_slice",
         },
-        flooring_fn=flooring_fn,
     )
+
+    dict_batch.pop("waveform")
+    dict_batch.pop("waveform_length")
+    dict_batch.pop("melspectrogram")
 
     return dict_batch
 
