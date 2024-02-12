@@ -1,7 +1,11 @@
 from typing import Any, Dict, List, Optional, Union
 
 from torch.optim import Optimizer
-from torch.optim.lr_scheduler import LRScheduler, _LRScheduler
+
+try:
+    from torch.optim.lr_scheduler import LRScheduler as _LRScheduler
+except ImportError:
+    from torch.optim.lr_scheduler import _LRScheduler
 
 __all__ = ["TransformerLRScheduler", "GANLRScheduler"]
 
@@ -44,7 +48,7 @@ class MultiLRSchedulers:
         self.lr_schedulers = {}
 
         for idx, lr_scheduler in enumerate(lr_schedulers):
-            if isinstance(lr_scheduler, LRScheduler):
+            if isinstance(lr_scheduler, _LRScheduler):
                 k = str(idx)
                 v = lr_scheduler
             elif isinstance(lr_scheduler, dict):
