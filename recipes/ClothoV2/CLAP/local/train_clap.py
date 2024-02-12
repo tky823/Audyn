@@ -15,7 +15,12 @@ from audyn.utils import (
     instantiate_optimizer,
     setup_system,
 )
-from audyn.utils.data import BaseDataLoaders, default_collate_fn, take_log_features
+from audyn.utils.data import (
+    BaseDataLoaders,
+    default_collate_fn,
+    slice_feautures,
+    take_log_features,
+)
 from audyn.utils.driver import BaseTrainer
 from audyn.utils.model import set_device
 
@@ -71,7 +76,9 @@ def main(config: DictConfig) -> None:
 
 def collate_fn(
     batch: List[Dict[str, torch.Tensor]],
+    slice_length: Optional[int] = None,
     random_caption: bool = True,
+    random_slice: bool = False,
     keys: Optional[Iterable[str]] = None,
 ) -> Dict[str, torch.Tensor]:
     """Generate dict-based batch.
@@ -81,6 +88,7 @@ def collate_fn(
             Type of each data is expected ``Dict[str, torch.Tensor]``.
         random_caption (bool): If ``True``, random caption is used. Otherwise,
             first caption is used, which is useful for validation.
+        random_slice (bool): If ``True``, slicing is applied at random poistion.
         keys (iterable, optional): Keys to generate batch.
             If ``None`` is given, all keys detected in ``batch`` are used.
             Default: ``None``.
@@ -89,6 +97,10 @@ def collate_fn(
         Dict of batch.
 
     """
+
+    def flooring_fn(x: torch.Tensor) -> torch.Tensor:
+        return torch.clamp(x, min=1e-10)
+
     for sample_idx in range(len(batch)):
         sample = batch[sample_idx]
         tokens = sample.pop("tokens")
@@ -103,15 +115,29 @@ def collate_fn(
         sample["text_length"] = tokens_length[caption_idx]
 
     dict_batch = default_collate_fn(batch, keys=keys)
-    dict_batch.pop("waveform")
-    dict_batch.pop("waveform_length")
+
+    if slice_length is not None:
+        dict_batch = slice_feautures(
+            dict_batch,
+            slice_length=slice_length,
+            key_mapping={
+                "melspectrogram": "melspectrogram_slice",
+            },
+            hop_lengths={
+                "melspectrogram": 1,
+            },
+            length_mapping={
+                "melspectrogram": "melspectrogram_length",
+            },
+            random_slice=random_slice,
+        )
 
     dict_batch = take_log_features(
         dict_batch,
         key_mapping={
-            "melspectrogram": "log_melspectrogram",
+            "melspectrogram_slice": "log_melspectrogram_slice",
         },
-        flooring_fn=lambda x: torch.clamp(x, min=1e-10),
+        flooring_fn=flooring_fn,
     )
 
     return dict_batch

@@ -2,7 +2,6 @@ import functools
 from typing import Dict, Iterable, List, Optional
 
 import torch
-import torch.nn.functional as F
 from omegaconf import DictConfig
 
 import audyn
@@ -15,7 +14,12 @@ from audyn.utils import (
     instantiate_optimizer,
     setup_system,
 )
-from audyn.utils.data import BaseDataLoaders, default_collate_fn, take_log_features
+from audyn.utils.data import (
+    BaseDataLoaders,
+    default_collate_fn,
+    slice_feautures,
+    take_log_features,
+)
 from audyn.utils.driver import BaseTrainer
 from audyn.utils.model import set_device
 
@@ -82,7 +86,7 @@ def main(config: DictConfig) -> None:
 def collate_fn(
     batch: List[Dict[str, torch.Tensor]],
     slice_length: int,
-    random_slice: bool,
+    random_slice: bool = False,
     keys: Optional[Iterable[str]] = None,
 ) -> Dict[str, torch.Tensor]:
     """Generate dict-based batch.
@@ -109,36 +113,21 @@ def collate_fn(
         _ = sample.pop("tokens")
 
     dict_batch = default_collate_fn(batch, keys=keys)
-    dict_batch.pop("waveform")
-    dict_batch.pop("waveform_length")
 
-    melspectrogram = dict_batch.pop("melspectrogram")
-    melspectrogram_length = dict_batch.pop("melspectrogram_length")
-
-    melspectrogram_slice = []
-
-    for _melspectrogram, length in zip(melspectrogram, melspectrogram_length):
-        padded_length = _melspectrogram.size(-1)
-        length = length.item()
-
-        if padded_length <= slice_length:
-            _melspectrogram = F.pad(_melspectrogram, (0, slice_length - padded_length))
-        else:
-            if random_slice:
-                start_idx = torch.randint(0, padded_length - slice_length, ()).item()
-            else:
-                start_idx = (padded_length - slice_length) // 2
-
-            _, _melspectrogram, _ = torch.split(
-                _melspectrogram,
-                [start_idx, slice_length, padded_length - slice_length - start_idx],
-                dim=-1,
-            )
-
-        melspectrogram_slice.append(_melspectrogram)
-
-    dict_batch["melspectrogram_slice"] = torch.stack(melspectrogram_slice, dim=0)
-
+    dict_batch = slice_feautures(
+        dict_batch,
+        slice_length=slice_length,
+        key_mapping={
+            "melspectrogram": "melspectrogram_slice",
+        },
+        hop_lengths={
+            "melspectrogram": 1,
+        },
+        length_mapping={
+            "melspectrogram": "melspectrogram_length",
+        },
+        random_slice=random_slice,
+    )
     dict_batch = take_log_features(
         dict_batch,
         key_mapping={
@@ -146,6 +135,11 @@ def collate_fn(
         },
         flooring_fn=flooring_fn,
     )
+
+    dict_batch.pop("waveform")
+    dict_batch.pop("waveform_length")
+    dict_batch.pop("melspectrogram")
+    dict_batch.pop("melspectrogram_length")
 
     return dict_batch
 
