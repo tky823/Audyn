@@ -4,6 +4,6 @@ defaults:
   - _self_
 
 audio:
-  slice_length: 1024
+  slice_length: 1500
 melspectrogram:
   n_mels: 128
