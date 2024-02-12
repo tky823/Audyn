@@ -1,5 +1,9 @@
 # Recipe of CLAP using ClothoV2
 
+## Preparation
+
+To run this recipe, you have to install `transformers`.
+
 ## Stages
 
 ### Stage 0: Preprocess dataset
