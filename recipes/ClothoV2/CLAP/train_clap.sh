@@ -36,6 +36,21 @@ cmd=$(
     system="${system}"
 )
 
+additional_args=""
+
+if [ -n "${text_tower_checkpoint}" ]; then
+    additional_args="${additional_args} model.text_tower.path=${text_tower_checkpoint}"
+fi
+
+if [ -n "${audio_tower_checkpoint}" ]; then
+    additional_args="${additional_args} model.audio_tower.path=${audio_tower_checkpoint}"
+fi
+
+if [ -z "${additional_args}" ]; then
+    # to avoid error of hydra
+    additional_args=" "
+fi
+
 ${cmd} ./local/train_clap.py \
 --config-dir "./conf" \
 hydra.run.dir="${exp_dir}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
@@ -55,5 +70,4 @@ train.dataset.validation.feature_dir="${feature_dir}/validation" \
 train.resume.continue_from="${continue_from}" \
 train.output.exp_dir="${exp_dir}/${tag}/clap" \
 train.output.tensorboard_dir="tensorboard/${tag}/clap" \
-model.text_tower.path="${text_tower_checkpoint}" \
-model.audio_tower.path="${audio_tower_checkpoint}"
+${additional_args}
