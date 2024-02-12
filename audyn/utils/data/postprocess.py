@@ -128,14 +128,14 @@ def slice_feautures(
 
         if length < sliced_feature_length:
             if pad_values is None or pad_values.get(key) is None:
-                padding = sliced_feature_length - length
-                sliced_feature = F.pad(feature, (0, padding))
-            else:
                 raise ValueError(
                     f"Input length ({length}) is shorter "
                     f"than slice length ({sliced_feature_length}) "
                     f"for {key} key."
                 )
+            else:
+                padding = sliced_feature_length - length
+                sliced_feature = F.pad(feature, (0, padding))
         else:
             if random_slice:
                 if length == sliced_feature_length:
