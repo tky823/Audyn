@@ -1,0 +1,8 @@
+mask_index: 0
+ignore_index: -1
+selection_rate: 0.15
+mask_rate: 0.8
+replace_rate: 0.1
+preprocessor:
+  _target_: audyn.utils.data.clotho.ClothoTextPreprocessor
+  include_mask_token: true

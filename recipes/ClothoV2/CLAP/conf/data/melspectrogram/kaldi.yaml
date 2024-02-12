@@ -2,8 +2,8 @@ _target_: audyn.transforms.ast.SelfSupervisedAudioSpectrogramTransformerMelSpect
 sample_rate: ${..audio.sample_rate}
 n_mels: ???
 n_frames:
-freq_mask_param: 48
-time_mask_param: 192
+freq_mask_param:
+time_mask_param:
 mean: -4.2677393  # based on AudioSet
 std: 4.5689974  # based on AudioSet
 take_log: false

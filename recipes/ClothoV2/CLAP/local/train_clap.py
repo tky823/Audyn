@@ -3,6 +3,7 @@ from typing import Dict, Iterable, List, Optional
 
 import torch
 import torch.nn as nn
+import torchaudio.functional as aF
 from omegaconf import DictConfig
 
 import audyn
@@ -15,7 +16,12 @@ from audyn.utils import (
     instantiate_optimizer,
     setup_system,
 )
-from audyn.utils.data import BaseDataLoaders, default_collate_fn, take_log_features
+from audyn.utils.data import (
+    BaseDataLoaders,
+    default_collate_fn,
+    slice_feautures,
+    take_log_features,
+)
 from audyn.utils.driver import BaseTrainer
 from audyn.utils.model import set_device
 
@@ -24,18 +30,37 @@ from audyn.utils.model import set_device
 def main(config: DictConfig) -> None:
     setup_system(config)
 
-    train_dataset = instantiate(config.train.dataset.train)
-    validation_dataset = instantiate(config.train.dataset.validation)
+    dataset_config = config.train.dataset
+    dataloader_config = config.train.dataloader
+    audio_config = config.data.audio
+    melspec_config = config.data.melspectrogram
+
+    train_dataset = instantiate(dataset_config.train)
+    validation_dataset = instantiate(dataset_config.validation)
 
     train_loader = instantiate(
-        config.train.dataloader.train,
+        dataloader_config.train,
         train_dataset,
-        collate_fn=functools.partial(collate_fn, random_caption=True),
+        collate_fn=functools.partial(
+            collate_fn,
+            slice_length=audio_config.slice_length,
+            random_caption=True,
+            random_slice=True,
+            freq_mask_param=melspec_config.get("freq_mask_param"),
+            time_mask_param=melspec_config.get("time_mask_param"),
+        ),
     )
     validation_loader = instantiate(
-        config.train.dataloader.validation,
+        dataloader_config.validation,
         validation_dataset,
-        collate_fn=functools.partial(collate_fn, random_caption=False),
+        collate_fn=functools.partial(
+            collate_fn,
+            slice_length=audio_config.slice_length,
+            random_caption=False,
+            random_slice=False,
+            freq_mask_param=None,
+            time_mask_param=None,
+        ),
     )
     loaders = BaseDataLoaders(train_loader, validation_loader)
 
@@ -71,7 +96,11 @@ def main(config: DictConfig) -> None:
 
 def collate_fn(
     batch: List[Dict[str, torch.Tensor]],
+    slice_length: Optional[int] = None,
     random_caption: bool = True,
+    random_slice: bool = False,
+    freq_mask_param: Optional[int] = None,
+    time_mask_param: Optional[int] = None,
     keys: Optional[Iterable[str]] = None,
 ) -> Dict[str, torch.Tensor]:
     """Generate dict-based batch.
@@ -81,6 +110,9 @@ def collate_fn(
             Type of each data is expected ``Dict[str, torch.Tensor]``.
         random_caption (bool): If ``True``, random caption is used. Otherwise,
             first caption is used, which is useful for validation.
+        random_slice (bool): If ``True``, slicing is applied at random poistion.
+        freq_mask_param (int, optional): Parameter of frequency masking.
+        time_mask_param (int, optional): Parameter of time masking.
         keys (iterable, optional): Keys to generate batch.
             If ``None`` is given, all keys detected in ``batch`` are used.
             Default: ``None``.
@@ -103,16 +135,69 @@ def collate_fn(
         sample["text_length"] = tokens_length[caption_idx]
 
     dict_batch = default_collate_fn(batch, keys=keys)
-    dict_batch.pop("waveform")
-    dict_batch.pop("waveform_length")
+
+    if slice_length is not None:
+        dict_batch = slice_feautures(
+            dict_batch,
+            slice_length=slice_length,
+            key_mapping={
+                "melspectrogram": "melspectrogram_slice",
+            },
+            hop_lengths={
+                "melspectrogram": 1,
+            },
+            length_mapping={
+                "melspectrogram": "melspectrogram_length",
+            },
+            random_slice=random_slice,
+            pad_values={
+                "melspectrogram": 1,  # log- is padded with 0.
+            },
+        )
 
     dict_batch = take_log_features(
         dict_batch,
         key_mapping={
-            "melspectrogram": "log_melspectrogram",
+            "melspectrogram_slice": "log_melspectrogram_slice",
         },
-        flooring_fn=lambda x: torch.clamp(x, min=1e-10),
     )
+
+    log_melspectrogram_slice = dict_batch["log_melspectrogram_slice"]
+    spectrogram_dims = log_melspectrogram_slice.dim()
+
+    # to support torchaudio < 2.1.0
+    if spectrogram_dims == 3:
+        log_melspectrogram_slice = log_melspectrogram_slice.unsqueeze(dim=-3)
+
+    masking_kwargs = {
+        "mask_value": 0.0,
+        "p": 1,
+    }
+
+    if freq_mask_param is not None:
+        log_melspectrogram_slice = aF.mask_along_axis_iid(
+            log_melspectrogram_slice,
+            freq_mask_param,
+            axis=log_melspectrogram_slice.dim() - 2,
+            **masking_kwargs,
+        )
+
+    if time_mask_param is not None:
+        log_melspectrogram_slice = aF.mask_along_axis_iid(
+            log_melspectrogram_slice,
+            time_mask_param,
+            axis=log_melspectrogram_slice.dim() - 1,
+            **masking_kwargs,
+        )
+
+    if spectrogram_dims == 3:
+        log_melspectrogram_slice = log_melspectrogram_slice.squeeze(dim=-3)
+
+    dict_batch["log_melspectrogram_slice"] = log_melspectrogram_slice
+
+    dict_batch.pop("waveform")
+    dict_batch.pop("waveform_length")
+    dict_batch.pop("melspectrogram")
 
     return dict_batch
 

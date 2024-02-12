@@ -1,0 +1,10 @@
+- name: text
+  lr_scheduler:
+    _target_: torch.optim.lr_scheduler.StepLR
+    step_size: 1000
+    gamma: 0.9
+- name: audio
+  lr_scheduler:
+    _target_: torch.optim.lr_scheduler.StepLR
+    step_size: 1000
+    gamma: 0.9

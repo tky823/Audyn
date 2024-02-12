@@ -1,0 +1,10 @@
+defaults:
+  - clotho-v2
+  - override melspectrogram: kaldi_augmentation
+  - override text: bert
+  - _self_
+
+audio:
+  slice_length: 1500
+melspectrogram:
+  n_mels: 128

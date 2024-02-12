@@ -1,0 +1,3 @@
+preprocessor:
+  _target_: utils.text.BERTTextPreprocessor
+  pretrained_name_or_path: bert-base-uncased
