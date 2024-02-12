@@ -8,7 +8,9 @@ stop_stage=-1
 
 tag=""
 continue_from=""
-checkpoint=""
+text_tower_checkpoint=""
+audio_tower_checkpoint=""
+clap_checkpoint=""
 
 exp_dir="./exp"
 
@@ -21,12 +23,12 @@ dump_format="torch"
 system="defaults"
 preprocess="clotho-v2"
 data="clotho-v2"
-train="clap"
+train=""
 test=""
-model="clap"
-optimizer="clap"
-lr_scheduler="clap"
-criterion="info_nce"
+model=""
+optimizer=""
+lr_scheduler=""
+criterion=""
 metrics="clap"
 
 . ../../_common/parse_options.sh || exit 1;
@@ -65,10 +67,10 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
 fi
 
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
-    echo "Stage 1: Training"
+    echo "Stage 1: Pretraining text encoder"
 
     (
-        . ./train.sh \
+        . ./train_text_tower.sh \
         --tag "${tag}" \
         --continue-from "${continue_from}" \
         --exp-dir "${exp_dir}" \
@@ -86,12 +88,56 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
 fi
 
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
-    echo "Stage 2: Save embeddings of text and audio"
+    echo "Stage 2: Pretraining audio encoder"
+
+    (
+        . ./train_audio_tower.sh \
+        --tag "${tag}" \
+        --continue-from "${continue_from}" \
+        --exp-dir "${exp_dir}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
+        --system "${system}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --train "${train}" \
+        --model "${model}" \
+        --optimizer "${optimizer}" \
+        --lr-scheduler "${lr_scheduler}" \
+        --criterion "${criterion}"
+    )
+fi
+
+if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
+    echo "Stage 3: Training CLAP"
+
+    (
+        . ./train_clap.sh \
+        --tag "${tag}" \
+        --continue-from "${continue_from}" \
+        --text-tower-checkpoint "${text_tower_checkpoint}" \
+        --audio-tower-checkpoint "${audio_tower_checkpoint}" \
+        --exp-dir "${exp_dir}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
+        --system "${system}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --train "${train}" \
+        --model "${model}" \
+        --optimizer "${optimizer}" \
+        --lr-scheduler "${lr_scheduler}" \
+        --criterion "${criterion}"
+    )
+fi
+
+if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
+    echo "Stage 4: Save embeddings of text and audio"
 
     (
         . ./save_embeddings.sh \
         --tag "${tag}" \
-        --checkpoint "${checkpoint}" \
+        --checkpoint "${clap_checkpoint}" \
         --exp-dir "${exp_dir}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
@@ -103,8 +149,8 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     )
 fi
 
-if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
-    echo "Stage 3: Test"
+if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
+    echo "Stage 5: Test"
 
     (
         . ./test.sh \

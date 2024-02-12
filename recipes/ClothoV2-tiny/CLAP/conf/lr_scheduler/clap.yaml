@@ -1,10 +1,10 @@
 - name: text
   lr_scheduler:
-    _target_: audyn.optim.lr_scheduler.TransformerLRScheduler
-    d_model: ${model.text_tower.backbone.embedding_dim}
-    warmup_steps: 10
+    _target_: torch.optim.lr_scheduler.StepLR
+    step_size: 10
+    gamma: 0.9
 - name: audio
   lr_scheduler:
-    _target_: ${...0.lr_scheduler._target_}
-    d_model: ${model.audio_tower.backbone.embedding_dim}
-    warmup_steps: ${...0.lr_scheduler.warmup_steps}
+    _target_: torch.optim.lr_scheduler.StepLR
+    step_size: 10
+    gamma: 0.9

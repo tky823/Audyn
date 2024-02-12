@@ -1,0 +1,50 @@
+defaults:
+  - defaults
+  - override dataset: torch
+  - override dataloader: defaults
+  - override clip_gradient: clap
+  - _self_
+
+dataloader:
+  train:
+    batch_size: 4
+  validation:
+    batch_size: 4
+
+key_mapping:
+  train:
+    input:
+      input: log_melspectrogram_slice
+    output:
+      - - classified_patch
+        - reconstructed_patch
+      - target_patch
+      - patch_length
+  validation: ${.train}
+  inference: ${.train}
+
+ddp_kwargs:
+  find_unused_parameters: true
+
+resume:
+  continue_from:
+
+output:
+  exp_dir: "./exp"
+  tensorboard_dir: "./tensorboard"
+  save_checkpoint:
+    iteration:
+      every: 1000
+      path: ${...exp_dir}/model/iteration{iteration}.pth
+    epoch:
+      every: 20
+      path: ${...exp_dir}/model/epoch{epoch}.pth
+    last:
+      path: ${...exp_dir}/model/last.pth
+    best_epoch:
+      path: ${...exp_dir}/model/best_epoch.pth
+
+steps:
+  epochs: 4
+  iterations:
+  lr_scheduler:

@@ -21,6 +21,8 @@ If you need to run recipes, add `[recipes]` as follows:
 pip install -e ".[recipes]"
 ```
 
+If you use MacOS, you may need to set `MACOSX_DEPLOYMENT_TARGET` during installation to build C++ related modules.
+
 ## Development
 ```shell
 # In Audyn/

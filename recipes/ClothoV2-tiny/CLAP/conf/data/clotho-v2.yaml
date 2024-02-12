@@ -1,20 +1,23 @@
 defaults:
   - defaults
+  - melspectrogram: torchaudio
 
 audio:
   sample_rate: 44100
+  slice_length: 1024
+  selection_rate: 0.15
+  cluster_size: 3
 spectrogram:
   sample_rate: ${..audio.sample_rate}
   n_fft: 2048
   hop_length: 1024
-melspectrogram:
-  sample_rate: ${..audio.sample_rate}
-  n_fft: ${..spectrogram.n_fft}
-  hop_length: ${..spectrogram.hop_length}
-  f_min: 0
-  f_max:
-  n_mels: 64
 
 text:
+  mask_index: 0
+  ignore_index: -1
+  selection_rate: 0.15
+  mask_rate: 0.8
+  replace_rate: 0.1
   preprocessor:
     _target_: audyn.utils.data.clotho.ClothoTextPreprocessor
+    include_mask_token: true

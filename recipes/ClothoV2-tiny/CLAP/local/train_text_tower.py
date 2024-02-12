@@ -1,0 +1,1 @@
+../../../ClothoV2/CLAP/local/train_text_tower.py

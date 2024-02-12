@@ -16,14 +16,17 @@ data="clotho-v2_mel64"  # or "clotho-v2_mel128", "clotho-v2_mel256"
 --data "${data}"
 ```
 
-### Stage 1: Train CLAP
+### Stage 1: Train text tower
 
 ```sh
 dump_format="torch"
 
 data="clotho-v2_mel64"  # or "clotho-v2_mel128", "clotho-v2_mel256"
-train="clap"
-model="clap_cls"  # or "clap_pool"
+train="text_transformer"
+model="text_transformer"
+optimizer="text_transformer"
+lr_scheduler="text_transformer"
+criterion="text_mlm"
 
 . ./run.sh \
 --stage 1 \
@@ -32,32 +35,90 @@ model="clap_cls"  # or "clap_pool"
 --dump-format "${dump_format}" \
 --data "${data}" \
 --train "${train}" \
---model "${model}"
+--model "${model}" \
+--optimizer "${optimizer}" \
+--lr-scheduler "${lr_scheduler}" \
+--criterion "${criterion}"
 ```
 
-### Stage 2: Save text and audio embeddings of CLAP
+### Stage 2: Train Audio tower
 
 ```sh
 dump_format="torch"
 
-checkpoint="<PATH/TO/PRETRAINED/CLAP>"
-
 data="clotho-v2_mel64"  # or "clotho-v2_mel128", "clotho-v2_mel256"
-test="save_embeddings"
-model="clap_cls"  # or "clap_pool"
+train="audio_transformer"
+model="audio_transformer"
+optimizer="audio_transformer"
+lr_scheduler="audio_transformer"
+criterion="audio_mpm"
 
 . ./run.sh \
 --stage 2 \
 --stop-stage 2 \
 --tag <TAG> \
 --dump-format "${dump_format}" \
---checkpoint "${checkpoint}" \
+--data "${data}" \
+--train "${train}" \
+--model "${model}" \
+--optimizer "${optimizer}" \
+--lr-scheduler "${lr_scheduler}" \
+--criterion "${criterion}"
+```
+
+### Stage 3: Train CLAP
+
+```sh
+dump_format="torch"
+
+text_tower_checkpoint="<PATH/TO/PRETRAINED/TEXT/TOWER>"
+audio_tower_checkpoint="<PATH/TO/PRETRAINED/AUDIO/TOWER>"
+
+data="clotho-v2_mel64"  # or "clotho-v2_mel128", "clotho-v2_mel256"
+train="clap"
+model="clap_cls"  # or "clap_pool"
+criterion="clap"
+optimizer="clap"
+lr_scheduler="clap"
+
+. ./run.sh \
+--stage 3 \
+--stop-stage 3 \
+--tag <TAG> \
+--dump-format "${dump_format}" \
+--text-tower-checkpoint "${text_tower_checkpoint}" \
+--audio-tower-checkpoint "${audio_tower_checkpoint}" \
+--data "${data}" \
+--train "${train}" \
+--model "${model}" \
+--optimizer "${optimizer}" \
+--lr-scheduler "${lr_scheduler}" \
+--criterion "${criterion}"
+```
+
+### Stage 4: Save text and audio embeddings of CLAP
+
+```sh
+dump_format="torch"
+
+clap_checkpoint="<PATH/TO/PRETRAINED/CLAP>"
+
+data="clotho-v2_mel64"  # or "clotho-v2_mel128", "clotho-v2_mel256"
+test="save_embeddings"
+model="clap_cls"  # or "clap_pool"
+
+. ./run.sh \
+--stage 4 \
+--stop-stage 4 \
+--tag <TAG> \
+--dump-format "${dump_format}" \
+--clap-checkpoint "${clap_checkpoint}" \
 --data "${data}" \
 --test "${test}" \
 --model "${model}"
 ```
 
-### Stage 3: Evaluate retrieval results
+### Stage 5: Evaluate retrieval results
 
 Only `system=cpu` is supported in this stage.
 
@@ -70,8 +131,8 @@ test="clap"
 model="clap_cls"  # or "clap_pool"
 
 . ./run.sh \
---stage 3 \
---stop-stage 3 \
+--stage 5 \
+--stop-stage 5 \
 --tag <TAG> \
 --dump-format "${dump_format}" \
 --system "${system}" \

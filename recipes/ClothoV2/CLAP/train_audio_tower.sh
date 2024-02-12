@@ -11,11 +11,11 @@ dump_format="torch"
 system="defaults"
 preprocess="clotho-v2"
 data="clotho-v2"
-train="baseline"
-model="clap"
-optimizer="clap"
-lr_scheduler="clap"
-criterion="info_nce"
+train="audio_tower"
+model="audio_tower"
+optimizer="audio_tower"
+lr_scheduler="audio_tower"
+criterion="audio_mpm"
 
 . ../../_common/parse_options.sh || exit 1;
 
@@ -34,7 +34,7 @@ cmd=$(
     system="${system}"
 )
 
-${cmd} ./local/train.py \
+${cmd} ./local/train_audio_tower.py \
 --config-dir "./conf" \
 hydra.run.dir="${exp_dir}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
 system="${system}" \
@@ -51,5 +51,5 @@ train.dataset.train.feature_dir="${feature_dir}/train" \
 train.dataset.validation.list_path="${list_dir}/validation.txt" \
 train.dataset.validation.feature_dir="${feature_dir}/validation" \
 train.resume.continue_from="${continue_from}" \
-train.output.exp_dir="${exp_dir}/${tag}" \
-train.output.tensorboard_dir="tensorboard/${tag}"
+train.output.exp_dir="${exp_dir}/${tag}/audio" \
+train.output.tensorboard_dir="tensorboard/${tag}/audio"

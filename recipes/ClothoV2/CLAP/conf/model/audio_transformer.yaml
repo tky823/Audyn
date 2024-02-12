@@ -1,0 +1,22 @@
+_target_: utils.models.transformer.AudioTransformerMaskedPatchModel
+backbone:
+  _target_: utils.models.transformer.AudioTransformerMaskedPatchModelBackbone
+  in_channels: ${data.melspectrogram.n_mels}
+  embedding_dim: 256
+  frames_per_patch: 2
+  nhead: 8
+  num_layers: 6
+  batch_first: true
+  channels_last: false
+  selection_rate: ${data.audio.selection_rate}
+  cluster_size: ${data.audio.cluster_size}
+classifier:
+  _target_: utils.models.mlp.MLP
+  in_channels: ${..backbone.embedding_dim}
+  out_channels:
+    _target_: operator.mul
+    _args_:
+      - ${data.melspectrogram.n_mels}
+      - ${....backbone.frames_per_patch}
+  hidden_channels: ${.in_channels}
+reconstructor: ${.classifier}
