@@ -3,6 +3,7 @@ from typing import Dict, Iterable, List, Optional
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from omegaconf import DictConfig
 
 import audyn
@@ -140,6 +141,9 @@ def collate_fn(
                 "melspectrogram": "melspectrogram_length",
             },
             random_slice=random_slice,
+            pad_values={
+                "melspectrogram": 1,  # log- is padded with 0.
+            },
         )
 
     dict_batch = take_log_features(
