@@ -1,6 +1,6 @@
 defaults:
   - clotho-v2
-  - override melspectrogram: kaldi
+  - override melspectrogram: kaldi_augmentation
   - override text: bert
   - _self_
 

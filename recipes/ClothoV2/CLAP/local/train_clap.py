@@ -3,6 +3,7 @@ from typing import Dict, Iterable, List, Optional
 
 import torch
 import torch.nn as nn
+import torchaudio.functional as aF
 from omegaconf import DictConfig
 
 import audyn
@@ -32,6 +33,7 @@ def main(config: DictConfig) -> None:
     dataset_config = config.train.dataset
     dataloader_config = config.train.dataloader
     audio_config = config.data.audio
+    melspec_config = config.data.melspectrogram
 
     train_dataset = instantiate(dataset_config.train)
     validation_dataset = instantiate(dataset_config.validation)
@@ -44,6 +46,8 @@ def main(config: DictConfig) -> None:
             slice_length=audio_config.slice_length,
             random_caption=True,
             random_slice=True,
+            freq_mask_param=melspec_config.get("freq_mask_param"),
+            time_mask_param=melspec_config.get("time_mask_param"),
         ),
     )
     validation_loader = instantiate(
@@ -54,6 +58,8 @@ def main(config: DictConfig) -> None:
             slice_length=audio_config.slice_length,
             random_caption=False,
             random_slice=False,
+            freq_mask_param=None,
+            time_mask_param=None,
         ),
     )
     loaders = BaseDataLoaders(train_loader, validation_loader)
@@ -93,6 +99,8 @@ def collate_fn(
     slice_length: Optional[int] = None,
     random_caption: bool = True,
     random_slice: bool = False,
+    freq_mask_param: Optional[int] = None,
+    time_mask_param: Optional[int] = None,
     keys: Optional[Iterable[str]] = None,
 ) -> Dict[str, torch.Tensor]:
     """Generate dict-based batch.
@@ -103,6 +111,8 @@ def collate_fn(
         random_caption (bool): If ``True``, random caption is used. Otherwise,
             first caption is used, which is useful for validation.
         random_slice (bool): If ``True``, slicing is applied at random poistion.
+        freq_mask_param (int, optional): Parameter of frequency masking.
+        time_mask_param (int, optional): Parameter of time masking.
         keys (iterable, optional): Keys to generate batch.
             If ``None`` is given, all keys detected in ``batch`` are used.
             Default: ``None``.
@@ -151,6 +161,31 @@ def collate_fn(
             "melspectrogram_slice": "log_melspectrogram_slice",
         },
     )
+
+    log_melspectrogram_slice = dict_batch["log_melspectrogram_slice"]
+    spectrogram_dims = log_melspectrogram_slice.dim()
+    masking_kwargs = {
+        "mask_value": 0.0,
+        "p": 1,
+    }
+
+    if freq_mask_param is not None:
+        log_melspectrogram_slice = aF.mask_along_axis_iid(
+            log_melspectrogram_slice,
+            freq_mask_param,
+            axis=spectrogram_dims - 2,
+            **masking_kwargs,
+        )
+
+    if time_mask_param is not None:
+        log_melspectrogram_slice = aF.mask_along_axis_iid(
+            log_melspectrogram_slice,
+            time_mask_param,
+            axis=spectrogram_dims - 1,
+            **masking_kwargs,
+        )
+
+    dict_batch["log_melspectrogram_slice"] = log_melspectrogram_slice
 
     dict_batch.pop("waveform")
     dict_batch.pop("waveform_length")
