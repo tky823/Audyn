@@ -140,7 +140,7 @@ def slice_feautures(
                     feature, [length, feature.size(_length_dim) - length], dim=_length_dim
                 )
                 # append padding
-                padding = length - sliced_feature_length
+                padding = sliced_feature_length - length
                 pad_value = pad_values[key]
                 sliced_feature = F.pad(feature, (0, padding), value=pad_value)
                 low_start_idx = 0
