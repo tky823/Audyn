@@ -134,8 +134,16 @@ def slice_feautures(
                     f"for {key} key."
                 )
             else:
-                padding = sliced_feature_length - length
-                sliced_feature = F.pad(feature, (0, padding))
+                # remove exising padding
+                padding = feature.size(_length_dim) - length
+                feature, _ = torch.split(
+                    feature, [length, feature.size(_length_dim) - length], dim=_length_dim
+                )
+                # append padding
+                padding = length - sliced_feature_length
+                pad_value = pad_values[key]
+                sliced_feature = F.pad(feature, (0, padding), value=pad_value)
+                low_start_idx = 0
         else:
             if random_slice:
                 if length == sliced_feature_length:
@@ -181,16 +189,27 @@ def slice_feautures(
                 length_dim=_length_dim,
             )
 
-            start_idx = low_start_idx * hop_lengths[low_resolution_key]
-            start_idx = start_idx // hop_length
-            end_idx = start_idx + sliced_feature_length
-            slice_key = key_mapping[key]
+            if length < sliced_feature_length:
+                # remove exising padding
+                padding = feature.size(_length_dim) - length
+                feature, _ = torch.split(
+                    feature, [length, feature.size(_length_dim) - length], dim=_length_dim
+                )
+                # append padding
+                padding = sliced_feature_length - length
+                pad_value = pad_values[key]
+                sliced_feature = F.pad(feature, (0, padding), value=pad_value)
+            else:
+                start_idx = low_start_idx * hop_lengths[low_resolution_key]
+                start_idx = start_idx // hop_length
+                end_idx = start_idx + sliced_feature_length
+                slice_key = key_mapping[key]
 
-            _, sliced_feature, _ = torch.split(
-                feature,
-                [start_idx, end_idx - start_idx, feature.size(_length_dim) - end_idx],
-                dim=_length_dim,
-            )
+                _, sliced_feature, _ = torch.split(
+                    feature,
+                    [start_idx, end_idx - start_idx, feature.size(_length_dim) - end_idx],
+                    dim=_length_dim,
+                )
 
             output_batch[slice_key].append(sliced_feature)
 
@@ -264,6 +283,7 @@ def _compute_length(
     length_key: Optional[str] = None,
     length_dim: Optional[int] = None,
 ) -> int:
+    """Compute length after removing padding."""
     if length_dim is None:
         length_dim = -1
 
