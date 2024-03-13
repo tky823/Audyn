@@ -221,6 +221,21 @@ def test_relative_positional_attn(
     assert torch.allclose(attn_weights, relative_attn_weights)
 
     # ensure inveriance of relative positions
+    relative_mha = RelativePositionalMultiheadAttention(
+        embed_dim,
+        num_heads,
+        window_size=window_size,
+        batch_first=batch_first,
+    )
+
+    relative_output, relative_attn_weights = relative_mha(
+        query,
+        key,
+        value,
+        key_padding_mask=key_padding_mask,
+        attn_mask=attn_mask,
+    )
+
     if batch_first:
         random_padding = torch.randn((batch_size, 1, embed_dim))
         query = torch.cat([random_padding, query], dim=1)
@@ -270,7 +285,7 @@ def test_relative_positional_attn(
     )
 
     assert torch.allclose(padded_relative_output, relative_output)
-    assert torch.allclose(padded_relative_attn_weights, attn_weights)
+    assert torch.allclose(padded_relative_attn_weights, relative_attn_weights)
 
 
 @pytest.mark.parametrize("batch_first", [True, False])
