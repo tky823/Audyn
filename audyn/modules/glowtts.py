@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .activation import RelativePositionalMultiheadSelfAttention
+from .activation import RelativePositionalMultiheadAttention
 from .fastspeech import ConvBlock
 from .fastspeech import FFTrBlock as BaseFFTrBlock
 from .fastspeech import MultiheadSelfAttentionBlock as BaseMultiheadSelfAttentionBlock
@@ -91,7 +91,7 @@ class MultiheadSelfAttentionBlock(BaseMultiheadSelfAttentionBlock):
             "dtype": dtype,
         }
 
-        self.mha = RelativePositionalMultiheadSelfAttention(
+        self.mha = RelativePositionalMultiheadAttention(
             embed_dim,
             num_heads,
             dropout=dropout,
