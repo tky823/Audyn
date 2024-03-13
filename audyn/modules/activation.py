@@ -12,6 +12,7 @@ __all__ = [
     "TrainableAbsolutePositionalMultiheadAttention",
     "RelativePositionalMultiheadAttention",
     "RotaryPositionalMultiheadAttention",
+    "ExtrapolatablePositionalMultiheadAttention",
 ]
 
 
