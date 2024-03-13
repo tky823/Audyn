@@ -220,6 +220,58 @@ def test_relative_positional_attn(
     assert torch.allclose(output, relative_output, atol=1e-7)
     assert torch.allclose(attn_weights, relative_attn_weights)
 
+    # ensure inveriance of relative positions
+    if batch_first:
+        random_padding = torch.randn((batch_size, 1, embed_dim))
+        query = torch.cat([random_padding, query], dim=1)
+        key = torch.cat([random_padding, key], dim=1)
+        value = torch.cat([random_padding, value], dim=1)
+    else:
+        random_padding = torch.randn((1, batch_size, embed_dim))
+        query = torch.cat([random_padding, query], dim=0)
+        key = torch.cat([random_padding, key], dim=0)
+        value = torch.cat([random_padding, value], dim=0)
+
+    padding = torch.full((batch_size, 1), fill_value=True)
+    key_padding_mask = torch.cat([padding, key_padding_mask], dim=1)
+
+    if attn_mask is None:
+        # Even when attn_mask is None, positions of key_padding_mask will be ignored
+        # in attention weights.
+        pass
+    else:
+        padding = torch.full((max_query_length, 1), fill_value=True)
+        attn_mask = torch.cat([padding, attn_mask], dim=-1)
+        padding = torch.full((1, max_key_length + 1), fill_value=False)
+        attn_mask = torch.cat([padding, attn_mask], dim=-2)
+
+    padded_relative_output, padded_relative_attn_weights = relative_mha(
+        query,
+        key,
+        value,
+        key_padding_mask=key_padding_mask,
+        attn_mask=attn_mask,
+    )
+
+    if batch_first:
+        _, padded_relative_output = torch.split(
+            padded_relative_output, [1, max_query_length], dim=1
+        )
+    else:
+        _, padded_relative_output = torch.split(
+            padded_relative_output, [1, max_query_length], dim=0
+        )
+
+    _, padded_relative_attn_weights = torch.split(
+        padded_relative_attn_weights, [1, max_query_length], dim=-2
+    )
+    _, padded_relative_attn_weights = torch.split(
+        padded_relative_attn_weights, [1, max_key_length], dim=-1
+    )
+
+    assert torch.allclose(padded_relative_output, relative_output)
+    assert torch.allclose(padded_relative_attn_weights, attn_weights)
+
 
 @pytest.mark.parametrize("batch_first", [True, False])
 @pytest.mark.parametrize("use_attn_mask", [True, False])
