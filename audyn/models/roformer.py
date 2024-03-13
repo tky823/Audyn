@@ -7,6 +7,7 @@ from typing import Callable, Optional, Union
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from packaging import version
 
 from ..modules.activation import RotaryPositionalMultiheadAttention
 
@@ -16,6 +17,8 @@ __all__ = [
     "RoFormerEncoderLayer",
     "RoFormerDecoderLayer",
 ]
+
+IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
 
 class RoformerEncoder(nn.TransformerEncoder):
@@ -127,6 +130,13 @@ class RoFormerEncoderLayer(nn.Module):
 
         super().__init__()
 
+        if IS_TORCH_LT_2_1:
+            layer_norm_kwargs = {"bias": bias}
+        else:
+            assert bias, "Only bias=True is supported for torch < 2.1."
+
+            layer_norm_kwargs = {}
+
         self.self_attn = RotaryPositionalMultiheadAttention(
             d_model,
             nhead,
@@ -143,8 +153,12 @@ class RoFormerEncoderLayer(nn.Module):
         self.linear2 = nn.Linear(dim_feedforward, d_model, bias=bias, **factory_kwargs)
 
         self.norm_first = norm_first
-        self.norm1 = nn.LayerNorm(d_model, eps=layer_norm_eps, bias=bias, **factory_kwargs)
-        self.norm2 = nn.LayerNorm(d_model, eps=layer_norm_eps, bias=bias, **factory_kwargs)
+        self.norm1 = nn.LayerNorm(
+            d_model, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs
+        )
+        self.norm2 = nn.LayerNorm(
+            d_model, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs
+        )
         self.dropout1 = nn.Dropout(dropout)
         self.dropout2 = nn.Dropout(dropout)
 
@@ -268,6 +282,13 @@ class RoFormerDecoderLayer(nn.Module):
 
         super().__init__()
 
+        if IS_TORCH_LT_2_1:
+            layer_norm_kwargs = {"bias": bias}
+        else:
+            assert bias, "Only bias=True is supported for torch < 2.1."
+
+            layer_norm_kwargs = {}
+
         self.self_attn = RotaryPositionalMultiheadAttention(
             d_model,
             nhead,
@@ -292,9 +313,15 @@ class RoFormerDecoderLayer(nn.Module):
         self.linear2 = nn.Linear(dim_feedforward, d_model, bias=bias, **factory_kwargs)
 
         self.norm_first = norm_first
-        self.norm1 = nn.LayerNorm(d_model, eps=layer_norm_eps, bias=bias, **factory_kwargs)
-        self.norm2 = nn.LayerNorm(d_model, eps=layer_norm_eps, bias=bias, **factory_kwargs)
-        self.norm3 = nn.LayerNorm(d_model, eps=layer_norm_eps, bias=bias, **factory_kwargs)
+        self.norm1 = nn.LayerNorm(
+            d_model, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs
+        )
+        self.norm2 = nn.LayerNorm(
+            d_model, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs
+        )
+        self.norm3 = nn.LayerNorm(
+            d_model, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs
+        )
         self.dropout1 = nn.Dropout(dropout)
         self.dropout2 = nn.Dropout(dropout)
         self.dropout3 = nn.Dropout(dropout)
