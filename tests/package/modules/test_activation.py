@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import pytest
 import torch
 import torch.nn as nn
@@ -22,31 +24,15 @@ def test_trainable_absolute_positional_attn(
     max_pos_length, max_query_length, max_key_length, embed_dim = 16, 12, 10, 8
     num_heads = 4
 
-    query_length = torch.randint(max_query_length // 2, max_query_length, (batch_size,))
+    (query, key, value), (query_length, key_length) = create_qkv(
+        batch_size, max_query_length, max_key_length, embed_dim, batch_first=batch_first
+    )
     max_query_length = torch.max(query_length).item()
-    key_length = torch.randint(max_key_length // 2, max_key_length, (batch_size,))
     max_key_length = torch.max(key_length).item()
 
-    query = torch.randn(max_query_length, batch_size, embed_dim)
-    key = torch.randn(max_key_length, batch_size, embed_dim)
-    value = torch.randn(max_key_length, batch_size, embed_dim)
+    key_padding_mask, attn_mask = create_padding_masks(query_length, key_length)
 
-    if batch_first:
-        query = query.transpose(1, 0)
-        key = key.transpose(1, 0)
-        value = value.transpose(1, 0)
-
-    query_pos_indices = torch.arange(max_query_length)
-    key_pos_indices = torch.arange(max_key_length)
-    key_padding_mask = key_pos_indices >= key_length.unsqueeze(dim=-1)
-
-    if use_attn_mask:
-        if max_query_length > max_key_length:
-            attn_mask = key_pos_indices > query_pos_indices.unsqueeze(dim=-1)
-        else:
-            attn_mask = key_pos_indices < query_pos_indices.unsqueeze(dim=-1)
-            attn_mask = torch.flip(attn_mask, dims=(-2, -1))
-    else:
+    if not use_attn_mask:
         attn_mask = None
 
     absolute_mha = TrainableAbsolutePositionalMultiheadAttention(
@@ -126,9 +112,10 @@ def test_relative_positional_attn(
     max_query_length, max_key_length, embed_dim = 12, 10, 8
     num_heads = 4
 
-    query_length = torch.randint(max_query_length // 2, max_query_length, (batch_size,))
+    (query, key, value), (query_length, key_length) = create_qkv(
+        batch_size, max_query_length, max_key_length, embed_dim, batch_first=batch_first
+    )
     max_query_length = torch.max(query_length).item()
-    key_length = torch.randint(max_key_length // 2, max_key_length, (batch_size,))
     max_key_length = torch.max(key_length).item()
 
     if longer_window:
@@ -136,26 +123,9 @@ def test_relative_positional_attn(
     else:
         window_size = min(max_query_length, max_key_length) - 2
 
-    query = torch.randn(max_query_length, batch_size, embed_dim)
-    key = torch.randn(max_key_length, batch_size, embed_dim)
-    value = torch.randn(max_key_length, batch_size, embed_dim)
+    key_padding_mask, attn_mask = create_padding_masks(query_length, key_length)
 
-    if batch_first:
-        query = query.transpose(1, 0)
-        key = key.transpose(1, 0)
-        value = value.transpose(1, 0)
-
-    query_pos_indices = torch.arange(max_query_length)
-    key_pos_indices = torch.arange(max_key_length)
-    key_padding_mask = key_pos_indices >= key_length.unsqueeze(dim=-1)
-
-    if use_attn_mask:
-        if max_query_length > max_key_length:
-            attn_mask = key_pos_indices > query_pos_indices.unsqueeze(dim=-1)
-        else:
-            attn_mask = key_pos_indices < query_pos_indices.unsqueeze(dim=-1)
-            attn_mask = torch.flip(attn_mask, dims=(-2, -1))
-    else:
+    if not use_attn_mask:
         attn_mask = None
 
     relative_mha = RelativePositionalMultiheadAttention(
@@ -298,31 +268,15 @@ def test_rotary_positional_attn(batch_first: bool, use_attn_mask: bool, share_he
     max_query_length, max_key_length, embed_dim = 12, 10, 8
     num_heads = 4
 
-    query_length = torch.randint(max_query_length // 2, max_query_length, (batch_size,))
+    (query, key, value), (query_length, key_length) = create_qkv(
+        batch_size, max_query_length, max_key_length, embed_dim, batch_first=batch_first
+    )
     max_query_length = torch.max(query_length).item()
-    key_length = torch.randint(max_key_length // 2, max_key_length, (batch_size,))
     max_key_length = torch.max(key_length).item()
 
-    query = torch.randn(max_query_length, batch_size, embed_dim)
-    key = torch.randn(max_key_length, batch_size, embed_dim)
-    value = torch.randn(max_key_length, batch_size, embed_dim)
+    key_padding_mask, attn_mask = create_padding_masks(query_length, key_length)
 
-    if batch_first:
-        query = query.transpose(1, 0)
-        key = key.transpose(1, 0)
-        value = value.transpose(1, 0)
-
-    query_pos_indices = torch.arange(max_query_length)
-    key_pos_indices = torch.arange(max_key_length)
-    key_padding_mask = key_pos_indices >= key_length.unsqueeze(dim=-1)
-
-    if use_attn_mask:
-        if max_query_length > max_key_length:
-            attn_mask = key_pos_indices > query_pos_indices.unsqueeze(dim=-1)
-        else:
-            attn_mask = key_pos_indices < query_pos_indices.unsqueeze(dim=-1)
-            attn_mask = torch.flip(attn_mask, dims=(-2, -1))
-    else:
+    if not use_attn_mask:
         attn_mask = None
 
     rotary_mha = RotaryPositionalMultiheadAttention(
@@ -360,31 +314,15 @@ def test_extrapolatable_positional_attn(
     max_query_length, max_key_length, embed_dim = 12, 10, 8
     num_heads = 4
 
-    query_length = torch.randint(max_query_length // 2, max_query_length, (batch_size,))
+    (query, key, value), (query_length, key_length) = create_qkv(
+        batch_size, max_query_length, max_key_length, embed_dim, batch_first=batch_first
+    )
     max_query_length = torch.max(query_length).item()
-    key_length = torch.randint(max_key_length // 2, max_key_length, (batch_size,))
     max_key_length = torch.max(key_length).item()
 
-    query = torch.randn(max_query_length, batch_size, embed_dim)
-    key = torch.randn(max_key_length, batch_size, embed_dim)
-    value = torch.randn(max_key_length, batch_size, embed_dim)
+    key_padding_mask, attn_mask = create_padding_masks(query_length, key_length)
 
-    if batch_first:
-        query = query.transpose(1, 0)
-        key = key.transpose(1, 0)
-        value = value.transpose(1, 0)
-
-    query_pos_indices = torch.arange(max_query_length)
-    key_pos_indices = torch.arange(max_key_length)
-    key_padding_mask = key_pos_indices >= key_length.unsqueeze(dim=-1)
-
-    if use_attn_mask:
-        if max_query_length > max_key_length:
-            attn_mask = key_pos_indices > query_pos_indices.unsqueeze(dim=-1)
-        else:
-            attn_mask = key_pos_indices < query_pos_indices.unsqueeze(dim=-1)
-            attn_mask = torch.flip(attn_mask, dims=(-2, -1))
-    else:
+    if not use_attn_mask:
         attn_mask = None
 
     xpos_mha = ExtrapolatablePositionalMultiheadAttention(
@@ -408,3 +346,45 @@ def test_extrapolatable_positional_attn(
         assert xpos_output.size() == (max_query_length, batch_size, embed_dim)
 
     assert xpos_attn_weights.size() == (batch_size, max_query_length, max_key_length)
+
+
+def create_qkv(
+    batch_size: int, max_query_length: int, max_key_length: int, embed_dim: int, batch_first: bool
+) -> Tuple[
+    Tuple[torch.Tensor, torch.Tensor, torch.Tensor], Tuple[torch.LongTensor, torch.LongTensor]
+]:
+    query_length = torch.randint(max_query_length // 2, max_query_length, (batch_size,))
+    max_query_length = torch.max(query_length).item()
+    key_length = torch.randint(max_key_length // 2, max_key_length, (batch_size,))
+    max_key_length = torch.max(key_length).item()
+
+    query = torch.randn(max_query_length, batch_size, embed_dim)
+    key = torch.randn(max_key_length, batch_size, embed_dim)
+    value = torch.randn(max_key_length, batch_size, embed_dim)
+
+    if batch_first:
+        query = query.transpose(1, 0)
+        key = key.transpose(1, 0)
+        value = value.transpose(1, 0)
+
+    return (query, key, value), (query_length, key_length)
+
+
+def create_padding_masks(
+    query_length: torch.LongTensor,
+    key_length: torch.LongTensor,
+) -> Tuple[torch.BoolTensor, torch.BoolTensor]:
+    max_query_length = torch.max(query_length).item()
+    max_key_length = torch.max(key_length).item()
+
+    query_pos_indices = torch.arange(max_query_length)
+    key_pos_indices = torch.arange(max_key_length)
+    key_padding_mask = key_pos_indices >= key_length.unsqueeze(dim=-1)
+
+    if max_query_length > max_key_length:
+        attn_mask = key_pos_indices > query_pos_indices.unsqueeze(dim=-1)
+    else:
+        attn_mask = key_pos_indices < query_pos_indices.unsqueeze(dim=-1)
+        attn_mask = torch.flip(attn_mask, dims=(-2, -1))
+
+    return key_padding_mask, attn_mask
