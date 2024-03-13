@@ -131,11 +131,11 @@ class RoFormerEncoderLayer(nn.Module):
         super().__init__()
 
         if IS_TORCH_LT_2_1:
-            layer_norm_kwargs = {"bias": bias}
-        else:
             assert bias, "Only bias=True is supported for torch < 2.1."
 
             layer_norm_kwargs = {}
+        else:
+            layer_norm_kwargs = {"bias": bias}
 
         self.self_attn = RotaryPositionalMultiheadAttention(
             d_model,
@@ -283,11 +283,11 @@ class RoFormerDecoderLayer(nn.Module):
         super().__init__()
 
         if IS_TORCH_LT_2_1:
-            layer_norm_kwargs = {"bias": bias}
-        else:
             assert bias, "Only bias=True is supported for torch < 2.1."
 
             layer_norm_kwargs = {}
+        else:
+            layer_norm_kwargs = {"bias": bias}
 
         self.self_attn = RotaryPositionalMultiheadAttention(
             d_model,
