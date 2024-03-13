@@ -237,24 +237,20 @@ class TrainableAbsolutePositionalMultiheadAttention(_MultiheadAttention):
         head_dim = embed_dim // num_heads
 
         if batch_first:
-            q = query.transpose(1, 0)
-
-            if key is query:
-                k = q
+            if key is value:
+                if query is key:
+                    query = key = value = query.transpose(1, 0)
+                else:
+                    query = query.transpose(1, 0)
+                    key = key.transpose(1, 0)
+                    value = key
             else:
-                k = key.transpose(1, 0)
+                query = query.transpose(1, 0)
+                key = key.transpose(1, 0)
+                value = value.transpose(1, 0)
 
-            if query is value:
-                v = q
-            else:
-                v = value.transpose(1, 0)
-        else:
-            q = query
-            k = key
-            v = value
-
-        query_length, batch_size, _ = q.size()
-        key_length, _, _ = k.size()
+        query_length, batch_size, _ = query.size()
+        key_length, _, _ = key.size()
 
         assert (
             query_length <= max_length
@@ -293,7 +289,7 @@ class TrainableAbsolutePositionalMultiheadAttention(_MultiheadAttention):
             q_proj_bias, k_proj_bias, v_proj_bias = None, None, None
         else:
             q_proj_bias, k_proj_bias, v_proj_bias = torch.split(
-                in_proj_bias, [embed_dim] * 3, dim=-2
+                in_proj_bias, [embed_dim] * 3, dim=0
             )
 
         q = F.linear(query, q_proj_weight, bias=q_proj_bias)
@@ -514,24 +510,20 @@ class RelativePositionalMultiheadAttention(_MultiheadAttention):
         head_dim = embed_dim // num_heads
 
         if batch_first:
-            q = query.transpose(1, 0)
-
-            if key is query:
-                k = q
+            if key is value:
+                if query is key:
+                    query = key = value = query.transpose(1, 0)
+                else:
+                    query = query.transpose(1, 0)
+                    key = key.transpose(1, 0)
+                    value = key
             else:
-                k = key.transpose(1, 0)
+                query = query.transpose(1, 0)
+                key = key.transpose(1, 0)
+                value = value.transpose(1, 0)
 
-            if query is value:
-                v = q
-            else:
-                v = value.transpose(1, 0)
-        else:
-            q = query
-            k = key
-            v = value
-
-        query_length, batch_size, _ = q.size()
-        key_length, _, _ = k.size()
+        query_length, batch_size, _ = query.size()
+        key_length, _, _ = key.size()
 
         key_padding_mask = F._canonical_mask(
             mask=key_padding_mask,
@@ -563,7 +555,7 @@ class RelativePositionalMultiheadAttention(_MultiheadAttention):
             q_proj_bias, k_proj_bias, v_proj_bias = None, None, None
         else:
             q_proj_bias, k_proj_bias, v_proj_bias = torch.split(
-                in_proj_bias, [embed_dim] * 3, dim=-2
+                in_proj_bias, [embed_dim] * 3, dim=0
             )
 
         q = F.linear(query, q_proj_weight, bias=q_proj_bias)
@@ -581,9 +573,19 @@ class RelativePositionalMultiheadAttention(_MultiheadAttention):
 
         # offset for key
         if share_heads:
-            k_pos_emb = self.expand_embedding(k_pos_emb, length=key_length, num_heads=1)
+            k_pos_emb = self.expand_embedding(
+                k_pos_emb,
+                query_length=query_length,
+                key_length=key_length,
+                num_heads=1,
+            )
         else:
-            k_pos_emb = self.expand_embedding(k_pos_emb, length=key_length, num_heads=num_heads)
+            k_pos_emb = self.expand_embedding(
+                k_pos_emb,
+                query_length=query_length,
+                key_length=key_length,
+                num_heads=num_heads,
+            )
 
         q = q.permute(1, 2, 0, 3)
         k_pos_emb = k_pos_emb.permute(0, 2, 1, 3)
@@ -616,12 +618,22 @@ class RelativePositionalMultiheadAttention(_MultiheadAttention):
 
         # offset for value
         if share_heads:
-            v_pos_emb = self.expand_embedding(v_pos_emb, length=key_length, num_heads=1)
+            v_pos_emb = self.expand_embedding(
+                v_pos_emb,
+                query_length=query_length,
+                key_length=key_length,
+                num_heads=1,
+            )
         else:
-            v_pos_emb = self.expand_embedding(v_pos_emb, length=key_length, num_heads=num_heads)
+            v_pos_emb = self.expand_embedding(
+                v_pos_emb,
+                query_length=query_length,
+                key_length=key_length,
+                num_heads=num_heads,
+            )
 
-        _attn_weights = attn_weights.permute(1, 3, 0, 2)
-        v_pos_emb = v_pos_emb.permute(0, 3, 2, 1)
+        _attn_weights = attn_weights.permute(1, 2, 0, 3)
+        v_pos_emb = v_pos_emb.permute(0, 2, 3, 1)
         v_offset = torch.matmul(_attn_weights, v_pos_emb)
         v_offset = v_offset.permute(2, 0, 1, 3)
         qkv = qkv + v_offset
@@ -645,50 +657,68 @@ class RelativePositionalMultiheadAttention(_MultiheadAttention):
 
     @staticmethod
     def expand_embedding(
-        pos_embedding: torch.Tensor, length: int, num_heads: Optional[int] = None
+        pos_embedding: torch.Tensor,
+        query_length: int,
+        key_length: int,
+        num_heads: Optional[int] = None,
     ) -> torch.Tensor:
         """Expand embedding.
 
         Args:
             pos_embedding (torch.Tensor): Positional embedding
                 of shape (2 * window_size + 1, embed_dim).
-            length (int): Sequence length.
+            query_length (int): Query sequence length.
+            key_length (int): Key sequence length.
             num_heads (int, optional): Number of heads.
 
         Returns:
             torch.Tensor: Expanded relative positional embedding
-                of shape (num_heads, embed_dim // num_heads, length, length)
+                of shape (num_heads, embed_dim // num_heads, query_length, key_length)
                 if num_heads is specified. Otherwise, shape is
-                (embed_dim, length, length).
+                (embed_dim, query_length, key_length).
 
         """
         window_size, embed_dim = pos_embedding.size()
-        window_size = (window_size - 1) // 2
-        padding = window_size - length + 1
+        half_window_size = (window_size - 1) // 2
+        left_padding = query_length - half_window_size - 1
+        right_padding = key_length - half_window_size - 1
 
-        if padding < 0:
-            left_pos_embedding, center_pos_embedding, right_pos_embedding = torch.split(
-                pos_embedding, [1, 2 * window_size - 1, 1], dim=0
+        left_pos_embedding, center_pos_embedding, right_pos_embedding = torch.split(
+            pos_embedding, [half_window_size, 1, half_window_size], dim=0
+        )
+
+        if left_padding > 0:
+            left_pos_embedding, middle_pos_embedding = torch.split(
+                left_pos_embedding, [1, half_window_size - 1], dim=0
             )
-            left_pos_embedding = left_pos_embedding.expand((length - window_size, embed_dim))
-            right_pos_embedding = right_pos_embedding.expand((length - window_size, embed_dim))
-            pos_embedding = torch.cat(
-                [left_pos_embedding, center_pos_embedding, right_pos_embedding], dim=0
-            )
+            left_pos_embedding = left_pos_embedding.expand((left_padding + 1, embed_dim))
+            left_pos_embedding = torch.cat([left_pos_embedding, middle_pos_embedding], dim=0)
         else:
-            window_size < length - 1
-            pos_embedding = F.pad(pos_embedding, (0, 0, -padding, -padding))
+            left_pos_embedding = F.pad(left_pos_embedding, (0, 0, left_padding, 0))
 
-        pos_embedding = pos_embedding.view(1, 1, 2 * length - 1, embed_dim)
+        if right_padding > 0:
+            middle_pos_embedding, right_pos_embedding = torch.split(
+                right_pos_embedding, [half_window_size - 1, 1], dim=0
+            )
+            right_pos_embedding = right_pos_embedding.expand((right_padding + 1, embed_dim))
+            right_pos_embedding = torch.cat([middle_pos_embedding, right_pos_embedding], dim=0)
+        else:
+            right_pos_embedding = F.pad(right_pos_embedding, (0, 0, 0, right_padding))
+
+        pos_embedding = torch.cat(
+            [left_pos_embedding, center_pos_embedding, right_pos_embedding], dim=0
+        )
+        pos_embedding = pos_embedding.view(1, 1, query_length + key_length - 1, embed_dim)
         pos_embedding = pos_embedding.permute(0, 3, 1, 2)
-        pos_embedding = F.unfold(pos_embedding, kernel_size=(1, length), stride=1)
-
-        if num_heads is None:
-            pos_embedding = pos_embedding.view(embed_dim, length, -1)
-        else:
-            pos_embedding = pos_embedding.view(num_heads, embed_dim // num_heads, length, -1)
-
+        pos_embedding = F.unfold(pos_embedding, kernel_size=(1, key_length), stride=1)
+        pos_embedding = pos_embedding.view(embed_dim, key_length, query_length)
+        pos_embedding = pos_embedding.permute(0, 2, 1)
         pos_embedding = torch.flip(pos_embedding, dims=(-2,))
+
+        if num_heads is not None:
+            pos_embedding = pos_embedding.view(
+                num_heads, embed_dim // num_heads, query_length, key_length
+            )
 
         return pos_embedding
 
@@ -782,24 +812,20 @@ class RotaryPositionalMultiheadAttention(_MultiheadAttention):
         head_dim = embed_dim // num_heads
 
         if batch_first:
-            q = query.transpose(1, 0)
-
-            if key is query:
-                k = q
+            if key is value:
+                if query is key:
+                    query = key = value = query.transpose(1, 0)
+                else:
+                    query = query.transpose(1, 0)
+                    key = key.transpose(1, 0)
+                    value = key
             else:
-                k = key.transpose(1, 0)
+                query = query.transpose(1, 0)
+                key = key.transpose(1, 0)
+                value = value.transpose(1, 0)
 
-            if query is value:
-                v = q
-            else:
-                v = value.transpose(1, 0)
-        else:
-            q = query
-            k = key
-            v = value
-
-        query_length, batch_size, _ = q.size()
-        key_length, _, _ = k.size()
+        query_length, batch_size, _ = query.size()
+        key_length, _, _ = key.size()
 
         key_padding_mask = F._canonical_mask(
             mask=key_padding_mask,
@@ -831,7 +857,7 @@ class RotaryPositionalMultiheadAttention(_MultiheadAttention):
             q_proj_bias, k_proj_bias, v_proj_bias = None, None, None
         else:
             q_proj_bias, k_proj_bias, v_proj_bias = torch.split(
-                in_proj_bias, [embed_dim] * 3, dim=-2
+                in_proj_bias, [embed_dim] * 3, dim=0
             )
 
         q = F.linear(query, q_proj_weight, bias=q_proj_bias)
@@ -1014,24 +1040,20 @@ class ExtrapolatablePositionalMultiheadAttention(_MultiheadAttention):
         head_dim = embed_dim // num_heads
 
         if batch_first:
-            q = query.transpose(1, 0)
-
-            if key is query:
-                k = q
+            if key is value:
+                if query is key:
+                    query = key = value = query.transpose(1, 0)
+                else:
+                    query = query.transpose(1, 0)
+                    key = key.transpose(1, 0)
+                    value = key
             else:
-                k = key.transpose(1, 0)
+                query = query.transpose(1, 0)
+                key = key.transpose(1, 0)
+                value = value.transpose(1, 0)
 
-            if query is value:
-                v = q
-            else:
-                v = value.transpose(1, 0)
-        else:
-            q = query
-            k = key
-            v = value
-
-        query_length, batch_size, _ = q.size()
-        key_length, _, _ = k.size()
+        query_length, batch_size, _ = query.size()
+        key_length, _, _ = key.size()
 
         key_padding_mask = F._canonical_mask(
             mask=key_padding_mask,
@@ -1063,7 +1085,7 @@ class ExtrapolatablePositionalMultiheadAttention(_MultiheadAttention):
             q_proj_bias, k_proj_bias, v_proj_bias = None, None, None
         else:
             q_proj_bias, k_proj_bias, v_proj_bias = torch.split(
-                in_proj_bias, [embed_dim] * 3, dim=-2
+                in_proj_bias, [embed_dim] * 3, dim=0
             )
 
         q = F.linear(query, q_proj_weight, bias=q_proj_bias)
