@@ -17,7 +17,7 @@ urls = {url = "https://github.com/tky823/Audyn"}
 requires-python = ">=3.8, <4"
 dependencies = [
     # https://github.com/facebookresearch/hydra/issues/2870
-    "importlib_resources < 6.3; python_version == '3.8'",
+    "importlib_resources < 6.2; python_version == '3.8'",
     "omegaconf",
     "hydra-core",
     "matplotlib",
