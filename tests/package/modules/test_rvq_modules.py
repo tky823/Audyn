@@ -1,5 +1,6 @@
 import copy
 import os
+import sys
 import tempfile
 from datetime import timedelta
 from typing import Tuple
@@ -233,17 +234,24 @@ def train_dummy_rvqvae(
     seed: int = 0,
     path: str = None,
 ) -> None:
+    IS_WINDOWS = sys.platform == "win32"
+
     batch_size = 4
     length = 3
 
     set_ddp_environment(rank, world_size, port)
+
+    if IS_WINDOWS:
+        init_method = f"tcp://localhost:{port}"
+    else:
+        init_method = None
 
     config = {
         "seed": seed,
         "distributed": {
             "enable": True,
             "backend": "gloo",
-            "init_method": None,
+            "init_method": init_method,
         },
         "cudnn": {
             "benchmark": None,
