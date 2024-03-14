@@ -282,8 +282,8 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
         dist.init_process_group(
             backend=config.system.distributed.backend,
             init_method=config.system.distributed.init_method,
-            rank=os.environ["RANK"],
-            world_size=os.environ["WORLD_SIZE"],
+            rank=int(os.environ["RANK"]),
+            world_size=int(os.environ["WORLD_SIZE"]),
             timeout=timedelta(minutes=1),
         )
         torch.manual_seed(config.system.seed)
@@ -1004,8 +1004,8 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str, dataloader_t
         dist.init_process_group(
             backend=config.system.distributed.backend,
             init_method=config.system.distributed.init_method,
-            rank=os.environ["RANK"],
-            world_size=os.environ["WORLD_SIZE"],
+            rank=int(os.environ["RANK"]),
+            world_size=int(os.environ["WORLD_SIZE"]),
             timeout=timedelta(minutes=1),
         )
         torch.manual_seed(config.system.seed)

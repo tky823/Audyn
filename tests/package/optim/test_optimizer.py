@@ -606,9 +606,9 @@ def train_exponential_moving_average_codebook_optimizer(
 
     dist.init_process_group(
         backend=config.distributed.backend,
-        init_method=config.system.distributed.init_method,
-        rank=os.environ["RANK"],
-        world_size=os.environ["WORLD_SIZE"],
+        init_method=config.distributed.init_method,
+        rank=int(os.environ["RANK"]),
+        world_size=int(os.environ["WORLD_SIZE"]),
         timeout=timedelta(minutes=1),
     )
     torch.manual_seed(config.seed)
