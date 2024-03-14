@@ -83,6 +83,7 @@ class _MultiheadAttention(nn.MultiheadAttention):
         )
 
     def validate_kwargs(self, kwargs: Dict[str, Any]) -> None:
+        """Validate keyword arguments for backward compatibility."""
         valid_keys = set()
 
         if version.parse(torch.__version__) < version.parse("2.0"):
@@ -200,6 +201,7 @@ class TrainableAbsolutePositionalMultiheadAttention(_MultiheadAttention):
         need_weights: bool = True,
         attn_mask: Optional[torch.Tensor] = None,
         average_attn_weights: bool = True,
+        **kwargs,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
         """Forward pass of AbsolutePositionalMultiheadAttention.
 
@@ -224,6 +226,8 @@ class TrainableAbsolutePositionalMultiheadAttention(_MultiheadAttention):
                     (batch_size, query_length, key_length).
 
         """
+        self.validate_kwargs(kwargs)
+
         embed_dim = self.embed_dim
         dropout = self.dropout
         batch_first = self.batch_first
@@ -474,6 +478,7 @@ class RelativePositionalMultiheadAttention(_MultiheadAttention):
         need_weights: bool = True,
         attn_mask: Optional[torch.Tensor] = None,
         average_attn_weights: bool = True,
+        **kwargs,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
         """Forward pass of RelativePositionalMultiheadAttention.
 
@@ -498,6 +503,8 @@ class RelativePositionalMultiheadAttention(_MultiheadAttention):
                     (batch_size, query_length, key_length).
 
         """
+        self.validate_kwargs(kwargs)
+
         embed_dim = self.embed_dim
         dropout = self.dropout
         batch_first = self.batch_first
@@ -779,6 +786,7 @@ class RotaryPositionalMultiheadAttention(_MultiheadAttention):
         need_weights: bool = True,
         attn_mask: Optional[torch.Tensor] = None,
         average_attn_weights: bool = True,
+        **kwargs,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
         """Forward pass of RotaryPositionalMultiheadAttention.
 
@@ -803,6 +811,8 @@ class RotaryPositionalMultiheadAttention(_MultiheadAttention):
                     (batch_size, query_length, key_length).
 
         """
+        self.validate_kwargs(kwargs)
+
         embed_dim = self.embed_dim
         dropout = self.dropout
         batch_first = self.batch_first
@@ -1007,6 +1017,7 @@ class ExtrapolatablePositionalMultiheadAttention(_MultiheadAttention):
         need_weights: bool = True,
         attn_mask: Optional[torch.Tensor] = None,
         average_attn_weights: bool = True,
+        **kwargs,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
         """Forward pass of ExtrapolatablePositionalMultiheadAttention.
 
@@ -1031,6 +1042,8 @@ class ExtrapolatablePositionalMultiheadAttention(_MultiheadAttention):
                     (batch_size, query_length, key_length).
 
         """
+        self.validate_kwargs(kwargs)
+
         embed_dim = self.embed_dim
         dropout = self.dropout
         batch_first = self.batch_first
