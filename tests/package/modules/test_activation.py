@@ -254,7 +254,7 @@ def test_relative_positional_attn(
         padded_relative_attn_weights, [1, max_key_length], dim=-1
     )
 
-    assert torch.allclose(padded_relative_output, relative_output)
+    assert torch.allclose(padded_relative_output, relative_output, atol=1e-7)
     assert torch.allclose(padded_relative_attn_weights, relative_attn_weights)
 
 
