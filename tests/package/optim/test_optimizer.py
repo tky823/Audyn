@@ -604,7 +604,13 @@ def train_exponential_moving_average_codebook_optimizer(
 
     config = OmegaConf.create(config)
 
-    dist.init_process_group(backend=config.distributed.backend, timeout=timedelta(minutes=1))
+    dist.init_process_group(
+        backend=config.distributed.backend,
+        init_method=config.system.distributed.init_method,
+        rank=os.environ["RANK"],
+        world_size=os.environ["WORLD_SIZE"],
+        timeout=timedelta(minutes=1),
+    )
     torch.manual_seed(config.seed)
 
     g = torch.Generator()
