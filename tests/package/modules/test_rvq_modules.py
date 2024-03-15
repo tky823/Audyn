@@ -16,6 +16,8 @@ from torch.cuda.amp import autocast
 from audyn.functional.vector_quantization import quantize_vector
 from audyn.modules.rvq import ResidualVectorQuantizer
 
+IS_WINDOWS = sys.platform == "win32"
+
 
 def test_residual_vector_quantizer() -> None:
     torch.manual_seed(0)
@@ -96,23 +98,38 @@ def test_residual_vector_quantizer_ddp() -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        for rank in range(world_size):
-            path = os.path.join(temp_dir, f"{rank}.pth")
-            process = mp.Process(
-                target=train_dummy_rvqvae,
-                args=(rank, world_size, port),
-                kwargs={
-                    "codebook_size": codebook_size,
-                    "embedding_dim": embedding_dim,
-                    "seed": seed,
-                    "path": path,
-                },
-            )
-            process.start()
-            processes.append(process)
+        path = os.path.join(temp_dir, "{rank}.pth")
 
-        for process in processes:
-            process.join()
+        if IS_WINDOWS:
+            mp.spawn(
+                train_dummy_rvqvae,
+                args=(
+                    world_size,
+                    port,
+                    codebook_size,
+                    embedding_dim,
+                    seed,
+                    path,
+                ),
+                nprocs=world_size,
+            )
+        else:
+            for rank in range(world_size):
+                process = mp.Process(
+                    target=train_dummy_rvqvae,
+                    args=(rank, world_size, port),
+                    kwargs={
+                        "codebook_size": codebook_size,
+                        "embedding_dim": embedding_dim,
+                        "seed": seed,
+                        "path": path,
+                    },
+                )
+                process.start()
+                processes.append(process)
+
+            for process in processes:
+                process.join()
 
         rank = 0
         reference_model = build_dummy_rvq(
@@ -234,10 +251,9 @@ def train_dummy_rvqvae(
     seed: int = 0,
     path: str = None,
 ) -> None:
-    IS_WINDOWS = sys.platform == "win32"
-
     batch_size = 4
     length = 3
+    path = path.format(rank=rank)
 
     set_ddp_environment(rank, world_size, port)
 
