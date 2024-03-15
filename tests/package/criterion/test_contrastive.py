@@ -103,11 +103,9 @@ def test_info_nce_loss(reduction: str) -> None:
 @pytest.mark.parametrize("dim", [0, 1, 2])
 def test_info_nce_loss_ddp(dim: int) -> None:
     """Ensure InfoNCELoss works well for DDP."""
-    pytest.skip("Skip temporarily")
-
     port = select_random_port()
     seed = 0
-    world_size = 4
+    world_size = 2
 
     batch_size = 4
 
@@ -579,11 +577,9 @@ def test_inter_ntxent_loss(reduction: str) -> None:
 @pytest.mark.parametrize("dim", [0, 1])
 def test_inter_info_nce_loss_ddp(dim: int) -> None:
     """Ensure InterInfoNCELoss works well for DDP."""
-    pytest.skip("Skip temporarily")
-
     port = select_random_port()
     seed = 0
-    world_size = 4
+    world_size = 2
 
     batch_size = 4
     in_channels, out_channels = 8, 6

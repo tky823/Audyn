@@ -62,10 +62,9 @@ def test_mean_average_precision_known_map(mink: int) -> None:
 
 @pytest.mark.parametrize("mink", parameters_mink)
 def test_mean_average_precision_ddp_oracle(mink: int) -> None:
-    pytest.skip("Skip temporarily")
     port = select_random_port()
     seed = 0
-    world_size = 3
+    world_size = 2
 
     torch.manual_seed(seed)
 
@@ -130,10 +129,9 @@ def test_mean_average_precision_ddp_oracle(mink: int) -> None:
 
 @pytest.mark.parametrize("mink", parameters_mink)
 def test_mean_average_precision_ddp_known_map(mink: int) -> None:
-    pytest.skip("Skip temporarily")
     port = select_random_port()
     seed = 0
-    world_size = 3
+    world_size = 2
 
     torch.manual_seed(seed)
 
@@ -252,10 +250,9 @@ def test_median_rank(mink: int) -> None:
 @pytest.mark.parametrize("ranks", ["oracle", "random"])
 @pytest.mark.parametrize("mink", parameters_mink)
 def test_median_rank_ddp(ranks: str, mink: int) -> None:
-    pytest.skip("Skip temporarily")
     port = select_random_port()
     seed = 0
-    world_size = 4
+    world_size = 2
 
     num_queries = 10
 
