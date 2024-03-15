@@ -131,7 +131,7 @@ def test_mean_average_precision_ddp_oracle(mink: int) -> None:
 def test_mean_average_precision_ddp_known_map(mink: int) -> None:
     port = select_random_port()
     seed = 0
-    world_size = 2
+    world_size = 3
 
     torch.manual_seed(seed)
 
