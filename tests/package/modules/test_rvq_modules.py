@@ -286,7 +286,7 @@ def train_dummy_rvqvae(
         init_method=config.distributed.init_method,
         rank=int(os.environ["RANK"]),
         world_size=int(os.environ["WORLD_SIZE"]),
-        timeout=timedelta(minutes=1),
+        timeout=timedelta(minutes=5),
     )
     torch.manual_seed(config.seed)
 
