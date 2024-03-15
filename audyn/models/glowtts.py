@@ -13,7 +13,6 @@ from ..modules.glowtts import (
     MaskedInvertiblePointwiseConv1d,
     MaskedWaveNetAffineCoupling,
 )
-from ..modules.normalization import MaskedLayerNorm
 from ..utils.alignment.monotonic_align import search_monotonic_alignment_by_viterbi
 from ..utils.duration import transform_log_duration
 from .fastspeech import _get_clones
@@ -836,7 +835,7 @@ class ConvBlock(nn.Module):
         self.batch_first = batch_first
 
         self.conv1d = nn.Conv1d(in_channels, out_channels, kernel_size, stride=1)
-        self.norm1d = MaskedLayerNorm(out_channels)
+        self.norm1d = nn.LayerNorm(out_channels)
         self.nonlinear1d = nn.ReLU()
         self.dropout1d = nn.Dropout(dropout)
 

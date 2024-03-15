@@ -5,8 +5,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from packaging import version
 
-from .normalization import MaskedLayerNorm
-
 IS_TORCH_LT_1_11 = version.parse(torch.__version__) < version.parse("1.11")
 
 
@@ -167,7 +165,7 @@ class ConvBlock(nn.Module):
             stride=1,
             **factory_kwargs,
         )
-        self.layer_norm = MaskedLayerNorm(num_features, **factory_kwargs)
+        self.layer_norm = nn.LayerNorm(num_features, **factory_kwargs)
         self.dropout = nn.Dropout(dropout)
 
         self.kernel_size = kernel_size
@@ -272,7 +270,7 @@ class MultiheadSelfAttentionBlock(nn.Module):
             **factory_kwargs,
         )
 
-        self.layer_norm = MaskedLayerNorm(embed_dim, **factory_kwargs)
+        self.layer_norm = nn.LayerNorm(embed_dim, **factory_kwargs)
         self.dropout = nn.Dropout(dropout)
 
         self.batch_first = batch_first

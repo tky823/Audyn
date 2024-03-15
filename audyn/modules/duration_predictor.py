@@ -4,8 +4,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .normalization import MaskedLayerNorm
-
 __all__ = ["FastSpeechDurationPredictor", "DurationPredictor"]
 
 
@@ -127,7 +125,7 @@ class ConvBlock(nn.Module):
             stride=1,
         )
         self.activation1d = nn.ReLU()
-        self.norm1d = MaskedLayerNorm(out_channels)
+        self.norm1d = nn.LayerNorm(out_channels)
         self.dropout1d = nn.Dropout(p=dropout)
 
         self.kernel_size = kernel_size

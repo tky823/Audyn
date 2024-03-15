@@ -10,7 +10,6 @@ from .fastspeech import ConvBlock
 from .fastspeech import FFTrBlock as BaseFFTrBlock
 from .fastspeech import MultiheadSelfAttentionBlock as BaseMultiheadSelfAttentionBlock
 from .glow import ActNorm1d, InvertiblePointwiseConv1d
-from .normalization import MaskedLayerNorm
 from .waveglow import StackedResidualConvBlock1d, WaveNetAffineCoupling
 from .wavenet import GatedConv1d
 from .wavenet import ResidualConvBlock1d as BaseResidualConvBlock1d
@@ -105,7 +104,7 @@ class MultiheadSelfAttentionBlock(BaseMultiheadSelfAttentionBlock):
             **factory_kwargs,
         )
 
-        self.layer_norm = MaskedLayerNorm(embed_dim, **factory_kwargs)
+        self.layer_norm = nn.LayerNorm(embed_dim, **factory_kwargs)
         self.dropout = nn.Dropout(dropout)
 
         self.batch_first = batch_first
