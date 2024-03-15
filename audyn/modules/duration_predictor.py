@@ -77,14 +77,9 @@ class FastSpeechDurationPredictor(nn.Module):
         # permute axes to (batch_size, num_features, length)
         if batch_first:
             if channels_last:
-                # (batch_size, length, num_features) -> (batch_size, num_features, length)
                 x = x.permute(0, 2, 1)
-            else:
-                # (batch_size, num_features, length)
-                pass
         else:
             if channels_last:
-                # (length, batch_size, num_features) -> (batch_size, num_features, length)
                 x = x.permute(1, 2, 0)
             else:
                 raise NotImplementedError(
@@ -94,7 +89,6 @@ class FastSpeechDurationPredictor(nn.Module):
         for layer_idx in range(self.num_layers):
             x = self.backbone[layer_idx](x, padding_mask=padding_mask)
 
-        # (batch_size, num_features, length) -> (batch_size, length, num_features)
         x = x.permute(0, 2, 1)
         x = self.fc_layer(x)
         log_duration = x.squeeze(dim=-1)
@@ -103,7 +97,6 @@ class FastSpeechDurationPredictor(nn.Module):
             log_duration = log_duration.masked_fill(padding_mask, -float("inf"))
 
         if not batch_first:
-            # (batch_size, length) -> (length, batch_size)
             log_duration = log_duration.permute(1, 0).contiguous()
 
         return log_duration
