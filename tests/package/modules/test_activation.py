@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Optional, Tuple
 
 import pytest
 import torch
@@ -12,16 +12,18 @@ from audyn.modules.activation import (
 )
 
 
+@pytest.mark.parametrize("bias", [True, False])
 @pytest.mark.parametrize("batch_first", [True, False])
 @pytest.mark.parametrize("use_attn_mask", [True, False])
 @pytest.mark.parametrize("share_heads", [True, False])
 def test_trainable_absolute_positional_attn(
-    batch_first: bool, use_attn_mask: bool, share_heads: bool
+    bias: bool, batch_first: bool, use_attn_mask: bool, share_heads: bool
 ) -> None:
     torch.manual_seed(0)
 
     batch_size = 3
-    max_pos_length, max_query_length, max_key_length, embed_dim = 16, 12, 10, 8
+    max_pos_length, max_query_length, max_key_length = 16, 12, 10
+    embed_dim, kdim, vdim = 8, 4, 5
     num_heads = 4
 
     (query, key, value), (query_length, key_length) = create_qkv(
@@ -38,6 +40,7 @@ def test_trainable_absolute_positional_attn(
     absolute_mha = TrainableAbsolutePositionalMultiheadAttention(
         embed_dim,
         num_heads,
+        bias=bias,
         max_length=max_pos_length,
         share_heads=share_heads,
         batch_first=batch_first,
@@ -62,6 +65,7 @@ def test_trainable_absolute_positional_attn(
     mha = nn.MultiheadAttention(
         embed_dim,
         num_heads,
+        bias=bias,
         batch_first=batch_first,
     )
 
@@ -70,9 +74,21 @@ def test_trainable_absolute_positional_attn(
     absolute_mha.v_pos_emb.data.zero_()
 
     absolute_mha.in_proj_weight.data.copy_(mha.in_proj_weight.data)
-    absolute_mha.in_proj_bias.data.copy_(mha.in_proj_bias.data)
     absolute_mha.out_proj.weight.data.copy_(mha.out_proj.weight.data)
-    absolute_mha.out_proj.bias.data.copy_(mha.out_proj.bias.data)
+
+    if bias:
+        assert absolute_mha.in_proj_bias is not None
+        assert mha.in_proj_bias is not None
+        assert absolute_mha.out_proj.bias is not None
+        assert mha.out_proj.bias is not None
+
+        absolute_mha.in_proj_bias.data.copy_(mha.in_proj_bias.data)
+        absolute_mha.out_proj.bias.data.copy_(mha.out_proj.bias.data)
+    else:
+        assert absolute_mha.in_proj_bias is None
+        assert mha.in_proj_bias is None
+        assert absolute_mha.out_proj.bias is None
+        assert mha.out_proj.bias is None
 
     output, attn_weights = mha(
         query,
@@ -99,17 +115,60 @@ def test_trainable_absolute_positional_attn(
     assert torch.allclose(output, absolute_output, atol=1e-7)
     assert torch.allclose(attn_weights, absolute_attn_weights)
 
+    (query, key, value), (query_length, key_length) = create_qkv(
+        batch_size,
+        max_query_length,
+        max_key_length,
+        embed_dim,
+        kdim=kdim,
+        vdim=vdim,
+        batch_first=batch_first,
+    )
+    max_query_length = torch.max(query_length).item()
+    max_key_length = torch.max(key_length).item()
 
+    key_padding_mask, attn_mask = create_padding_masks(query_length, key_length)
+
+    if not use_attn_mask:
+        attn_mask = None
+
+    absolute_mha = TrainableAbsolutePositionalMultiheadAttention(
+        embed_dim,
+        num_heads,
+        bias=bias,
+        max_length=max_pos_length,
+        share_heads=share_heads,
+        batch_first=batch_first,
+    )
+
+    absolute_output, absolute_attn_weights = absolute_mha(
+        query,
+        key,
+        value,
+        key_padding_mask=key_padding_mask,
+        attn_mask=attn_mask,
+    )
+
+    if batch_first:
+        assert absolute_output.size() == (batch_size, max_query_length, embed_dim)
+    else:
+        assert absolute_output.size() == (max_query_length, batch_size, embed_dim)
+
+    assert absolute_attn_weights.size() == (batch_size, max_query_length, max_key_length)
+
+
+@pytest.mark.parametrize("bias", [True, False])
 @pytest.mark.parametrize("batch_first", [True, False])
 @pytest.mark.parametrize("use_attn_mask", [True, False])
 @pytest.mark.parametrize("longer_window", [True, False])
 def test_relative_positional_attn(
-    batch_first: bool, use_attn_mask: bool, longer_window: bool
+    bias: bool, batch_first: bool, use_attn_mask: bool, longer_window: bool
 ) -> None:
     torch.manual_seed(0)
 
     batch_size = 3
-    max_query_length, max_key_length, embed_dim = 12, 10, 8
+    max_query_length, max_key_length = 12, 10
+    embed_dim, kdim, vdim = 8, 4, 5
     num_heads = 4
 
     (query, key, value), (query_length, key_length) = create_qkv(
@@ -131,6 +190,7 @@ def test_relative_positional_attn(
     relative_mha = RelativePositionalMultiheadAttention(
         embed_dim,
         num_heads,
+        bias=bias,
         window_size=window_size,
         batch_first=batch_first,
     )
@@ -154,6 +214,7 @@ def test_relative_positional_attn(
     mha = nn.MultiheadAttention(
         embed_dim,
         num_heads,
+        bias=bias,
         batch_first=batch_first,
     )
 
@@ -161,9 +222,21 @@ def test_relative_positional_attn(
     relative_mha.v_pos_emb.data.zero_()
 
     relative_mha.in_proj_weight.data.copy_(mha.in_proj_weight.data)
-    relative_mha.in_proj_bias.data.copy_(mha.in_proj_bias.data)
     relative_mha.out_proj.weight.data.copy_(mha.out_proj.weight.data)
-    relative_mha.out_proj.bias.data.copy_(mha.out_proj.bias.data)
+
+    if bias:
+        assert relative_mha.in_proj_bias is not None
+        assert mha.in_proj_bias is not None
+        assert relative_mha.out_proj.bias is not None
+        assert mha.out_proj.bias is not None
+
+        relative_mha.in_proj_bias.data.copy_(mha.in_proj_bias.data)
+        relative_mha.out_proj.bias.data.copy_(mha.out_proj.bias.data)
+    else:
+        assert relative_mha.in_proj_bias is None
+        assert mha.in_proj_bias is None
+        assert relative_mha.out_proj.bias is None
+        assert mha.out_proj.bias is None
 
     output, attn_weights = mha(
         query,
@@ -194,6 +267,7 @@ def test_relative_positional_attn(
     relative_mha = RelativePositionalMultiheadAttention(
         embed_dim,
         num_heads,
+        bias=bias,
         window_size=window_size,
         batch_first=batch_first,
     )
@@ -257,15 +331,64 @@ def test_relative_positional_attn(
     assert torch.allclose(padded_relative_output, relative_output, atol=1e-7)
     assert torch.allclose(padded_relative_attn_weights, relative_attn_weights)
 
+    (query, key, value), (query_length, key_length) = create_qkv(
+        batch_size,
+        max_query_length,
+        max_key_length,
+        embed_dim,
+        kdim=kdim,
+        vdim=vdim,
+        batch_first=batch_first,
+    )
+    max_query_length = torch.max(query_length).item()
+    max_key_length = torch.max(key_length).item()
 
+    if longer_window:
+        window_size = max(max_query_length, max_key_length)
+    else:
+        window_size = min(max_query_length, max_key_length) - 2
+
+    key_padding_mask, attn_mask = create_padding_masks(query_length, key_length)
+
+    if not use_attn_mask:
+        attn_mask = None
+
+    relative_mha = RelativePositionalMultiheadAttention(
+        embed_dim,
+        num_heads,
+        bias=bias,
+        window_size=window_size,
+        batch_first=batch_first,
+    )
+
+    relative_output, relative_attn_weights = relative_mha(
+        query,
+        key,
+        value,
+        key_padding_mask=key_padding_mask,
+        attn_mask=attn_mask,
+    )
+
+    if batch_first:
+        assert relative_output.size() == (batch_size, max_query_length, embed_dim)
+    else:
+        assert relative_output.size() == (max_query_length, batch_size, embed_dim)
+
+    assert relative_attn_weights.size() == (batch_size, max_query_length, max_key_length)
+
+
+@pytest.mark.parametrize("bias", [True, False])
 @pytest.mark.parametrize("batch_first", [True, False])
 @pytest.mark.parametrize("use_attn_mask", [True, False])
 @pytest.mark.parametrize("share_heads", [True, False])
-def test_rotary_positional_attn(batch_first: bool, use_attn_mask: bool, share_heads: bool) -> None:
+def test_rotary_positional_attn(
+    bias: bool, batch_first: bool, use_attn_mask: bool, share_heads: bool
+) -> None:
     torch.manual_seed(0)
 
     batch_size = 3
-    max_query_length, max_key_length, embed_dim = 12, 10, 8
+    max_query_length, max_key_length = 12, 10
+    embed_dim, kdim, vdim = 8, 4, 5
     num_heads = 4
 
     (query, key, value), (query_length, key_length) = create_qkv(
@@ -282,6 +405,7 @@ def test_rotary_positional_attn(batch_first: bool, use_attn_mask: bool, share_he
     rotary_mha = RotaryPositionalMultiheadAttention(
         embed_dim,
         num_heads,
+        bias=bias,
         share_heads=share_heads,
         batch_first=batch_first,
     )
@@ -347,19 +471,61 @@ def test_rotary_positional_attn(batch_first: bool, use_attn_mask: bool, share_he
     )
 
     assert torch.allclose(padded_rotary_output, rotary_output, atol=1e-7)
-    assert torch.allclose(padded_rotary_attn_weights, rotary_attn_weights)
+    assert torch.allclose(padded_rotary_attn_weights, rotary_attn_weights, atol=1e-6)
+
+    (query, key, value), (query_length, key_length) = create_qkv(
+        batch_size,
+        max_query_length,
+        max_key_length,
+        embed_dim,
+        kdim=kdim,
+        vdim=vdim,
+        batch_first=batch_first,
+    )
+    max_query_length = torch.max(query_length).item()
+    max_key_length = torch.max(key_length).item()
+
+    key_padding_mask, attn_mask = create_padding_masks(query_length, key_length)
+
+    if not use_attn_mask:
+        attn_mask = None
+
+    rotary_mha = RotaryPositionalMultiheadAttention(
+        embed_dim,
+        num_heads,
+        bias=bias,
+        share_heads=share_heads,
+        batch_first=batch_first,
+    )
+
+    rotary_output, rotary_attn_weights = rotary_mha(
+        query,
+        key,
+        value,
+        key_padding_mask=key_padding_mask,
+        attn_mask=attn_mask,
+    )
+
+    if batch_first:
+        assert rotary_output.size() == (batch_size, max_query_length, embed_dim)
+    else:
+        assert rotary_output.size() == (max_query_length, batch_size, embed_dim)
+
+    assert rotary_attn_weights.size() == (batch_size, max_query_length, max_key_length)
 
 
+@pytest.mark.parametrize("bias", [True, False])
 @pytest.mark.parametrize("batch_first", [True, False])
 @pytest.mark.parametrize("use_attn_mask", [True, False])
 @pytest.mark.parametrize("share_heads", [True, False])
 def test_extrapolatable_positional_attn(
-    batch_first: bool, use_attn_mask: bool, share_heads: bool
+    bias: bool, batch_first: bool, use_attn_mask: bool, share_heads: bool
 ) -> None:
     torch.manual_seed(0)
 
     batch_size = 3
-    max_query_length, max_key_length, embed_dim = 12, 10, 8
+    max_query_length, max_key_length = 12, 10
+    embed_dim, kdim, vdim = 8, 4, 5
     num_heads = 4
 
     (query, key, value), (query_length, key_length) = create_qkv(
@@ -376,6 +542,7 @@ def test_extrapolatable_positional_attn(
     xpos_mha = ExtrapolatablePositionalMultiheadAttention(
         embed_dim,
         num_heads,
+        bias=bias,
         share_heads=share_heads,
         batch_first=batch_first,
     )
@@ -441,14 +608,66 @@ def test_extrapolatable_positional_attn(
     )
 
     assert torch.allclose(padded_xpos_output, xpos_output, atol=1e-5)
-    assert torch.allclose(padded_xpos_attn_weights, xpos_attn_weights)
+    assert torch.allclose(padded_xpos_attn_weights, xpos_attn_weights, atol=1e-6)
+
+    (query, key, value), (query_length, key_length) = create_qkv(
+        batch_size,
+        max_query_length,
+        max_key_length,
+        embed_dim,
+        kdim=kdim,
+        vdim=vdim,
+        batch_first=batch_first,
+    )
+    max_query_length = torch.max(query_length).item()
+    max_key_length = torch.max(key_length).item()
+
+    key_padding_mask, attn_mask = create_padding_masks(query_length, key_length)
+
+    if not use_attn_mask:
+        attn_mask = None
+
+    xpos_mha = ExtrapolatablePositionalMultiheadAttention(
+        embed_dim,
+        num_heads,
+        bias=bias,
+        share_heads=share_heads,
+        batch_first=batch_first,
+    )
+
+    xpos_output, xpos_attn_weights = xpos_mha(
+        query,
+        key,
+        value,
+        key_padding_mask=key_padding_mask,
+        attn_mask=attn_mask,
+    )
+
+    if batch_first:
+        assert xpos_output.size() == (batch_size, max_query_length, embed_dim)
+    else:
+        assert xpos_output.size() == (max_query_length, batch_size, embed_dim)
+
+    assert xpos_attn_weights.size() == (batch_size, max_query_length, max_key_length)
 
 
 def create_qkv(
-    batch_size: int, max_query_length: int, max_key_length: int, embed_dim: int, batch_first: bool
+    batch_size: int,
+    max_query_length: int,
+    max_key_length: int,
+    embed_dim: int,
+    kdim: Optional[int] = None,
+    vdim: Optional[int] = None,
+    batch_first: bool = False,
 ) -> Tuple[
     Tuple[torch.Tensor, torch.Tensor, torch.Tensor], Tuple[torch.LongTensor, torch.LongTensor]
 ]:
+    if kdim is None:
+        kdim = embed_dim
+
+    if vdim is None:
+        vdim = embed_dim
+
     query_length = torch.randint(max_query_length // 2, max_query_length, (batch_size,))
     max_query_length = torch.max(query_length).item()
     key_length = torch.randint(max_key_length // 2, max_key_length, (batch_size,))
