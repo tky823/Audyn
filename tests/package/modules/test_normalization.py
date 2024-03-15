@@ -1,3 +1,4 @@
+import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -5,7 +6,8 @@ import torch.nn.functional as F
 from audyn.modules.normalization import MaskedLayerNorm
 
 
-def test_masked_layer_norm() -> None:
+@pytest.mark.parametrize("batch_first", [True, False])
+def test_masked_layer_norm(batch_first: bool) -> None:
     torch.manual_seed(0)
 
     batch_size, max_length, num_features = 4, 8, 3
@@ -35,7 +37,14 @@ def test_masked_layer_norm() -> None:
         _output = F.pad(_output, (0, 0, 0, max_length - _length))
         output.append(_output)
 
-    output = torch.stack(output, dim=0)
+    if batch_first:
+        output = torch.stack(output, dim=0)
+    else:
+        output = torch.stack(output, dim=1)
+
+    if not batch_first:
+        masked_input = masked_input.permute(1, 0, 2)
+        padding_mask = padding_mask.permute(1, 0)
 
     masked_output = masked_layer_norm(masked_input, padding_mask=padding_mask.unsqueeze(dim=-1))
 
@@ -43,6 +52,10 @@ def test_masked_layer_norm() -> None:
 
     input = torch.randn((batch_size, max_length, num_features))
     padding_mask = torch.zeros((batch_size, max_length, num_features), dtype=torch.bool)
+
+    if not batch_first:
+        input = input.permute(1, 0, 2)
+        padding_mask = padding_mask.permute(1, 0, 2)
 
     output = layer_norm(input)
     masked_output = masked_layer_norm(input, padding_mask=padding_mask)
