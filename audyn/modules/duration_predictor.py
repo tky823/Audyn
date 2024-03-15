@@ -30,7 +30,7 @@ class FastSpeechDurationPredictor(nn.Module):
         stop_gradient: bool = True,
         batch_first: bool = False,
         channels_last: bool = True,
-    ):
+    ) -> None:
         super().__init__()
 
         backbone = []
@@ -122,7 +122,7 @@ class ConvBlock(nn.Module):
         out_channels: int,
         kernel_size: int,
         dropout: float = 0,
-    ):
+    ) -> None:
         super().__init__()
 
         assert kernel_size % 2 == 1, "Kernel size should be odd."
