@@ -1,5 +1,5 @@
 import math
-from typing import Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -9,15 +9,15 @@ from packaging import version
 from .positional_encoding import ExtrapolatablePositionalEmbedding, RotaryPositionalEmbedding
 
 __all__ = [
-    "MultiheadSelfAttention",
-    "TrainableAbsolutePositionalMultiheadSelfAttention",
-    "RelativePositionalMultiheadSelfAttention",
-    "RotaryPositionalMultiheadSelfAttention",
+    "TrainableAbsolutePositionalMultiheadAttention",
+    "RelativePositionalMultiheadAttention",
+    "RotaryPositionalMultiheadAttention",
+    "ExtrapolatablePositionalMultiheadAttention",
 ]
 
 
-class MultiheadSelfAttention(nn.MultiheadAttention):
-    """Wrapper class of nn.MultiheadAttention for self-attention."""
+class _MultiheadAttention(nn.MultiheadAttention):
+    """Wrapper class of nn.MultiheadAttention."""
 
     def __init__(
         self,
@@ -27,6 +27,8 @@ class MultiheadSelfAttention(nn.MultiheadAttention):
         bias: bool = True,
         add_bias_kv: bool = False,
         add_zero_attn: bool = False,
+        kdim: Optional[int] = None,
+        vdim: Optional[int] = None,
         batch_first: bool = False,
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
@@ -44,8 +46,8 @@ class MultiheadSelfAttention(nn.MultiheadAttention):
             bias,
             add_bias_kv=add_bias_kv,
             add_zero_attn=add_zero_attn,
-            kdim=None,
-            vdim=None,
+            kdim=kdim,
+            vdim=vdim,
             batch_first=batch_first,
             **factory_kwargs,
         )
@@ -58,13 +60,30 @@ class MultiheadSelfAttention(nn.MultiheadAttention):
 
     def forward(
         self,
-        input: torch.Tensor,
+        query: torch.Tensor,
+        key: torch.Tensor,
+        value: torch.Tensor,
         padding_mask: Optional[torch.Tensor] = None,
         need_weights: bool = True,
         attn_mask: Optional[torch.Tensor] = None,
         average_attn_weights: bool = True,
         **kwargs,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        self.validate_kwargs(kwargs)
+
+        return super().forward(
+            query,
+            key,
+            value,
+            key_padding_mask=padding_mask,
+            need_weights=need_weights,
+            attn_mask=attn_mask,
+            average_attn_weights=average_attn_weights,
+            **kwargs,
+        )
+
+    def validate_kwargs(self, kwargs: Dict[str, Any]) -> None:
+        """Validate keyword arguments for backward compatibility."""
         valid_keys = set()
 
         if version.parse(torch.__version__) < version.parse("2.0"):
@@ -74,20 +93,9 @@ class MultiheadSelfAttention(nn.MultiheadAttention):
 
         assert invalid_keys == set(), f"Invalid keys {invalid_keys} are given."
 
-        return super().forward(
-            input,
-            input,
-            input,
-            key_padding_mask=padding_mask,
-            need_weights=need_weights,
-            attn_mask=attn_mask,
-            average_attn_weights=average_attn_weights,
-            **kwargs,
-        )
 
-
-class TrainableAbsolutePositionalMultiheadSelfAttention(MultiheadSelfAttention):
-    """Multihead self-attention using trainable absolute positional representation."""
+class TrainableAbsolutePositionalMultiheadAttention(_MultiheadAttention):
+    """Multihead attention using trainable absolute positional representation."""
 
     def __init__(
         self,
@@ -97,6 +105,8 @@ class TrainableAbsolutePositionalMultiheadSelfAttention(MultiheadSelfAttention):
         bias: bool = True,
         add_bias_kv: bool = False,
         add_zero_attn: bool = False,
+        kdim: Optional[int] = None,
+        vdim: Optional[int] = None,
         max_length: int = 512,
         share_heads: bool = True,
         batch_first: bool = False,
@@ -114,6 +124,8 @@ class TrainableAbsolutePositionalMultiheadSelfAttention(MultiheadSelfAttention):
             bias=bias,
             add_bias_kv=add_bias_kv,
             add_zero_attn=add_zero_attn,
+            kdim=kdim,
+            vdim=vdim,
             batch_first=batch_first,
             **factory_kwargs,
         )
@@ -182,29 +194,40 @@ class TrainableAbsolutePositionalMultiheadSelfAttention(MultiheadSelfAttention):
 
     def forward(
         self,
-        input: torch.Tensor,
-        padding_mask: Optional[torch.Tensor] = None,
+        query: torch.Tensor,
+        key: torch.Tensor,
+        value: torch.Tensor,
+        key_padding_mask: Optional[torch.Tensor] = None,
         need_weights: bool = True,
         attn_mask: Optional[torch.Tensor] = None,
         average_attn_weights: bool = True,
+        **kwargs,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
-        """Forward pass of AbsolutePositionalMultiheadSelfAttention.
+        """Forward pass of AbsolutePositionalMultiheadAttention.
 
         Args:
-            input (torch.Tensor): Sequence of shape (batch_size, length, embed_dim)
-                if ``batch_first=True``, otherwise (length, batch_size, embed_dim).
-            padding_mask (torch.BoolTensor, optional): Padding mask of shape (batch_size, length).
+            query (torch.Tensor): Sequence of shape (batch_size, query_length, embed_dim)
+                if ``batch_first=True``, otherwise (query_length, batch_size, embed_dim).
+            key (torch.Tensor): Sequence of shape (batch_size, key_length, embed_dim)
+                if ``batch_first=True``, otherwise (key_length, batch_size, embed_dim).
+            key_padding_mask (torch.BoolTensor, optional): Padding mask of shape
+                (batch_size, key_length).
             attn_mask (torch.BoolTensor, optional): Attention padding mask of
-                shape (length, length) or (batch_size * num_heads, length, length).
+                shape (query_length, key_length) or
+                (batch_size * num_heads, query_length, key_length).
 
         Returns:
             tuple: Tuple of tensors containing
 
                 - torch.Tensor: Sequence of same shape as input.
-                - torch.Tensor: Attention weights of shape (batch_size, num_heads, length, length)
-                    if ``average_attn_weights=True``, otherwise (batch_size, length, length).
+                - torch.Tensor: Attention weights of shape
+                    (batch_size, num_heads, query_length, key_length) if
+                    ``average_attn_weights=True``, otherwise
+                    (batch_size, query_length, key_length).
 
         """
+        self.validate_kwargs(kwargs)
+
         embed_dim = self.embed_dim
         dropout = self.dropout
         batch_first = self.batch_first
@@ -219,22 +242,34 @@ class TrainableAbsolutePositionalMultiheadSelfAttention(MultiheadSelfAttention):
         head_dim = embed_dim // num_heads
 
         if batch_first:
-            x = input.transpose(1, 0)
-        else:
-            x = input
+            if key is value:
+                if query is key:
+                    query = key = value = query.transpose(1, 0)
+                else:
+                    query = query.transpose(1, 0)
+                    key = key.transpose(1, 0)
+                    value = key
+            else:
+                query = query.transpose(1, 0)
+                key = key.transpose(1, 0)
+                value = value.transpose(1, 0)
 
-        length, batch_size, _ = x.size()
+        query_length, batch_size, _ = query.size()
+        key_length, _, _ = key.size()
 
         assert (
-            length <= max_length
-        ), f"Sequence length should be smaller than or equal to {max_length}."
+            query_length <= max_length
+        ), f"Query length should be smaller than or equal to {max_length}."
+        assert (
+            key_length <= max_length
+        ), f"Key length should be smaller than or equal to {max_length}."
 
-        padding_mask = F._canonical_mask(
-            mask=padding_mask,
-            mask_name="padding_mask",
+        key_padding_mask = F._canonical_mask(
+            mask=key_padding_mask,
+            mask_name="key_padding_mask",
             other_type=F._none_or_dtype(attn_mask),
             other_name="attn_mask",
-            target_type=x.dtype,
+            target_type=query.dtype,
         )
 
         attn_mask = F._canonical_mask(
@@ -242,16 +277,33 @@ class TrainableAbsolutePositionalMultiheadSelfAttention(MultiheadSelfAttention):
             mask_name="attn_mask",
             other_type=None,
             other_name="",
-            target_type=x.dtype,
+            target_type=query.dtype,
             check_other=False,
         )
 
-        x = F.linear(x, in_proj_weight, bias=in_proj_bias)
+        if self._qkv_same_embed_dim:
+            q_proj_weight, k_proj_weight, v_proj_weight = torch.split(
+                in_proj_weight, [embed_dim] * 3, dim=-2
+            )
+        else:
+            q_proj_weight = self.q_proj_weight
+            k_proj_weight = self.k_proj_weight
+            v_proj_weight = self.v_proj_weight
 
-        q, k, v = torch.chunk(x, chunks=3, dim=-1)
-        q = q.view(length, batch_size, num_heads, head_dim)
-        k = k.view(length, batch_size, num_heads, head_dim)
-        v = v.view(length, batch_size, num_heads, head_dim)
+        if self.in_proj_bias is None:
+            q_proj_bias, k_proj_bias, v_proj_bias = None, None, None
+        else:
+            q_proj_bias, k_proj_bias, v_proj_bias = torch.split(
+                in_proj_bias, [embed_dim] * 3, dim=0
+            )
+
+        q = F.linear(query, q_proj_weight, bias=q_proj_bias)
+        k = F.linear(key, k_proj_weight, bias=k_proj_bias)
+        v = F.linear(value, v_proj_weight, bias=v_proj_bias)
+
+        q = q.view(query_length, batch_size, num_heads, head_dim)
+        k = k.view(key_length, batch_size, num_heads, head_dim)
+        v = v.view(key_length, batch_size, num_heads, head_dim)
 
         q = self._apply_pos_emb(q, q_pos_emb)
         k = self._apply_pos_emb(k, k_pos_emb)
@@ -262,18 +314,18 @@ class TrainableAbsolutePositionalMultiheadSelfAttention(MultiheadSelfAttention):
         v = v.permute(1, 2, 0, 3)
         qk = torch.matmul(q, k) / math.sqrt(head_dim)
 
-        if padding_mask is not None:
-            padding_mask = padding_mask.view(batch_size, 1, 1, length)
+        if key_padding_mask is not None:
+            key_padding_mask = key_padding_mask.view(batch_size, 1, 1, key_length)
 
             if attn_mask is None:
-                attn_mask = padding_mask
+                attn_mask = key_padding_mask
             else:
                 if attn_mask.dim() == 3:
-                    attn_mask.view(batch_size, num_heads, length, length)
+                    attn_mask.view(batch_size, num_heads, query_length, key_length)
                 else:
                     assert attn_mask.dim() == 2
 
-                attn_mask = attn_mask + padding_mask
+                attn_mask = attn_mask + key_padding_mask
 
         if attn_mask is not None:
             qk = qk + attn_mask
@@ -287,10 +339,10 @@ class TrainableAbsolutePositionalMultiheadSelfAttention(MultiheadSelfAttention):
 
         if batch_first:
             qkv = qkv.permute(0, 2, 1, 3).contiguous()
-            qkv = qkv.view(batch_size, length, embed_dim)
+            qkv = qkv.view(batch_size, query_length, embed_dim)
         else:
             qkv = qkv.permute(2, 0, 1, 3).contiguous()
-            qkv = qkv.view(length, batch_size, embed_dim)
+            qkv = qkv.view(query_length, batch_size, embed_dim)
 
         output = self.out_proj(qkv)
 
@@ -328,8 +380,8 @@ class TrainableAbsolutePositionalMultiheadSelfAttention(MultiheadSelfAttention):
         return output
 
 
-class RelativePositionalMultiheadSelfAttention(MultiheadSelfAttention):
-    """Multihead self-attention using relative positional representation."""
+class RelativePositionalMultiheadAttention(_MultiheadAttention):
+    """Multihead attention using relative positional representation."""
 
     def __init__(
         self,
@@ -339,6 +391,8 @@ class RelativePositionalMultiheadSelfAttention(MultiheadSelfAttention):
         bias: bool = True,
         add_bias_kv: bool = False,
         add_zero_attn: bool = False,
+        kdim: Optional[int] = None,
+        vdim: Optional[int] = None,
         window_size: int = None,
         share_heads: bool = True,
         batch_first: bool = False,
@@ -356,6 +410,8 @@ class RelativePositionalMultiheadSelfAttention(MultiheadSelfAttention):
             bias=bias,
             add_bias_kv=add_bias_kv,
             add_zero_attn=add_zero_attn,
+            kdim=kdim,
+            vdim=vdim,
             batch_first=batch_first,
             **factory_kwargs,
         )
@@ -415,29 +471,40 @@ class RelativePositionalMultiheadSelfAttention(MultiheadSelfAttention):
 
     def forward(
         self,
-        input: torch.Tensor,
-        padding_mask: Optional[torch.Tensor] = None,
+        query: torch.Tensor,
+        key: torch.Tensor,
+        value: torch.Tensor,
+        key_padding_mask: Optional[torch.Tensor] = None,
         need_weights: bool = True,
         attn_mask: Optional[torch.Tensor] = None,
         average_attn_weights: bool = True,
+        **kwargs,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
-        """Forward pass of RelativePositionalMultiheadSelfAttention.
+        """Forward pass of RelativePositionalMultiheadAttention.
 
         Args:
-            input (torch.Tensor): Sequence of shape (batch_size, length, embed_dim)
-                if ``batch_first=True``, otherwise (length, batch_size, embed_dim).
-            padding_mask (torch.BoolTensor, optional): Padding mask of shape (batch_size, length).
+            query (torch.Tensor): Sequence of shape (batch_size, query_length, embed_dim)
+                if ``batch_first=True``, otherwise (query_length, batch_size, embed_dim).
+            key (torch.Tensor): Sequence of shape (batch_size, key_length, embed_dim)
+                if ``batch_first=True``, otherwise (key_length, batch_size, embed_dim).
+            key_padding_mask (torch.BoolTensor, optional): Padding mask of shape
+                (batch_size, key_length).
             attn_mask (torch.BoolTensor, optional): Attention padding mask of
-                shape (length, length) or (batch_size * num_heads, length, length).
+                shape (query_length, key_length) or
+                (batch_size * num_heads, query_length, key_length).
 
         Returns:
             tuple: Tuple of tensors containing
 
                 - torch.Tensor: Sequence of same shape as input.
-                - torch.Tensor: Attention weights of shape (batch_size, num_heads, length, length)
-                    if ``average_attn_weights=True``, otherwise (batch_size, length, length).
+                - torch.Tensor: Attention weights of shape
+                    (batch_size, num_heads, query_length, key_length) if
+                    ``average_attn_weights=True``, otherwise
+                    (batch_size, query_length, key_length).
 
         """
+        self.validate_kwargs(kwargs)
+
         embed_dim = self.embed_dim
         dropout = self.dropout
         batch_first = self.batch_first
@@ -451,18 +518,27 @@ class RelativePositionalMultiheadSelfAttention(MultiheadSelfAttention):
         head_dim = embed_dim // num_heads
 
         if batch_first:
-            x = input.transpose(1, 0)
-        else:
-            x = input
+            if key is value:
+                if query is key:
+                    query = key = value = query.transpose(1, 0)
+                else:
+                    query = query.transpose(1, 0)
+                    key = key.transpose(1, 0)
+                    value = key
+            else:
+                query = query.transpose(1, 0)
+                key = key.transpose(1, 0)
+                value = value.transpose(1, 0)
 
-        length, batch_size, _ = x.size()
+        query_length, batch_size, _ = query.size()
+        key_length, _, _ = key.size()
 
-        padding_mask = F._canonical_mask(
-            mask=padding_mask,
-            mask_name="padding_mask",
+        key_padding_mask = F._canonical_mask(
+            mask=key_padding_mask,
+            mask_name="key_padding_mask",
             other_type=F._none_or_dtype(attn_mask),
             other_name="attn_mask",
-            target_type=x.dtype,
+            target_type=query.dtype,
         )
 
         attn_mask = F._canonical_mask(
@@ -470,16 +546,33 @@ class RelativePositionalMultiheadSelfAttention(MultiheadSelfAttention):
             mask_name="attn_mask",
             other_type=None,
             other_name="",
-            target_type=x.dtype,
+            target_type=query.dtype,
             check_other=False,
         )
 
-        x = F.linear(x, in_proj_weight, bias=in_proj_bias)
+        if self._qkv_same_embed_dim:
+            q_proj_weight, k_proj_weight, v_proj_weight = torch.split(
+                in_proj_weight, [embed_dim] * 3, dim=-2
+            )
+        else:
+            q_proj_weight = self.q_proj_weight
+            k_proj_weight = self.k_proj_weight
+            v_proj_weight = self.v_proj_weight
 
-        q, k, v = torch.chunk(x, chunks=3, dim=-1)
-        q = q.view(length, batch_size, num_heads, head_dim)
-        k = k.view(length, batch_size, num_heads, head_dim)
-        v = v.view(length, batch_size, num_heads, head_dim)
+        if self.in_proj_bias is None:
+            q_proj_bias, k_proj_bias, v_proj_bias = None, None, None
+        else:
+            q_proj_bias, k_proj_bias, v_proj_bias = torch.split(
+                in_proj_bias, [embed_dim] * 3, dim=0
+            )
+
+        q = F.linear(query, q_proj_weight, bias=q_proj_bias)
+        k = F.linear(key, k_proj_weight, bias=k_proj_bias)
+        v = F.linear(value, v_proj_weight, bias=v_proj_bias)
+
+        q = q.view(query_length, batch_size, num_heads, head_dim)
+        k = k.view(key_length, batch_size, num_heads, head_dim)
+        v = v.view(key_length, batch_size, num_heads, head_dim)
 
         q = q.permute(1, 2, 0, 3)
         k = k.permute(1, 2, 3, 0)
@@ -488,9 +581,19 @@ class RelativePositionalMultiheadSelfAttention(MultiheadSelfAttention):
 
         # offset for key
         if share_heads:
-            k_pos_emb = self.expand_embedding(k_pos_emb, length=length, num_heads=1)
+            k_pos_emb = self.expand_embedding(
+                k_pos_emb,
+                query_length=query_length,
+                key_length=key_length,
+                num_heads=1,
+            )
         else:
-            k_pos_emb = self.expand_embedding(k_pos_emb, length=length, num_heads=num_heads)
+            k_pos_emb = self.expand_embedding(
+                k_pos_emb,
+                query_length=query_length,
+                key_length=key_length,
+                num_heads=num_heads,
+            )
 
         q = q.permute(1, 2, 0, 3)
         k_pos_emb = k_pos_emb.permute(0, 2, 1, 3)
@@ -498,18 +601,18 @@ class RelativePositionalMultiheadSelfAttention(MultiheadSelfAttention):
         k_offset = k_offset.permute(2, 0, 1, 3)
         qk = qk + k_offset
 
-        if padding_mask is not None:
-            padding_mask = padding_mask.view(batch_size, 1, 1, length)
+        if key_padding_mask is not None:
+            key_padding_mask = key_padding_mask.view(batch_size, 1, 1, key_length)
 
             if attn_mask is None:
-                attn_mask = padding_mask
+                attn_mask = key_padding_mask
             else:
                 if attn_mask.dim() == 3:
-                    attn_mask.view(batch_size, num_heads, length, length)
+                    attn_mask.view(batch_size, num_heads, query_length, key_length)
                 else:
                     assert attn_mask.dim() == 2
 
-                attn_mask = attn_mask + padding_mask
+                attn_mask = attn_mask + key_padding_mask
 
         if attn_mask is not None:
             qk = qk + attn_mask
@@ -523,22 +626,32 @@ class RelativePositionalMultiheadSelfAttention(MultiheadSelfAttention):
 
         # offset for value
         if share_heads:
-            v_pos_emb = self.expand_embedding(v_pos_emb, length=length, num_heads=1)
+            v_pos_emb = self.expand_embedding(
+                v_pos_emb,
+                query_length=query_length,
+                key_length=key_length,
+                num_heads=1,
+            )
         else:
-            v_pos_emb = self.expand_embedding(v_pos_emb, length=length, num_heads=num_heads)
+            v_pos_emb = self.expand_embedding(
+                v_pos_emb,
+                query_length=query_length,
+                key_length=key_length,
+                num_heads=num_heads,
+            )
 
-        _attn_weights = attn_weights.permute(1, 3, 0, 2)
-        v_pos_emb = v_pos_emb.permute(0, 3, 2, 1)
+        _attn_weights = attn_weights.permute(1, 2, 0, 3)
+        v_pos_emb = v_pos_emb.permute(0, 2, 3, 1)
         v_offset = torch.matmul(_attn_weights, v_pos_emb)
         v_offset = v_offset.permute(2, 0, 1, 3)
         qkv = qkv + v_offset
 
         if batch_first:
             qkv = qkv.permute(0, 2, 1, 3).contiguous()
-            qkv = qkv.view(batch_size, length, embed_dim)
+            qkv = qkv.view(batch_size, query_length, embed_dim)
         else:
             qkv = qkv.permute(2, 0, 1, 3).contiguous()
-            qkv = qkv.view(length, batch_size, embed_dim)
+            qkv = qkv.view(query_length, batch_size, embed_dim)
 
         output = self.out_proj(qkv)
 
@@ -552,56 +665,74 @@ class RelativePositionalMultiheadSelfAttention(MultiheadSelfAttention):
 
     @staticmethod
     def expand_embedding(
-        pos_embedding: torch.Tensor, length: int, num_heads: Optional[int] = None
+        pos_embedding: torch.Tensor,
+        query_length: int,
+        key_length: int,
+        num_heads: Optional[int] = None,
     ) -> torch.Tensor:
         """Expand embedding.
 
         Args:
             pos_embedding (torch.Tensor): Positional embedding
                 of shape (2 * window_size + 1, embed_dim).
-            length (int): Sequence length.
+            query_length (int): Query sequence length.
+            key_length (int): Key sequence length.
             num_heads (int, optional): Number of heads.
 
         Returns:
             torch.Tensor: Expanded relative positional embedding
-                of shape (num_heads, embed_dim // num_heads, length, length)
+                of shape (num_heads, embed_dim // num_heads, query_length, key_length)
                 if num_heads is specified. Otherwise, shape is
-                (embed_dim, length, length).
+                (embed_dim, query_length, key_length).
 
         """
         window_size, embed_dim = pos_embedding.size()
-        window_size = (window_size - 1) // 2
-        padding = window_size - length + 1
+        half_window_size = (window_size - 1) // 2
+        left_padding = query_length - half_window_size - 1
+        right_padding = key_length - half_window_size - 1
 
-        if padding < 0:
-            left_pos_embedding, center_pos_embedding, right_pos_embedding = torch.split(
-                pos_embedding, [1, 2 * window_size - 1, 1], dim=0
+        left_pos_embedding, center_pos_embedding, right_pos_embedding = torch.split(
+            pos_embedding, [half_window_size, 1, half_window_size], dim=0
+        )
+
+        if left_padding > 0:
+            left_pos_embedding, middle_pos_embedding = torch.split(
+                left_pos_embedding, [1, half_window_size - 1], dim=0
             )
-            left_pos_embedding = left_pos_embedding.expand((length - window_size, embed_dim))
-            right_pos_embedding = right_pos_embedding.expand((length - window_size, embed_dim))
-            pos_embedding = torch.cat(
-                [left_pos_embedding, center_pos_embedding, right_pos_embedding], dim=0
-            )
+            left_pos_embedding = left_pos_embedding.expand((left_padding + 1, embed_dim))
+            left_pos_embedding = torch.cat([left_pos_embedding, middle_pos_embedding], dim=0)
         else:
-            window_size < length - 1
-            pos_embedding = F.pad(pos_embedding, (0, 0, -padding, -padding))
+            left_pos_embedding = F.pad(left_pos_embedding, (0, 0, left_padding, 0))
 
-        pos_embedding = pos_embedding.view(1, 1, 2 * length - 1, embed_dim)
+        if right_padding > 0:
+            middle_pos_embedding, right_pos_embedding = torch.split(
+                right_pos_embedding, [half_window_size - 1, 1], dim=0
+            )
+            right_pos_embedding = right_pos_embedding.expand((right_padding + 1, embed_dim))
+            right_pos_embedding = torch.cat([middle_pos_embedding, right_pos_embedding], dim=0)
+        else:
+            right_pos_embedding = F.pad(right_pos_embedding, (0, 0, 0, right_padding))
+
+        pos_embedding = torch.cat(
+            [left_pos_embedding, center_pos_embedding, right_pos_embedding], dim=0
+        )
+        pos_embedding = pos_embedding.view(1, 1, query_length + key_length - 1, embed_dim)
         pos_embedding = pos_embedding.permute(0, 3, 1, 2)
-        pos_embedding = F.unfold(pos_embedding, kernel_size=(1, length), stride=1)
-
-        if num_heads is None:
-            pos_embedding = pos_embedding.view(embed_dim, length, -1)
-        else:
-            pos_embedding = pos_embedding.view(num_heads, embed_dim // num_heads, length, -1)
-
+        pos_embedding = F.unfold(pos_embedding, kernel_size=(1, key_length), stride=1)
+        pos_embedding = pos_embedding.view(embed_dim, key_length, query_length)
+        pos_embedding = pos_embedding.permute(0, 2, 1)
         pos_embedding = torch.flip(pos_embedding, dims=(-2,))
+
+        if num_heads is not None:
+            pos_embedding = pos_embedding.view(
+                num_heads, embed_dim // num_heads, query_length, key_length
+            )
 
         return pos_embedding
 
 
-class RotaryPositionalMultiheadSelfAttention(MultiheadSelfAttention):
-    """Multihead self-attention using rotary positional representation."""
+class RotaryPositionalMultiheadAttention(_MultiheadAttention):
+    """Multihead attention using rotary positional representation."""
 
     def __init__(
         self,
@@ -611,6 +742,8 @@ class RotaryPositionalMultiheadSelfAttention(MultiheadSelfAttention):
         bias: bool = True,
         add_bias_kv: bool = False,
         add_zero_attn: bool = False,
+        kdim: Optional[int] = None,
+        vdim: Optional[int] = None,
         base: int = 10000,
         share_heads: bool = True,
         batch_first: bool = False,
@@ -628,6 +761,8 @@ class RotaryPositionalMultiheadSelfAttention(MultiheadSelfAttention):
             bias=bias,
             add_bias_kv=add_bias_kv,
             add_zero_attn=add_zero_attn,
+            kdim=kdim,
+            vdim=vdim,
             batch_first=batch_first,
             **factory_kwargs,
         )
@@ -644,29 +779,40 @@ class RotaryPositionalMultiheadSelfAttention(MultiheadSelfAttention):
 
     def forward(
         self,
-        input: torch.Tensor,
-        padding_mask: Optional[torch.Tensor] = None,
+        query: torch.Tensor,
+        key: torch.Tensor,
+        value: torch.Tensor,
+        key_padding_mask: Optional[torch.Tensor] = None,
         need_weights: bool = True,
         attn_mask: Optional[torch.Tensor] = None,
         average_attn_weights: bool = True,
+        **kwargs,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
-        """Forward pass of RotaryPositionalMultiheadSelfAttention.
+        """Forward pass of RotaryPositionalMultiheadAttention.
 
         Args:
-            input (torch.Tensor): Sequence of shape (batch_size, length, embed_dim)
-                if ``batch_first=True``, otherwise (length, batch_size, embed_dim).
-            padding_mask (torch.BoolTensor, optional): Padding mask of shape (batch_size, length).
+            query (torch.Tensor): Sequence of shape (batch_size, query_length, embed_dim)
+                if ``batch_first=True``, otherwise (query_length, batch_size, embed_dim).
+            key (torch.Tensor): Sequence of shape (batch_size, key_length, embed_dim)
+                if ``batch_first=True``, otherwise (key_length, batch_size, embed_dim).
+            key_padding_mask (torch.BoolTensor, optional): Padding mask of shape
+                (batch_size, key_length).
             attn_mask (torch.BoolTensor, optional): Attention padding mask of
-                shape (length, length) or (batch_size * num_heads, length, length).
+                shape (query_length, key_length) or
+                (batch_size * num_heads, query_length, key_length).
 
         Returns:
             tuple: Tuple of tensors containing
 
                 - torch.Tensor: Sequence of same shape as input.
-                - torch.Tensor: Attention weights of shape (batch_size, num_heads, length, length)
-                    if ``average_attn_weights=True``, otherwise (batch_size, length, length).
+                - torch.Tensor: Attention weights of shape
+                    (batch_size, num_heads, query_length, key_length) if
+                    ``average_attn_weights=True``, otherwise
+                    (batch_size, query_length, key_length).
 
         """
+        self.validate_kwargs(kwargs)
+
         embed_dim = self.embed_dim
         dropout = self.dropout
         batch_first = self.batch_first
@@ -677,18 +823,27 @@ class RotaryPositionalMultiheadSelfAttention(MultiheadSelfAttention):
         head_dim = embed_dim // num_heads
 
         if batch_first:
-            x = input.transpose(1, 0)
-        else:
-            x = input
+            if key is value:
+                if query is key:
+                    query = key = value = query.transpose(1, 0)
+                else:
+                    query = query.transpose(1, 0)
+                    key = key.transpose(1, 0)
+                    value = key
+            else:
+                query = query.transpose(1, 0)
+                key = key.transpose(1, 0)
+                value = value.transpose(1, 0)
 
-        length, batch_size, _ = x.size()
+        query_length, batch_size, _ = query.size()
+        key_length, _, _ = key.size()
 
-        padding_mask = F._canonical_mask(
-            mask=padding_mask,
-            mask_name="padding_mask",
+        key_padding_mask = F._canonical_mask(
+            mask=key_padding_mask,
+            mask_name="key_padding_mask",
             other_type=F._none_or_dtype(attn_mask),
             other_name="attn_mask",
-            target_type=x.dtype,
+            target_type=query.dtype,
         )
 
         attn_mask = F._canonical_mask(
@@ -696,37 +851,55 @@ class RotaryPositionalMultiheadSelfAttention(MultiheadSelfAttention):
             mask_name="attn_mask",
             other_type=None,
             other_name="",
-            target_type=x.dtype,
+            target_type=query.dtype,
             check_other=False,
         )
 
-        x = F.linear(x, in_proj_weight, bias=in_proj_bias)
+        if self._qkv_same_embed_dim:
+            q_proj_weight, k_proj_weight, v_proj_weight = torch.split(
+                in_proj_weight, [embed_dim] * 3, dim=-2
+            )
+        else:
+            q_proj_weight = self.q_proj_weight
+            k_proj_weight = self.k_proj_weight
+            v_proj_weight = self.v_proj_weight
 
-        q, k, v = torch.chunk(x, chunks=3, dim=-1)
+        if self.in_proj_bias is None:
+            q_proj_bias, k_proj_bias, v_proj_bias = None, None, None
+        else:
+            q_proj_bias, k_proj_bias, v_proj_bias = torch.split(
+                in_proj_bias, [embed_dim] * 3, dim=0
+            )
+
+        q = F.linear(query, q_proj_weight, bias=q_proj_bias)
+        k = F.linear(key, k_proj_weight, bias=k_proj_bias)
+        v = F.linear(value, v_proj_weight, bias=v_proj_bias)
 
         q = self._apply_pos_emb(q.contiguous())
         k = self._apply_pos_emb(k.contiguous())
 
-        q = q.view(length, batch_size, num_heads, head_dim)
-        k = k.view(length, batch_size, num_heads, head_dim)
-        v = v.view(length, batch_size, num_heads, head_dim)
+        q = q.view(query_length, batch_size, num_heads, head_dim)
+        k = k.view(key_length, batch_size, num_heads, head_dim)
+        v = v.view(key_length, batch_size, num_heads, head_dim)
+
         q = q.permute(1, 2, 0, 3)
         k = k.permute(1, 2, 3, 0)
         v = v.permute(1, 2, 0, 3)
+
         qk = torch.matmul(q, k) / math.sqrt(head_dim)
 
-        if padding_mask is not None:
-            padding_mask = padding_mask.view(batch_size, 1, 1, length)
+        if key_padding_mask is not None:
+            key_padding_mask = key_padding_mask.view(batch_size, 1, 1, key_length)
 
             if attn_mask is None:
-                attn_mask = padding_mask
+                attn_mask = key_padding_mask
             else:
                 if attn_mask.dim() == 3:
-                    attn_mask.view(batch_size, num_heads, length, length)
+                    attn_mask.view(batch_size, num_heads, query_length, key_length)
                 else:
                     assert attn_mask.dim() == 2
 
-                attn_mask = attn_mask + padding_mask
+                attn_mask = attn_mask + key_padding_mask
 
         if attn_mask is not None:
             qk = qk + attn_mask
@@ -740,10 +913,10 @@ class RotaryPositionalMultiheadSelfAttention(MultiheadSelfAttention):
 
         if batch_first:
             qkv = qkv.permute(0, 2, 1, 3).contiguous()
-            qkv = qkv.view(batch_size, length, embed_dim)
+            qkv = qkv.view(batch_size, query_length, embed_dim)
         else:
             qkv = qkv.permute(2, 0, 1, 3).contiguous()
-            qkv = qkv.view(length, batch_size, embed_dim)
+            qkv = qkv.view(query_length, batch_size, embed_dim)
 
         output = self.out_proj(qkv)
 
@@ -788,8 +961,8 @@ class RotaryPositionalMultiheadSelfAttention(MultiheadSelfAttention):
         return output
 
 
-class ExtrapolatablePositionalMultiheadSelfAttention(MultiheadSelfAttention):
-    """Multihead self-attention using extrapolatable positional representation."""
+class ExtrapolatablePositionalMultiheadAttention(_MultiheadAttention):
+    """Multihead attention using extrapolatable positional representation."""
 
     def __init__(
         self,
@@ -799,6 +972,8 @@ class ExtrapolatablePositionalMultiheadSelfAttention(MultiheadSelfAttention):
         bias: bool = True,
         add_bias_kv: bool = False,
         add_zero_attn: bool = False,
+        kdim: Optional[int] = None,
+        vdim: Optional[int] = None,
         base: int = 10000,
         share_heads: bool = True,
         batch_first: bool = False,
@@ -816,6 +991,8 @@ class ExtrapolatablePositionalMultiheadSelfAttention(MultiheadSelfAttention):
             bias=bias,
             add_bias_kv=add_bias_kv,
             add_zero_attn=add_zero_attn,
+            kdim=kdim,
+            vdim=vdim,
             batch_first=batch_first,
             **factory_kwargs,
         )
@@ -833,29 +1010,40 @@ class ExtrapolatablePositionalMultiheadSelfAttention(MultiheadSelfAttention):
 
     def forward(
         self,
-        input: torch.Tensor,
-        padding_mask: Optional[torch.Tensor] = None,
+        query: torch.Tensor,
+        key: torch.Tensor,
+        value: torch.Tensor,
+        key_padding_mask: Optional[torch.Tensor] = None,
         need_weights: bool = True,
         attn_mask: Optional[torch.Tensor] = None,
         average_attn_weights: bool = True,
+        **kwargs,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
-        """Forward pass of ExtrapolatablePositionalMultiheadSelfAttention.
+        """Forward pass of ExtrapolatablePositionalMultiheadAttention.
 
         Args:
-            input (torch.Tensor): Sequence of shape (batch_size, length, embed_dim)
-                if ``batch_first=True``, otherwise (length, batch_size, embed_dim).
-            padding_mask (torch.BoolTensor, optional): Padding mask of shape (batch_size, length).
+            query (torch.Tensor): Sequence of shape (batch_size, query_length, embed_dim)
+                if ``batch_first=True``, otherwise (query_length, batch_size, embed_dim).
+            key (torch.Tensor): Sequence of shape (batch_size, key_length, embed_dim)
+                if ``batch_first=True``, otherwise (key_length, batch_size, embed_dim).
+            key_padding_mask (torch.BoolTensor, optional): Padding mask of shape
+                (batch_size, key_length).
             attn_mask (torch.BoolTensor, optional): Attention padding mask of
-                shape (length, length) or (batch_size * num_heads, length, length).
+                shape (query_length, key_length) or
+                (batch_size * num_heads, query_length, key_length).
 
         Returns:
             tuple: Tuple of tensors containing
 
                 - torch.Tensor: Sequence of same shape as input.
-                - torch.Tensor: Attention weights of shape (batch_size, num_heads, length, length)
-                    if ``average_attn_weights=True``, otherwise (batch_size, length, length).
+                - torch.Tensor: Attention weights of shape
+                    (batch_size, num_heads, query_length, key_length) if
+                    ``average_attn_weights=True``, otherwise
+                    (batch_size, query_length, key_length).
 
         """
+        self.validate_kwargs(kwargs)
+
         embed_dim = self.embed_dim
         dropout = self.dropout
         batch_first = self.batch_first
@@ -866,18 +1054,27 @@ class ExtrapolatablePositionalMultiheadSelfAttention(MultiheadSelfAttention):
         head_dim = embed_dim // num_heads
 
         if batch_first:
-            x = input.transpose(1, 0)
-        else:
-            x = input
+            if key is value:
+                if query is key:
+                    query = key = value = query.transpose(1, 0)
+                else:
+                    query = query.transpose(1, 0)
+                    key = key.transpose(1, 0)
+                    value = key
+            else:
+                query = query.transpose(1, 0)
+                key = key.transpose(1, 0)
+                value = value.transpose(1, 0)
 
-        length, batch_size, _ = x.size()
+        query_length, batch_size, _ = query.size()
+        key_length, _, _ = key.size()
 
-        padding_mask = F._canonical_mask(
-            mask=padding_mask,
-            mask_name="padding_mask",
+        key_padding_mask = F._canonical_mask(
+            mask=key_padding_mask,
+            mask_name="key_padding_mask",
             other_type=F._none_or_dtype(attn_mask),
             other_name="attn_mask",
-            target_type=x.dtype,
+            target_type=query.dtype,
         )
 
         attn_mask = F._canonical_mask(
@@ -885,37 +1082,55 @@ class ExtrapolatablePositionalMultiheadSelfAttention(MultiheadSelfAttention):
             mask_name="attn_mask",
             other_type=None,
             other_name="",
-            target_type=x.dtype,
+            target_type=query.dtype,
             check_other=False,
         )
 
-        x = F.linear(x, in_proj_weight, bias=in_proj_bias)
+        if self._qkv_same_embed_dim:
+            q_proj_weight, k_proj_weight, v_proj_weight = torch.split(
+                in_proj_weight, [embed_dim] * 3, dim=-2
+            )
+        else:
+            q_proj_weight = self.q_proj_weight
+            k_proj_weight = self.k_proj_weight
+            v_proj_weight = self.v_proj_weight
 
-        q, k, v = torch.chunk(x, chunks=3, dim=-1)
+        if self.in_proj_bias is None:
+            q_proj_bias, k_proj_bias, v_proj_bias = None, None, None
+        else:
+            q_proj_bias, k_proj_bias, v_proj_bias = torch.split(
+                in_proj_bias, [embed_dim] * 3, dim=0
+            )
+
+        q = F.linear(query, q_proj_weight, bias=q_proj_bias)
+        k = F.linear(key, k_proj_weight, bias=k_proj_bias)
+        v = F.linear(value, v_proj_weight, bias=v_proj_bias)
 
         q = self._apply_q_pos_emb(q.contiguous())
         k = self._apply_k_pos_emb(k.contiguous())
 
-        q = q.view(length, batch_size, num_heads, head_dim)
-        k = k.view(length, batch_size, num_heads, head_dim)
-        v = v.view(length, batch_size, num_heads, head_dim)
+        q = q.view(query_length, batch_size, num_heads, head_dim)
+        k = k.view(key_length, batch_size, num_heads, head_dim)
+        v = v.view(key_length, batch_size, num_heads, head_dim)
+
         q = q.permute(1, 2, 0, 3)
         k = k.permute(1, 2, 3, 0)
         v = v.permute(1, 2, 0, 3)
+
         qk = torch.matmul(q, k) / math.sqrt(head_dim)
 
-        if padding_mask is not None:
-            padding_mask = padding_mask.view(batch_size, 1, 1, length)
+        if key_padding_mask is not None:
+            key_padding_mask = key_padding_mask.view(batch_size, 1, 1, key_length)
 
             if attn_mask is None:
-                attn_mask = padding_mask
+                attn_mask = key_padding_mask
             else:
                 if attn_mask.dim() == 3:
-                    attn_mask.view(batch_size, num_heads, length, length)
+                    attn_mask.view(batch_size, num_heads, query_length, key_length)
                 else:
                     assert attn_mask.dim() == 2
 
-                attn_mask = attn_mask + padding_mask
+                attn_mask = attn_mask + key_padding_mask
 
         if attn_mask is not None:
             qk = qk + attn_mask
@@ -929,10 +1144,10 @@ class ExtrapolatablePositionalMultiheadSelfAttention(MultiheadSelfAttention):
 
         if batch_first:
             qkv = qkv.permute(0, 2, 1, 3).contiguous()
-            qkv = qkv.view(batch_size, length, embed_dim)
+            qkv = qkv.view(batch_size, query_length, embed_dim)
         else:
             qkv = qkv.permute(2, 0, 1, 3).contiguous()
-            qkv = qkv.view(length, batch_size, embed_dim)
+            qkv = qkv.view(query_length, batch_size, embed_dim)
 
         output = self.out_proj(qkv)
 

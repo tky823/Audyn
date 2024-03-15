@@ -57,10 +57,9 @@ def test_crossmodal_mean_average_precision() -> None:
 
 @pytest.mark.parametrize("strategy", ["oracle", "random"])
 def test_crossmodal_mean_average_precision_ddp_itemwise(strategy: str) -> None:
-    pytest.skip("Skip temporarily")
     port = select_random_port()
     seed = 0
-    world_size = 4
+    world_size = 2
 
     k = 5
     batch_size = 5
@@ -149,10 +148,9 @@ def test_crossmodal_mean_average_precision_ddp_itemwise(strategy: str) -> None:
 
 @pytest.mark.parametrize("strategy", ["oracle", "random"])
 def test_crossmodal_mean_average_precision_ddp_batchwise(strategy: str) -> None:
-    pytest.skip("Skip temporarily")
     port = select_random_port()
     seed = 0
-    world_size = 4
+    world_size = 2
 
     k = 5
     num_total_samples = 11
@@ -287,10 +285,9 @@ def test_crossmodal_median_rank(mink: int) -> None:
 @pytest.mark.parametrize("mink", parameters_mink)
 @pytest.mark.parametrize("strategy", ["oracle", "random"])
 def test_crossmodal_median_rank_ddp_itemwise(mink: int, strategy: str) -> None:
-    pytest.skip("Skip temporarily")
     port = select_random_port()
     seed = 0
-    world_size = 4
+    world_size = 2
 
     batch_size = 5
     embedding_dim = 3
@@ -379,10 +376,9 @@ def test_crossmodal_median_rank_ddp_itemwise(mink: int, strategy: str) -> None:
 @pytest.mark.parametrize("mink", parameters_mink)
 @pytest.mark.parametrize("strategy", ["oracle", "random"])
 def test_crossmodal_median_rank_ddp_batchwise(mink: int, strategy: str) -> None:
-    pytest.skip("Skip temporarily")
     port = select_random_port()
     seed = 0
-    world_size = 4
+    world_size = 2
 
     num_total_samples = 11
     batch_size = 5

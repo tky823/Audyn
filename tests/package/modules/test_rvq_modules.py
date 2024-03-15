@@ -1,5 +1,6 @@
 import copy
 import os
+import sys
 import tempfile
 from datetime import timedelta
 from typing import Tuple
@@ -14,6 +15,8 @@ from torch.cuda.amp import autocast
 
 from audyn.functional.vector_quantization import quantize_vector
 from audyn.modules.rvq import ResidualVectorQuantizer
+
+IS_WINDOWS = sys.platform == "win32"
 
 
 def test_residual_vector_quantizer() -> None:
@@ -83,10 +86,8 @@ def test_residual_vector_quantizer() -> None:
 
 def test_residual_vector_quantizer_ddp() -> None:
     """Ensure ResidualVectorQuantizer works well for DDP."""
-    torch.manual_seed(0)
-
     port = str(torch.randint(0, 2**16, ()).item())
-    world_size = 4
+    world_size = 2
     seed, another_seed = 0, 1
 
     codebook_size = 5
@@ -238,12 +239,17 @@ def train_dummy_rvqvae(
 
     set_ddp_environment(rank, world_size, port)
 
+    if IS_WINDOWS:
+        init_method = f"tcp://localhost:{port}"
+    else:
+        init_method = None
+
     config = {
         "seed": seed,
         "distributed": {
             "enable": True,
             "backend": "gloo",
-            "init_method": None,
+            "init_method": init_method,
         },
         "cudnn": {
             "benchmark": None,
@@ -257,7 +263,13 @@ def train_dummy_rvqvae(
 
     config = OmegaConf.create(config)
 
-    dist.init_process_group(backend=config.distributed.backend, timeout=timedelta(minutes=1))
+    dist.init_process_group(
+        backend=config.distributed.backend,
+        init_method=config.distributed.init_method,
+        rank=int(os.environ["RANK"]),
+        world_size=int(os.environ["WORLD_SIZE"]),
+        timeout=timedelta(minutes=1),
+    )
     torch.manual_seed(config.seed)
 
     g = torch.Generator()

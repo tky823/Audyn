@@ -1,5 +1,6 @@
 import copy
 import os
+import sys
 import tempfile
 from datetime import timedelta
 from typing import List, Union
@@ -12,6 +13,7 @@ from dummy.utils import select_random_port, set_ddp_environment
 
 from audyn.metrics.retrieval import MeanAveragePrecision, MedianRank
 
+IS_WINDOWS = sys.platform == "win32"
 parameters_mink = [0, 1]
 
 
@@ -62,10 +64,9 @@ def test_mean_average_precision_known_map(mink: int) -> None:
 
 @pytest.mark.parametrize("mink", parameters_mink)
 def test_mean_average_precision_ddp_oracle(mink: int) -> None:
-    pytest.skip("Skip temporarily")
     port = select_random_port()
     seed = 0
-    world_size = 3
+    world_size = 2
 
     torch.manual_seed(seed)
 
@@ -130,7 +131,9 @@ def test_mean_average_precision_ddp_oracle(mink: int) -> None:
 
 @pytest.mark.parametrize("mink", parameters_mink)
 def test_mean_average_precision_ddp_known_map(mink: int) -> None:
-    pytest.skip("Skip temporarily")
+    if IS_WINDOWS:
+        pytest.skip("WINDOWS is not correctly supported DDP w/ world_size=3.")
+
     port = select_random_port()
     seed = 0
     world_size = 3
@@ -252,10 +255,9 @@ def test_median_rank(mink: int) -> None:
 @pytest.mark.parametrize("ranks", ["oracle", "random"])
 @pytest.mark.parametrize("mink", parameters_mink)
 def test_median_rank_ddp(ranks: str, mink: int) -> None:
-    pytest.skip("Skip temporarily")
     port = select_random_port()
     seed = 0
-    world_size = 4
+    world_size = 2
 
     num_queries = 10
 

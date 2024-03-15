@@ -1,5 +1,6 @@
 import importlib
 import os
+import sys
 import tempfile
 from datetime import timedelta
 from os.path import dirname, join, realpath, relpath
@@ -42,6 +43,8 @@ from audyn.utils.driver import (
     TextToFeatTrainer,
 )
 from audyn.utils.model import set_device
+
+IS_WINDOWS = sys.platform == "win32"
 
 config_template_path = join(dirname(realpath(audyn.__file__)), "utils", "driver", "_conf_template")
 config_name = "config"
@@ -231,6 +234,13 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
     with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         monkeypatch.chdir(temp_dir)
 
+        # set environmental variables
+        os.environ["LOCAL_RANK"] = "0"
+        os.environ["RANK"] = "0"
+        os.environ["WORLD_SIZE"] = "1"
+        os.environ["MASTER_ADDR"] = "localhost"
+        os.environ["MASTER_PORT"] = str(torch.randint(0, 2**16, ()).item())
+
         overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
         exp_dir = "./exp"
 
@@ -267,17 +277,14 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
         assert config.system.distributed.enable
         assert config.train.dataloader.train._target_ == "torch.utils.data.DataLoader"
 
-        # set environmental variables
-        os.environ["LOCAL_RANK"] = "0"
-        os.environ["RANK"] = "0"
-        os.environ["WORLD_SIZE"] = "1"
-        os.environ["MASTER_ADDR"] = "localhost"
-        os.environ["MASTER_PORT"] = str(torch.randint(0, 2**16, ()).item())
-
         convert_dataloader_to_ddp_if_possible(config)
 
         dist.init_process_group(
-            backend=config.system.distributed.backend, timeout=timedelta(minutes=1)
+            backend=config.system.distributed.backend,
+            init_method=config.system.distributed.init_method,
+            rank=int(os.environ["RANK"]),
+            world_size=int(os.environ["WORLD_SIZE"]),
+            timeout=timedelta(minutes=1),
         )
         torch.manual_seed(config.system.seed)
 
@@ -899,6 +906,13 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str, dataloader_t
     with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         monkeypatch.chdir(temp_dir)
 
+        # set environmental variables
+        os.environ["LOCAL_RANK"] = "0"
+        os.environ["RANK"] = "0"
+        os.environ["WORLD_SIZE"] = "1"
+        os.environ["MASTER_ADDR"] = "localhost"
+        os.environ["MASTER_PORT"] = str(torch.randint(0, 2**16, ()).item())
+
         overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
         exp_dir = "./exp"
 
@@ -974,12 +988,6 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str, dataloader_t
                     == "audyn.utils.data.dataloader.DistributedDataLoader"
                 )
 
-        os.environ["LOCAL_RANK"] = "0"
-        os.environ["RANK"] = "0"
-        os.environ["WORLD_SIZE"] = "1"
-        os.environ["MASTER_ADDR"] = "localhost"
-        os.environ["MASTER_PORT"] = str(torch.randint(0, 2**16, ()).item())
-
         convert_dataloader_to_ddp_if_possible(config)
 
         if dataloader_type == "audyn_sequential":
@@ -994,7 +1002,11 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str, dataloader_t
             )
 
         dist.init_process_group(
-            backend=config.system.distributed.backend, timeout=timedelta(minutes=1)
+            backend=config.system.distributed.backend,
+            init_method=config.system.distributed.init_method,
+            rank=int(os.environ["RANK"]),
+            world_size=int(os.environ["WORLD_SIZE"]),
+            timeout=timedelta(minutes=1),
         )
         torch.manual_seed(config.system.seed)
 
@@ -1766,6 +1778,10 @@ def create_dummy_override(
     if lr_scheduler == "none":
         override_list += ["train.steps.lr_scheduler=''"]
 
+    if system == "cpu_ddp" and IS_WINDOWS:
+        port = os.environ["MASTER_PORT"]
+        override_list += [f"system.distributed.init_method=tcp://localhost:{port}"]
+
     return override_list
 
 
@@ -1829,6 +1845,10 @@ def create_dummy_gan_override(
     overridden_config = (
         overridden_config + generator_optimizer_config + generator_discriminator_config
     )
+
+    if system == "cpu_ddp" and IS_WINDOWS:
+        port = os.environ["MASTER_PORT"]
+        overridden_config += [f"system.distributed.init_method=tcp://localhost:{port}"]
 
     return overridden_config
 

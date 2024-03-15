@@ -1,6 +1,7 @@
 import copy
 import math
 import os
+import sys
 import tempfile
 from datetime import timedelta
 from typing import Callable, List, Optional, Tuple, Union
@@ -254,7 +255,7 @@ def test_exponential_moving_average_codebook_optimizer(
 def test_exponential_moving_average_codebook_optimizer_ddp(is_rvq: bool) -> None:
     """Ensure ExponentialMovingAverageCodebookOptimizer works well for DDP."""
     port = str(torch.randint(0, 2**16, ()).item())
-    world_size = 4
+    world_size = 2
     seed, another_seed = 0, 1
 
     in_channels = 2
@@ -571,18 +572,25 @@ def train_exponential_moving_average_codebook_optimizer(
     seed: int = 0,
     path: str = None,
 ) -> None:
+    IS_WINDOWS = sys.platform == "win32"
+
     batch_size = 4
     height, width = 17, 17
     iterations = 5
 
     set_ddp_environment(rank, world_size, port)
 
+    if IS_WINDOWS:
+        init_method = f"tcp://localhost:{port}"
+    else:
+        init_method = None
+
     config = {
         "seed": seed,
         "distributed": {
             "enable": True,
             "backend": "gloo",
-            "init_method": None,
+            "init_method": init_method,
         },
         "cudnn": {
             "benchmark": None,
@@ -596,7 +604,13 @@ def train_exponential_moving_average_codebook_optimizer(
 
     config = OmegaConf.create(config)
 
-    dist.init_process_group(backend=config.distributed.backend, timeout=timedelta(minutes=1))
+    dist.init_process_group(
+        backend=config.distributed.backend,
+        init_method=config.distributed.init_method,
+        rank=int(os.environ["RANK"]),
+        world_size=int(os.environ["WORLD_SIZE"]),
+        timeout=timedelta(minutes=1),
+    )
     torch.manual_seed(config.seed)
 
     g = torch.Generator()

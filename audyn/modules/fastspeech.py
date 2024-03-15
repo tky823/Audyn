@@ -5,7 +5,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from packaging import version
 
-from .activation import MultiheadSelfAttention
 from .normalization import MaskedLayerNorm
 
 IS_TORCH_LT_1_11 = version.parse(torch.__version__) < version.parse("1.11")
@@ -262,7 +261,7 @@ class MultiheadSelfAttentionBlock(nn.Module):
             "dtype": dtype,
         }
 
-        self.mha = MultiheadSelfAttention(
+        self.mha = nn.MultiheadAttention(
             embed_dim,
             num_heads,
             dropout=dropout,
@@ -343,7 +342,9 @@ class MultiheadSelfAttentionBlock(nn.Module):
         # TODO: version-dependent kwargs
         attn_output, attn_weights = self.mha(
             x,
-            padding_mask=key_padding_mask,
+            x,
+            x,
+            key_padding_mask=key_padding_mask,
             need_weights=True,
             attn_mask=attn_mask,
             **kwargs,
