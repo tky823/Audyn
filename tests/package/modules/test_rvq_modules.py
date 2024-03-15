@@ -98,38 +98,23 @@ def test_residual_vector_quantizer_ddp() -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        path = os.path.join(temp_dir, "{rank}.pth")
-
-        if IS_WINDOWS:
-            mp.spawn(
-                train_dummy_rvqvae,
-                args=(
-                    world_size,
-                    port,
-                    codebook_size,
-                    embedding_dim,
-                    seed,
-                    path,
-                ),
-                nprocs=world_size,
+        for rank in range(world_size):
+            path = os.path.join(temp_dir, f"{rank}.pth")
+            process = mp.Process(
+                target=train_dummy_rvqvae,
+                args=(rank, world_size, port),
+                kwargs={
+                    "codebook_size": codebook_size,
+                    "embedding_dim": embedding_dim,
+                    "seed": seed,
+                    "path": path,
+                },
             )
-        else:
-            for rank in range(world_size):
-                process = mp.Process(
-                    target=train_dummy_rvqvae,
-                    args=(rank, world_size, port),
-                    kwargs={
-                        "codebook_size": codebook_size,
-                        "embedding_dim": embedding_dim,
-                        "seed": seed,
-                        "path": path,
-                    },
-                )
-                process.start()
-                processes.append(process)
+            process.start()
+            processes.append(process)
 
-            for process in processes:
-                process.join()
+        for process in processes:
+            process.join()
 
         rank = 0
         reference_model = build_dummy_rvq(
@@ -253,7 +238,6 @@ def train_dummy_rvqvae(
 ) -> None:
     batch_size = 4
     length = 3
-    path = path.format(rank=rank)
 
     set_ddp_environment(rank, world_size, port)
 
