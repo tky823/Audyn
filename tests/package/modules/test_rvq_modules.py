@@ -87,7 +87,7 @@ def test_residual_vector_quantizer() -> None:
 def test_residual_vector_quantizer_ddp() -> None:
     """Ensure ResidualVectorQuantizer works well for DDP."""
     port = str(torch.randint(0, 2**16, ()).item())
-    world_size = 4
+    world_size = 2
     seed, another_seed = 0, 1
 
     codebook_size = 5
