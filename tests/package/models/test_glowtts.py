@@ -643,7 +643,7 @@ def test_glowtts_transformer_encoder(batch_first: bool) -> None:
     else:
         padded_output, _ = torch.split(padded_output, [max_length, max_length], dim=0)
 
-    assert torch.allclose(padded_output, output)
+    allclose(padded_output, output)
 
 
 def test_glowtts_glow_block() -> None:
