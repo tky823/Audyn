@@ -170,14 +170,14 @@ class ActNorm1d(BaseFlow):
 
         super().__init__()
 
-        self.log_std = nn.Parameter(torch.empty((num_features,), **factory_kwargs))
-        self.mean = nn.Parameter(torch.empty((num_features,), **factory_kwargs))
+        self.log_scale = nn.Parameter(torch.empty((num_features,), **factory_kwargs))
+        self.bias = nn.Parameter(torch.empty((num_features,), **factory_kwargs))
 
         self._reset_parameters()
 
     def _reset_parameters(self) -> None:
-        nn.init.zeros_(self.log_std.data)
-        nn.init.zeros_(self.mean.data)
+        nn.init.zeros_(self.log_scale.data)
+        nn.init.zeros_(self.bias.data)
         self.is_initialized = False
 
     @torch.no_grad()
@@ -214,9 +214,10 @@ class ActNorm1d(BaseFlow):
             sum_input = torch.sum(gathered_sum_input, dim=0)
 
         log_std = 0.5 * (torch.log(sum_input) - math.log((world_size * batch_size * length)))
+        bias = -mean * torch.exp(-log_std)
 
-        self.log_std.data.copy_(log_std)
-        self.mean.data.copy_(mean)
+        self.log_scale.data.copy_(-log_std)
+        self.bias.data.copy_(bias)
 
         self.is_initialized = True
 
@@ -225,15 +226,17 @@ class ActNorm1d(BaseFlow):
         input: torch.Tensor,
         logdet: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        log_scale = self.log_scale
+        bias = self.bias
         length = input.size(-1)
 
-        std = torch.exp(self.log_std)
-        std = std.unsqueeze(dim=-1)
-        mean = self.mean.unsqueeze(dim=-1)
-        output = (input - mean) / std
+        scale = torch.exp(log_scale)
+        scale = scale.unsqueeze(dim=-1)
+        bias = bias.unsqueeze(dim=-1)
+        output = scale * input + bias
 
         if logdet is not None:
-            logdet = logdet - length * self.log_std.sum()
+            logdet = logdet + length * log_scale.sum()
 
         return output, logdet
 
@@ -242,15 +245,17 @@ class ActNorm1d(BaseFlow):
         input: torch.Tensor,
         logdet: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        log_scale = self.log_scale
+        bias = self.bias
         length = input.size(-1)
 
-        std = torch.exp(self.log_std)
-        std = std.unsqueeze(dim=-1)
-        mean = self.mean.unsqueeze(dim=-1)
-        output = input * std + mean
+        scale = torch.exp(-log_scale)
+        scale = scale.unsqueeze(dim=-1)
+        bias = bias.unsqueeze(dim=-1)
+        output = scale * (input - bias)
 
         if logdet is not None:
-            logdet = logdet + length * self.log_std.sum()
+            logdet = logdet - length * log_scale.sum()
 
         return output, logdet
 

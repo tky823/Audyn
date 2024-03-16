@@ -168,9 +168,10 @@ class MaskedActNorm1d(ActNorm1d):
                 sum_input = torch.sum(gathered_sum_input, dim=0)
 
             log_std = 0.5 * (torch.log(sum_input) - torch.log(num_elements))
+            bias = -mean * torch.exp(-log_std)
 
-            self.log_std.data.copy_(log_std)
-            self.mean.data.copy_(mean)
+            self.log_scale.data.copy_(-log_std)
+            self.bias.data.copy_(bias)
 
             self.is_initialized = True
 
@@ -183,18 +184,21 @@ class MaskedActNorm1d(ActNorm1d):
         if padding_mask is None:
             output, logdet = super()._forward(input, logdet=logdet)
         else:
+            log_scale = self.log_scale
+            bias = self.bias
             expanded_padding_mask = _expand_padding_mask(padding_mask, input)
 
-            log_std = self.log_std.unsqueeze(dim=-1)
-            std = torch.exp(log_std)
-            mean = self.mean.unsqueeze(dim=-1)
-            x = (input - mean) / std
+            scale = torch.exp(log_scale)
+            scale = scale.unsqueeze(dim=-1)
+            bias = bias.unsqueeze(dim=-1)
+            x = scale * input + bias
             output = x.masked_fill(expanded_padding_mask, 0)
 
             if logdet is not None:
-                log_std = log_std.expand(input.size())
-                log_std = log_std.masked_fill(expanded_padding_mask, 0)
-                logdet = logdet - log_std.sum(dim=(1, 2))
+                log_scale = log_scale.unsqueeze(dim=-1)
+                log_scale = log_scale.expand(input.size())
+                log_scale = log_scale.masked_fill(expanded_padding_mask, 0)
+                logdet = logdet + log_scale.sum(dim=(1, 2))
 
         return output, logdet
 
@@ -207,18 +211,21 @@ class MaskedActNorm1d(ActNorm1d):
         if padding_mask is None:
             output, logdet = super()._reverse(input, logdet=logdet)
         else:
+            log_scale = self.log_scale
+            bias = self.bias
             expanded_padding_mask = _expand_padding_mask(padding_mask, input)
 
-            log_std = self.log_std.unsqueeze(dim=-1)
-            std = torch.exp(log_std)
-            mean = self.mean.unsqueeze(dim=-1)
-            x = std * input + mean
+            scale = torch.exp(-log_scale)
+            scale = scale.unsqueeze(dim=-1)
+            bias = bias.unsqueeze(dim=-1)
+            x = scale * (input - bias)
             output = x.masked_fill(expanded_padding_mask, 0)
 
             if logdet is not None:
-                log_std = log_std.expand(input.size())
-                log_std = log_std.masked_fill(expanded_padding_mask, 0)
-                logdet = logdet + log_std.sum(dim=(1, 2))
+                log_scale = log_scale.unsqueeze(dim=-1)
+                log_scale = log_scale.expand(input.size())
+                log_scale = log_scale.masked_fill(expanded_padding_mask, 0)
+                logdet = logdet - log_scale.sum(dim=(1, 2))
 
         return output, logdet
 
