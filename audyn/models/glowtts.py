@@ -804,6 +804,8 @@ class PreNet(nn.Module):
 
         self.proj = nn.Linear(_in_channels, _out_channels)
 
+        self._reset_parameters()
+
     def forward(
         self,
         input: torch.Tensor,
@@ -820,6 +822,10 @@ class PreNet(nn.Module):
         output = self.proj(x)
 
         return output
+
+    def _reset_parameters(self) -> None:
+        self.proj.weight.data.zero_()
+        self.proj.bias.data.zero_()
 
 
 class ConvBlock(nn.Module):
@@ -862,11 +868,7 @@ class ConvBlock(nn.Module):
         x = F.pad(x, (kernel_size // 2, kernel_size // 2))
         x = self.conv1d(x)
         x = x.permute(0, 2, 1).contiguous()
-
-        if padding_mask is None:
-            x = self.norm1d(x)
-        else:
-            x = self.norm1d(x, padding_mask=padding_mask.unsqueeze(dim=-1))
+        x = self.norm1d(x)
 
         if padding_mask is not None:
             x = x.masked_fill(padding_mask.unsqueeze(dim=-1), 0)
