@@ -79,6 +79,7 @@ class WaveNetAffineCoupling(AffineCoupling):
 
             if self.scaling_factor is not None:
                 scale = torch.exp(self.scaling_factor)
+                scale = scale.unsqueeze(dim=-1)
                 log_s = torch.tanh(log_s / scale) * scale
 
             x1 = y1
@@ -97,6 +98,7 @@ class WaveNetAffineCoupling(AffineCoupling):
 
             if self.scaling_factor is not None:
                 scale = torch.exp(self.scaling_factor)
+                scale = scale.unsqueeze(dim=-1)
                 log_s = torch.tanh(log_s / scale) * scale
 
             y1 = x1
