@@ -2,11 +2,11 @@ import os
 from concurrent.futures import ProcessPoolExecutor
 from typing import Tuple
 
-import hydra
 from omegaconf import DictConfig
 from tqdm import tqdm
 
 import audyn
+from audyn.utils import instantiate
 from audyn.utils.text import TextPreprocessor
 
 
@@ -16,7 +16,7 @@ def main(config: DictConfig) -> None:
     text_dir = config.preprocess.text_dir
     max_workers = config.preprocess.max_workers
 
-    text_preprocessor = hydra.utils.instantiate(config.data.text.preprocessor)
+    text_preprocessor = instantiate(config.data.text.preprocessor)
 
     with open(metadata_path) as f:
         data = []

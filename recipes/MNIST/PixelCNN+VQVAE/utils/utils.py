@@ -1,10 +1,11 @@
 from typing import Any, Dict, Optional
 
-import hydra
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig, OmegaConf
 from utils.models.cascade import PixelCNNVQVAE
+
+from audyn.utils import instantiate_model
 
 
 def instantiate_cascade_model(
@@ -37,15 +38,15 @@ def instantiate_cascade_model(
     pixelcnn_resolved_config: Dict[str, Any] = pixelcnn_state_dict["resolved_config"]
     pixelcnn_model_config: Dict[str, Any] = pixelcnn_resolved_config["model"]
     pixelcnn_model_config = OmegaConf.create(pixelcnn_model_config)
-    pixelcnn: nn.Module = hydra.utils.instantiate(pixelcnn_model_config)
+    pixelcnn: nn.Module = instantiate_model(pixelcnn_model_config)
 
     # VQVAE
     vqvae_resolved_config: Dict[str, Any] = vqvae_state_dict["resolved_config"]
     vqvae_model_config: Dict[str, Any] = vqvae_resolved_config["model"]
     vqvae_model_config = OmegaConf.create(vqvae_model_config)
-    vqvae: nn.Module = hydra.utils.instantiate(vqvae_model_config)
+    vqvae: nn.Module = instantiate_model(vqvae_model_config)
 
-    model: PixelCNNVQVAE = hydra.utils.instantiate(
+    model: PixelCNNVQVAE = instantiate_model(
         config,
         pixelcnn=pixelcnn,
         vqvae=vqvae,

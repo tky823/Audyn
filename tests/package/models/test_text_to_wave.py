@@ -1,8 +1,9 @@
 import os
 
-import hydra
 import torch
 from omegaconf import OmegaConf
+
+from audyn.utils import instantiate_model
 
 conf_root = os.path.join(os.path.dirname(os.path.realpath(__file__)), "conf")
 conf_dir = os.path.join(conf_root, "text_to_wave")
@@ -37,7 +38,7 @@ def test_fastspeech_wavenet():
         dtype=torch.float,
     )
 
-    model = hydra.utils.instantiate(config)
+    model = instantiate_model(config)
 
     output, melspectrogram, log_duration = model.inference(input, discrete_initial_state)
 
@@ -77,7 +78,7 @@ def test_fastspeech_waveglow():
     input = torch.randint(0, vocab_size, (batch_size, max_length))
     input = input.masked_fill(src_key_padding_mask, 0)
 
-    model = hydra.utils.instantiate(config)
+    model = instantiate_model(config)
 
     output, melspectrogram, log_duration = model.inference(input)
 

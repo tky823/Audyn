@@ -30,7 +30,7 @@ class MultiCriteria(nn.ModuleDict):
 
     Examples:
 
-        >>> import hydra
+        >>> import audyn
         >>> import torch
         >>> torch.manual_seed(0)
         >>> config = {
@@ -68,7 +68,7 @@ class MultiCriteria(nn.ModuleDict):
         ...         }
         ...     }
         >>> }
-        >>> criterion = hydra.utils.instantiate(config)
+        >>> criterion = audyn.utils.instantiate_criterion(config)
         >>> y = torch.randn((4,))
         >>> t_mse = torch.randn_like(y)
         >>> t_mae = torch.randn_like(y)

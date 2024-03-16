@@ -1,14 +1,13 @@
 import functools
 from typing import Dict, Iterable, List, Optional
 
-import hydra
 import torch
 from omegaconf import DictConfig, OmegaConf
 from utils.driver import Generator
 from utils.utils import instantiate_cascade_model
 
 import audyn
-from audyn.utils import setup_system
+from audyn.utils import instantiate, setup_system
 from audyn.utils.data import default_collate_fn
 from audyn.utils.model import set_device
 
@@ -23,8 +22,8 @@ def main(config: DictConfig) -> None:
     vqvae_config = OmegaConf.create(vqvae_state_dict["resolved_config"])
     codebook_size = vqvae_config.data.codebook.size
 
-    test_dataset = hydra.utils.instantiate(config.test.dataset.test)
-    test_loader = hydra.utils.instantiate(
+    test_dataset = instantiate(config.test.dataset.test)
+    test_loader = instantiate(
         config.test.dataloader.test,
         test_dataset,
         collate_fn=functools.partial(

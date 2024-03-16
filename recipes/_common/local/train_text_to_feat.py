@@ -1,8 +1,8 @@
-import hydra
 from omegaconf import DictConfig
 
 import audyn
 from audyn.utils import (
+    instantiate,
     instantiate_criterion,
     instantiate_grad_clipper,
     instantiate_lr_scheduler,
@@ -19,15 +19,15 @@ from audyn.utils.model import set_device
 def main(config: DictConfig) -> None:
     setup_system(config)
 
-    train_dataset = hydra.utils.instantiate(config.train.dataset.train)
-    validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+    train_dataset = instantiate(config.train.dataset.train)
+    validation_dataset = instantiate(config.train.dataset.validation)
 
-    train_loader = hydra.utils.instantiate(
+    train_loader = instantiate(
         config.train.dataloader.train,
         train_dataset,
         collate_fn=default_collate_fn,
     )
-    validation_loader = hydra.utils.instantiate(
+    validation_loader = instantiate(
         config.train.dataloader.validation,
         validation_dataset,
         collate_fn=default_collate_fn,

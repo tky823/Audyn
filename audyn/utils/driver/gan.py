@@ -3,7 +3,6 @@ import os
 import warnings
 from typing import Dict, Iterable, Optional, Union
 
-import hydra
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig, OmegaConf
@@ -15,6 +14,7 @@ from ...metrics import MeanMetric
 from ...models.gan import BaseGAN
 from ...optim.lr_scheduler import GANLRScheduler
 from ...optim.optimizer import GANOptimizer, MovingAverageWrapper, MultiOptimizers
+from ...utils import instantiate
 from ..clip_grad import GANGradClipper
 from ..data import BaseDataLoaders
 from ..hydra.utils import instantiate_grad_clipper
@@ -794,9 +794,7 @@ class GANTrainer(BaseTrainer):
             if _is_audyn_clip_gradient(clip_gradient_fn):
                 # for backward compatibility
                 # clip all parameters
-                self.grad_clipper = hydra.utils.instantiate(
-                    clip_gradient_config, self.model.parameters()
-                )
+                self.grad_clipper = instantiate(clip_gradient_config, self.model.parameters())
                 is_legacy = False
             elif clip_gradient_fn is GANGradClipper:
                 # for backward compatibility
@@ -819,7 +817,7 @@ class GANTrainer(BaseTrainer):
         if is_legacy:
             # for backward compatibility
             parameters = parameters_or_name
-            hydra.utils.instantiate(clip_gradient_config, parameters)
+            instantiate(clip_gradient_config, parameters)
         else:
             if isinstance(parameters_or_name, str):
                 name = parameters_or_name

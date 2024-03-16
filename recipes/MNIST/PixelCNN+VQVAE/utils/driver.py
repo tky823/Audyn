@@ -1,7 +1,6 @@
 import os
 from typing import Dict, List
 
-import hydra
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
@@ -18,6 +17,7 @@ try:
 except ImportError:
     IS_TQDM_AVAILABLE = False
 
+from audyn.utils import instantiate
 from audyn.utils.driver import BaseGenerator
 from audyn.utils.driver._decorator import run_only_master_rank
 from audyn.utils.driver.base import BaseDriver
@@ -230,7 +230,7 @@ class Generator(BaseGenerator):
                 for idx, image in enumerate(named_output[key]):
                     if transforms is not None and transforms.output is not None:
                         if key in transforms.output.keys():
-                            transform = hydra.utils.instantiate(transforms.output[key])
+                            transform = instantiate(transforms.output[key])
                             image = transform(image)
 
                     identifier_mapping = {
@@ -249,7 +249,7 @@ class Generator(BaseGenerator):
                 for image in named_reference[key]:
                     if transforms is not None and transforms.reference is not None:
                         if key in transforms.reference.keys():
-                            transform = hydra.utils.instantiate(transforms.reference[key])
+                            transform = instantiate(transforms.reference[key])
                             image = transform(image)
 
                     identifier_mapping = {

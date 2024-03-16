@@ -1,9 +1,8 @@
-import hydra
 from omegaconf import DictConfig
 from utils.driver import PriorSaver
 
 import audyn
-from audyn.utils import instantiate_model, setup_system
+from audyn.utils import instantiate, instantiate_model, setup_system
 from audyn.utils.model import set_device
 
 
@@ -11,8 +10,8 @@ from audyn.utils.model import set_device
 def main(config: DictConfig) -> None:
     setup_system(config)
 
-    dataset = hydra.utils.instantiate(config.train.dataset)
-    loader = hydra.utils.instantiate(config.train.dataloader, dataset)
+    dataset = instantiate(config.train.dataset)
+    loader = instantiate(config.train.dataloader, dataset)
 
     model = instantiate_model(config.model)
     model = set_device(

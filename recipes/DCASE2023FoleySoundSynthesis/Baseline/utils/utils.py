@@ -1,10 +1,11 @@
 from typing import Any, Dict, Optional
 
-import hydra
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig, OmegaConf
 from utils.models.cascade import BaselineModel
+
+from audyn.utils import instantiate_model
 
 
 def instantiate_cascade_model(
@@ -40,21 +41,21 @@ def instantiate_cascade_model(
     pixelsnail_resolved_config: Dict[str, Any] = pixelsnail_state_dict["resolved_config"]
     pixelsnail_model_config: Dict[str, Any] = pixelsnail_resolved_config["model"]
     pixelsnail_model_config = OmegaConf.create(pixelsnail_model_config)
-    pixelsnail: nn.Module = hydra.utils.instantiate(pixelsnail_model_config)
+    pixelsnail: nn.Module = instantiate_model(pixelsnail_model_config)
 
     # VQVAE
     vqvae_resolved_config: Dict[str, Any] = vqvae_state_dict["resolved_config"]
     vqvae_model_config: Dict[str, Any] = vqvae_resolved_config["model"]
     vqvae_model_config = OmegaConf.create(vqvae_model_config)
-    vqvae: nn.Module = hydra.utils.instantiate(vqvae_model_config)
+    vqvae: nn.Module = instantiate_model(vqvae_model_config)
 
     # HiFi-GAN
     hifigan_resolved_config: Dict[str, Any] = hifigan_state_dict["resolved_config"]
     hifigan_model_config: Dict[str, Any] = hifigan_resolved_config["model"]
     hifigan_model_config = OmegaConf.create(hifigan_model_config)
-    hifigan_generator: nn.Module = hydra.utils.instantiate(hifigan_model_config.generator)
+    hifigan_generator: nn.Module = instantiate_model(hifigan_model_config.generator)
 
-    model: BaselineModel = hydra.utils.instantiate(
+    model: BaselineModel = instantiate_model(
         config,
         pixelsnail=pixelsnail,
         vqvae=vqvae,
