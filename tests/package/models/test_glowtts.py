@@ -7,6 +7,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from dummy import allclose
+from torch.distributions import Independent
+from torch.distributions.normal import Normal
 
 from audyn.models.fastspeech import LengthRegulator
 from audyn.models.glowtts import (
@@ -133,6 +135,22 @@ def test_glowtts(scaling: bool, channel_dependent_scaling: bool) -> None:
 
         state_dict = torch.load(path, map_location="cpu")
         model.load_state_dict(state_dict)
+
+    # test search_gaussian_monotonic_alignment
+    input = torch.randn((batch_size, max_tgt_length, n_mels))
+    mean = torch.randn((batch_size, max_src_length, n_mels))
+    log_std = torch.randn((batch_size, max_src_length, n_mels))
+    log_prob_tuple, ml_duration_tuple = GlowTTS.search_gaussian_monotonic_alignment(
+        input, (mean, log_std)
+    )
+
+    normal = Normal(loc=mean, scale=torch.exp(log_std))
+    normal = Independent(normal, reinterpreted_batch_ndims=1)
+    log_prob_normal, ml_duration_normal = GlowTTS.search_gaussian_monotonic_alignment(
+        input, normal
+    )
+    assert torch.allclose(log_prob_tuple, log_prob_normal, atol=1e-5)
+    assert torch.equal(ml_duration_tuple, ml_duration_normal)
 
 
 def test_glowtts_unbatched() -> None:
@@ -559,7 +577,7 @@ def test_glowtts_decoder() -> None:
 def test_glowtts_transformer_encoder(batch_first: bool) -> None:
     torch.manual_seed(0)
 
-    batch_size, max_length = 4, 8
+    batch_size, max_length = 5, 8
 
     # FFTrBlock
     d_model = 16
@@ -593,6 +611,39 @@ def test_glowtts_transformer_encoder(batch_first: bool) -> None:
     output = model(input, src_key_padding_mask=src_key_padding_mask)
 
     assert output.size() == input.size()
+
+    # ensure invariance of zero padding
+    model.eval()
+
+    length = torch.randint(1, max_length, (batch_size,), dtype=torch.long)
+    max_length = torch.max(length).item()
+    src_key_padding_mask = torch.arange(max_length) >= length.unsqueeze(dim=-1)
+
+    input = torch.randn((batch_size, max_length, d_model))
+    input = input.masked_fill(src_key_padding_mask.unsqueeze(dim=-1), 0)
+
+    if not batch_first:
+        input = input.swapaxes(1, 0)
+
+    output = model(input, src_key_padding_mask=src_key_padding_mask)
+
+    src_key_padding_mask = torch.arange(2 * max_length) >= length.unsqueeze(dim=-1)
+    random_padding = torch.randn((batch_size, max_length, d_model))
+
+    if batch_first:
+        padded_input = torch.cat([input, random_padding], dim=1)
+    else:
+        random_padding = random_padding.swapaxes(1, 0)
+        padded_input = torch.cat([input, random_padding], dim=0)
+
+    padded_output = model(padded_input, src_key_padding_mask=src_key_padding_mask)
+
+    if batch_first:
+        padded_output, _ = torch.split(padded_output, [max_length, max_length], dim=1)
+    else:
+        padded_output, _ = torch.split(padded_output, [max_length, max_length], dim=0)
+
+    assert torch.allclose(padded_output, output)
 
 
 def test_glowtts_glow_block() -> None:
