@@ -1,13 +1,12 @@
 import functools
 from typing import Dict, Iterable, List, Optional
 
-import hydra
 import torch
 import torchaudio.functional as aF
 from omegaconf import DictConfig
 
 import audyn
-from audyn.utils import instantiate_cascade_text_to_wave, setup_system
+from audyn.utils import instantiate, instantiate_cascade_text_to_wave, setup_system
 from audyn.utils.data import default_collate_fn
 from audyn.utils.driver import CascadeTextToWaveGenerator
 from audyn.utils.model import set_device
@@ -17,9 +16,9 @@ from audyn.utils.model import set_device
 def main(config: DictConfig) -> None:
     setup_system(config)
 
-    test_dataset = hydra.utils.instantiate(config.test.dataset.test)
+    test_dataset = instantiate(config.test.dataset.test)
 
-    test_loader = hydra.utils.instantiate(
+    test_loader = instantiate(
         config.test.dataloader.test,
         test_dataset,
         collate_fn=functools.partial(collate_fn, data_config=config.data),

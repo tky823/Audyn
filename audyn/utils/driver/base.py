@@ -5,7 +5,6 @@ import warnings
 from logging import Logger
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import hydra
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
@@ -25,6 +24,7 @@ from ...optim.optimizer import (
     MovingAverageWrapper,
     MultiOptimizers,
 )
+from ...utils import instantiate
 from ..alignment import expand_by_duration
 from ..clip_grad import GradClipper
 from ..data import BaseDataLoaders, select_device
@@ -772,9 +772,7 @@ class BaseTrainer(BaseDriver):
 
             if _is_audyn_clip_gradient(clip_gradient_fn):
                 # for backward compatibility
-                self.grad_clipper = hydra.utils.instantiate(
-                    clip_gradient_config, self.model.parameters()
-                )
+                self.grad_clipper = instantiate(clip_gradient_config, self.model.parameters())
                 is_legacy = False
             elif _is_torch_clip_gradient(clip_gradient_fn):
                 is_legacy = True
@@ -783,7 +781,7 @@ class BaseTrainer(BaseDriver):
 
         if is_legacy:
             # for backward compatibility
-            hydra.utils.instantiate(clip_gradient_config, self.model.parameters())
+            instantiate(clip_gradient_config, self.model.parameters())
         else:
             self.grad_clipper.step()
 
@@ -1515,7 +1513,7 @@ class BaseTrainer(BaseDriver):
 
                     if transforms is not None and transforms.output is not None:
                         if key in transforms.output.keys():
-                            transform = hydra.utils.instantiate(transforms.output[key])
+                            transform = instantiate(transforms.output[key])
                             duration = transform(duration)
 
                     self.write_duration(
@@ -1533,7 +1531,7 @@ class BaseTrainer(BaseDriver):
 
                     if transforms is not None and transforms.reference is not None:
                         if key in transforms.reference.keys():
-                            transform = hydra.utils.instantiate(transforms.reference[key])
+                            transform = instantiate(transforms.reference[key])
                             duration = transform(duration)
 
                     self.write_duration(
@@ -1611,7 +1609,7 @@ class BaseTrainer(BaseDriver):
 
                     if transforms is not None and transforms.output is not None:
                         if key in transforms.output.keys():
-                            transform = hydra.utils.instantiate(transforms.output[key])
+                            transform = instantiate(transforms.output[key])
                             spectrogram = transform(spectrogram)
 
                     self.write_spectrogram(
@@ -1629,7 +1627,7 @@ class BaseTrainer(BaseDriver):
 
                     if transforms is not None and transforms.reference is not None:
                         if key in transforms.reference.keys():
-                            transform = hydra.utils.instantiate(transforms.reference[key])
+                            transform = instantiate(transforms.reference[key])
                             spectrogram = transform(spectrogram)
 
                     self.write_spectrogram(
@@ -1681,7 +1679,7 @@ class BaseTrainer(BaseDriver):
 
                     if transforms is not None and transforms.output is not None:
                         if key in transforms.output.keys():
-                            transform = hydra.utils.instantiate(transforms.output[key])
+                            transform = instantiate(transforms.output[key])
                             waveform = transform(waveform)
 
                     self.write_waveform(
@@ -1699,7 +1697,7 @@ class BaseTrainer(BaseDriver):
 
                     if transforms is not None and transforms.reference is not None:
                         if key in transforms.reference.keys():
-                            transform = hydra.utils.instantiate(transforms.reference[key])
+                            transform = instantiate(transforms.reference[key])
                             waveform = transform(waveform)
 
                     self.write_waveform(
@@ -1761,7 +1759,7 @@ class BaseTrainer(BaseDriver):
 
                     if transforms is not None and transforms.output is not None:
                         if key in transforms.output.keys():
-                            transform = hydra.utils.instantiate(transforms.output[key])
+                            transform = instantiate(transforms.output[key])
                             waveform = transform(waveform)
 
                     self.write_audio(
@@ -1782,7 +1780,7 @@ class BaseTrainer(BaseDriver):
 
                     if transforms is not None and transforms.reference is not None:
                         if key in transforms.reference.keys():
-                            transform = hydra.utils.instantiate(transforms.reference[key])
+                            transform = instantiate(transforms.reference[key])
                             waveform = transform(waveform)
 
                     self.write_audio(
@@ -1842,7 +1840,7 @@ class BaseTrainer(BaseDriver):
 
                     if transforms is not None and transforms.output is not None:
                         if key in transforms.output:
-                            transform = hydra.utils.instantiate(transforms.output[key])
+                            transform = instantiate(transforms.output[key])
                             image = transform(image)
 
                     self.write_image(
@@ -1860,7 +1858,7 @@ class BaseTrainer(BaseDriver):
 
                     if transforms is not None and transforms.reference is not None:
                         if key in transforms.reference:
-                            transform = hydra.utils.instantiate(transforms.reference[key])
+                            transform = instantiate(transforms.reference[key])
                             image = transform(image)
 
                     self.write_image(
@@ -2078,7 +2076,7 @@ class BaseGenerator(BaseDriver):
                 for idx, waveform in enumerate(named_output[key]):
                     if transforms is not None and transforms.output is not None:
                         if key in transforms.output.keys():
-                            transform = hydra.utils.instantiate(transforms.output[key])
+                            transform = instantiate(transforms.output[key])
                             waveform = transform(waveform)
 
                     identifier_mapping = {
@@ -2097,7 +2095,7 @@ class BaseGenerator(BaseDriver):
                 for waveform in named_reference[key]:
                     if transforms is not None and transforms.reference is not None:
                         if key in transforms.reference.keys():
-                            transform = hydra.utils.instantiate(transforms.reference[key])
+                            transform = instantiate(transforms.reference[key])
                             waveform = transform(waveform)
 
                     identifier_mapping = {
@@ -2211,7 +2209,7 @@ class BaseGenerator(BaseDriver):
                 for idx, image in enumerate(named_output[key]):
                     if transforms is not None and transforms.output is not None:
                         if key in transforms.output.keys():
-                            transform = hydra.utils.instantiate(transforms.output[key])
+                            transform = instantiate(transforms.output[key])
                             image = transform(image)
 
                     identifier_mapping = {
@@ -2230,7 +2228,7 @@ class BaseGenerator(BaseDriver):
                 for image in named_reference[key]:
                     if transforms is not None and transforms.reference is not None:
                         if key in transforms.reference.keys():
-                            transform = hydra.utils.instantiate(transforms.reference[key])
+                            transform = instantiate(transforms.reference[key])
                             image = transform(image)
 
                     identifier_mapping = {

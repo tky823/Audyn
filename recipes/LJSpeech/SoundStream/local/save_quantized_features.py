@@ -1,13 +1,12 @@
 import functools
 from typing import Any, Dict, List
 
-import hydra
 import torch
 from omegaconf import DictConfig
 from utils.driver import QuantizedFeatureSaver
 
 import audyn
-from audyn.utils import instantiate_gan_generator, setup_system
+from audyn.utils import instantiate, instantiate_gan_generator, setup_system
 from audyn.utils.data import default_collate_fn
 from audyn.utils.model import set_device
 
@@ -16,9 +15,9 @@ from audyn.utils.model import set_device
 def main(config: DictConfig) -> None:
     setup_system(config)
 
-    dataset = hydra.utils.instantiate(config.train.dataset)
+    dataset = instantiate(config.train.dataset)
 
-    loader = hydra.utils.instantiate(
+    loader = instantiate(
         config.train.dataloader,
         dataset,
         collate_fn=functools.partial(

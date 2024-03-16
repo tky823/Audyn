@@ -23,6 +23,7 @@ from audyn.optim.lr_scheduler import GANLRScheduler
 from audyn.optim.optimizer import GANOptimizer
 from audyn.utils import (
     convert_dataloader_to_ddp_if_possible,
+    instantiate,
     instantiate_cascade_text_to_wave,
     instantiate_criterion,
     instantiate_grad_clipper,
@@ -97,19 +98,19 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
 
         setup_system(config)
 
-        train_dataset = hydra.utils.instantiate(config.train.dataset.train)
-        validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
-        test_dataset = hydra.utils.instantiate(config.test.dataset.test)
+        train_dataset = instantiate(config.train.dataset.train)
+        validation_dataset = instantiate(config.train.dataset.validation)
+        test_dataset = instantiate(config.test.dataset.test)
 
-        train_loader = hydra.utils.instantiate(
+        train_loader = instantiate(
             config.train.dataloader.train,
             train_dataset,
         )
-        validation_loader = hydra.utils.instantiate(
+        validation_loader = instantiate(
             config.train.dataloader.validation,
             validation_dataset,
         )
-        test_loader = hydra.utils.instantiate(
+        test_loader = instantiate(
             config.test.dataloader.test,
             test_dataset,
         )
@@ -294,14 +295,14 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
             == "audyn.utils.data.dataloader.DistributedDataLoader"
         )
 
-        train_dataset = hydra.utils.instantiate(config.train.dataset.train)
-        validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
-        train_loader = hydra.utils.instantiate(
+        train_dataset = instantiate(config.train.dataset.train)
+        validation_dataset = instantiate(config.train.dataset.validation)
+        train_loader = instantiate(
             config.train.dataloader.train,
             train_dataset,
             collate_fn=default_collate_fn,
         )
-        validation_loader = hydra.utils.instantiate(
+        validation_loader = instantiate(
             config.train.dataloader.validation,
             validation_dataset,
             collate_fn=default_collate_fn,
@@ -397,15 +398,15 @@ def test_text_to_feat_trainer(
 
         setup_system(config)
 
-        train_dataset = hydra.utils.instantiate(config.train.dataset.train)
-        validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+        train_dataset = instantiate(config.train.dataset.train)
+        validation_dataset = instantiate(config.train.dataset.validation)
 
-        train_loader = hydra.utils.instantiate(
+        train_loader = instantiate(
             config.train.dataloader.train,
             train_dataset,
             collate_fn=default_collate_fn,
         )
-        validation_loader = hydra.utils.instantiate(
+        validation_loader = instantiate(
             config.train.dataloader.validation,
             validation_dataset,
             collate_fn=default_collate_fn,
@@ -487,15 +488,15 @@ def test_text_to_feat_with_pretrained_feat_to_wave_trainer(monkeypatch: MonkeyPa
 
         setup_system(config)
 
-        train_dataset = hydra.utils.instantiate(config.train.dataset.train)
-        validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+        train_dataset = instantiate(config.train.dataset.train)
+        validation_dataset = instantiate(config.train.dataset.validation)
 
-        train_loader = hydra.utils.instantiate(
+        train_loader = instantiate(
             config.train.dataloader.train,
             train_dataset,
             collate_fn=default_collate_fn,
         )
-        validation_loader = hydra.utils.instantiate(
+        validation_loader = instantiate(
             config.train.dataloader.validation,
             validation_dataset,
             collate_fn=default_collate_fn,
@@ -555,15 +556,15 @@ def test_text_to_feat_with_pretrained_feat_to_wave_trainer(monkeypatch: MonkeyPa
 
         setup_system(config)
 
-        train_dataset = hydra.utils.instantiate(config.train.dataset.train)
-        validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+        train_dataset = instantiate(config.train.dataset.train)
+        validation_dataset = instantiate(config.train.dataset.validation)
 
-        train_loader = hydra.utils.instantiate(
+        train_loader = instantiate(
             config.train.dataloader.train,
             train_dataset,
             collate_fn=default_collate_fn,
         )
-        validation_loader = hydra.utils.instantiate(
+        validation_loader = instantiate(
             config.train.dataloader.validation,
             validation_dataset,
             collate_fn=default_collate_fn,
@@ -680,15 +681,15 @@ def test_feat_to_wave_trainer(
 
         setup_system(config)
 
-        train_dataset = hydra.utils.instantiate(config.train.dataset.train)
-        validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+        train_dataset = instantiate(config.train.dataset.train)
+        validation_dataset = instantiate(config.train.dataset.validation)
 
-        train_loader = hydra.utils.instantiate(
+        train_loader = instantiate(
             config.train.dataloader.train,
             train_dataset,
             collate_fn=pad_collate_fn,
         )
-        validation_loader = hydra.utils.instantiate(
+        validation_loader = instantiate(
             config.train.dataloader.validation,
             validation_dataset,
             collate_fn=pad_collate_fn,
@@ -816,19 +817,19 @@ def test_gan_trainer(
 
         setup_system(config)
 
-        train_dataset = hydra.utils.instantiate(
+        train_dataset = instantiate(
             config.train.dataset.train,
         )
-        validation_dataset = hydra.utils.instantiate(
+        validation_dataset = instantiate(
             config.train.dataset.validation,
         )
 
-        train_loader = hydra.utils.instantiate(
+        train_loader = instantiate(
             config.train.dataloader.train,
             train_dataset,
             collate_fn=gan_collate_fn,
         )
-        validation_loader = hydra.utils.instantiate(
+        validation_loader = instantiate(
             config.train.dataloader.validation,
             validation_dataset,
             collate_fn=gan_collate_fn,
@@ -1019,19 +1020,19 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str, dataloader_t
         )
         torch.manual_seed(config.system.seed)
 
-        train_dataset = hydra.utils.instantiate(
+        train_dataset = instantiate(
             config.train.dataset.train,
         )
-        validation_dataset = hydra.utils.instantiate(
+        validation_dataset = instantiate(
             config.train.dataset.validation,
         )
 
-        train_loader = hydra.utils.instantiate(
+        train_loader = instantiate(
             config.train.dataloader.train,
             train_dataset,
             collate_fn=gan_collate_fn,
         )
-        validation_loader = hydra.utils.instantiate(
+        validation_loader = instantiate(
             config.train.dataloader.validation,
             validation_dataset,
             collate_fn=gan_collate_fn,
@@ -1116,10 +1117,10 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str, dataloader_t
 
         torch.manual_seed(config.system.seed)
 
-        train_dataset = hydra.utils.instantiate(
+        train_dataset = instantiate(
             config.train.dataset.train,
         )
-        validation_dataset = hydra.utils.instantiate(
+        validation_dataset = instantiate(
             config.train.dataset.validation,
         )
 
@@ -1203,15 +1204,15 @@ def test_cascade_text_to_wave(monkeypatch: MonkeyPatch) -> None:
 
         setup_system(config)
 
-        train_dataset = hydra.utils.instantiate(config.train.dataset.train)
-        validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+        train_dataset = instantiate(config.train.dataset.train)
+        validation_dataset = instantiate(config.train.dataset.validation)
 
-        train_loader = hydra.utils.instantiate(
+        train_loader = instantiate(
             config.train.dataloader.train,
             train_dataset,
             collate_fn=default_collate_fn,
         )
-        validation_loader = hydra.utils.instantiate(
+        validation_loader = instantiate(
             config.train.dataloader.validation,
             validation_dataset,
             collate_fn=default_collate_fn,
@@ -1273,15 +1274,15 @@ def test_cascade_text_to_wave(monkeypatch: MonkeyPatch) -> None:
 
         setup_system(config)
 
-        train_dataset = hydra.utils.instantiate(config.train.dataset.train)
-        validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+        train_dataset = instantiate(config.train.dataset.train)
+        validation_dataset = instantiate(config.train.dataset.validation)
 
-        train_loader = hydra.utils.instantiate(
+        train_loader = instantiate(
             config.train.dataloader.train,
             train_dataset,
             collate_fn=default_collate_fn,
         )
-        validation_loader = hydra.utils.instantiate(
+        validation_loader = instantiate(
             config.train.dataloader.validation,
             validation_dataset,
             collate_fn=default_collate_fn,
@@ -1339,9 +1340,9 @@ def test_cascade_text_to_wave(monkeypatch: MonkeyPatch) -> None:
                 return_hydra_config=True,
             )
 
-        test_dataset = hydra.utils.instantiate(config.test.dataset.test)
+        test_dataset = instantiate(config.test.dataset.test)
 
-        test_loader = hydra.utils.instantiate(
+        test_loader = instantiate(
             config.test.dataloader.test,
             test_dataset,
             collate_fn=default_collate_fn,
@@ -1407,15 +1408,15 @@ def test_trainer_for_dataloader(monkeypatch: MonkeyPatch, dataloader: str) -> No
 
         setup_system(config)
 
-        train_dataset = hydra.utils.instantiate(config.train.dataset.train)
-        validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+        train_dataset = instantiate(config.train.dataset.train)
+        validation_dataset = instantiate(config.train.dataset.validation)
 
-        train_loader = hydra.utils.instantiate(
+        train_loader = instantiate(
             config.train.dataloader.train,
             train_dataset,
             collate_fn=default_collate_fn,
         )
-        validation_loader = hydra.utils.instantiate(
+        validation_loader = instantiate(
             config.train.dataloader.validation,
             validation_dataset,
             collate_fn=default_collate_fn,
@@ -1620,15 +1621,15 @@ def test_trainer_for_dump_format_conversion(
             config.train.dataset.validation, dump_format=preprocess_dump_format
         )
 
-        train_dataset = hydra.utils.instantiate(config.train.dataset.train)
-        validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+        train_dataset = instantiate(config.train.dataset.train)
+        validation_dataset = instantiate(config.train.dataset.validation)
 
-        train_loader = hydra.utils.instantiate(
+        train_loader = instantiate(
             config.train.dataloader.train,
             train_dataset,
             collate_fn=default_collate_fn,
         )
-        validation_loader = hydra.utils.instantiate(
+        validation_loader = instantiate(
             config.train.dataloader.validation,
             validation_dataset,
             collate_fn=default_collate_fn,
@@ -1700,15 +1701,15 @@ def test_trainer_for_list_optimizer(monkeypatch: MonkeyPatch) -> None:
 
         setup_system(config)
 
-        train_dataset = hydra.utils.instantiate(config.train.dataset.train)
-        validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+        train_dataset = instantiate(config.train.dataset.train)
+        validation_dataset = instantiate(config.train.dataset.validation)
 
-        train_loader = hydra.utils.instantiate(
+        train_loader = instantiate(
             config.train.dataloader.train,
             train_dataset,
             collate_fn=default_collate_fn,
         )
-        validation_loader = hydra.utils.instantiate(
+        validation_loader = instantiate(
             config.train.dataloader.validation,
             validation_dataset,
             collate_fn=default_collate_fn,

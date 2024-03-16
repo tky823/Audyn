@@ -1,13 +1,13 @@
 import functools
 from typing import Any, Dict, Iterable, List, Optional
 
-import hydra
 import torch
 import torch.nn.functional as F
 from omegaconf import DictConfig
 
 import audyn
 from audyn.utils import (
+    instantiate,
     instantiate_criterion,
     instantiate_grad_clipper,
     instantiate_lr_scheduler,
@@ -24,8 +24,8 @@ from audyn.utils.model import set_device
 def main(config: DictConfig) -> None:
     setup_system(config)
 
-    train_dataset = hydra.utils.instantiate(config.train.dataset.train)
-    validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+    train_dataset = instantiate(config.train.dataset.train)
+    validation_dataset = instantiate(config.train.dataset.validation)
 
     codebook_size = config.data.codebook.size
     down_scale = config.model.encoder.stride**config.model.encoder.num_stacks
@@ -35,7 +35,7 @@ def main(config: DictConfig) -> None:
     else:
         num_layers = None
 
-    train_loader = hydra.utils.instantiate(
+    train_loader = instantiate(
         config.train.dataloader.train,
         train_dataset,
         collate_fn=functools.partial(
@@ -45,7 +45,7 @@ def main(config: DictConfig) -> None:
             num_layers=num_layers,
         ),
     )
-    validation_loader = hydra.utils.instantiate(
+    validation_loader = instantiate(
         config.train.dataloader.validation,
         validation_dataset,
         collate_fn=functools.partial(

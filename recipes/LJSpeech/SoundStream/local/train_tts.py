@@ -1,13 +1,13 @@
 import functools
 from typing import Any, Dict, List
 
-import hydra
 import torch
 import torch.nn.functional as F
 from omegaconf import DictConfig
 
 import audyn
 from audyn.utils import (
+    instantiate,
     instantiate_criterion,
     instantiate_grad_clipper,
     instantiate_lr_scheduler,
@@ -24,15 +24,15 @@ from audyn.utils.model import set_device
 def main(config: DictConfig) -> None:
     setup_system(config)
 
-    train_dataset = hydra.utils.instantiate(config.train.dataset.train)
-    validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+    train_dataset = instantiate(config.train.dataset.train)
+    validation_dataset = instantiate(config.train.dataset.validation)
 
-    train_loader = hydra.utils.instantiate(
+    train_loader = instantiate(
         config.train.dataloader.train,
         train_dataset,
         collate_fn=functools.partial(collate_fn, data_config=config.data),
     )
-    validation_loader = hydra.utils.instantiate(
+    validation_loader = instantiate(
         config.train.dataloader.validation,
         validation_dataset,
         collate_fn=functools.partial(collate_fn, data_config=config.data),

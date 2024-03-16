@@ -1,13 +1,17 @@
 import functools
 from typing import Any, Dict, List
 
-import hydra
 import torch
 from omegaconf import DictConfig
 
 import audyn
 from audyn.models.gan import BaseGAN
-from audyn.utils import instantiate_gan_discriminator, instantiate_gan_generator, setup_system
+from audyn.utils import (
+    instantiate,
+    instantiate_gan_discriminator,
+    instantiate_gan_generator,
+    setup_system,
+)
 from audyn.utils.data import default_collate_fn
 from audyn.utils.driver import GANGenerator
 from audyn.utils.model import set_device
@@ -17,9 +21,9 @@ from audyn.utils.model import set_device
 def main(config: DictConfig) -> None:
     setup_system(config)
 
-    test_dataset = hydra.utils.instantiate(config.test.dataset.test)
+    test_dataset = instantiate(config.test.dataset.test)
 
-    test_loader = hydra.utils.instantiate(
+    test_loader = instantiate(
         config.test.dataloader.test,
         test_dataset,
         collate_fn=functools.partial(

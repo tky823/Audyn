@@ -1,14 +1,13 @@
 import functools
 from typing import Any, Dict, Iterable, List, Optional
 
-import hydra
 import torch
 import torch.nn.functional as F
 from omegaconf import DictConfig
 from utils.driver import PriorSaver
 
 import audyn
-from audyn.utils import instantiate_model, setup_system
+from audyn.utils import instantiate, instantiate_model, setup_system
 from audyn.utils.data import default_collate_fn, take_log_features
 from audyn.utils.model import set_device
 
@@ -21,8 +20,8 @@ def main(config: DictConfig) -> None:
     n_frames = config.data.audio.length // config.data.melspectrogram.hop_length
     n_frames = n_frames - (n_frames % down_scale)
 
-    dataset = hydra.utils.instantiate(config.train.dataset)
-    loader = hydra.utils.instantiate(
+    dataset = instantiate(config.train.dataset)
+    loader = instantiate(
         config.train.dataloader,
         dataset,
         collate_fn=functools.partial(collate_fn, n_frames=n_frames),

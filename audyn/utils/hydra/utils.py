@@ -101,14 +101,18 @@ def instantiate(config: Any, *args, **kwargs) -> Any:
 
 def instantiate_model(
     config_or_path: Union[str, DictConfig],
+    *args,
     load_weights: Optional[bool] = None,
+    **kwargs,
 ) -> nn.Module:
     """Instantiate model.
 
     Args:
         config_or_path (str or DictConfig): Config of model.
+        args: Positional arguments given to ``instantiate``.
         load_weights (bool, optional): If ``True``, model loads pretrained weights.
             Default: ``False``.
+        kwargs: Keyword arguments given to ``instantiate``.
 
     Returns:
         nn.Module: Constructed model.
@@ -123,7 +127,7 @@ def instantiate_model(
         resolved_config: Dict[str, Any] = state_dict["resolved_config"]
         model_config: Dict[str, Any] = resolved_config["model"]
         model_config = OmegaConf.create(model_config)
-        model: nn.Module = instantiate(model_config)
+        model: nn.Module = instantiate(model_config, *args, **kwargs)
 
         if load_weights:
             model.load_state_dict(state_dict["model"])
@@ -135,7 +139,7 @@ def instantiate_model(
             )
 
         model_config = config_or_path
-        model: nn.Module = instantiate(model_config)
+        model: nn.Module = instantiate(model_config, *args, **kwargs)
     else:
         raise NotImplementedError(f"{type(config_or_path)} is not supported.")
 

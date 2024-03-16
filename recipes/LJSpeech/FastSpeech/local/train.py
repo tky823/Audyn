@@ -1,11 +1,12 @@
 from typing import Dict, Iterable, List, Optional
 
-import hydra
 import torch
 from omegaconf import DictConfig
 
 import audyn
 from audyn.utils import (
+    instantiate,
+    instantiate_criterion,
     instantiate_grad_clipper,
     instantiate_lr_scheduler,
     instantiate_model,
@@ -21,15 +22,15 @@ from audyn.utils.model import set_device
 def main(config: DictConfig) -> None:
     setup_system(config)
 
-    train_dataset = hydra.utils.instantiate(config.train.dataset.train)
-    validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+    train_dataset = instantiate(config.train.dataset.train)
+    validation_dataset = instantiate(config.train.dataset.validation)
 
-    train_loader = hydra.utils.instantiate(
+    train_loader = instantiate(
         config.train.dataloader.train,
         train_dataset,
         collate_fn=collate_fn,
     )
-    validation_loader = hydra.utils.instantiate(
+    validation_loader = instantiate(
         config.train.dataloader.validation,
         validation_dataset,
         collate_fn=collate_fn,
@@ -46,7 +47,7 @@ def main(config: DictConfig) -> None:
     optimizer = instantiate_optimizer(config.optimizer, model)
     lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
     grad_clipper = instantiate_grad_clipper(config.train.clip_gradient, model.parameters())
-    criterion = hydra.utils.instantiate(config.criterion)
+    criterion = instantiate_criterion(config.criterion)
     criterion = set_device(
         criterion,
         accelerator=config.system.accelerator,

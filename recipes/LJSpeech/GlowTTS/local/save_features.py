@@ -2,7 +2,6 @@ import os
 from concurrent.futures import ProcessPoolExecutor
 from typing import Dict, List
 
-import hydra
 import torch
 import torchaudio
 import torchaudio.functional as aF
@@ -11,6 +10,7 @@ from omegaconf import DictConfig
 from tqdm import tqdm
 
 import audyn
+from audyn.utils import instantiate
 from audyn.utils.data.cmudict import BOS_SYMBOL, BREAK_SYMBOLS, EOS_SYMBOL
 from audyn.utils.text import TextPreprocessor, load_text
 
@@ -28,7 +28,7 @@ def main(config: DictConfig) -> None:
     assert feature_dir is not None, "Specify preprocess.feature_dir."
 
     melspectrogram_transform = aT.MelSpectrogram(**config.data.melspectrogram)
-    text_preprocessor = hydra.utils.instantiate(config.data.text.preprocessor)
+    text_preprocessor = instantiate(config.data.text.preprocessor)
 
     os.makedirs(feature_dir, exist_ok=True)
 

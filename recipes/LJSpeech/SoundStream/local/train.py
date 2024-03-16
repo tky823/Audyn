@@ -1,7 +1,6 @@
 import functools
 from typing import Any, Dict, List
 
-import hydra
 import torch
 from omegaconf import DictConfig
 
@@ -11,6 +10,7 @@ from audyn.models.gan import BaseGAN
 from audyn.optim.lr_scheduler import GANLRScheduler
 from audyn.optim.optimizer import GANOptimizer
 from audyn.utils import (
+    instantiate,
     instantiate_criterion,
     instantiate_gan_discriminator,
     instantiate_gan_generator,
@@ -29,8 +29,8 @@ from audyn.utils.model import set_device
 def main(config: DictConfig) -> None:
     setup_system(config)
 
-    train_dataset = hydra.utils.instantiate(config.train.dataset.train)
-    validation_dataset = hydra.utils.instantiate(config.train.dataset.validation)
+    train_dataset = instantiate(config.train.dataset.train)
+    validation_dataset = instantiate(config.train.dataset.validation)
 
     down_scale = 1
 
@@ -39,7 +39,7 @@ def main(config: DictConfig) -> None:
 
     num_stages = config.model.generator.num_stages
 
-    train_loader = hydra.utils.instantiate(
+    train_loader = instantiate(
         config.train.dataloader.train,
         train_dataset,
         collate_fn=functools.partial(
@@ -50,7 +50,7 @@ def main(config: DictConfig) -> None:
             random_slice=True,
         ),
     )
-    validation_loader = hydra.utils.instantiate(
+    validation_loader = instantiate(
         config.train.dataloader.validation,
         validation_dataset,
         collate_fn=functools.partial(
