@@ -628,7 +628,7 @@ class WaveGlowBlock(BaseFlow):
             split=split,
             concat=concat,
             scaling=scaling,
-            in_channels=in_channels,
+            scaling_channels=in_channels,
         )
 
     def forward(

@@ -81,7 +81,7 @@ class AffineCoupling(BaseFlow):
         split: Optional[nn.Module] = None,
         concat: Optional[nn.Module] = None,
         scaling: bool = False,
-        in_channels: Optional[int] = None,
+        scaling_channels: Optional[int] = None,
     ) -> None:
         super().__init__()
 
@@ -90,14 +90,14 @@ class AffineCoupling(BaseFlow):
         self.concat = concat
 
         if scaling:
-            if in_channels is None:
+            if scaling_channels is None:
                 # Scalar scaling factor
                 self.scaling_factor = nn.Parameter(
                     torch.empty((), dtype=torch.float), requires_grad=True
                 )
             else:
                 self.scaling_factor = nn.Parameter(
-                    torch.empty(in_channels, dtype=torch.float), requires_grad=True
+                    torch.empty(scaling_channels, dtype=torch.float), requires_grad=True
                 )
         else:
             self.register_buffer("scaling_factor", None)

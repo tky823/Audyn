@@ -426,7 +426,7 @@ class MaskedWaveNetAffineCoupling(WaveNetAffineCoupling):
             split=split,
             concat=concat,
             scaling=scaling,
-            in_channels=scaling_channels,
+            scaling_channels=scaling_channels,
         )
 
     def forward(

@@ -28,7 +28,7 @@ class WaveNetAffineCoupling(AffineCoupling):
         split: Optional[nn.Module] = None,
         concat: Optional[nn.Module] = None,
         scaling: bool = False,
-        in_channels: Optional[int] = None,
+        scaling_channels: Optional[int] = None,
     ) -> None:
         coupling = StackedResidualConvBlock1d(
             coupling_channels,
@@ -51,7 +51,7 @@ class WaveNetAffineCoupling(AffineCoupling):
             split=split,
             concat=concat,
             scaling=scaling,
-            in_channels=in_channels,
+            scaling_channels=scaling_channels,
         )
 
     def forward(
