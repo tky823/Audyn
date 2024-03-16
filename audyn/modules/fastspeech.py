@@ -216,12 +216,7 @@ class ConvBlock(nn.Module):
         x = self.dropout(x)
         x = x + residual
         x = x.permute(0, 2, 1)
-
-        if padding_mask is None:
-            x = self.layer_norm(x)
-        else:
-            x = self.layer_norm(x, padding_mask=padding_mask.permute(0, 2, 1))
-
+        x = self.layer_norm(x)
         x = x.permute(0, 2, 1)
         output = self._apply_mask(x, padding_mask=padding_mask)
 
@@ -349,12 +344,7 @@ class MultiheadSelfAttentionBlock(nn.Module):
         )
         attn_output = self._apply_mask(attn_output, padding_mask=padding_mask)
         x = self.dropout(attn_output)
-
-        if padding_mask is None:
-            x = self.layer_norm(x + residual)
-        else:
-            x = self.layer_norm(x + residual, padding_mask=padding_mask.unsqueeze(dim=-1))
-
+        x = self.layer_norm(x + residual)
         output = self._apply_mask(x, padding_mask=padding_mask)
 
         if need_weights:

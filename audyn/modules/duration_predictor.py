@@ -155,12 +155,7 @@ class ConvBlock(nn.Module):
         x = self._masked_fill(x, padding_mask=padding_mask)
         x = self.activation1d(x)
         x = x.permute(0, 2, 1)
-
-        if padding_mask is None:
-            x = self.norm1d(x)
-        else:
-            x = self.norm1d(x, padding_mask=padding_mask.unsqueeze(dim=-1))
-
+        x = self.norm1d(x)
         x = x.permute(0, 2, 1)
         x = self._masked_fill(x, padding_mask=padding_mask)
         output = self.dropout1d(x)
