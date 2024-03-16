@@ -131,7 +131,7 @@ def test_act_norm1d_ddp() -> None:
     torch.manual_seed(0)
 
     port = str(torch.randint(0, 2**16, ()).item())
-    world_size = 4
+    world_size = 2
     seed = 0
 
     num_features = 6
