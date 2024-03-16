@@ -1,3 +1,4 @@
+import pytest
 import torch
 import torch.nn as nn
 from dummy import allclose
@@ -8,12 +9,22 @@ batch_size = 2
 length = 64
 
 
-def test_waveglow_affine_coupling():
+@pytest.mark.parametrize("scaling", [True, False])
+@pytest.mark.parametrize("set_scaling_channels", [True, False])
+def test_waveglow_affine_coupling(scaling: bool, set_scaling_channels: bool) -> None:
     torch.manual_seed(0)
 
     coupling_channels, hidden_channels = 4, 6
     local_dim = 2
     num_layers = 3
+
+    if set_scaling_channels:
+        if not scaling:
+            pytest.skip("Pair of scaling=False and set_scaling_channels=True is not supported.")
+
+        scaling_channels = coupling_channels
+    else:
+        scaling_channels = None
 
     input = torch.randn((batch_size, 2 * coupling_channels, length))
     local_conditioning = torch.randn((batch_size, local_dim, length))
@@ -23,6 +34,8 @@ def test_waveglow_affine_coupling():
         hidden_channels,
         num_layers=num_layers,
         local_dim=local_dim,
+        scaling=scaling,
+        scaling_channels=scaling_channels,
     )
 
     nn.init.normal_(model.coupling.bottleneck_conv1d_out.weight.data)
