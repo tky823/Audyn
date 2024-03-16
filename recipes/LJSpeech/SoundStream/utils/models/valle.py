@@ -119,12 +119,12 @@ class VALLE(nn.Module):
             )
 
         if acoustic_length is None:
-            max_acoustic_length = text.size(-1)
+            max_acoustic_length = acoustic.size(-1)
             acoustic_length = torch.full(
                 (batch_size,),
                 fill_value=max_acoustic_length,
                 dtype=torch.long,
-                device=text.device,
+                device=acoustic.device,
             )
 
         x = self.cat_features(

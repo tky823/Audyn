@@ -98,6 +98,7 @@ class DummyTextToFeatDataset(Dataset):
         length: int,
         up_scale: int = 2,
         size: int = 20,
+        channels_last: bool = True,
     ) -> None:
         super().__init__()
 
@@ -106,21 +107,30 @@ class DummyTextToFeatDataset(Dataset):
         self.length = length
         self.up_scale = up_scale
         self.size = size
+        self.channels_last = channels_last
 
     def __getitem__(self, _: int) -> Dict[str, torch.Tensor]:
         vocab_size = self.vocab_size
         n_mels = self.n_mels
         length = self.length
         up_scale = self.up_scale
+        channels_last = self.channels_last
 
         text = torch.randint(0, vocab_size, (length,))
         text_duration = torch.full((length,), fill_value=up_scale, dtype=torch.long)
+        text_length = torch.tensor(length, dtype=torch.long)
         melspectrogram = torch.rand((up_scale * length, n_mels))
+        melspectrogram_length = torch.tensor(up_scale * length, dtype=torch.long)
+
+        if not channels_last:
+            melspectrogram = melspectrogram.permute(1, 0)
 
         output = {
             "text": text,
             "text_duration": text_duration,
+            "text_length": text_length,
             "melspectrogram": melspectrogram,
+            "melspectrogram_length": melspectrogram_length,
         }
 
         return output

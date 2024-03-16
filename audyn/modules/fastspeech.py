@@ -5,8 +5,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from packaging import version
 
-from .normalization import MaskedLayerNorm
-
 IS_TORCH_LT_1_11 = version.parse(torch.__version__) < version.parse("1.11")
 
 
@@ -167,7 +165,7 @@ class ConvBlock(nn.Module):
             stride=1,
             **factory_kwargs,
         )
-        self.layer_norm = MaskedLayerNorm(num_features, **factory_kwargs)
+        self.layer_norm = nn.LayerNorm(num_features, **factory_kwargs)
         self.dropout = nn.Dropout(dropout)
 
         self.kernel_size = kernel_size
@@ -218,12 +216,7 @@ class ConvBlock(nn.Module):
         x = self.dropout(x)
         x = x + residual
         x = x.permute(0, 2, 1)
-
-        if padding_mask is None:
-            x = self.layer_norm(x)
-        else:
-            x = self.layer_norm(x, padding_mask=padding_mask.permute(0, 2, 1))
-
+        x = self.layer_norm(x)
         x = x.permute(0, 2, 1)
         output = self._apply_mask(x, padding_mask=padding_mask)
 
@@ -272,7 +265,7 @@ class MultiheadSelfAttentionBlock(nn.Module):
             **factory_kwargs,
         )
 
-        self.layer_norm = MaskedLayerNorm(embed_dim, **factory_kwargs)
+        self.layer_norm = nn.LayerNorm(embed_dim, **factory_kwargs)
         self.dropout = nn.Dropout(dropout)
 
         self.batch_first = batch_first
@@ -351,12 +344,7 @@ class MultiheadSelfAttentionBlock(nn.Module):
         )
         attn_output = self._apply_mask(attn_output, padding_mask=padding_mask)
         x = self.dropout(attn_output)
-
-        if padding_mask is None:
-            x = self.layer_norm(x + residual)
-        else:
-            x = self.layer_norm(x + residual, padding_mask=padding_mask.unsqueeze(dim=-1))
-
+        x = self.layer_norm(x + residual)
         output = self._apply_mask(x, padding_mask=padding_mask)
 
         if need_weights:

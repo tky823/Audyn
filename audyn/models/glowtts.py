@@ -1,3 +1,4 @@
+import math
 from typing import Any, List, Optional, Tuple, Union
 
 import torch
@@ -13,7 +14,6 @@ from ..modules.glowtts import (
     MaskedInvertiblePointwiseConv1d,
     MaskedWaveNetAffineCoupling,
 )
-from ..modules.normalization import MaskedLayerNorm
 from ..utils.alignment.monotonic_align import search_monotonic_alignment_by_viterbi
 from ..utils.duration import transform_log_duration
 from .fastspeech import _get_clones
@@ -29,6 +29,22 @@ __all__ = [
 
 
 class GlowTTS(nn.Module):
+    """GlowTTS proposed by https://arxiv.org/abs/2005.11129.
+
+    Args:
+        encoder (nn.Module): Module to transform text tokens into latent features. The module
+            takes positional argument of text tokens (batch_size, max_src_length) and keyword
+            argument ``padding_mask`` (batch_size, src_length).
+        decoder (audyn.modules.flow.BaseFlow): Flow to transform spectrograms into latent features
+            in forward pass. The module takes positional argument of target features
+            (batch_size, max_tgt_length, num_tgt_features) and keyword arguments ``padding_mask``
+            (batch_size, max_tgt_length), ``logdet`` (batch_size,), and ``reverse`` (bool).
+        duration_predictor (nn.Module): Duration predictor which takes positional argument of
+            text features (batch_size, max_src_length, num_src_features) and keyword argument
+            ``padding_mask`` (batch_size, max_src_length).
+
+    """
+
     def __init__(
         self,
         encoder: nn.Module,
@@ -60,22 +76,26 @@ class GlowTTS(nn.Module):
     ]:
         """Forward pass of GlowTTS.
 
+        .. note::
+
+            Only ``batch_first=True`` is supported.
+
         Args:
-            src (torch.Tensor): Source feature of shape (batch_size, src_length).
-            tgt (torch.Tensor): Target feature of shape (batch_size, in_channels, src_length).
+            src (torch.Tensor): Source feature of shape (batch_size, max_src_length).
+            tgt (torch.Tensor): Target feature of shape (batch_size, in_channels, max_tgt_length).
             src_length (torch.LongTensor): Source feature lengths of shape (batch_size,).
             tgt_length (torch.LongTensor): Target feature lengths of shape (batch_size,).
 
         Returns:
             tuple: Tuple of tensors containing:
 
-                - tuple: Source latent variables (batch_size, src_length, num_features)
-                    and target latent variables (batch_size, tgt_length, num_features).
+                - tuple: Source latent variables (batch_size, max_src_length, num_features)
+                    and target latent variables (batch_size, max_tgt_length, num_features).
                 - tuple: Durations estimated by duration predictor in log-domain
                     and extracted by monotonic alignment search in linear-domain.
-                    The shape is (batch_size, src_length).
-                - tuple: Padding masks for source (batch_size, src_length)
-                    and target (batch_size, tgt_length).
+                    The shape is (batch_size, max_src_length).
+                - tuple: Padding masks for source (batch_size, max_src_length)
+                    and target (batch_size, max_tgt_length).
                 - torch.Tensor: Log-determinant.
                 - torch.LongTensor: Number of elements in a sample.
 
@@ -86,7 +106,7 @@ class GlowTTS(nn.Module):
         if src_length is None:
             src_padding_mask = None
         else:
-            max_src_length = torch.max(src_length).item()
+            max_src_length = src.size(-1)
             src_padding_mask = torch.arange(
                 max_src_length, device=src.device
             ) >= src_length.unsqueeze(dim=-1)
@@ -94,24 +114,19 @@ class GlowTTS(nn.Module):
         if tgt_length is None:
             tgt_padding_mask = None
         else:
-            max_tgt_length = torch.max(tgt_length).item()
+            max_tgt_length = tgt.size(-1)
             tgt_padding_mask = torch.arange(
                 max_tgt_length, device=tgt.device
             ) >= tgt_length.unsqueeze(dim=-1)
 
         src_latent, normal = self.encoder(src, padding_mask=src_padding_mask)
 
-        if isinstance(normal, tuple):
-            mean, log_std = normal
-            normal = Normal(loc=mean, scale=torch.exp(log_std))
-            normal = Independent(normal, reinterpreted_batch_ndims=1)
-        elif isinstance(normal, Normal):
-            normal = Independent(normal, reinterpreted_batch_ndims=1)
-        elif not isinstance(normal, Independent):
-            raise ValueError(f"{type(normal)} is not supported.")
-
         # NOTE: "est_duration" might be taken log.
-        log_est_duration = self.duration_predictor(src_latent)
+        log_est_duration = self.duration_predictor(src_latent, padding_mask=src_padding_mask)
+
+        if src_padding_mask is not None:
+            log_est_duration = log_est_duration.masked_fill(src_padding_mask, -float("inf"))
+
         tgt_latent = self.decoder(
             tgt,
             padding_mask=tgt_padding_mask,
@@ -161,7 +176,7 @@ class GlowTTS(nn.Module):
         """Inference of GlowTTS.
 
         Args:
-            src (torch.Tensor): Source feature of shape (batch_size, src_length).
+            src (torch.Tensor): Source feature of shape (batch_size, max_src_length).
             src_length (torch.LongTensor): Source feature lengths of shape (batch_size,).
             max_length (int, optional): Maximum length of source duration.
                 The output length is up to max_length * src_length.
@@ -172,7 +187,7 @@ class GlowTTS(nn.Module):
 
                 - torch.Tensor: Log-likelihood of target feature of shape (batch_size,).
                 - torch.LongTensor: Estimated duration in linear-domain
-                    of shape (batch_size, src_length).
+                    of shape (batch_size, max_src_length).
 
         .. note::
 
@@ -190,7 +205,9 @@ class GlowTTS(nn.Module):
         src_latent, normal = self.encoder(src, padding_mask=src_padding_mask)
 
         # NOTE: "est_duration" might be taken log.
-        log_est_duration = self.duration_predictor(src_latent)
+        log_est_duration = self.duration_predictor(src_latent, padding_mask=src_padding_mask)
+
+        # NOTE: transform_log_duration may apply flooring.
         linear_est_duration = transform_log_duration(log_est_duration)
 
         if src_padding_mask is not None:
@@ -254,44 +271,57 @@ class GlowTTS(nn.Module):
     @staticmethod
     def search_gaussian_monotonic_alignment(
         input: torch.Tensor,
-        normal: Independent,
+        normal: Union[Independent, Tuple[torch.Tensor, torch.Tensor]],
         padding_mask: Optional[torch.BoolTensor] = None,
     ) -> Tuple[torch.Tensor, torch.LongTensor]:
         """Search monotonic alignment assuming Gaussian distributions.
 
         Args:
             input (torch.Tensor): Probablistic variable
-                of shape (batch_size, tgt_length, num_features).
-            normal (torch.distributions.Independent): Gaussian distribution parametrized by
-                mean (batch_size, src_length, num_features) and
-                stddev (batch_size, src_length, num_features).
+                of shape (batch_size, max_tgt_length, num_features).
+            normal (torch.distributions.Independent or tuple): Gaussian distribution parametrized
+                by mean (batch_size, max_src_length, num_features) and
+                stddev (batch_size, max_src_length, num_features).
             padding_mask (torch.BoolTensor, optional): Padding mask for monotonic alignment.
 
         Returns:
             tuple: Tuple of tensors containing
 
                 - torch.Tensor: Maximum log-likelihood of p(z) of
-                    shape (batch_size, tgt_length, src_length).
+                    shape (batch_size, max_tgt_length).
                 - torch.LongTensor: Duration in linear-domain of
-                    shape (batch_size, src_length).
+                    shape (batch_size, max_src_length).
 
         """
-        batch_size, tgt_length, _ = input.size()
-        _, src_length, _ = normal.mean.size()
+        batch_size, max_tgt_length, num_features = input.size()
 
-        x = input.permute(1, 0, 2).contiguous()
-        x = x.unsqueeze(dim=2)
-        log_prob = normal.log_prob(x)
-        log_prob = log_prob.permute(1, 0, 2).contiguous()
+        if isinstance(normal, tuple):
+            mean, log_std = normal
+            _, max_src_length, _ = mean.size()
+            x = input.unsqueeze(dim=-2)
+            mean = mean.unsqueeze(dim=-3)
+            log_std = log_std.unsqueeze(dim=-3)
+            x = (x - mean) / torch.exp(log_std)
+            log_prob = -0.5 * torch.sum(x**2, dim=-1)
+            log_prob = log_prob - 0.5 * num_features * math.log(2 * math.pi) - log_std.sum(dim=-1)
+        elif isinstance(normal, Independent):
+            _, max_src_length, _ = normal.mean.size()
+            x = input.permute(1, 0, 2).contiguous()
+            x = x.unsqueeze(dim=2)
+            log_prob = normal.log_prob(x)
+            log_prob = log_prob.permute(1, 0, 2).contiguous()
+        else:
+            raise ValueError(f"{type(normal)} is not supported.")
 
-        assert log_prob.size() == (batch_size, tgt_length, src_length)
+        assert log_prob.size() == (batch_size, max_tgt_length, max_src_length)
 
         hard_alignment = search_monotonic_alignment_by_viterbi(
             log_prob,
             padding_mask=padding_mask,
             take_log=False,
         )
-        log_prob = torch.sum(log_prob * hard_alignment, dim=1)
+        # sum along src_length dimension
+        log_prob = torch.sum(log_prob * hard_alignment, dim=-1)
         duration = hard_alignment.sum(dim=1)
 
         return log_prob, duration
@@ -348,14 +378,14 @@ class TextEncoder(nn.Module):
         """Forward pass of TextEncoder.
 
         Args:
-            input (torch.LongTensor): Text input of shape (batch_size, length).
-            padding_mask (torch.Tensor): Padding mask of shape (batch_size, length).
+            input (torch.LongTensor): Text input of shape (batch_size, max_length).
+            padding_mask (torch.Tensor): Padding mask of shape (batch_size, max_length).
 
         Returns:
 
             tuple: Tuple of tensors containing
 
-                - torch.Tensor: Latent feature of shape (batch_size, length, out_channels),
+                - torch.Tensor: Latent feature of shape (batch_size, max_length, out_channels),
                     where ``out_channels`` is determined by ``self.backbone``.
                 - torch.distributions.Independent: Multivariate Gaussian distribution
                     composed by ``mean`` and ``stddev``.
@@ -420,8 +450,12 @@ class Decoder(BaseFlow):
         split: Optional[nn.Module] = None,
         concat: Optional[nn.Module] = None,
         scaling: bool = False,
+        scaling_channels: Optional[int] = None,
     ) -> None:
         super().__init__()
+
+        if isinstance(in_channels, list):
+            raise NotImplementedError("List is not supported as in_channels now.")
 
         self.in_channels = in_channels
         self.num_flows = num_flows
@@ -447,6 +481,7 @@ class Decoder(BaseFlow):
                     split=split,
                     concat=concat,
                     scaling=scaling,
+                    scaling_channels=scaling_channels,
                 )
             )
 
@@ -540,7 +575,6 @@ class Decoder(BaseFlow):
                 (batch_size, length) or (batch_size, num_features, length).
             other (torch.Tensor): Tensor of shape (batch_size, num_features, length).
 
-
         Returns:
             torch.BoolTensor: Expanded padding mask of shape (batch_size, num_features, length).
 
@@ -575,7 +609,16 @@ class Decoder(BaseFlow):
             logdet (torch.Tensor, optional): Log-determinant of shape (batch_size,).
 
         Returns:
-            tuple: Tuple of tensors.
+            torch.Tensor or tuple: Tensor or tuple of tensors.
+
+                - If ``padding_mask`` is ``None`` and ``logdet`` is None,
+                  output (batch_size, in_channels, length) is returned.
+                - If ``padding_mask`` is given and ``logdet`` is None,
+                  output and modified padding mask (batch_size, in_channels, length) are returned.
+                - If ``padding_mask`` is ``None`` and ``logdet`` is given,
+                  output and log-determinant (batch_size,) are returned.
+                - If ``padding_mask`` and ``logdet`` are given, output, modified padding mask,
+                    and log-determinant are returned.
 
         """
         down_scale = self.down_scale
@@ -761,6 +804,8 @@ class PreNet(nn.Module):
 
         self.proj = nn.Linear(_in_channels, _out_channels)
 
+        self._reset_parameters()
+
     def forward(
         self,
         input: torch.Tensor,
@@ -777,6 +822,10 @@ class PreNet(nn.Module):
         output = self.proj(x)
 
         return output
+
+    def _reset_parameters(self) -> None:
+        self.proj.weight.data.zero_()
+        self.proj.bias.data.zero_()
 
 
 class ConvBlock(nn.Module):
@@ -796,7 +845,7 @@ class ConvBlock(nn.Module):
         self.batch_first = batch_first
 
         self.conv1d = nn.Conv1d(in_channels, out_channels, kernel_size, stride=1)
-        self.norm1d = MaskedLayerNorm(out_channels)
+        self.norm1d = nn.LayerNorm(out_channels)
         self.nonlinear1d = nn.ReLU()
         self.dropout1d = nn.Dropout(dropout)
 
@@ -819,11 +868,7 @@ class ConvBlock(nn.Module):
         x = F.pad(x, (kernel_size // 2, kernel_size // 2))
         x = self.conv1d(x)
         x = x.permute(0, 2, 1).contiguous()
-
-        if padding_mask is None:
-            x = self.norm1d(x)
-        else:
-            x = self.norm1d(x, padding_mask=padding_mask.unsqueeze(dim=-1))
+        x = self.norm1d(x)
 
         if padding_mask is not None:
             x = x.masked_fill(padding_mask.unsqueeze(dim=-1), 0)
@@ -929,6 +974,19 @@ class TransformerEncoder(GlowTTSTransformerEncoder):
 
 
 class GlowBlock(BaseFlow):
+    """Glow block for GlowTTS.
+
+    Args:
+        scaling (bool): Whether to use scaling factor. Default: ``False``.
+        scaling_channels (int, optional): Number of channels of scaling factor.
+            If ``scaling=True``, this parameter is activated. In that case,
+            ``scaling_channels`` is expected ``None`` or ``coupling_channels``.
+            ``coupling_channels`` is typically ``in_channels[0]`` or ``in_channels // 2``.
+
+    """
+
+    # TODO: improve docs
+
     def __init__(
         self,
         in_channels: Union[int, List[int]],
@@ -946,6 +1004,7 @@ class GlowBlock(BaseFlow):
         split: Optional[nn.Module] = None,
         concat: Optional[nn.Module] = None,
         scaling: bool = False,
+        scaling_channels: Optional[int] = None,
     ) -> None:
         super().__init__()
 
@@ -974,7 +1033,7 @@ class GlowBlock(BaseFlow):
             split=split,
             concat=concat,
             scaling=scaling,
-            in_channels=in_channels,
+            scaling_channels=scaling_channels,
         )
 
     def forward(

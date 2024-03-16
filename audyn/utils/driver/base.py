@@ -9,6 +9,7 @@ import hydra
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torchaudio
 from omegaconf import DictConfig, OmegaConf
 from packaging import version
@@ -24,6 +25,7 @@ from ...optim.optimizer import (
     MovingAverageWrapper,
     MultiOptimizers,
 )
+from ..alignment import expand_by_duration
 from ..clip_grad import GradClipper
 from ..data import BaseDataLoaders, select_device
 from ..distributed import select_global_rank, select_local_rank
@@ -170,7 +172,7 @@ class BaseDriver:
 
             if _named_data is None:
                 if strict:
-                    raise ValueError("data_key is not found in named_data.")
+                    raise ValueError(f"{data_key} is not found in named_data.")
             else:
                 named_input[model_key] = _named_data
 
@@ -244,7 +246,7 @@ class BaseDriver:
                     assert set(named_output.keys()) & set(_named_output.keys()) == set()
                     named_output.update(_named_output)
             else:
-                raise ValueError("Invalid key type {} is found.".format(key_type))
+                raise ValueError(f"Invalid key type {key_type} is found.")
 
             return named_output
 
@@ -467,7 +469,6 @@ class BaseTrainer(BaseDriver):
 
     def train_one_epoch(self) -> Dict[str, float]:
         """Train model for one epoch."""
-        record_config = self.config.train.record
         criterion_names = self.criterion_names(self.config.criterion)
         mean_metrics = {
             criterion_name: MeanMetric(device=self.device) for criterion_name in criterion_names
@@ -523,62 +524,31 @@ class BaseTrainer(BaseDriver):
                 global_step=self.iteration_idx + 1,
             )
 
-            if hasattr(record_config, "spectrogram"):
-                spectrogram_config = record_config.spectrogram.iteration
-                global_step = self.iteration_idx + 1
-
-                if spectrogram_config is not None and global_step % spectrogram_config.every == 0:
-                    self.write_spectrogram_if_necessary(
-                        named_output,
-                        named_data,
-                        sample_size=spectrogram_config.sample_size,
-                        key_mapping=spectrogram_config.key_mapping,
-                        transforms=spectrogram_config.transforms,
-                        global_step=global_step,
-                    )
-
-            if hasattr(record_config, "waveform"):
-                waveform_config = record_config.waveform.iteration
-                global_step = self.iteration_idx + 1
-
-                if waveform_config is not None and global_step % waveform_config.every == 0:
-                    self.write_waveform_if_necessary(
-                        named_output,
-                        named_data,
-                        sample_size=waveform_config.sample_size,
-                        key_mapping=waveform_config.key_mapping,
-                        transforms=waveform_config.transforms,
-                        global_step=global_step,
-                    )
-
-            if hasattr(record_config, "audio"):
-                audio_config = record_config.audio.iteration
-                global_step = self.iteration_idx + 1
-
-                if audio_config is not None and global_step % audio_config.every == 0:
-                    self.write_audio_if_necessary(
-                        named_output,
-                        named_data,
-                        sample_size=audio_config.sample_size,
-                        key_mapping=audio_config.key_mapping,
-                        transforms=audio_config.transforms,
-                        global_step=global_step,
-                        sample_rate=audio_config.sample_rate,
-                    )
-
-            if hasattr(record_config, "image"):
-                image_config = record_config.image.iteration
-                global_step = self.iteration_idx + 1
-
-                if image_config is not None and global_step % image_config.every == 0:
-                    self.write_image_if_necessary(
-                        named_output,
-                        named_data,
-                        sample_size=image_config.sample_size,
-                        key_mapping=image_config.key_mapping,
-                        transforms=image_config.transforms,
-                        global_step=global_step,
-                    )
+            self.write_train_duration_if_necessary(
+                named_output,
+                named_data,
+                config=self.config.train.record,
+            )
+            self.write_train_spectrogram_if_necessary(
+                named_output,
+                named_data,
+                config=self.config.train.record,
+            )
+            self.write_train_waveform_if_necessary(
+                named_output,
+                named_data,
+                config=self.config.train.record,
+            )
+            self.write_train_audio_if_necessary(
+                named_output,
+                named_data,
+                config=self.config.train.record,
+            )
+            self.write_train_image_if_necessary(
+                named_output,
+                named_data,
+                config=self.config.train.record,
+            )
 
             self.optimizer.zero_grad()
             self.scaler.scale(total_loss).backward()
@@ -659,6 +629,12 @@ class BaseTrainer(BaseDriver):
                 )
                 mean_metrics[criterion_name].update(loss[criterion_name].item())
 
+            self.write_validation_duration_if_necessary(
+                named_output,
+                named_data,
+                config=self.config.train.record,
+                batch_idx=n_batch,
+            )
             self.write_validation_spectrogram_if_necessary(
                 named_output,
                 named_data,
@@ -719,6 +695,12 @@ class BaseTrainer(BaseDriver):
 
             named_output = self.map_to_named_output(output, key_mapping=inference_key_mapping)
 
+            self.write_inference_duration_if_necessary(
+                named_output,
+                named_data,
+                config=self.config.train.record,
+                batch_idx=n_batch,
+            )
             self.write_inference_spectrogram_if_necessary(
                 named_output,
                 named_data,
@@ -909,6 +891,205 @@ class BaseTrainer(BaseDriver):
         s = f"Save model: {save_path}."
         self.logger.info(s)
 
+    def write_train_duration_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        config: DictConfig = None,
+    ) -> None:
+        """Write duration to tensorboard for training.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            config (DictConfig, optional): Config to write out to tensorboard.
+
+        """
+        if config is None:
+            config = self.config.train.record
+
+        if hasattr(config, "duration"):
+            duration_config = config.duration.iteration
+            global_step = self.iteration_idx + 1
+
+            if duration_config is not None and global_step % duration_config.every == 0:
+                self.write_duration_if_necessary(
+                    named_output,
+                    named_reference,
+                    sample_size=duration_config.sample_size,
+                    key_mapping=duration_config.key_mapping,
+                    transforms=duration_config.transforms,
+                    global_step=global_step,
+                )
+
+    def write_train_spectrogram_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        config: DictConfig = None,
+    ) -> None:
+        """Write spectrogram to tensorboard for training.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            config (DictConfig, optional): Config to write out to tensorboard.
+
+        """
+        if config is None:
+            config = self.config.train.record
+
+        if hasattr(config, "spectrogram"):
+            spectrogram_config = config.spectrogram.iteration
+            global_step = self.iteration_idx + 1
+
+            if spectrogram_config is not None and global_step % spectrogram_config.every == 0:
+                self.write_spectrogram_if_necessary(
+                    named_output,
+                    named_reference,
+                    sample_size=spectrogram_config.sample_size,
+                    key_mapping=spectrogram_config.key_mapping,
+                    transforms=spectrogram_config.transforms,
+                    global_step=global_step,
+                )
+
+    def write_train_waveform_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        config: DictConfig = None,
+    ) -> None:
+        """Write waveform to tensorboard for training.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            config (DictConfig, optional): Config to write out to tensorboard.
+
+        """
+        if config is None:
+            config = self.config.train.record
+
+        if hasattr(config, "spectrogram"):
+            spectrogram_config = config.spectrogram.iteration
+            global_step = self.iteration_idx + 1
+
+            if spectrogram_config is not None and global_step % spectrogram_config.every == 0:
+                self.write_spectrogram_if_necessary(
+                    named_output,
+                    named_reference,
+                    sample_size=spectrogram_config.sample_size,
+                    key_mapping=spectrogram_config.key_mapping,
+                    transforms=spectrogram_config.transforms,
+                    global_step=global_step,
+                )
+
+    def write_train_audio_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        config: DictConfig = None,
+    ) -> None:
+        """Write audio to tensorboard for training.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            config (DictConfig, optional): Config to write out to tensorboard.
+
+        """
+        if config is None:
+            config = self.config.train.record
+
+        if hasattr(config, "audio"):
+            audio_config = config.audio.iteration
+            global_step = self.iteration_idx + 1
+
+            if audio_config is not None and global_step % audio_config.every == 0:
+                self.write_audio_if_necessary(
+                    named_output,
+                    named_reference,
+                    sample_size=audio_config.sample_size,
+                    key_mapping=audio_config.key_mapping,
+                    transforms=audio_config.transforms,
+                    global_step=global_step,
+                    sample_rate=audio_config.sample_rate,
+                )
+
+    def write_train_image_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        config: DictConfig = None,
+    ) -> None:
+        """Write image to tensorboard for training.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            config (DictConfig, optional): Config to write out to tensorboard.
+
+        """
+        if config is None:
+            config = self.config.train.record
+
+        if hasattr(config, "image"):
+            image_config = config.image.iteration
+            global_step = self.iteration_idx + 1
+
+            if image_config is not None and global_step % image_config.every == 0:
+                self.write_image_if_necessary(
+                    named_output,
+                    named_reference,
+                    sample_size=image_config.sample_size,
+                    key_mapping=image_config.key_mapping,
+                    transforms=image_config.transforms,
+                    global_step=global_step,
+                )
+
+    def write_validation_duration_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        config: DictConfig = None,
+        batch_idx: int = 0,
+    ) -> None:
+        """Write duration to tensorboard for validation.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            config (DictConfig, optional): Config to write out to tensorboard.
+            batch_idx (int): Batch index.
+
+        """
+        if config is None:
+            config = self.config.train.record
+
+        if hasattr(config, "duration") and batch_idx < 1:
+            duration_config = config.duration.epoch
+            global_step = self.epoch_idx + 1
+
+            if duration_config is not None and global_step % duration_config.every == 0:
+                if hasattr(duration_config.key_mapping, "validation"):
+                    key_mapping = duration_config.key_mapping.validation
+                else:
+                    key_mapping = duration_config.key_mapping
+
+                if hasattr(duration_config.key_mapping, "validation"):
+                    transforms = duration_config.transforms.validation
+                else:
+                    transforms = duration_config.transforms
+
+                self.write_duration_if_necessary(
+                    named_output,
+                    named_reference,
+                    sample_size=duration_config.sample_size,
+                    key_mapping=key_mapping,
+                    transforms=transforms,
+                    global_step=global_step,
+                )
+
     def write_validation_spectrogram_if_necessary(
         self,
         named_output: Optional[Dict[str, torch.Tensor]] = None,
@@ -1081,6 +1262,49 @@ class BaseTrainer(BaseDriver):
                     transforms=transforms,
                     global_step=global_step,
                 )
+
+    def write_inference_duration_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        config: DictConfig = None,
+        batch_idx: int = 0,
+    ) -> None:
+        """Write duration to tensorboard for inference.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            config (DictConfig, optional): Config to write out to tensorboard.
+            batch_idx (int): Batch index.
+
+        """
+        if config is None:
+            config = self.config.train.record
+
+        if hasattr(config, "duration") and batch_idx < 1:
+            duration_config = config.duration.epoch
+            global_step = self.epoch_idx + 1
+
+            if duration_config is not None and global_step % duration_config.every == 0:
+                if hasattr(duration_config.key_mapping, "inference"):
+                    key_mapping = duration_config.key_mapping.inference
+
+                    if hasattr(duration_config.transforms, "inference"):
+                        transforms = duration_config.transforms.inference
+                    elif hasattr(duration_config.transforms, "validation"):
+                        transforms = duration_config.transforms.validation
+                    else:
+                        transforms = duration_config.transforms
+
+                    self.write_duration_if_necessary(
+                        named_output,
+                        named_reference,
+                        sample_size=duration_config.sample_size,
+                        key_mapping=key_mapping,
+                        transforms=transforms,
+                        global_step=global_step,
+                    )
 
     def write_inference_spectrogram_if_necessary(
         self,
@@ -1262,6 +1486,102 @@ class BaseTrainer(BaseDriver):
             scalar_value,
             global_step=global_step,
         )
+
+    @run_only_master_rank()
+    def write_duration_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        sample_size: int = 1,
+        key_mapping: DictConfig = None,
+        transforms: Optional[DictConfig] = None,
+        global_step: int = 1,
+    ) -> None:
+        """Write duration as figure to tensorboard.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            key_mapping (DictConfig): Config to map data.
+            transforms (DictConfig, optional): Config to transform data.
+            global_step (int): Step value to record.
+
+        """
+        if hasattr(key_mapping, "output") and key_mapping.output is not None:
+            for key, tag in key_mapping.output.items():
+                for sample_idx, duration in enumerate(named_output[key]):
+                    if sample_idx >= sample_size:
+                        break
+
+                    if transforms is not None and transforms.output is not None:
+                        if key in transforms.output.keys():
+                            transform = hydra.utils.instantiate(transforms.output[key])
+                            duration = transform(duration)
+
+                    self.write_duration(
+                        tag.format(number=sample_idx + 1), duration, global_step=global_step
+                    )
+
+        if hasattr(key_mapping, "reference") and key_mapping.reference is not None:
+            if named_reference is None:
+                raise ValueError("named_reference is not specified.")
+
+            for key, tag in key_mapping.reference.items():
+                for sample_idx, duration in enumerate(named_reference[key]):
+                    if sample_idx >= sample_size:
+                        break
+
+                    if transforms is not None and transforms.reference is not None:
+                        if key in transforms.reference.keys():
+                            transform = hydra.utils.instantiate(transforms.reference[key])
+                            duration = transform(duration)
+
+                    self.write_duration(
+                        tag.format(number=sample_idx + 1), duration, global_step=global_step
+                    )
+
+    def write_duration(self, tag: str, duration: torch.Tensor, global_step: Any = 1) -> None:
+        """Write out duration to tensorboard as 2D alignment map.
+
+        Args:
+            duration (torch.Tensor): (src_length,) or (tgt_length, src_length).
+
+        """
+        assert (
+            duration.dim() == 1 or duration.dim() == 2
+        ), f"duration is expected to be 1D or 2D tesor, but given as {duration.dim()}D tensor."
+
+        if duration.dim() == 1:
+            eye = torch.eye(duration.size(-1), dtype=torch.long, device=duration.device)
+
+            # add pseudo batch dimension
+            eye = eye.unsqueeze(dim=0)
+            duration = duration.unsqueeze(dim=0)
+            alignment = expand_by_duration(eye, duration)
+
+            # remove pseudo batch dimension
+            alignment = alignment.squeeze(dim=0)
+            alignment = alignment.permute(1, 0).contiguous()
+            tgt_length = torch.count_nonzero(alignment, dim=1)
+            tgt_length = torch.count_nonzero(tgt_length).item()
+            src_length = torch.count_nonzero(alignment, dim=0)
+            src_length = torch.count_nonzero(src_length).item()
+        else:
+            # TODO: permute dims if necessary
+            raise NotImplementedError("2D input is not supported now.")
+
+        alignment = alignment.detach().cpu()
+        max_tgt_length, max_src_length = alignment.size()
+        alignment = F.pad(
+            alignment, (0, src_length - max_src_length, 0, tgt_length - max_tgt_length)
+        )
+
+        fig, axis = plt.subplots(figsize=(16, 10))
+        im = axis.pcolormesh(alignment)
+        fig.colorbar(im, ax=axis, fraction=0.05)
+        fig.tight_layout()
+
+        self.writer.add_figure(tag, fig, global_step=global_step)
 
     @run_only_master_rank()
     def write_spectrogram_if_necessary(

@@ -10,7 +10,7 @@ nll:
       logdet: logdet
       tgt_padding_mask: tgt_padding_mask
     target:
-      tgt: log_melspectrogram
+      tgt: melspectrogram
 duration:
   _target_: audyn.criterion.base.BaseCriterionWrapper
   criterion:

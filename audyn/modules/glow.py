@@ -1,10 +1,11 @@
-from collections import OrderedDict
+import math
 from typing import Any, Dict, Mapping, Optional, Tuple, Union
 
 import torch
 import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.modules.module import _IncompatibleKeys
 
 from .flow import BaseFlow
 
@@ -149,6 +150,13 @@ class InvertiblePointwiseConv2d(BaseFlow):
 
 
 class ActNorm1d(BaseFlow):
+    """ActNorm proposed in Glow.
+
+    Args:
+        num_features (int): Number of features.
+
+    """
+
     def __init__(
         self,
         num_features: int,
@@ -162,32 +170,54 @@ class ActNorm1d(BaseFlow):
 
         super().__init__()
 
-        self.log_std = nn.Parameter(torch.empty((num_features,), **factory_kwargs))
-        self.mean = nn.Parameter(torch.empty((num_features,), **factory_kwargs))
+        self.log_scale = nn.Parameter(torch.empty((num_features,), **factory_kwargs))
+        self.bias = nn.Parameter(torch.empty((num_features,), **factory_kwargs))
 
         self._reset_parameters()
 
     def _reset_parameters(self) -> None:
-        nn.init.zeros_(self.log_std.data)
-        nn.init.zeros_(self.mean.data)
+        nn.init.zeros_(self.log_scale.data)
+        nn.init.zeros_(self.bias.data)
         self.is_initialized = False
 
+    @torch.no_grad()
     def _initialize_parameters(self, input: torch.Tensor) -> None:
         is_distributed = dist.is_available() and dist.is_initialized()
 
+        # obtain world size for DDP
         if is_distributed:
-            # gather input
-            # (batch_size, num_features, length) -> (num_gpus * batch_size, num_features, length)
-            gathered_input = [torch.zeros_like(input) for _ in range(dist.get_world_size())]
-            dist.all_gather(gathered_input, input)
-            input = torch.cat(gathered_input, dim=0)
+            world_size = dist.get_world_size()
+        else:
+            world_size = 1
 
-        std, mean = torch.std_mean(input, dim=(0, 2), unbiased=False)
-        mean = mean.detach()
-        log_std = torch.log(std.detach())
+        batch_size, _, length = input.size()
+        sum_input = torch.sum(input, dim=(0, 2))
 
-        self.log_std.data.copy_(log_std)
-        self.mean.data.copy_(mean)
+        if is_distributed:
+            # gather sum_input
+            # (num_features,) -> (world_size, num_features)
+            gathered_sum_input = [torch.zeros_like(sum_input) for _ in range(world_size)]
+            dist.all_gather(gathered_sum_input, sum_input)
+            gathered_sum_input = torch.stack(gathered_sum_input, dim=0)
+            sum_input = torch.sum(gathered_sum_input, dim=0)
+
+        mean = sum_input / (world_size * batch_size * length)
+        zero_mean_input = input - mean.unsqueeze(dim=-1)
+        sum_input = torch.sum(zero_mean_input**2, dim=(0, 2))
+
+        if is_distributed:
+            # gather sum_input
+            # (num_features,) -> (world_size, num_features)
+            gathered_sum_input = [torch.zeros_like(sum_input) for _ in range(world_size)]
+            dist.all_gather(gathered_sum_input, sum_input)
+            gathered_sum_input = torch.stack(gathered_sum_input, dim=0)
+            sum_input = torch.sum(gathered_sum_input, dim=0)
+
+        log_std = 0.5 * (torch.log(sum_input) - math.log((world_size * batch_size * length)))
+        bias = -mean * torch.exp(-log_std)
+
+        self.log_scale.data.copy_(-log_std)
+        self.bias.data.copy_(bias)
 
         self.is_initialized = True
 
@@ -196,15 +226,17 @@ class ActNorm1d(BaseFlow):
         input: torch.Tensor,
         logdet: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        log_scale = self.log_scale
+        bias = self.bias
         length = input.size(-1)
 
-        std = torch.exp(self.log_std)
-        std = std.unsqueeze(dim=-1)
-        mean = self.mean.unsqueeze(dim=-1)
-        output = (input - mean) / std
+        scale = torch.exp(log_scale)
+        scale = scale.unsqueeze(dim=-1)
+        bias = bias.unsqueeze(dim=-1)
+        output = scale * input + bias
 
         if logdet is not None:
-            logdet = logdet - length * self.log_std.sum()
+            logdet = logdet + length * log_scale.sum()
 
         return output, logdet
 
@@ -213,15 +245,17 @@ class ActNorm1d(BaseFlow):
         input: torch.Tensor,
         logdet: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        log_scale = self.log_scale
+        bias = self.bias
         length = input.size(-1)
 
-        std = torch.exp(self.log_std)
-        std = std.unsqueeze(dim=-1)
-        mean = self.mean.unsqueeze(dim=-1)
-        output = input * std + mean
+        scale = torch.exp(-log_scale)
+        scale = scale.unsqueeze(dim=-1)
+        bias = bias.unsqueeze(dim=-1)
+        output = scale * (input - bias)
 
         if logdet is not None:
-            logdet = logdet + length * self.log_std.sum()
+            logdet = logdet - length * log_scale.sum()
 
         return output, logdet
 
@@ -231,6 +265,17 @@ class ActNorm1d(BaseFlow):
         logdet: Optional[torch.Tensor] = None,
         reverse: bool = False,
     ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+        """Forward pass of ActNorm1d.
+
+        Args:
+            input (torch.Tensor): Tensor of shape (batch_size, num_features, length).
+            logdet (torch.Tensor, optional): Log-determinant of shape (batch_size,).
+            reverse (bool): If ``True``, reverse operation is applied. Default: ``False`
+
+        Returns:
+            torch.Tensor: Transformed tensor of same shape as input.
+
+        """
         if self.training and not self.is_initialized:
             self._initialize_parameters(input)
 
@@ -246,16 +291,67 @@ class ActNorm1d(BaseFlow):
         else:
             return output, logdet
 
-    def state_dict(self, *args, **kwargs) -> Dict[str, Any]:
-        state_dict: OrderedDict = super().state_dict(*args, **kwargs)
-        state_dict["is_initialized"] = self.is_initialized
+    def state_dict(
+        self,
+        destination: Dict[str, Any] = None,
+        prefix: str = "",
+        keep_vars: bool = False,
+    ) -> Dict[str, Any]:
+        """Return state_dict of module.
+
+        .. note::
+
+            Returned ``state_dict`` includes ``is_initialized`` flag.
+            In terms of simplicity, registering ``is_initialized`` as boolean tensor
+            is better, but it is incompatible with DDP.
+
+        """
+        state_dict = super().state_dict(
+            destination=destination,
+            prefix=prefix,
+            keep_vars=keep_vars,
+        )
+        state_dict.update({prefix + "is_initialized": self.is_initialized})
 
         return state_dict
 
-    def load_state_dict(self, state_dict: Mapping[str, Any], strict: bool = True):
-        is_initialized = state_dict["is_initialized"]
-        self.is_initialized = is_initialized
+    def load_state_dict(
+        self, state_dict: Mapping[str, Any], strict: bool = True
+    ) -> _IncompatibleKeys:
+        is_initialized_key = "is_initialized"
 
-        del state_dict["is_initialized"]
+        if is_initialized_key in state_dict.keys():
+            is_initialized = state_dict.pop(is_initialized_key)
+
+            if isinstance(is_initialized, torch.Tensor):
+                # for backward compatibility
+                is_initialized = is_initialized.item()
+
+            self.is_initialized = is_initialized
 
         return super().load_state_dict(state_dict, strict=strict)
+
+    def _load_from_state_dict(
+        self,
+        state_dict,
+        prefix,
+        local_metadata,
+        strict,
+        missing_keys,
+        unexpected_keys,
+        error_msgs,
+    ) -> Any:
+        is_initialized_key = prefix + "is_initialized"
+
+        if is_initialized_key in state_dict.keys():
+            is_initialized = state_dict.pop(is_initialized_key)
+
+            if isinstance(is_initialized, torch.Tensor):
+                # for backward compatibility
+                is_initialized = is_initialized.item()
+
+            self.is_initialized = is_initialized
+
+        return super()._load_from_state_dict(
+            state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs
+        )

@@ -25,7 +25,17 @@ def search_monotonic_alignment_by_viterbi(
     Returns:
         torch.LongTensor: Hard alignment matrix of shape (batch_size, tgt_length, src_length).
 
+    .. note::
+
+        Monotonic alignment search is always computed on CPU.
+
     """
+    src_device = probs.device
+    probs = probs.cpu()
+
+    if padding_mask is not None:
+        padding_mask = padding_mask.cpu()
+
     if padding_mask is not None:
         if take_log:
             # Set p(x) as 0.
@@ -51,5 +61,6 @@ def search_monotonic_alignment_by_viterbi(
     hard_alignment = monotonic_align_cpp.search_monotonic_alignment_by_viterbi(
         probs, tgt_length, src_length, take_log
     )
+    hard_alignment = hard_alignment.to(src_device)
 
     return hard_alignment

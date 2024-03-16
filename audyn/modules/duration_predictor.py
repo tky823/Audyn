@@ -8,6 +8,18 @@ __all__ = ["FastSpeechDurationPredictor", "DurationPredictor"]
 
 
 class FastSpeechDurationPredictor(nn.Module):
+    """Duration predictor of FastSpeech composed of stacked ConvBlock.
+
+    Args:
+        num_features (list): Number of features.
+        kernel_size (int): Kernel size in convolutions.
+        dropout (float): Drop out rate. Default: ``1e-1``.
+        stop_gradient (bool): Whether to stop gradient of input feature.
+        batch_first (bool): If ``True``, first dimension of input is treated as batch index.
+        channels_last (bool): If ``True``, last dimension of input is treated as channel index.
+
+    """
+
     def __init__(
         self,
         num_features: List[int],
@@ -15,7 +27,8 @@ class FastSpeechDurationPredictor(nn.Module):
         dropout: float = 1e-1,
         stop_gradient: bool = True,
         batch_first: bool = False,
-    ):
+        channels_last: bool = True,
+    ) -> None:
         super().__init__()
 
         backbone = []
@@ -35,7 +48,7 @@ class FastSpeechDurationPredictor(nn.Module):
         self.fc_layer = nn.Linear(num_features[-1], 1)
 
         self.stop_gradient = stop_gradient
-        self.batch_first = batch_first
+        self.batch_first, self.channels_last = batch_first, channels_last
 
     def forward(self, input: torch.Tensor, padding_mask: torch.BoolTensor = None) -> torch.Tensor:
         """Forward pass of DurationPredictor.
@@ -47,10 +60,11 @@ class FastSpeechDurationPredictor(nn.Module):
                 or (batch_size, length).
 
         Returns:
-            torch.Tensor: Estimated log duration of shape (batch_size, length).
+            torch.Tensor: Estimated log duration of shape (batch_size, length)
+                if ``batch_first=True``, otherwise (length, batch_size).
 
         """
-        batch_first = self.batch_first
+        batch_first, channels_last = self.batch_first, self.channels_last
         stop_gradient = self.stop_gradient
 
         if stop_gradient:
@@ -58,10 +72,17 @@ class FastSpeechDurationPredictor(nn.Module):
         else:
             x = input
 
+        # permute axes to (batch_size, num_features, length)
         if batch_first:
-            x = x.permute(0, 2, 1)
+            if channels_last:
+                x = x.permute(0, 2, 1)
         else:
-            x = x.permute(1, 2, 0)
+            if channels_last:
+                x = x.permute(1, 2, 0)
+            else:
+                raise NotImplementedError(
+                    "Condition of batch_first = False and channels_last = False is not supported."
+                )
 
         for layer_idx in range(self.num_layers):
             x = self.backbone[layer_idx](x, padding_mask=padding_mask)
@@ -72,6 +93,9 @@ class FastSpeechDurationPredictor(nn.Module):
 
         if padding_mask is not None:
             log_duration = log_duration.masked_fill(padding_mask, -float("inf"))
+
+        if not batch_first:
+            log_duration = log_duration.permute(1, 0).contiguous()
 
         return log_duration
 
@@ -89,7 +113,7 @@ class ConvBlock(nn.Module):
         out_channels: int,
         kernel_size: int,
         dropout: float = 0,
-    ):
+    ) -> None:
         super().__init__()
 
         assert kernel_size % 2 == 1, "Kernel size should be odd."
@@ -106,7 +130,9 @@ class ConvBlock(nn.Module):
 
         self.kernel_size = kernel_size
 
-    def forward(self, input: torch.Tensor, padding_mask: torch.BoolTensor = None) -> torch.Tensor:
+    def forward(
+        self, input: torch.Tensor, padding_mask: Optional[torch.BoolTensor] = None
+    ) -> torch.Tensor:
         """Forward pass of ConvBlock.
 
         Args:
@@ -138,7 +164,8 @@ class ConvBlock(nn.Module):
 
     @staticmethod
     def _masked_fill(
-        input: torch.Tensor, padding_mask: Optional[torch.Tensor] = None
+        input: torch.Tensor,
+        padding_mask: Optional[torch.BoolTensor] = None,
     ) -> torch.Tensor:
         """Apply padding mask if given.
 

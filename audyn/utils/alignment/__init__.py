@@ -12,12 +12,14 @@ def expand_by_duration(
     batch_first: bool = True,
     max_length: Optional[int] = None,
 ) -> torch.Tensor:
-    r"""
+    r"""Expand sequence by given duration.
 
     Args:
         sequence (torch.Tensor): Latent feature of source whose shape is
-            (batch_size, src_length, \*).
-        duration (torch.LongTensor): Duration of shape (batch_size, src_length).
+            (batch_size, src_length, \*) if ``batch_first=True``. Otherwise,
+            the shape is regarded as (src_length, batch_size, \*).
+        duration (torch.LongTensor): Duration of shape (batch_size, src_length). if
+            ``batch_first=True``. Otherwise, the shape is regarded as (src_length, batch_size).
         pad_value (float): Padding value.
         batch_first (bool): Parameter to determine shape of input.
         max_length (int): Max length of sum of target durations.
@@ -25,9 +27,14 @@ def expand_by_duration(
     Returns:
         torch.Tensor: Expanded latent feature of shape (batch_size, max_tgt_length, \*).
 
+    .. note::
+
+        (batch_size, src_length) and (src_length, batch_size) are also supported as ``sequence``.
+
     """
     if not batch_first:
         sequence = sequence.swapaxes(0, 1)
+        duration = duration.swapaxes(0, 1)
 
     batch_size = sequence.size(0)
     feature_shape = sequence.size()[2:]

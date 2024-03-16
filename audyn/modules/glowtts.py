@@ -1,6 +1,7 @@
 from typing import List, Optional, Tuple, Union
 
 import torch
+import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -9,7 +10,6 @@ from .fastspeech import ConvBlock
 from .fastspeech import FFTrBlock as BaseFFTrBlock
 from .fastspeech import MultiheadSelfAttentionBlock as BaseMultiheadSelfAttentionBlock
 from .glow import ActNorm1d, InvertiblePointwiseConv1d
-from .normalization import MaskedLayerNorm
 from .waveglow import StackedResidualConvBlock1d, WaveNetAffineCoupling
 from .wavenet import GatedConv1d
 from .wavenet import ResidualConvBlock1d as BaseResidualConvBlock1d
@@ -104,7 +104,7 @@ class MultiheadSelfAttentionBlock(BaseMultiheadSelfAttentionBlock):
             **factory_kwargs,
         )
 
-        self.layer_norm = MaskedLayerNorm(embed_dim, **factory_kwargs)
+        self.layer_norm = nn.LayerNorm(embed_dim, **factory_kwargs)
         self.dropout = nn.Dropout(dropout)
 
         self.batch_first = batch_first
@@ -116,6 +116,7 @@ class MaskedActNorm1d(ActNorm1d):
     This module takes variable-length input.
     """
 
+    @torch.no_grad()
     def _initialize_parameters(
         self,
         input: torch.Tensor,
@@ -124,18 +125,53 @@ class MaskedActNorm1d(ActNorm1d):
         if padding_mask is None:
             super()._initialize_parameters(input)
         else:
+            is_distributed = dist.is_available() and dist.is_initialized()
+
+            # obtain world size for DDP
+            if is_distributed:
+                world_size = dist.get_world_size()
+            else:
+                world_size = 1
+
             expanded_padding_mask = _expand_padding_mask(padding_mask, input)
             expanded_non_padding_mask = torch.logical_not(expanded_padding_mask)
             num_elements = expanded_non_padding_mask.sum(dim=(0, 2))
             masked_input = input.masked_fill(expanded_padding_mask, 0)
-            mean = masked_input.sum(dim=(0, 2)) / num_elements
+            sum_input = torch.sum(masked_input, dim=(0, 2))
 
-            zero_mean_input = masked_input - mean.unsqueeze(dim=-1)
-            squared_input = torch.masked_fill(zero_mean_input**2, expanded_padding_mask, 0)
-            log_std = 0.5 * (torch.log(squared_input.sum(dim=(0, 2))) - torch.log(num_elements))
+            if is_distributed:
+                # gather statistics
+                # sum_input:
+                #  (num_features,) -> (num_gpus, num_features) -> (num_features,)
+                # num_elements:
+                #  (num_features,) -> (num_gpus, num_features) -> (num_features,)
+                gathered_sum_input = [torch.zeros_like(sum_input) for _ in range(world_size)]
+                gathered_num_elements = [torch.zeros_like(num_elements) for _ in range(world_size)]
+                dist.all_gather(gathered_sum_input, sum_input)
+                dist.all_gather(gathered_num_elements, num_elements)
+                gathered_sum_input = torch.stack(gathered_sum_input, dim=0)
+                gathered_num_elements = torch.stack(gathered_num_elements, dim=0)
+                sum_input = torch.sum(gathered_sum_input, dim=0)
+                num_elements = torch.sum(gathered_num_elements, dim=0)
 
-            self.log_std.data.copy_(log_std)
-            self.mean.data.copy_(mean)
+            mean = sum_input / num_elements
+            zero_mean_input = input - mean.unsqueeze(dim=-1)
+            masked_zero_mean_input = torch.masked_fill(zero_mean_input, expanded_padding_mask, 0)
+            sum_input = torch.sum(masked_zero_mean_input**2, dim=(0, 2))
+
+            if is_distributed:
+                # gather sum_input
+                # (num_features,) -> (world_size, num_features)
+                gathered_sum_input = [torch.zeros_like(sum_input) for _ in range(world_size)]
+                dist.all_gather(gathered_sum_input, sum_input)
+                gathered_sum_input = torch.stack(gathered_sum_input, dim=0)
+                sum_input = torch.sum(gathered_sum_input, dim=0)
+
+            log_std = 0.5 * (torch.log(sum_input) - torch.log(num_elements))
+            bias = -mean * torch.exp(-log_std)
+
+            self.log_scale.data.copy_(-log_std)
+            self.bias.data.copy_(bias)
 
             self.is_initialized = True
 
@@ -148,21 +184,21 @@ class MaskedActNorm1d(ActNorm1d):
         if padding_mask is None:
             output, logdet = super()._forward(input, logdet=logdet)
         else:
+            log_scale = self.log_scale
+            bias = self.bias
             expanded_padding_mask = _expand_padding_mask(padding_mask, input)
-            expanded_non_padding_mask = torch.logical_not(expanded_padding_mask)
-            # count elements per batch dimension
-            num_elements = expanded_non_padding_mask.sum(dim=(1, 2))
 
-            log_std = self.log_std.unsqueeze(dim=-1)
-            std = torch.exp(log_std)
-            mean = self.mean.unsqueeze(dim=-1)
-            x = (input - mean) / std
+            scale = torch.exp(log_scale)
+            scale = scale.unsqueeze(dim=-1)
+            bias = bias.unsqueeze(dim=-1)
+            x = scale * input + bias
             output = x.masked_fill(expanded_padding_mask, 0)
 
             if logdet is not None:
-                log_std = log_std.expand(input.size())
-                log_std = log_std.masked_fill(expanded_padding_mask, 0)
-                logdet = logdet - num_elements * log_std.sum(dim=(1, 2))
+                log_scale = log_scale.unsqueeze(dim=-1)
+                log_scale = log_scale.expand(input.size())
+                log_scale = log_scale.masked_fill(expanded_padding_mask, 0)
+                logdet = logdet + log_scale.sum(dim=(1, 2))
 
         return output, logdet
 
@@ -175,21 +211,21 @@ class MaskedActNorm1d(ActNorm1d):
         if padding_mask is None:
             output, logdet = super()._reverse(input, logdet=logdet)
         else:
+            log_scale = self.log_scale
+            bias = self.bias
             expanded_padding_mask = _expand_padding_mask(padding_mask, input)
-            expanded_non_padding_mask = torch.logical_not(expanded_padding_mask)
-            # count elements per batch dimension
-            num_elements = expanded_non_padding_mask.sum(dim=(1, 2))
 
-            log_std = self.log_std.unsqueeze(dim=-1)
-            std = torch.exp(log_std)
-            mean = self.mean.unsqueeze(dim=-1)
-            x = std * input + mean
+            scale = torch.exp(-log_scale)
+            scale = scale.unsqueeze(dim=-1)
+            bias = bias.unsqueeze(dim=-1)
+            x = scale * (input - bias)
             output = x.masked_fill(expanded_padding_mask, 0)
 
             if logdet is not None:
-                log_std = log_std.expand(input.size())
-                log_std = log_std.masked_fill(expanded_padding_mask, 0)
-                logdet = logdet + num_elements * log_std.sum(dim=(1, 2))
+                log_scale = log_scale.unsqueeze(dim=-1)
+                log_scale = log_scale.expand(input.size())
+                log_scale = log_scale.masked_fill(expanded_padding_mask, 0)
+                logdet = logdet - log_scale.sum(dim=(1, 2))
 
         return output, logdet
 
@@ -206,6 +242,8 @@ class MaskedActNorm1d(ActNorm1d):
             input (torch.Tensor): Tensor of shape (batch_size, num_features, length).
             padding_mask (torch.BoolTensor): Padding mask of shape
                 (batch_size, length) or (batch_size, num_features, length).
+            logdet (torch.Tensor, optional): Log-determinant of shape (batch_size,).
+            reverse (bool): If ``True``, reverse operation is applied. Default: ``False`
 
         Returns:
             torch.Tensor: Transformed tensor of same shape as input.
@@ -366,7 +404,7 @@ class MaskedWaveNetAffineCoupling(WaveNetAffineCoupling):
         split: Optional[nn.Module] = None,
         concat: Optional[nn.Module] = None,
         scaling: bool = False,
-        in_channels: Optional[int] = None,
+        scaling_channels: Optional[int] = None,
     ) -> None:
         coupling = MaskedStackedResidualConvBlock1d(
             coupling_channels,
@@ -388,7 +426,7 @@ class MaskedWaveNetAffineCoupling(WaveNetAffineCoupling):
             split=split,
             concat=concat,
             scaling=scaling,
-            in_channels=in_channels,
+            scaling_channels=scaling_channels,
         )
 
     def forward(
@@ -442,6 +480,7 @@ class MaskedWaveNetAffineCoupling(WaveNetAffineCoupling):
 
             if self.scaling_factor is not None:
                 scale = torch.exp(self.scaling_factor)
+                scale = scale.unsqueeze(dim=-1)
                 log_s = torch.tanh(log_s / scale) * scale
 
             x1 = y1
@@ -470,6 +509,7 @@ class MaskedWaveNetAffineCoupling(WaveNetAffineCoupling):
 
             if self.scaling_factor is not None:
                 scale = torch.exp(self.scaling_factor)
+                scale = scale.unsqueeze(dim=-1)
                 log_s = torch.tanh(log_s / scale) * scale
 
             y1 = x1
@@ -523,13 +563,14 @@ class MaskedStackedResidualConvBlock1d(StackedResidualConvBlock1d):
         for layer_idx in range(num_layers):
             if dilation_rate > 1:
                 dilation = dilation_rate**layer_idx
-            else:
-                dilation = 1
+
                 assert (
                     stride == 1
                 ), "When dilated convolution, stride is expected to be 1, but {} is given.".format(
                     stride
                 )
+            else:
+                dilation = 1
 
             if layer_idx < num_layers - 1:
                 dual_head = True

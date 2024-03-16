@@ -1,8 +1,11 @@
-from typing import Optional
+from typing import Dict, Optional, Union
 
 import torch
 
+from .fastspeech import FastSpeechMSELoss
 from .flow import NLLLoss
+
+__all__ = ["GlowTTSNLLLoss", "GlowTTSDurationLoss"]
 
 
 class GlowTTSNLLLoss(NLLLoss):
@@ -38,5 +41,56 @@ class GlowTTSNLLLoss(NLLLoss):
         num_elements = tgt_non_padding_mask.sum(dim=(1, 2))
 
         loss = super().forward(logdet / num_elements)
+
+        return loss
+
+
+class GlowTTSDurationLoss(FastSpeechMSELoss):
+    def __init__(
+        self,
+        take_log: Union[bool, Dict[str, bool]] = False,
+        reduction: Optional[str] = None,
+        batch_first: bool = False,
+        min: Optional[float] = None,
+        max: Optional[float] = None,
+    ) -> None:
+        super().__init__(
+            take_log=take_log,
+            reduction=reduction,
+            batch_first=batch_first,
+            min=min,
+            max=max,
+        )
+
+    def forward(
+        self,
+        input: torch.Tensor,
+        target: torch.Tensor,
+    ) -> torch.Tensor:
+        r"""Forward pass of duration MSE loss used in paper of GlowTTS.
+
+        Args:
+            input (torch.Tensor): Estimated feature of shape (batch_size, length)
+                if ``batch_first=True``, otherwise (length, batch_size).
+            target (torch.Tensor): Target feature of shape (batch_size, length)
+                if ``batch_first=True``, otherwise (length, batch_size).
+
+        Returns:
+            torch.Tensor: Mean squared error. If ``reduction=None``, shape is same as input.
+                If ``reduction=mean``, shape is ().
+
+        .. note::
+
+            Different from duration loss used in FastSpeech, maximum duration of target
+            feature (e.g. Melspectrogram) might be modified by GlowTTS decoder.
+            The modified duration is judged by ``torch.count_nonzero`` of ``target``.
+
+        """
+        if self.batch_first:
+            length = torch.count_nonzero(target, dim=-1)
+        else:
+            length = torch.count_nonzero(target, dim=0)
+
+        loss = super().forward(input, target, length=length)
 
         return loss

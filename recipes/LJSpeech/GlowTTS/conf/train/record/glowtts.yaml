@@ -1,13 +1,19 @@
-spectrogram:
+duration:
   iteration:
-    every: 1
+    every: 1000
     sample_size: 1
     key_mapping:
       output:
+        ml_duration: "Extracted alignment (iteration)"
+        log_est_duration: "Estimated alignment (iteration)"
       reference:
-        melspectrogram: "Melspectrogram (iteration)"
     transforms:
       output:
+        log_est_duration:
+          _target_: audyn.utils.duration.transform_log_duration
+          _partial_: true
+          min_duration: 0
+          dtype: ${const:torch.long}
       reference:
   epoch:
     every: 1
@@ -15,13 +21,37 @@ spectrogram:
     key_mapping:
       validation:
         output:
+          ml_duration: "Extracted alignment (epoch)"
+          log_est_duration: "Estimated alignment (epoch)"
         reference:
-          melspectrogram: "Melspectrogram (epoch)"
       inference:
         output:
-          estimated_melspectrogram: "Estimated Melspectrogram of inference (epoch)"
+          estimated_duration: "Estimated alignment of inference (epoch)"
         reference:
-          melspectrogram: "Melspectrogram of inference (epoch)"
     transforms:
       validation: ${...iteration.transforms}
-      inference: ${...iteration.transforms}
+      inference:
+        output:
+          estimated_duration:
+            _target_: audyn.utils.duration.to_long
+            _partial_: true
+        reference:
+
+spectrogram:
+  iteration:
+  epoch:
+    every: 1
+    sample_size: 1
+    key_mapping:
+      validation:
+        output:
+        reference:
+          log_melspectrogram: "Melspectrogram (epoch)"
+      inference:
+        output:
+          estimated_log_melspectrogram: "Estimated Melspectrogram of inference (epoch)"
+        reference:
+          log_melspectrogram: "Melspectrogram of inference (epoch)"
+    transforms:
+      validation:
+      inference:

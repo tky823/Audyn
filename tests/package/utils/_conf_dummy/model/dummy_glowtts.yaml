@@ -3,43 +3,41 @@ encoder:
   _target_: audyn.models.glowtts.TextEncoder
   word_embedding:
     _target_: torch.nn.Embedding
-    num_embeddings: ${data.text.vocab_size}
-    embedding_dim: 192
+    num_embeddings: ???
+    embedding_dim: 4
     padding_idx: 0
   backbone:
     _target_: audyn.models.glowtts.GlowTTSTransformerEncoder
     encoder_layer:
-      _target_: audyn.modules.glowtts.GlowTTSFFTrBlock
+      _target_: audyn.modules.fastspeech.FFTrBlock
       d_model: ${...word_embedding.embedding_dim}
-      hidden_channels: 768
+      hidden_channels: 4
       num_heads: 2
       kernel_size:
         - 3
         - 3
       dropout: 1.0e-1
-      window_size: 4
       batch_first: ${..batch_first}
-    num_layers: 6
+    num_layers: 2
     batch_first: true
   proj_mean:
     _target_: torch.nn.Linear
     in_features: ${..backbone.encoder_layer.d_model}
-    out_features: ${data.melspectrogram.n_mels}
+    out_features: ${...decoder.in_channels}
   proj_std:
     _target_: torch.nn.Linear
     in_features: ${..backbone.encoder_layer.d_model}
-    out_features: ${data.melspectrogram.n_mels}
+    out_features: ${...decoder.in_channels}
 decoder:
   _target_: audyn.models.glowtts.Decoder
-  in_channels: ${data.melspectrogram.n_mels}
-  hidden_channels: 192
-  skip_channels: 192
-  num_flows: 12
-  num_layers: 4
-  num_splits: 4
+  in_channels: ???
+  hidden_channels: 4
+  skip_channels: 4
+  num_flows: 2
+  num_layers: 2
+  num_splits: 2
   down_scale: 2
-  kernel_size: 5
-  dilation_rate: 5
+  kernel_size: 3
   bias: true
   causal: false
   conv: gated
@@ -50,13 +48,11 @@ duration_predictor:
   _target_: audyn.modules.duration_predictor.FastSpeechDurationPredictor
   num_features:
     - ${...encoder.word_embedding.embedding_dim}
-    - 256
-    - 256
+    - 2
   kernel_size: 3
   dropout: 1.0e-1
   stop_gradient: true
   batch_first: ${..encoder.backbone.batch_first}
-  channels_last: true
 length_regulator:
   _target_: audyn.models.fastspeech.LengthRegulator
   batch_first: ${..encoder.backbone.batch_first}

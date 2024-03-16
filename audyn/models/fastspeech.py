@@ -21,6 +21,22 @@ class FastSpeech(nn.Module):
         duration_predictor (nn.Module): Duration predictor to predict duration
             from token-level latent representations.
         length_regulator (nn.Module): Length regulator to control scale of length.
+            ``length_regulator`` should take following values:
+
+            - h_src (torch.Tensor): latent representation of source feature of shape
+                (batch_size, src_length, num_features) or (src_length, batch_size, num_features).
+            - duration (torch.LongTensor): linear duration of shape (batch_size, src_length) or
+                (src_length, batch_size).
+            - max_length (int, optional): max_length of each src token.
+
+            and returns following values:
+
+            - torch.Tensor: Expanded sequence of shape
+                (batch_size, scaled_src_length, num_features) or
+                (scaled_src_length, batch_size, num_features).
+            - torch.LongTensor: Scaled duration of shape (batch_size, src_length) or
+                (src_length, batch_size).
+
         batch_first (bool): If ``True``, tensors are treated as (batch_size, length, num_features).
             Otherwise, treated as (length, batch_size, num_features). Default: ``False``.
 
@@ -33,7 +49,7 @@ class FastSpeech(nn.Module):
         duration_predictor: nn.Module,
         length_regulator: nn.Module,
         batch_first: bool = False,
-    ):
+    ) -> None:
         super().__init__()
 
         self.encoder = encoder
@@ -52,8 +68,10 @@ class FastSpeech(nn.Module):
         """Forward pass of FastSpeech.
 
         Args:
-            src (torch.Tensor): Text input of shape (batch_size, src_length).
-            duration (torch.LongTensor): Duration of source of shape (batch_size, src_length).
+            src (torch.Tensor): Text input of shape (batch_size, src_length)
+                if ``batch_first=True``. Otherwise, (src_length, batch_size).
+            duration (torch.LongTensor): Duration of source of shape (batch_size, src_length)
+                if ``batch_first=True``. Otherwise, (src_length, batch_size).
             max_length (int, optional): Maximum length of source duration.
                 The output length is up to max_length * src_length.
 
@@ -69,6 +87,16 @@ class FastSpeech(nn.Module):
         else:
             src_key_padding_mask = duration == 0
 
+            if not self.batch_first:
+                # NOTE: We assume encoder supports (batch_size, tgt_length)
+                #       even when batch_first = False.
+                src_key_padding_mask = src_key_padding_mask.permute(1, 0)
+
+        _validate_padding_mask_shape(
+            src,
+            padding_mask=src_key_padding_mask,
+            batch_first=self.batch_first,
+        )
         h_src = self.encoder(src, src_key_padding_mask=src_key_padding_mask)
         log_est_duration = self.duration_predictor(h_src)
 
@@ -101,12 +129,19 @@ class FastSpeech(nn.Module):
             max_length=max_length,
         )
 
-        tgt_duration = linear_est_duration.sum(dim=1)
-        max_tgt_duration = torch.max(tgt_duration)
-        tgt_key_padding_mask = self.create_duration_padding_mask(
-            tgt_duration, max_duration=max_tgt_duration
-        )
+        if self.batch_first:
+            tgt_length = linear_est_duration.sum(dim=1)
+        else:
+            tgt_length = linear_est_duration.sum(dim=0)
 
+        max_tgt_length = torch.max(tgt_length)
+        tgt_key_padding_mask = self.create_padding_mask(tgt_length, max_length=max_tgt_length)
+
+        _validate_padding_mask_shape(
+            h_tgt,
+            padding_mask=tgt_key_padding_mask,
+            batch_first=self.batch_first,
+        )
         output = self.decoder(h_tgt, tgt_key_padding_mask=tgt_key_padding_mask)
 
         return output, log_est_duration
@@ -125,28 +160,59 @@ class FastSpeech(nn.Module):
         )
 
     @staticmethod
-    def create_duration_padding_mask(
-        duration: torch.Tensor, max_duration: Optional[int] = None
+    def create_padding_mask(
+        length: torch.Tensor, max_length: Optional[int] = None
     ) -> torch.BoolTensor:
-        """Create padding mask for duration.
+        """Create padding mask for target sequence.
 
         Args:
-            duration (torch.Tensor): Duration of shape (batch_size,)
-            max_duration (int, optional): Max value of durations.
+            length (torch.Tensor): Length (i.e. sum of durations) of shape (batch_size,)
+            max_length (int, optional): Max value of lengths.
 
         Returns:
-            torch.BoolTensor of padding mask.
-            The shape is (batch_size, max_duration)
+            torch.BoolTensor: padding mask of shape (batch_size, max_duration).
 
         """
         # Allocation is required for mps
-        indices = torch.arange(max_duration).to(duration.device)
-        padding_mask = indices >= duration.unsqueeze(dim=-1)
+        indices = torch.arange(max_length).to(length.device)
+        padding_mask = indices >= length.unsqueeze(dim=-1)
 
         return padding_mask
 
 
 class MultiSpeakerFastSpeech(FastSpeech):
+    """FastSpeech for multi-speaker.
+
+    Args:
+        encoder (nn.Module): Encoder to transform text embeddings to
+            token-lavel latent representations.
+        decoder (nn.Module): Decoder to transform frame-level latent representations.
+        duration_predictor (nn.Module): Duration predictor to predict duration
+            from token-level latent representations.
+        length_regulator (nn.Module): Length regulator to control scale of length.
+            ``length_regulator`` should take following values:
+
+            - h_src (torch.Tensor): latent representation of source feature of shape
+                (batch_size, src_length, num_features) or (src_length, batch_size, num_features).
+            - duration (torch.LongTensor): linear duration of shape (batch_size, src_length) or
+                (src_length, batch_size).
+            - max_length (int, optional): max_length of each src token.
+
+            and returns following values:
+
+            - torch.Tensor: Expanded sequence of shape
+                (batch_size, scaled_src_length, num_features) or
+                (scaled_src_length, batch_size, num_features).
+            - torch.LongTensor: Scaled duration of shape (batch_size, src_length) or
+                (src_length, batch_size).
+
+        speaker_encoder (nn.Module): Speaker encoder.
+        blend_type (str): Blend type. ``add`` and ``mul`` are supported.
+        batch_first (bool): If ``True``, tensors are treated as (batch_size, length, num_features).
+            Otherwise, treated as (length, batch_size, num_features). Default: ``False``.
+
+    """
+
     def __init__(
         self,
         encoder: nn.Module,
@@ -177,14 +243,16 @@ class MultiSpeakerFastSpeech(FastSpeech):
         duration: Optional[torch.LongTensor] = None,
         max_length: Optional[int] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Forward pass of FastSpeech.
+        """Forward pass of MultiSpeakerFastSpeech.
 
         Args:
-            src (torch.Tensor): Text input of shape (batch_size, src_length).
+            src (torch.Tensor): Text input of shape (batch_size, src_length)
+                if ``batch_first=True``. Otherwise, (src_length, batch_size).
             speaker (torch.Tensor): Speaker-like feature of shape (batch_size, *).
-            duration (torch.LongTensor): Duration of source of shape (batch_size, src_length).
+            duration (torch.LongTensor): Duration of source of shape (batch_size, src_length)
+                if ``batch_first=True``. Otherwise, (src_length, batch_size).
             max_length (int, optional): Maximum length of source duration.
-                The output length is up to max_length * src_length.
+                The output length is up to max_length.
 
         Returns:
             tuple: Tuple of tensors containing:
@@ -198,6 +266,16 @@ class MultiSpeakerFastSpeech(FastSpeech):
         else:
             src_key_padding_mask = duration == 0
 
+            if not self.batch_first:
+                # NOTE: We assume encoder supports (batch_size, tgt_length)
+                #       even when batch_first = False.
+                src_key_padding_mask = src_key_padding_mask.permute(1, 0)
+
+        _validate_padding_mask_shape(
+            src,
+            padding_mask=src_key_padding_mask,
+            batch_first=self.batch_first,
+        )
         spk_emb = self.speaker_encoder(speaker)
         h_src = self.encoder(src, src_key_padding_mask=src_key_padding_mask)
         h_src = self.blend_embeddings(h_src, spk_emb)
@@ -232,13 +310,21 @@ class MultiSpeakerFastSpeech(FastSpeech):
             max_length=max_length,
         )
 
-        tgt_duration = linear_est_duration.sum(dim=1)
-        max_tgt_duration = torch.max(tgt_duration)
-        tgt_key_padding_mask = self.create_duration_padding_mask(
-            tgt_duration, max_duration=max_tgt_duration
-        )
+        if self.batch_first:
+            tgt_length = linear_est_duration.sum(dim=1)
+        else:
+            tgt_length = linear_est_duration.sum(dim=0)
+
+        max_tgt_length = torch.max(tgt_length)
+        tgt_key_padding_mask = self.create_padding_mask(tgt_length, max_length=max_tgt_length)
 
         h_tgt = self.blend_embeddings(h_tgt, spk_emb)
+
+        _validate_padding_mask_shape(
+            h_tgt,
+            padding_mask=tgt_key_padding_mask,
+            batch_first=self.batch_first,
+        )
         output = self.decoder(h_tgt, tgt_key_padding_mask=tgt_key_padding_mask)
 
         return output, log_est_duration
@@ -329,6 +415,12 @@ class Encoder(nn.Module):
         """
         x = self.word_embedding(src)
         x = self.positional_encoding(x)
+
+        _validate_padding_mask_shape(
+            x,
+            padding_mask=src_key_padding_mask,
+            batch_first=self.batch_first,
+        )
 
         for module in self.layers:
             x = module(
@@ -430,6 +522,12 @@ class Decoder(nn.Module):
         """
         x = self.positional_encoding(tgt)
 
+        _validate_padding_mask_shape(
+            x,
+            padding_mask=tgt_key_padding_mask,
+            batch_first=self.batch_first,
+        )
+
         for module in self.layers:
             x = module(
                 x,
@@ -506,8 +604,8 @@ class LengthRegulator(nn.Module):
         Args:
             sequence (torch.Tensor): Input sequence of shape (batch_size, length, *)
                 if ``self.batch_first=True``. Otherwise, (length, batch_size, *).
-            duration (torch.LongTensor): Duration of each input token
-                of shape (batch_size, length).
+            duration (torch.LongTensor): Duration of each input token of shape
+                (batch_size, length) if ``self.batch_first=True``. Otherwise, (length, batch_size).
             expand_scale (float): Parameter to control scale of duration. Default: ``1``.
             padding_mask (torch.BoolTensor, optional): Padding mask
                 of shape (batch_size, length).
@@ -517,8 +615,10 @@ class LengthRegulator(nn.Module):
         Returns:
             tuple: Tuple of tensors containing
 
-                - torch.Tensor: Expanded sequence.
-                - torch.Tensor: Scaled duration.
+                - torch.Tensor: Expanded sequence of shape (batch_size, expanded_length, *)
+                    if ``self.batch_first=True``. Otherwise, (length, batch_size, *).
+                - torch.Tensor: Scaled duration of shape (batch_size, length, *)
+                    if ``self.batch_first=True``. Otherwise, (length, batch_size).
 
         """
         pad_value = self.pad_value
@@ -559,3 +659,23 @@ class LengthRegulator(nn.Module):
 
 def _get_clones(module, N) -> nn.ModuleList:
     return nn.ModuleList([copy.deepcopy(module) for _ in range(N)])
+
+
+def _validate_padding_mask_shape(
+    input: torch.Tensor,
+    padding_mask: Optional[torch.BoolTensor] = None,
+    batch_first: Optional[bool] = None,
+) -> None:
+    """Validate shape of padding mask is compatible with that of input depending on batch_first."""
+    if padding_mask is None:
+        return
+
+    if batch_first is None:
+        raise ValueError("Specify batch_first.")
+
+    if batch_first:
+        assert input.size(0) == padding_mask.size(0)
+        assert input.size(1) == padding_mask.size(1)
+    else:
+        assert input.size(1) == padding_mask.size(0)
+        assert input.size(0) == padding_mask.size(1)
