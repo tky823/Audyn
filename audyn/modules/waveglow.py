@@ -1,4 +1,3 @@
-import warnings
 from typing import Optional, Tuple, Union
 
 import torch
@@ -31,9 +30,6 @@ class WaveNetAffineCoupling(AffineCoupling):
         scaling: bool = False,
         in_channels: Optional[int] = None,
     ) -> None:
-        if local_dim is None:
-            warnings.warn("local_dim is not given.")
-
         coupling = StackedResidualConvBlock1d(
             coupling_channels,
             hidden_channels,
