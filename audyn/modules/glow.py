@@ -150,6 +150,13 @@ class InvertiblePointwiseConv2d(BaseFlow):
 
 
 class ActNorm1d(BaseFlow):
+    """ActNorm proposed in Glow.
+
+    Args:
+        num_features (int): Number of features.
+
+    """
+
     def __init__(
         self,
         num_features: int,
@@ -253,6 +260,17 @@ class ActNorm1d(BaseFlow):
         logdet: Optional[torch.Tensor] = None,
         reverse: bool = False,
     ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+        """Forward pass of ActNorm1d.
+
+        Args:
+            input (torch.Tensor): Tensor of shape (batch_size, num_features, length).
+            logdet (torch.Tensor, optional): Log-determinant of shape (batch_size,).
+            reverse (bool): If ``True``, reverse operation is applied. Default: ``False`
+
+        Returns:
+            torch.Tensor: Transformed tensor of same shape as input.
+
+        """
         if self.training and not self.is_initialized:
             self._initialize_parameters(input)
 

@@ -235,6 +235,8 @@ class MaskedActNorm1d(ActNorm1d):
             input (torch.Tensor): Tensor of shape (batch_size, num_features, length).
             padding_mask (torch.BoolTensor): Padding mask of shape
                 (batch_size, length) or (batch_size, num_features, length).
+            logdet (torch.Tensor, optional): Log-determinant of shape (batch_size,).
+            reverse (bool): If ``True``, reverse operation is applied. Default: ``False`
 
         Returns:
             torch.Tensor: Transformed tensor of same shape as input.
