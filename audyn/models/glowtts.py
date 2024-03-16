@@ -1,3 +1,4 @@
+import math
 from typing import Any, List, Optional, Tuple, Union
 
 import torch
@@ -32,15 +33,15 @@ class GlowTTS(nn.Module):
 
     Args:
         encoder (nn.Module): Module to transform text tokens into latent features. The module
-            takes positional argument of text tokens (batch_size, src_length) and keyword argument
-            ``padding_mask`` (batch_size, src_length).
+            takes positional argument of text tokens (batch_size, max_src_length) and keyword
+            argument ``padding_mask`` (batch_size, src_length).
         decoder (audyn.modules.flow.BaseFlow): Flow to transform spectrograms into latent features
             in forward pass. The module takes positional argument of target features
-            (batch_size, tgt_length, num_tgt_features) and keyword arguments ``padding_mask``
-            (batch_size, tgt_length), ``logdet`` (batch_size,), and ``reverse`` (bool).
+            (batch_size, max_tgt_length, num_tgt_features) and keyword arguments ``padding_mask``
+            (batch_size, max_tgt_length), ``logdet`` (batch_size,), and ``reverse`` (bool).
         duration_predictor (nn.Module): Duration predictor which takes positional argument of
-            text features (batch_size, src_length, num_src_features) and keyword argument
-            ``padding_mask`` (batch_size, src_length).
+            text features (batch_size, max_src_length, num_src_features) and keyword argument
+            ``padding_mask`` (batch_size, max_src_length).
 
     """
 
@@ -80,21 +81,21 @@ class GlowTTS(nn.Module):
             Only ``batch_first=True`` is supported.
 
         Args:
-            src (torch.Tensor): Source feature of shape (batch_size, src_length).
-            tgt (torch.Tensor): Target feature of shape (batch_size, in_channels, tgt_length).
+            src (torch.Tensor): Source feature of shape (batch_size, max_src_length).
+            tgt (torch.Tensor): Target feature of shape (batch_size, in_channels, max_tgt_length).
             src_length (torch.LongTensor): Source feature lengths of shape (batch_size,).
             tgt_length (torch.LongTensor): Target feature lengths of shape (batch_size,).
 
         Returns:
             tuple: Tuple of tensors containing:
 
-                - tuple: Source latent variables (batch_size, src_length, num_features)
-                    and target latent variables (batch_size, tgt_length, num_features).
+                - tuple: Source latent variables (batch_size, max_src_length, num_features)
+                    and target latent variables (batch_size, max_tgt_length, num_features).
                 - tuple: Durations estimated by duration predictor in log-domain
                     and extracted by monotonic alignment search in linear-domain.
-                    The shape is (batch_size, src_length).
-                - tuple: Padding masks for source (batch_size, src_length)
-                    and target (batch_size, tgt_length).
+                    The shape is (batch_size, max_src_length).
+                - tuple: Padding masks for source (batch_size, max_src_length)
+                    and target (batch_size, max_tgt_length).
                 - torch.Tensor: Log-determinant.
                 - torch.LongTensor: Number of elements in a sample.
 
@@ -119,15 +120,6 @@ class GlowTTS(nn.Module):
             ) >= tgt_length.unsqueeze(dim=-1)
 
         src_latent, normal = self.encoder(src, padding_mask=src_padding_mask)
-
-        if isinstance(normal, tuple):
-            mean, log_std = normal
-            normal = Normal(loc=mean, scale=torch.exp(log_std))
-            normal = Independent(normal, reinterpreted_batch_ndims=1)
-        elif isinstance(normal, Normal):
-            normal = Independent(normal, reinterpreted_batch_ndims=1)
-        elif not isinstance(normal, Independent):
-            raise ValueError(f"{type(normal)} is not supported.")
 
         # NOTE: "est_duration" might be taken log.
         log_est_duration = self.duration_predictor(src_latent, padding_mask=src_padding_mask)
@@ -184,7 +176,7 @@ class GlowTTS(nn.Module):
         """Inference of GlowTTS.
 
         Args:
-            src (torch.Tensor): Source feature of shape (batch_size, src_length).
+            src (torch.Tensor): Source feature of shape (batch_size, max_src_length).
             src_length (torch.LongTensor): Source feature lengths of shape (batch_size,).
             max_length (int, optional): Maximum length of source duration.
                 The output length is up to max_length * src_length.
@@ -195,7 +187,7 @@ class GlowTTS(nn.Module):
 
                 - torch.Tensor: Log-likelihood of target feature of shape (batch_size,).
                 - torch.LongTensor: Estimated duration in linear-domain
-                    of shape (batch_size, src_length).
+                    of shape (batch_size, max_src_length).
 
         .. note::
 
@@ -279,37 +271,49 @@ class GlowTTS(nn.Module):
     @staticmethod
     def search_gaussian_monotonic_alignment(
         input: torch.Tensor,
-        normal: Independent,
+        normal: Union[Independent, Tuple[torch.Tensor, torch.Tensor]],
         padding_mask: Optional[torch.BoolTensor] = None,
     ) -> Tuple[torch.Tensor, torch.LongTensor]:
         """Search monotonic alignment assuming Gaussian distributions.
 
         Args:
             input (torch.Tensor): Probablistic variable
-                of shape (batch_size, tgt_length, num_features).
-            normal (torch.distributions.Independent): Gaussian distribution parametrized by
-                mean (batch_size, src_length, num_features) and
-                stddev (batch_size, src_length, num_features).
+                of shape (batch_size, max_tgt_length, num_features).
+            normal (torch.distributions.Independent or tuple): Gaussian distribution parametrized
+                by mean (batch_size, max_src_length, num_features) and
+                stddev (batch_size, max_src_length, num_features).
             padding_mask (torch.BoolTensor, optional): Padding mask for monotonic alignment.
 
         Returns:
             tuple: Tuple of tensors containing
 
                 - torch.Tensor: Maximum log-likelihood of p(z) of
-                    shape (batch_size, tgt_length).
+                    shape (batch_size, max_tgt_length).
                 - torch.LongTensor: Duration in linear-domain of
-                    shape (batch_size, src_length).
+                    shape (batch_size, max_src_length).
 
         """
-        batch_size, tgt_length, _ = input.size()
-        _, src_length, _ = normal.mean.size()
+        batch_size, max_tgt_length, num_features = input.size()
 
-        x = input.permute(1, 0, 2).contiguous()
-        x = x.unsqueeze(dim=2)
-        log_prob = normal.log_prob(x)
-        log_prob = log_prob.permute(1, 0, 2).contiguous()
+        if isinstance(normal, tuple):
+            mean, log_std = normal
+            _, max_src_length, _ = mean.size()
+            x = input.unsqueeze(dim=-2)
+            mean = mean.unsqueeze(dim=-3)
+            log_std = log_std.unsqueeze(dim=-3)
+            x = (x - mean) / torch.exp(log_std)
+            log_prob = -0.5 * torch.sum(x**2, dim=-1)
+            log_prob = log_prob - 0.5 * num_features * math.log(2 * math.pi) - log_std.sum(dim=-1)
+        elif isinstance(normal, Independent):
+            _, max_src_length, _ = normal.mean.size()
+            x = input.permute(1, 0, 2).contiguous()
+            x = x.unsqueeze(dim=2)
+            log_prob = normal.log_prob(x)
+            log_prob = log_prob.permute(1, 0, 2).contiguous()
+        else:
+            raise ValueError(f"{type(normal)} is not supported.")
 
-        assert log_prob.size() == (batch_size, tgt_length, src_length)
+        assert log_prob.size() == (batch_size, max_tgt_length, max_src_length)
 
         hard_alignment = search_monotonic_alignment_by_viterbi(
             log_prob,
@@ -374,14 +378,14 @@ class TextEncoder(nn.Module):
         """Forward pass of TextEncoder.
 
         Args:
-            input (torch.LongTensor): Text input of shape (batch_size, length).
-            padding_mask (torch.Tensor): Padding mask of shape (batch_size, length).
+            input (torch.LongTensor): Text input of shape (batch_size, max_length).
+            padding_mask (torch.Tensor): Padding mask of shape (batch_size, max_length).
 
         Returns:
 
             tuple: Tuple of tensors containing
 
-                - torch.Tensor: Latent feature of shape (batch_size, length, out_channels),
+                - torch.Tensor: Latent feature of shape (batch_size, max_length, out_channels),
                     where ``out_channels`` is determined by ``self.backbone``.
                 - torch.distributions.Independent: Multivariate Gaussian distribution
                     composed by ``mean`` and ``stddev``.
