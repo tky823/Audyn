@@ -81,7 +81,7 @@ class GlowTTS(nn.Module):
 
         Args:
             src (torch.Tensor): Source feature of shape (batch_size, src_length).
-            tgt (torch.Tensor): Target feature of shape (batch_size, in_channels, src_length).
+            tgt (torch.Tensor): Target feature of shape (batch_size, in_channels, tgt_length).
             src_length (torch.LongTensor): Source feature lengths of shape (batch_size,).
             tgt_length (torch.LongTensor): Target feature lengths of shape (batch_size,).
 
