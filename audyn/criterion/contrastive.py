@@ -20,6 +20,22 @@ class _ContrastiveLoss(nn.Module):
     """Base class of contrastive loss.
 
     NOTE: This class is extended for InfoNCE and NT-Xent losses.
+
+    Args:
+        wrapped_by_ddp (bool, optional): Hint to compute gradient correctly.
+           If  ``True``, this module is expected to be wrapped by
+           ``torch.nn.parallel.DistributedDataParallel`` as
+
+            .. example::
+
+                >>> criterion = _ContrastiveLoss()
+                >>> criterion = nn.parallel.DistributedDataParallel(criterion)
+
+    .. note::
+
+        Default value of ``wrapped_by_ddp`` depends on whether tensors are gathered among devices.
+        If they are gathered, ``True`` is used. Otherwise, ``False`` is used by default.
+
     """
 
     def __init__(
@@ -31,6 +47,7 @@ class _ContrastiveLoss(nn.Module):
         max_temperature: Optional[float] = None,
         reduction: str = "mean",
         gather_in_eval: Optional[bool] = None,
+        wrapped_by_ddp: Optional[bool] = None,
     ) -> None:
         super().__init__()
 
@@ -47,6 +64,7 @@ class _ContrastiveLoss(nn.Module):
 
         self.gather_if_necessary = None
         self.gather_in_eval = gather_in_eval
+        self.wrapped_by_ddp = wrapped_by_ddp
 
     def validate_input_shape(self, input: torch.Tensor) -> int:
         dim = self.dim
@@ -105,6 +123,38 @@ class _ContrastiveLoss(nn.Module):
 
         return log_temperature
 
+    @staticmethod
+    def select_tensor_at_rank(input: torch.Tensor, dim: int) -> torch.Tensor:
+        """Select tensor at rank of current device.
+
+        Args:
+            input (torch.Tensor): Tensor to split.
+            dim (int): Dimension to split.
+
+        Returns:
+            torch.Tensor: Selected tensor.
+
+        """
+        is_distributed = dist.is_available() and dist.is_initialized()
+
+        if is_distributed:
+            rank = dist.get_rank()
+            world_size = dist.get_world_size()
+        else:
+            rank = 0
+            world_size = 1
+
+        num_total_samples = input.size(dim)
+        num_samples_per_device = num_total_samples // world_size
+        sections = [
+            rank * num_samples_per_device,
+            num_samples_per_device,
+            num_total_samples - (rank + 1) * num_samples_per_device,
+        ]
+        _, output, _ = torch.split(input, sections, dim=dim)
+
+        return output
+
 
 class _InfoNCELoss(_ContrastiveLoss):
     """Base class of InfoNCE loss."""
@@ -118,6 +168,7 @@ class _InfoNCELoss(_ContrastiveLoss):
         max_temperature: Optional[float] = None,
         reduction: str = "mean",
         gather_in_eval: Optional[bool] = None,
+        wrapped_by_ddp: Optional[bool] = None,
     ) -> None:
         super().__init__(
             dim=dim,
@@ -127,6 +178,7 @@ class _InfoNCELoss(_ContrastiveLoss):
             max_temperature=max_temperature,
             reduction=reduction,
             gather_in_eval=gather_in_eval,
+            wrapped_by_ddp=wrapped_by_ddp,
         )
 
     def permute_along_dim(self, input: torch.Tensor) -> torch.Tensor:
@@ -153,8 +205,8 @@ class _InfoNCELoss(_ContrastiveLoss):
         """Cross entropy from one view.
 
         Args:
-            logit (torch.Tensor): Logit of shape (*, num_samples', num_samples).
-            target (torch.LongTensor): Target indices of shape (*, num_samples).
+            logit (torch.Tensor): Logit of shape (*, num_input_samples, num_target_samples).
+            target (torch.LongTensor): Target indices of shape (*, num_input_samples).
 
         Returns:
             torch.Tensor: Computed cross entropy from one view.
@@ -187,6 +239,7 @@ class _InfoNCELoss(_ContrastiveLoss):
 
         """
         gather_if_necessary = self.gather_if_necessary
+        wrapped_by_ddp = self.wrapped_by_ddp
         dim = self.dim
         n_dims = input.dim()
 
@@ -221,18 +274,30 @@ class _InfoNCELoss(_ContrastiveLoss):
 
         if should_gather:
             # gather input and other along dim
-            input = SyncFunction.apply(input, -2)
-            other = SyncFunction.apply(other, -2)
+            input = SyncFunction.apply(input, -2, wrapped_by_ddp)
+            other = SyncFunction.apply(other, -2, wrapped_by_ddp)
 
-        sample_size = input.size(-2)
-        logit = torch.matmul(input, other.transpose(-2, -1)) * temperature
-        target = torch.arange(sample_size, device=logit.device)
+        num_total_samples = input.size(-2)
+        target = torch.arange(num_total_samples, device=input.device)
 
-        target_size = input.size()[:-2] + (sample_size,)
-        target = target.expand(*target_size)
+        if should_gather:
+            input_at_rank = self.select_tensor_at_rank(input, dim=-2)
+            other_at_rank = self.select_tensor_at_rank(other, dim=-2)
+            target_at_rank = self.select_tensor_at_rank(target, dim=-1)
+        else:
+            input_at_rank = input
+            other_at_rank = other
+            target_at_rank = target
 
-        loss_one = self.cross_entropy(logit, target)
-        loss_other = self.cross_entropy(logit.transpose(-2, -1), target)
+        target_size = input_at_rank.size()[:-1]
+        target_at_rank = target_at_rank.expand(*target_size)
+
+        logit_at_rank = torch.matmul(other_at_rank, input.transpose(-2, -1)) * temperature
+        loss_one = self.cross_entropy(logit_at_rank, target_at_rank)
+
+        logit_at_rank = torch.matmul(input_at_rank, other.transpose(-2, -1)) * temperature
+        loss_other = self.cross_entropy(logit_at_rank, target_at_rank)
+
         loss = 0.5 * (loss_one + loss_other)
 
         return loss
@@ -250,6 +315,7 @@ class _NTXentLoss(_ContrastiveLoss):
         max_temperature: Optional[float] = None,
         reduction: str = "mean",
         gather_in_eval: Optional[bool] = None,
+        wrapped_by_ddp: Optional[bool] = None,
     ) -> None:
         super().__init__(
             dim=dim,
@@ -259,6 +325,7 @@ class _NTXentLoss(_ContrastiveLoss):
             max_temperature=max_temperature,
             reduction=reduction,
             gather_in_eval=gather_in_eval,
+            wrapped_by_ddp=wrapped_by_ddp,
         )
 
     def forward(self, input: torch.Tensor, other: torch.Tensor) -> torch.Tensor:
@@ -273,6 +340,7 @@ class _NTXentLoss(_ContrastiveLoss):
 
         """
         gather_if_necessary = self.gather_if_necessary
+        wrapped_by_ddp = self.wrapped_by_ddp
         reduction = self.reduction
         dim = self.dim
         n_dims = input.dim()
@@ -308,8 +376,8 @@ class _NTXentLoss(_ContrastiveLoss):
 
         if should_gather:
             # gather input and other along dim
-            input = SyncFunction.apply(input, -2)
-            other = SyncFunction.apply(other, -2)
+            input = SyncFunction.apply(input, -2, wrapped_by_ddp)
+            other = SyncFunction.apply(other, -2, wrapped_by_ddp)
 
         sample_size = input.size(-2)
         logit = torch.matmul(input, other.transpose(-2, -1)) * temperature
@@ -333,7 +401,7 @@ class _NTXentLoss(_ContrastiveLoss):
 
 
 class InfoNCELoss(_InfoNCELoss):
-    """InfoNSE loss."""
+    """InfoNCE loss."""
 
     def __init__(
         self,
@@ -344,6 +412,7 @@ class InfoNCELoss(_InfoNCELoss):
         max_temperature: Optional[float] = None,
         reduction: str = "mean",
         gather_in_eval: Optional[bool] = None,
+        wrapped_by_ddp: Optional[bool] = None,
     ) -> None:
         super().__init__(
             dim,
@@ -353,6 +422,7 @@ class InfoNCELoss(_InfoNCELoss):
             max_temperature=max_temperature,
             reduction=reduction,
             gather_in_eval=gather_in_eval,
+            wrapped_by_ddp=wrapped_by_ddp,
         )
 
         assert dim >= 0, f"dim ({dim}) should be non-negative."
@@ -364,6 +434,12 @@ class InfoNCELoss(_InfoNCELoss):
 
         if self.gather_in_eval is None:
             self.gather_in_eval = self.gather_if_necessary
+
+        if self.gather_if_necessary:
+            if self.wrapped_by_ddp is None:
+                self.wrapped_by_ddp = True
+        else:
+            assert self.wrapped_by_ddp is None or not self.wrapped_by_ddp
 
 
 class NTXentLoss(_NTXentLoss):
@@ -378,6 +454,7 @@ class NTXentLoss(_NTXentLoss):
         max_temperature: Optional[float] = None,
         reduction: str = "mean",
         gather_in_eval: Optional[bool] = None,
+        wrapped_by_ddp: Optional[bool] = None,
     ) -> None:
         super().__init__(
             dim,
@@ -387,6 +464,7 @@ class NTXentLoss(_NTXentLoss):
             max_temperature=max_temperature,
             reduction=reduction,
             gather_in_eval=gather_in_eval,
+            wrapped_by_ddp=wrapped_by_ddp,
         )
 
         assert dim >= 0, f"dim ({dim}) should be non-negative."
@@ -399,9 +477,15 @@ class NTXentLoss(_NTXentLoss):
         if self.gather_in_eval is None:
             self.gather_in_eval = self.gather_if_necessary
 
+        if self.gather_if_necessary:
+            if self.wrapped_by_ddp is None:
+                self.wrapped_by_ddp = True
+        else:
+            assert self.wrapped_by_ddp is None or not self.wrapped_by_ddp
+
 
 class IntraInfoNCELoss(_InfoNCELoss):
-    """InfoNSE loss where samples are not gathered among GPUs."""
+    """InfoNCE loss where samples are not gathered among GPUs."""
 
     def __init__(
         self,
@@ -411,6 +495,7 @@ class IntraInfoNCELoss(_InfoNCELoss):
         min_temperature: Optional[float] = None,
         max_temperature: Optional[float] = None,
         reduction: str = "mean",
+        wrapped_by_ddp: Optional[bool] = None,
     ) -> None:
         super().__init__(
             dim,
@@ -420,13 +505,16 @@ class IntraInfoNCELoss(_InfoNCELoss):
             max_temperature=max_temperature,
             reduction=reduction,
             gather_in_eval=False,
+            wrapped_by_ddp=wrapped_by_ddp,
         )
 
         self.gather_if_necessary = False
 
+        assert self.wrapped_by_ddp is None or not self.wrapped_by_ddp
+
 
 class InterInfoNCELoss(_InfoNCELoss):
-    """InfoNSE loss where samples are gathered among GPUs."""
+    """InfoNCE loss where samples are gathered among GPUs."""
 
     def __init__(
         self,
@@ -437,6 +525,7 @@ class InterInfoNCELoss(_InfoNCELoss):
         max_temperature: Optional[float] = None,
         reduction: str = "mean",
         gather_in_eval: Optional[bool] = True,
+        wrapped_by_ddp: Optional[bool] = None,
     ) -> None:
         super().__init__(
             dim,
@@ -446,9 +535,13 @@ class InterInfoNCELoss(_InfoNCELoss):
             max_temperature=max_temperature,
             reduction=reduction,
             gather_in_eval=gather_in_eval,
+            wrapped_by_ddp=wrapped_by_ddp,
         )
 
         self.gather_if_necessary = True
+
+        if self.wrapped_by_ddp is None:
+            self.wrapped_by_ddp = True
 
 
 class IntraNTXentLoss(_NTXentLoss):
@@ -462,6 +555,7 @@ class IntraNTXentLoss(_NTXentLoss):
         min_temperature: Optional[float] = None,
         max_temperature: Optional[float] = None,
         reduction: str = "mean",
+        wrapped_by_ddp: Optional[bool] = None,
     ) -> None:
         super().__init__(
             dim,
@@ -471,9 +565,12 @@ class IntraNTXentLoss(_NTXentLoss):
             max_temperature=max_temperature,
             reduction=reduction,
             gather_in_eval=False,
+            wrapped_by_ddp=wrapped_by_ddp,
         )
 
         self.gather_if_necessary = False
+
+        assert self.wrapped_by_ddp is None or not self.wrapped_by_ddp
 
 
 class InterNTXentLoss(_NTXentLoss):
@@ -488,6 +585,7 @@ class InterNTXentLoss(_NTXentLoss):
         max_temperature: Optional[float] = None,
         reduction: str = "mean",
         gather_in_eval: bool = True,
+        wrapped_by_ddp: Optional[bool] = None,
     ) -> None:
         super().__init__(
             dim,
@@ -497,19 +595,26 @@ class InterNTXentLoss(_NTXentLoss):
             max_temperature=max_temperature,
             reduction=reduction,
             gather_in_eval=gather_in_eval,
+            wrapped_by_ddp=wrapped_by_ddp,
         )
 
         self.gather_if_necessary = True
+
+        if self.wrapped_by_ddp is None:
+            self.wrapped_by_ddp = True
 
 
 class SyncFunction(torch.autograd.Function):
     # TODO: improve design
     @staticmethod
-    def forward(ctx: Any, tensor: torch.Tensor, dim: int) -> torch.Tensor:
+    def forward(ctx: Any, tensor: torch.Tensor, dim: int, wrapped_by_ddp: bool) -> torch.Tensor:
+        if not wrapped_by_ddp:
+            raise ValueError("wrapped_by_ddp=False is not supported now.")
+
         world_size = dist.get_world_size()
 
         ctx.dim = dim
-        ctx.samples_size_per_device = tensor.size(dim)
+        ctx.num_samples_per_device = tensor.size(dim)
         ctx.rank = dist.get_rank()
 
         gathered_tensor = [torch.zeros_like(tensor) for _ in range(world_size)]
@@ -521,7 +626,7 @@ class SyncFunction(torch.autograd.Function):
     @staticmethod
     def backward(ctx: Any, gathered_grad_output: torch.Tensor) -> Tuple[torch.Tensor]:
         dim = ctx.dim
-        samples_size_per_device = ctx.samples_size_per_device
+        num_samples_per_device = ctx.num_samples_per_device
         rank = ctx.rank
 
         gathered_grad_input = gathered_grad_output.clone()
@@ -529,9 +634,9 @@ class SyncFunction(torch.autograd.Function):
 
         num_total_samples = gathered_grad_input.size(dim)
         sections = [
-            rank * samples_size_per_device,
-            samples_size_per_device,
-            num_total_samples - (rank + 1) * samples_size_per_device,
+            rank * num_samples_per_device,
+            num_samples_per_device,
+            num_total_samples - (rank + 1) * num_samples_per_device,
         ]
 
         _, gathered_grad_input, _ = torch.split(
@@ -540,4 +645,4 @@ class SyncFunction(torch.autograd.Function):
             dim=dim,
         )
 
-        return gathered_grad_input, None
+        return gathered_grad_input, None, None
