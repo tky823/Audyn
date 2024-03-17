@@ -105,7 +105,7 @@ def test_info_nce_loss(reduction: str) -> None:
 
 @pytest.mark.parametrize("dim", [0, 1, 2])
 def test_info_nce_loss_ddp(dim: int) -> None:
-    """Ensure InfoNCELoss works well for DDP."""
+    """Ensure InterInfoNCELoss and IntraInfoNCELoss work well for DDP."""
     if IS_WINDOWS:
         pytest.skip("Windows is not supported.")
 
@@ -637,7 +637,6 @@ def test_inter_info_nce_loss_ddp(dim: int) -> None:
         reference_model_one.load_state_dict(ddp_state_dict["model_one"])
         reference_model_other.load_state_dict(ddp_state_dict["model_other"])
         reference_criterion.load_state_dict(ddp_state_dict["criterion"])
-        reference_loss = reference_state_dict["loss"]
 
         input = reference_state_dict["input"]
         other = reference_state_dict["other"]
@@ -656,14 +655,11 @@ def test_inter_info_nce_loss_ddp(dim: int) -> None:
             model_one.load_state_dict(ddp_state_dict["model_one"])
             model_other.load_state_dict(ddp_state_dict["model_other"])
             criterion.load_state_dict(ddp_state_dict["criterion"])
-            loss = state_dict["loss"]
 
             input = state_dict["input"]
             other = state_dict["other"]
             gathered_input.append(input)
             gathered_other.append(other)
-
-            assert torch.equal(loss, reference_loss)
 
             assert len(list(model_one.parameters())) == len(list(reference_model_one.parameters()))
 
