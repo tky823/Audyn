@@ -13,6 +13,7 @@ text_to_feat_checkpoint=""
 feat_to_wave_checkpoint=""
 
 exp_root="./exp"
+tensorboard_root="./tensorboard"
 
 ljspeech_url="https://data.keithito.com/data/speech/LJSpeech-1.1.tar.bz2"
 data_root="../data"
@@ -79,6 +80,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         --tag "${tag}" \
         --continue-from "${continue_from}" \
         --exp-root "${exp_root}" \
+        --tensorboard-root "${tensorboard_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \
@@ -153,6 +155,7 @@ if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
         --continue-from "${continue_from}" \
         --feat-to-wave-checkpoint "${feat_to_wave_checkpoint}" \
         --exp-root "${exp_root}" \
+        --tensorboard-root "${tensorboard_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \

@@ -12,6 +12,7 @@ pixelcnn_checkpoint=""
 vqvae_checkpoint=""
 
 exp_root="./exp"
+tensorboard_root="./tensorboard"
 
 data_root="../data"
 
@@ -44,6 +45,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         --tag "${tag}" \
         --continue-from "${continue_from}" \
         --exp-root "${exp_root}" \
+        --tensorboard-root "${tensorboard_root}" \
         --data-root "${data_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \
@@ -84,6 +86,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
         --tag "${tag}" \
         --continue-from "${continue_from}" \
         --exp-root "${exp_root}" \
+        --tensorboard-root "${tensorboard_root}" \
         --data-root "${data_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \
