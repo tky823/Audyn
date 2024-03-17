@@ -90,7 +90,7 @@ criterion="official_soundstream"
 
 ```sh
 tag=<TAG>
-checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>  # e.g. ${exp_dir}/${tag}/model/soundstream/last.pth
+checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>  # e.g. ${exp_root}/${tag}/model/soundstream/last.pth
 
 data="soundstream"
 test="soundstream_reconstruction"
@@ -110,7 +110,7 @@ model="soundstream_reconstructor"
 
 ```sh
 tag=<TAG>
-checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>  # e.g. ${exp_dir}/${tag}/model/soundstream/last.pth
+checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>  # e.g. ${exp_root}/${tag}/model/soundstream/last.pth
 
 data="soundstream"
 train="save_quantized_features"
@@ -130,7 +130,7 @@ model="soundstream"
 
 ```sh
 tag=<TAG>
-checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>  # e.g. ${exp_dir}/${tag}/model/soundstream/last.pth
+checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>  # e.g. ${exp_root}/${tag}/model/soundstream/last.pth
 
 data="soundstream"
 train="convert_soundstream"
@@ -144,13 +144,13 @@ train="convert_soundstream"
 --train "${train}"
 ```
 
-Then, the converted model is saved as `${exp_dir}/${tag}/model/soundstream_first_stage_decoder/*.pth`.
+Then, the converted model is saved as `${exp_root}/${tag}/model/soundstream_first_stage_decoder/*.pth`.
 
 ### Stage 5: Training of SoundStream-TTS
 
 ```sh
 tag=<TAG>
-feat_to_wave_checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>  # e.g. ${exp_dir}/${tag}/model/soundstream_first_stage_decoder/last.pth
+feat_to_wave_checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>  # e.g. ${exp_root}/${tag}/model/soundstream_first_stage_decoder/last.pth
 
 data="soundstream"
 train="valle+pretrained_soundstream"
@@ -176,8 +176,8 @@ criterion="valle"
 
 ```sh
 tag=<TAG>
-text_to_feat_checkpoint=<PATH/TO/PRETRAINED/VALLE>  # e.g. ${exp_dir}/${tag}/model/valle/last.pth
-feat_to_wave_checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>  # e.g. ${exp_dir}/${tag}/model/soundstream_first_stage_decoder/last.pth
+text_to_feat_checkpoint=<PATH/TO/PRETRAINED/VALLE>  # e.g. ${exp_root}/${tag}/model/valle/last.pth
+feat_to_wave_checkpoint=<PATH/TO/PRETRAINED/SOUNDSTREAM>  # e.g. ${exp_root}/${tag}/model/soundstream_first_stage_decoder/last.pth
 
 data="soundstream"
 test="valle_tts"
