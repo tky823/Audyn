@@ -230,6 +230,11 @@ class _InfoNCELoss(_ContrastiveLoss):
     def forward(self, input: torch.Tensor, other: torch.Tensor) -> torch.Tensor:
         """Forward pass of _InfoNCELoss.
 
+        ..note::
+
+            For DDP, memory efficient implementation is used.
+            DisCo-CLIP: https://arxiv.org/abs/2304.08480
+
         Args:
             input (torch.Tensor): Feature of shape (*, num_features).
             other (torch.Tensor): Feature of shape (*, num_features).
@@ -330,6 +335,11 @@ class _NTXentLoss(_ContrastiveLoss):
 
     def forward(self, input: torch.Tensor, other: torch.Tensor) -> torch.Tensor:
         """Forward pass of _NTXentLoss.
+
+        ..note::
+
+            For DDP, memory efficient implementation is used.
+            DisCo-CLIP: https://arxiv.org/abs/2304.08480
 
         Args:
             input (torch.Tensor): Feature of shape (*, num_features).
@@ -624,7 +634,8 @@ class InterNTXentLoss(_NTXentLoss):
 
 
 class SyncFunction(torch.autograd.Function):
-    # TODO: improve design
+    """Sync function of contrastive loss for distributed training."""
+
     @staticmethod
     def forward(ctx: Any, tensor: torch.Tensor, dim: int, wrapped_by_ddp: bool) -> torch.Tensor:
         if not wrapped_by_ddp:
