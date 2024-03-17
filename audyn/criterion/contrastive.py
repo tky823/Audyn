@@ -379,12 +379,31 @@ class _NTXentLoss(_ContrastiveLoss):
             input = SyncFunction.apply(input, -2, wrapped_by_ddp)
             other = SyncFunction.apply(other, -2, wrapped_by_ddp)
 
-        sample_size = input.size(-2)
-        logit = torch.matmul(input, other.transpose(-2, -1)) * temperature
-        padding_mask = torch.eye(sample_size, dtype=torch.bool, device=logit.device)
-        logit_no_diag = logit.masked_fill(padding_mask, -float("inf"))
-        logit_no_diag = torch.cat([logit_no_diag, logit_no_diag.transpose(-2, -1)], dim=-1)
-        logit_diag = torch.diagonal(logit, dim1=-2, dim2=-1)
+        num_total_samples = input.size(-2)
+        padding_mask = torch.eye(num_total_samples, dtype=torch.bool, device=input.device)
+
+        if should_gather:
+            input_at_rank = self.select_tensor_at_rank(input, dim=-2)
+            other_at_rank = self.select_tensor_at_rank(other, dim=-2)
+            padding_mask_at_rank = self.select_tensor_at_rank(padding_mask, dim=-2)
+        else:
+            input_at_rank = input
+            other_at_rank = other
+            padding_mask_at_rank = padding_mask
+
+        logit_at_rank = torch.matmul(other_at_rank, input.transpose(-2, -1)) * temperature
+        logit_no_diag_one = logit_at_rank.masked_fill(padding_mask_at_rank, -float("inf"))
+
+        logit_at_rank = torch.matmul(input_at_rank, other.transpose(-2, -1)) * temperature
+        logit_no_diag_other = logit_at_rank.masked_fill(padding_mask_at_rank, -float("inf"))
+
+        if should_gather:
+            logit_diag_at_rank = self.select_tensor_at_rank(logit_at_rank, dim=-1)
+        else:
+            logit_diag_at_rank = logit_at_rank
+
+        logit_no_diag = torch.cat([logit_no_diag_one, logit_no_diag_other], dim=-1)
+        logit_diag = torch.diagonal(logit_diag_at_rank, dim1=-2, dim2=-1)
         logit_no_diag = torch.logsumexp(logit_no_diag, dim=-1)
         loss = -logit_diag + logit_no_diag
 
