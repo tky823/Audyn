@@ -139,6 +139,10 @@ def test_info_nce_loss_ddp(dim: int) -> None:
             process.join()
 
         for rank in range(world_size):
+            path = os.path.join(temp_dir, f"{rank}.pth")
+            _ = torch.load(path, map_location="cpu")
+
+        for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}_intra-or-inter.pth")
 
             if dim == 0:
@@ -286,6 +290,10 @@ def test_ntxent_loss_ddp(dim: int) -> None:
 
         for process in processes:
             process.join()
+
+        for rank in range(world_size):
+            path = os.path.join(temp_dir, f"{rank}.pth")
+            _ = torch.load(path, map_location="cpu")
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}_intra-or-inter.pth")
