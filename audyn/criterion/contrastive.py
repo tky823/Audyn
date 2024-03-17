@@ -543,7 +543,17 @@ class IntraInfoNCELoss(_InfoNCELoss):
 
 
 class InterInfoNCELoss(_InfoNCELoss):
-    """InfoNCE loss where samples are gathered among GPUs."""
+    """InfoNCE loss where samples are gathered among GPUs.
+
+    Examples:
+
+        >>> import torch.nn
+        >>> from audyn.criterion.contrastive import InterInfoNCELoss
+        >>> criterion = InterInfoNCELoss(dim=0)
+        >>> # For DDP, InterInfoNCELoss should be wrapped by DistributedDataParallel.
+        >>> criterion = nn.parallel.DistributedDataParallel(criterion)
+
+    """
 
     def __init__(
         self,
@@ -603,7 +613,17 @@ class IntraNTXentLoss(_NTXentLoss):
 
 
 class InterNTXentLoss(_NTXentLoss):
-    """NTXent loss where samples are gathered among GPUs."""
+    """NTXent loss where samples are gathered among GPUs.
+
+    Examples:
+
+        >>> import torch.nn
+        >>> from audyn.criterion.contrastive import InterNTXentLoss
+        >>> criterion = InterNTXentLoss(dim=0)
+        >>> # For DDP, InterNTXentLoss should be wrapped by DistributedDataParallel.
+        >>> criterion = nn.parallel.DistributedDataParallel(criterion)
+
+    """
 
     def __init__(
         self,
