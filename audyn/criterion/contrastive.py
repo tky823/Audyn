@@ -16,8 +16,11 @@ __all__ = [
 ]
 
 
-class _InfoNCELoss(nn.Module):
-    """Base class of InfoNCE loss."""
+class _ContrastiveLoss(nn.Module):
+    """Base class of contrastive loss.
+
+    NOTE: This class is extended for InfoNCE and NT-Xent losses.
+    """
 
     def __init__(
         self,
@@ -32,7 +35,10 @@ class _InfoNCELoss(nn.Module):
         super().__init__()
 
         log_temperature = math.log(temperature)
-        self.log_temperature = nn.Parameter(torch.tensor(log_temperature), requires_grad=trainable)
+        self.log_temperature = nn.Parameter(
+            torch.tensor(log_temperature),
+            requires_grad=trainable,
+        )
 
         self.dim = dim
         self.min_temperature = min_temperature
@@ -99,11 +105,55 @@ class _InfoNCELoss(nn.Module):
 
         return log_temperature
 
+
+class _InfoNCELoss(_ContrastiveLoss):
+    """Base class of InfoNCE loss."""
+
+    def __init__(
+        self,
+        dim: Optional[int] = None,
+        temperature: float = 1,
+        trainable: bool = True,
+        min_temperature: Optional[float] = None,
+        max_temperature: Optional[float] = None,
+        reduction: str = "mean",
+        gather_in_eval: Optional[bool] = None,
+    ) -> None:
+        super().__init__(
+            dim=dim,
+            temperature=temperature,
+            trainable=trainable,
+            min_temperature=min_temperature,
+            max_temperature=max_temperature,
+            reduction=reduction,
+            gather_in_eval=gather_in_eval,
+        )
+
+    def permute_along_dim(self, input: torch.Tensor) -> torch.Tensor:
+        dim = self.dim
+        n_dims = input.dim()
+
+        if dim < 0:
+            dim = n_dims + dim
+        else:
+            dim = dim
+
+        # permute dims of input and other
+        dims = tuple(range(n_dims))
+        left_dims = dims[:dim]
+        sample_dim = dims[dim : dim + 1]
+        right_dims = dims[dim + 1 : -1]
+        feature_dim = dims[-1:]
+        dims = left_dims + right_dims + sample_dim + feature_dim
+        output = input.permute(*dims)
+
+        return output
+
     def cross_entropy(self, logit: torch.Tensor, target: torch.LongTensor) -> torch.Tensor:
         """Cross entropy from one view.
 
         Args:
-            logit (torch.Tensor): Logit of shape (*, num_samples, num_samples).
+            logit (torch.Tensor): Logit of shape (*, num_samples', num_samples).
             target (torch.LongTensor): Target indices of shape (*, num_samples).
 
         Returns:
@@ -188,7 +238,7 @@ class _InfoNCELoss(nn.Module):
         return loss
 
 
-class _NTXentLoss(nn.Module):
+class _NTXentLoss(_ContrastiveLoss):
     """Base class of NT-Xent loss (normalized temperature cross entropy loss)."""
 
     def __init__(
@@ -201,75 +251,15 @@ class _NTXentLoss(nn.Module):
         reduction: str = "mean",
         gather_in_eval: Optional[bool] = None,
     ) -> None:
-        super().__init__()
-
-        log_temperature = math.log(temperature)
-        self.log_temperature = nn.Parameter(torch.tensor(log_temperature), requires_grad=trainable)
-
-        self.dim = dim
-        self.min_temperature = min_temperature
-        self.max_temperature = max_temperature
-        self.reduction = reduction
-
-        self.gather_if_necessary = None
-        self.gather_in_eval = gather_in_eval
-
-    def validate_input_shape(self, input: torch.Tensor) -> int:
-        dim = self.dim
-        n_dims = input.dim()
-
-        assert n_dims >= 2
-
-        if dim < 0:
-            _dim = n_dims + dim
-        else:
-            _dim = dim
-
-        if _dim == n_dims - 1:
-            raise ValueError(f"Last dimension ({dim}) should not be used as dim.")
-
-    @staticmethod
-    def normalize_feature(input: torch.Tensor) -> torch.Tensor:
-        output = F.normalize(input, p=2, dim=-1)
-
-        return output
-
-    def permute_along_dim(self, input: torch.Tensor) -> torch.Tensor:
-        dim = self.dim
-        n_dims = input.dim()
-
-        if dim < 0:
-            dim = n_dims + dim
-        else:
-            dim = dim
-
-        # permute dims of input and other
-        dims = tuple(range(n_dims))
-        left_dims = dims[:dim]
-        sample_dim = dims[dim : dim + 1]
-        right_dims = dims[dim + 1 : -1]
-        feature_dim = dims[-1:]
-        dims = left_dims + right_dims + sample_dim + feature_dim
-        output = input.permute(*dims)
-
-        return output
-
-    def clamp_log_temperature(self, log_temperature: torch.Tensor) -> torch.Tensor:
-        min_temperature = self.min_temperature
-        max_temperature = self.max_temperature
-
-        clamp_kwargs = {}
-
-        if min_temperature is not None:
-            clamp_kwargs["min"] = math.log(min_temperature)
-
-        if max_temperature is not None:
-            clamp_kwargs["max"] = math.log(max_temperature)
-
-        if len(clamp_kwargs) > 0:
-            log_temperature = torch.clamp(log_temperature, **clamp_kwargs)
-
-        return log_temperature
+        super().__init__(
+            dim=dim,
+            temperature=temperature,
+            trainable=trainable,
+            min_temperature=min_temperature,
+            max_temperature=max_temperature,
+            reduction=reduction,
+            gather_in_eval=gather_in_eval,
+        )
 
     def forward(self, input: torch.Tensor, other: torch.Tensor) -> torch.Tensor:
         """Forward pass of _NTXentLoss.
