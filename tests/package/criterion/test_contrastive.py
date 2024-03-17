@@ -1,6 +1,7 @@
 import copy
 import itertools
 import os
+import sys
 import tempfile
 from datetime import timedelta
 from typing import Tuple
@@ -21,6 +22,8 @@ from audyn.criterion.contrastive import (
     IntraNTXentLoss,
     NTXentLoss,
 )
+
+IS_WINDOWS = sys.platform == "win32"
 
 
 @pytest.mark.parametrize("reduction", ["mean", "sum", "none"])
@@ -103,11 +106,14 @@ def test_info_nce_loss(reduction: str) -> None:
 @pytest.mark.parametrize("dim", [0, 1, 2])
 def test_info_nce_loss_ddp(dim: int) -> None:
     """Ensure InfoNCELoss works well for DDP."""
+    if IS_WINDOWS:
+        pytest.skip("Windows is not supported.")
+
     port = select_random_port()
     seed = 0
-    world_size = 2
+    world_size = 4
 
-    batch_size = 4
+    batch_size = 3
 
     torch.manual_seed(seed)
     processes = []
@@ -577,11 +583,14 @@ def test_inter_ntxent_loss(reduction: str) -> None:
 @pytest.mark.parametrize("dim", [0, 1])
 def test_inter_info_nce_loss_ddp(dim: int) -> None:
     """Ensure InterInfoNCELoss works well for DDP."""
+    if IS_WINDOWS:
+        pytest.skip("Windows is not supported.")
+
     port = select_random_port()
     seed = 0
-    world_size = 2
+    world_size = 4
 
-    batch_size = 4
+    batch_size = 3
     in_channels, out_channels = 8, 6
     lr = 0.1
     iterations = 10
