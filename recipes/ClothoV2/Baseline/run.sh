@@ -9,7 +9,7 @@ stop_stage=-1
 tag=""
 continue_from=""
 
-exp_dir="./exp"
+exp_root="./exp"
 
 clotho_url="https://zenodo.org/records/4783391/files"
 data_root="../data"

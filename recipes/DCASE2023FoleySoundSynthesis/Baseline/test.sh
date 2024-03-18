@@ -1,7 +1,7 @@
 #!/bin/bash
 
 dump_root="./dump"
-exp_dir="./exp"
+exp_root="./exp"
 
 tag=""
 pixelcnn_checkpoint=""
@@ -25,9 +25,11 @@ if [ -z "${tag}" ]; then
     tag=$(date +"%Y%m%d-%H%M%S")
 fi
 
+exp_dir="${exp_root}/${tag}"
+
 python ./local/test.py \
 --config-dir "./conf" \
-hydra.run.dir="${exp_dir}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
+hydra.run.dir="${exp_dir}/log/$(date +"%Y%m%d-%H%M%S")" \
 system="${system}" \
 preprocess="${preprocess}" \
 data="${data}" \
@@ -39,4 +41,4 @@ test.dataset.test.feature_dir="${feature_dir}/test" \
 test.checkpoint.pixelsnail="${pixelsnail_checkpoint}" \
 test.checkpoint.vqvae="${vqvae_checkpoint}" \
 test.checkpoint.hifigan="${hifigan_checkpoint}" \
-test.output.exp_dir="${exp_dir}/${tag}"
+test.output.exp_dir="${exp_dir}"

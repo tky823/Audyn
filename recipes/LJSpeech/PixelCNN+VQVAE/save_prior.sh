@@ -1,7 +1,7 @@
 #!/bin/bash
 
 dump_root="./dump"
-exp_dir="./exp"
+exp_root="./exp"
 
 tag=""
 checkpoint=""
@@ -24,7 +24,8 @@ if [ -z "${tag}" ]; then
     tag=$(date +"%Y%m%d-%H%M%S")
 fi
 
-save_dir="${exp_dir}/${tag}/prior"
+exp_dir="${exp_root}/${tag}"
+save_dir="${exp_dir}/prior"
 
 is_distributed=$(
     python ../../_common/is_distributed.py \
@@ -49,7 +50,7 @@ for subset in "train" "validation" "test"; do
 
     ${cmd} ./local/save_prior.py \
     --config-dir "./conf" \
-    hydra.run.dir="${exp_dir}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
+    hydra.run.dir="${exp_dir}/log/$(date +"%Y%m%d-%H%M%S")" \
     system="${system}" \
     preprocess="${preprocess}" \
     data="${data}" \

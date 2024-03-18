@@ -9,7 +9,8 @@ stop_stage=-1
 tag=""
 continue_from=""
 
-exp_dir="./exp"
+exp_root="./exp"
+tensorboard_root="./tensorboard"
 
 urbansound8k_url="https://zenodo.org/records/1203745/files/UrbanSound8K.tar.gz"
 data_root="../data"
@@ -64,7 +65,8 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         . ./train.sh \
         --tag "${tag}" \
         --continue-from "${continue_from}" \
-        --exp-dir "${exp_dir}" \
+        --exp-root "${exp_root}" \
+        --tensorboard-root "${tensorboard_root}" \
         --dump-root "${dump_root}" \
         --system "${system}" \
         --preprocess "${preprocess}" \

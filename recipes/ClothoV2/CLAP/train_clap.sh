@@ -1,7 +1,8 @@
 #!/bin/bash
 
 dump_root="./dump"
-exp_dir="./exp"
+exp_root="./exp"
+tensorboard_root="./tensorboard"
 
 tag=""
 continue_from=""
@@ -29,6 +30,9 @@ if [ -z "${tag}" ]; then
     tag=$(date +"%Y%m%d-%H%M%S")
 fi
 
+exp_dir="${exp_root}/${tag}"
+tensorboard_dir="${tensorboard_root}/${tag}"
+
 cmd=$(
     python ../../_common/parse_run_command.py \
     --config-dir "./conf" \
@@ -53,7 +57,7 @@ fi
 
 ${cmd} ./local/train_clap.py \
 --config-dir "./conf" \
-hydra.run.dir="${exp_dir}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
+hydra.run.dir="${exp_dir}/log/$(date +"%Y%m%d-%H%M%S")" \
 system="${system}" \
 preprocess="${preprocess}" \
 data="${data}" \
@@ -68,6 +72,6 @@ train.dataset.train.feature_dir="${feature_dir}/train" \
 train.dataset.validation.list_path="${list_dir}/validation.txt" \
 train.dataset.validation.feature_dir="${feature_dir}/validation" \
 train.resume.continue_from="${continue_from}" \
-train.output.exp_dir="${exp_dir}/${tag}/clap" \
-train.output.tensorboard_dir="tensorboard/${tag}/clap" \
+train.output.exp_dir="${exp_dir}/clap" \
+train.output.tensorboard_dir="${tensorboard_dir}/clap" \
 ${additional_args}

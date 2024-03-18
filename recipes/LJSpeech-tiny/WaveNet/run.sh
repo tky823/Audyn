@@ -9,7 +9,8 @@ stop_stage=-1
 tag=""
 continue_from=""
 
-exp_dir="./exp"
+exp_root="./exp"
+tensorboard_root="./tensorboard"
 
 ljspeech_url="https://data.keithito.com/data/speech/LJSpeech-1.1.tar.bz2"
 data_root="../data"
@@ -67,7 +68,8 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         . ./train.sh \
         --tag "${tag}" \
         --continue-from "${continue_from}" \
-        --exp-dir "${exp_dir}" \
+        --exp-root "${exp_root}" \
+        --tensorboard-root "${tensorboard_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \
@@ -88,7 +90,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         . ./test.sh \
         --tag "${tag}" \
         --checkpoint "${checkpoint}" \
-        --exp-dir "${exp_dir}" \
+        --exp-root "${exp_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \

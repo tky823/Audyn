@@ -12,7 +12,8 @@ pixelsnail_checkpoint=""
 vqvae_checkpoint=""
 hifigan_checkpoint=""
 
-exp_dir="./exp"
+exp_root="./exp"
+tensorboard_root="./tensorboard"
 
 urbansound8k_url="https://zenodo.org/records/1203745/files/UrbanSound8K.tar.gz"
 official_data_root="../data"
@@ -80,7 +81,8 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         . ./train_hifigan.sh \
         --tag "${tag}" \
         --continue-from "${continue_from}" \
-        --exp-dir "${exp_dir}" \
+        --exp-root "${exp_root}" \
+        --tensorboard-root "${tensorboard_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \
@@ -136,7 +138,8 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
         --hifigan-checkpoint "${hifigan_checkpoint}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
-        --exp-dir "${exp_dir}" \
+        --exp-root "${exp_root}" \
+        --tensorboard-root "${tensorboard_root}" \
         --system "${system}" \
         --preprocess "${preprocess}" \
         --data "${data}" \
@@ -156,7 +159,7 @@ if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
         --tag "${tag}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
-        --exp-dir "${exp_dir}" \
+        --exp-root "${exp_root}" \
         --checkpoint "${vqvae_checkpoint}" \
         --system "${system}" \
         --preprocess "${preprocess}" \
@@ -173,7 +176,8 @@ if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
         . ./train_pixelsnail.sh \
         --tag "${tag}" \
         --continue-from "${continue_from}" \
-        --exp-dir "${exp_dir}" \
+        --exp-root "${exp_root}" \
+        --tensorboard-root "${tensorboard_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \
@@ -195,7 +199,7 @@ if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ]; then
         --tag "${tag}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
-        --exp-dir "${exp_dir}" \
+        --exp-root "${exp_root}" \
         --pixelsnail-checkpoint "${pixelsnail_checkpoint}" \
         --vqvae-checkpoint "${vqvae_checkpoint}" \
         --hifigan-checkpoint "${hifigan_checkpoint}" \
