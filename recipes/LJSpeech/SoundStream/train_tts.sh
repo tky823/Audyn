@@ -29,7 +29,8 @@ if [ -z "${tag}" ]; then
     tag=$(date +"%Y%m%d-%H%M%S")
 fi
 
-save_dir="${exp_root}/${tag}/codebook_indices"
+exp_dir="${exp_root}/${tag}"
+save_dir="${exp_dir}/codebook_indices"
 
 cmd=$(
     python ../../_common/parse_run_command.py \
@@ -40,7 +41,7 @@ cmd=$(
 
 ${cmd} ./local/train_tts.py \
 --config-dir "./conf" \
-hydra.run.dir="${exp_root}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
+hydra.run.dir="${exp_dir}/log/$(date +"%Y%m%d-%H%M%S")" \
 system="${system}" \
 preprocess="${preprocess}" \
 data="${data}" \
@@ -56,5 +57,5 @@ train.dataset.validation.list_path="${list_dir}/validation.txt" \
 train.dataset.validation.feature_dir="${save_dir}/validation" \
 train.resume.continue_from="${continue_from}" \
 ++train.pretrained_feat_to_wave.path="${feat_to_wave_checkpoint}" \
-train.output.exp_dir="${exp_root}/${tag}" \
+train.output.exp_dir="${exp_dir}" \
 train.output.tensorboard_dir="${tensorboard_root}/${tag}/valle"
