@@ -11,6 +11,7 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import torch.nn as nn
+from dummy import allclose
 from dummy.utils import select_random_port, set_ddp_environment
 from torch.optim import SGD
 
@@ -46,7 +47,7 @@ def test_info_nce_loss(reduction: str) -> None:
     else:
         assert loss.size() == (length, batch_size)
 
-    assert torch.allclose(loss, reference_loss)
+    allclose(loss, reference_loss)
 
     criterion = InfoNCELoss(dim=1, reduction=reduction)
     reference_criterion = IntraInfoNCELoss(dim=1, reduction=reduction)
@@ -58,7 +59,7 @@ def test_info_nce_loss(reduction: str) -> None:
     else:
         assert loss.size() == (batch_size, length)
 
-    assert torch.allclose(loss, reference_loss)
+    allclose(loss, reference_loss)
 
     # 4D input
     batch_size, height, width, embedding_dim = 4, 5, 6, 10
@@ -76,7 +77,7 @@ def test_info_nce_loss(reduction: str) -> None:
     else:
         assert loss.size() == (height, width, batch_size)
 
-    assert torch.allclose(loss, reference_loss)
+    allclose(loss, reference_loss)
 
     criterion = InfoNCELoss(dim=1, reduction=reduction)
     reference_criterion = IntraInfoNCELoss(dim=1, reduction=reduction)
@@ -88,7 +89,7 @@ def test_info_nce_loss(reduction: str) -> None:
     else:
         assert loss.size() == (batch_size, width, height)
 
-    assert torch.allclose(loss, reference_loss)
+    allclose(loss, reference_loss)
 
     criterion = InfoNCELoss(dim=2, reduction=reduction)
     reference_criterion = IntraInfoNCELoss(dim=2, reduction=reduction)
@@ -100,7 +101,7 @@ def test_info_nce_loss(reduction: str) -> None:
     else:
         assert loss.size() == (batch_size, height, width)
 
-    assert torch.allclose(loss, reference_loss)
+    allclose(loss, reference_loss)
 
 
 @pytest.mark.parametrize("dim", [0, 1, 2])
@@ -200,7 +201,7 @@ def test_ntxent_loss(reduction: str) -> None:
     else:
         assert loss.size() == (length, batch_size)
 
-    assert torch.allclose(loss, reference_loss)
+    allclose(loss, reference_loss)
 
     criterion = NTXentLoss(dim=1, reduction=reduction)
     reference_criterion = IntraNTXentLoss(dim=1, reduction=reduction)
@@ -212,7 +213,7 @@ def test_ntxent_loss(reduction: str) -> None:
     else:
         assert loss.size() == (batch_size, length)
 
-    assert torch.allclose(loss, reference_loss)
+    allclose(loss, reference_loss)
 
     # 4D input
     batch_size, height, width, embedding_dim = 4, 5, 6, 10
@@ -230,7 +231,7 @@ def test_ntxent_loss(reduction: str) -> None:
     else:
         assert loss.size() == (height, width, batch_size)
 
-    assert torch.allclose(loss, reference_loss)
+    allclose(loss, reference_loss)
 
     criterion = NTXentLoss(dim=1, reduction=reduction)
     reference_criterion = IntraNTXentLoss(dim=1, reduction=reduction)
@@ -242,7 +243,7 @@ def test_ntxent_loss(reduction: str) -> None:
     else:
         assert loss.size() == (batch_size, width, height)
 
-    assert torch.allclose(loss, reference_loss)
+    allclose(loss, reference_loss)
 
     criterion = NTXentLoss(dim=2, reduction=reduction)
     reference_criterion = IntraNTXentLoss(dim=2, reduction=reduction)
@@ -254,7 +255,7 @@ def test_ntxent_loss(reduction: str) -> None:
     else:
         assert loss.size() == (batch_size, height, width)
 
-    assert torch.allclose(loss, reference_loss)
+    allclose(loss, reference_loss)
 
 
 @pytest.mark.parametrize("dim", [0, 1, 2])
@@ -355,7 +356,7 @@ def test_intra_info_nce_loss(reduction: str) -> None:
         assert loss1.size() == (length, batch_size)
         assert loss2.size() == (length, batch_size)
 
-    assert torch.allclose(loss1, loss2)
+    allclose(loss1, loss2)
 
     criterion = IntraInfoNCELoss(dim=1, reduction=reduction)
     loss1 = criterion(input, other)
@@ -368,7 +369,7 @@ def test_intra_info_nce_loss(reduction: str) -> None:
         assert loss1.size() == (batch_size, length)
         assert loss2.size() == (batch_size, length)
 
-    assert torch.allclose(loss1, loss2)
+    allclose(loss1, loss2)
 
     # 4D input
     batch_size, height, width, embedding_dim = 4, 5, 6, 10
@@ -387,7 +388,7 @@ def test_intra_info_nce_loss(reduction: str) -> None:
         assert loss1.size() == (height, width, batch_size)
         assert loss2.size() == (height, width, batch_size)
 
-    assert torch.allclose(loss1, loss2)
+    allclose(loss1, loss2)
 
     criterion = IntraInfoNCELoss(dim=1, reduction=reduction)
     loss1 = criterion(input, other)
@@ -400,7 +401,7 @@ def test_intra_info_nce_loss(reduction: str) -> None:
         assert loss1.size() == (batch_size, width, height)
         assert loss2.size() == (batch_size, width, height)
 
-    assert torch.allclose(loss1, loss2)
+    allclose(loss1, loss2)
 
     criterion = IntraInfoNCELoss(dim=2, reduction=reduction)
     loss1 = criterion(input, other)
@@ -413,7 +414,7 @@ def test_intra_info_nce_loss(reduction: str) -> None:
         assert loss1.size() == (batch_size, height, width)
         assert loss2.size() == (batch_size, height, width)
 
-    assert torch.allclose(loss1, loss2)
+    allclose(loss1, loss2)
 
 
 @pytest.mark.parametrize("reduction", ["mean", "sum", "none"])
@@ -437,7 +438,7 @@ def test_intra_ntxent_loss(reduction: str) -> None:
         assert loss1.size() == (length, batch_size)
         assert loss2.size() == (length, batch_size)
 
-    assert torch.allclose(loss1, loss2)
+    allclose(loss1, loss2)
 
     criterion = IntraNTXentLoss(dim=1, reduction=reduction)
     loss1 = criterion(input, other)
@@ -450,7 +451,7 @@ def test_intra_ntxent_loss(reduction: str) -> None:
         assert loss1.size() == (batch_size, length)
         assert loss2.size() == (batch_size, length)
 
-    assert torch.allclose(loss1, loss2)
+    allclose(loss1, loss2)
 
     # 4D input
     batch_size, height, width, embedding_dim = 4, 5, 6, 10
@@ -469,7 +470,7 @@ def test_intra_ntxent_loss(reduction: str) -> None:
         assert loss1.size() == (height, width, batch_size)
         assert loss2.size() == (height, width, batch_size)
 
-    assert torch.allclose(loss1, loss2)
+    allclose(loss1, loss2)
 
     criterion = IntraNTXentLoss(dim=1, reduction=reduction)
     loss1 = criterion(input, other)
@@ -482,7 +483,7 @@ def test_intra_ntxent_loss(reduction: str) -> None:
         assert loss1.size() == (batch_size, width, height)
         assert loss2.size() == (batch_size, width, height)
 
-    assert torch.allclose(loss1, loss2)
+    allclose(loss1, loss2)
 
     criterion = IntraNTXentLoss(dim=2, reduction=reduction)
     loss1 = criterion(input, other)
@@ -495,7 +496,7 @@ def test_intra_ntxent_loss(reduction: str) -> None:
         assert loss1.size() == (batch_size, height, width)
         assert loss2.size() == (batch_size, height, width)
 
-    assert torch.allclose(loss1, loss2)
+    allclose(loss1, loss2)
 
 
 @pytest.mark.parametrize("reduction", ["mean", "sum", "none"])
@@ -519,7 +520,7 @@ def test_inter_info_nce_loss(reduction: str) -> None:
         assert loss1.size() == (length, batch_size)
         assert loss2.size() == (length, batch_size)
 
-    assert torch.allclose(loss1, loss2)
+    allclose(loss1, loss2)
 
     criterion = InterInfoNCELoss(dim=1, reduction=reduction)
     loss1 = criterion(input, other)
@@ -532,7 +533,7 @@ def test_inter_info_nce_loss(reduction: str) -> None:
         assert loss1.size() == (batch_size, length)
         assert loss2.size() == (batch_size, length)
 
-    assert torch.allclose(loss1, loss2)
+    allclose(loss1, loss2)
 
     # 4D input
     batch_size, height, width, embedding_dim = 4, 5, 6, 10
@@ -551,7 +552,7 @@ def test_inter_info_nce_loss(reduction: str) -> None:
         assert loss1.size() == (height, width, batch_size)
         assert loss2.size() == (height, width, batch_size)
 
-    assert torch.allclose(loss1, loss2)
+    allclose(loss1, loss2)
 
     criterion = InterInfoNCELoss(dim=1, reduction=reduction)
     loss1 = criterion(input, other)
@@ -564,7 +565,7 @@ def test_inter_info_nce_loss(reduction: str) -> None:
         assert loss1.size() == (batch_size, width, height)
         assert loss2.size() == (batch_size, width, height)
 
-    assert torch.allclose(loss1, loss2)
+    allclose(loss1, loss2)
 
     criterion = InterInfoNCELoss(dim=2, reduction=reduction)
     loss1 = criterion(input, other)
@@ -577,7 +578,7 @@ def test_inter_info_nce_loss(reduction: str) -> None:
         assert loss1.size() == (batch_size, height, width)
         assert loss2.size() == (batch_size, height, width)
 
-    assert torch.allclose(loss1, loss2)
+    allclose(loss1, loss2)
 
 
 @pytest.mark.parametrize("reduction", ["mean", "sum", "none"])
@@ -601,7 +602,7 @@ def test_inter_ntxent_loss(reduction: str) -> None:
         assert loss1.size() == (length, batch_size)
         assert loss2.size() == (length, batch_size)
 
-    assert torch.allclose(loss1, loss2)
+    allclose(loss1, loss2)
 
     criterion = InterNTXentLoss(dim=1, reduction=reduction)
     loss1 = criterion(input, other)
@@ -614,7 +615,7 @@ def test_inter_ntxent_loss(reduction: str) -> None:
         assert loss1.size() == (batch_size, length)
         assert loss2.size() == (batch_size, length)
 
-    assert torch.allclose(loss1, loss2)
+    allclose(loss1, loss2)
 
     # 4D input
     batch_size, height, width, embedding_dim = 4, 5, 6, 10
@@ -633,7 +634,7 @@ def test_inter_ntxent_loss(reduction: str) -> None:
         assert loss1.size() == (height, width, batch_size)
         assert loss2.size() == (height, width, batch_size)
 
-    assert torch.allclose(loss1, loss2)
+    allclose(loss1, loss2)
 
     criterion = InterNTXentLoss(dim=1, reduction=reduction)
     loss1 = criterion(input, other)
@@ -646,7 +647,7 @@ def test_inter_ntxent_loss(reduction: str) -> None:
         assert loss1.size() == (batch_size, width, height)
         assert loss2.size() == (batch_size, width, height)
 
-    assert torch.allclose(loss1, loss2)
+    allclose(loss1, loss2)
 
     criterion = InterNTXentLoss(dim=2, reduction=reduction)
     loss1 = criterion(input, other)
@@ -659,7 +660,7 @@ def test_inter_ntxent_loss(reduction: str) -> None:
         assert loss1.size() == (batch_size, height, width)
         assert loss2.size() == (batch_size, height, width)
 
-    assert torch.allclose(loss1, loss2)
+    allclose(loss1, loss2)
 
 
 @pytest.mark.parametrize("dim", [0, 1])
@@ -809,7 +810,7 @@ def test_inter_info_nce_loss_ddp(dim: int) -> None:
             module_no_ddp = no_ddp_state_dict[key]
 
             for _key in module_ddp.keys():
-                assert torch.allclose(module_ddp[_key], module_no_ddp[_key])
+                allclose(module_ddp[_key], module_no_ddp[_key])
 
 
 @pytest.mark.parametrize("dim", [0, 1])
@@ -959,7 +960,7 @@ def test_inter_ntxent_loss_ddp(dim: int) -> None:
             module_no_ddp = no_ddp_state_dict[key]
 
             for _key in module_ddp.keys():
-                assert torch.allclose(module_ddp[_key], module_no_ddp[_key])
+                allclose(module_ddp[_key], module_no_ddp[_key])
 
 
 def run_contrastive_loss(
