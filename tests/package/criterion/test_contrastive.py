@@ -23,7 +23,7 @@ from audyn.criterion.contrastive import (
     NTXentLoss,
 )
 
-IS_WINDOWS = sys.platform == "win32"
+IS_LINUX = sys.platform.startswith("linux")
 
 
 @pytest.mark.parametrize("reduction", ["mean", "sum", "none"])
@@ -106,12 +106,13 @@ def test_info_nce_loss(reduction: str) -> None:
 @pytest.mark.parametrize("dim", [0, 1, 2])
 def test_info_nce_loss_ddp(dim: int) -> None:
     """Ensure InterInfoNCELoss and IntraInfoNCELoss work well for DDP."""
-    if IS_WINDOWS:
-        pytest.skip("Windows is not supported.")
-
     port = select_random_port()
     seed = 0
-    world_size = 2
+
+    if IS_LINUX:
+        world_size = 4
+    else:
+        world_size = 2
 
     batch_size = 4
 
@@ -259,12 +260,13 @@ def test_ntxent_loss(reduction: str) -> None:
 @pytest.mark.parametrize("dim", [0, 1, 2])
 def test_ntxent_loss_ddp(dim: int) -> None:
     """Ensure InterNTXentLoss and IntraNTXentLoss work well for DDP."""
-    if IS_WINDOWS:
-        pytest.skip("Windows is not supported.")
-
     port = select_random_port()
     seed = 0
-    world_size = 2
+
+    if IS_LINUX:
+        world_size = 4
+    else:
+        world_size = 2
 
     batch_size = 4
 
@@ -663,12 +665,13 @@ def test_inter_ntxent_loss(reduction: str) -> None:
 @pytest.mark.parametrize("dim", [0, 1])
 def test_inter_info_nce_loss_ddp(dim: int) -> None:
     """Ensure InterInfoNCELoss works well for DDP."""
-    if IS_WINDOWS:
-        pytest.skip("Windows is not supported.")
-
     port = select_random_port()
     seed = 0
-    world_size = 2
+
+    if IS_LINUX:
+        world_size = 4
+    else:
+        world_size = 2
 
     batch_size = 4
     in_channels, out_channels = 8, 6
@@ -812,12 +815,13 @@ def test_inter_info_nce_loss_ddp(dim: int) -> None:
 @pytest.mark.parametrize("dim", [0, 1])
 def test_inter_ntxent_loss_ddp(dim: int) -> None:
     """Ensure InterNTXentLoss works well for DDP."""
-    if IS_WINDOWS:
-        pytest.skip("Windows is not supported.")
-
     port = select_random_port()
     seed = 0
-    world_size = 2
+
+    if IS_LINUX:
+        world_size = 4
+    else:
+        world_size = 2
 
     batch_size = 4
     in_channels, out_channels = 8, 6
