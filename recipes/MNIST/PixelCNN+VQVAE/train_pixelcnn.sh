@@ -2,6 +2,7 @@
 
 data_root="../data"
 exp_root="./exp"
+tensorboard_root="./tensorboard"
 
 tag=""
 continue_from=""
@@ -52,4 +53,4 @@ train.dataset.validation.list_path="${list_dir}/validation.txt" \
 train.dataset.validation.feature_dir="${feature_dir}" \
 train.resume.continue_from="${continue_from}" \
 train.output.exp_dir="${exp_root}/${tag}" \
-train.output.tensorboard_dir="tensorboard/${tag}/pixelcnn"
+train.output.tensorboard_dir="${tensorboard_root}/${tag}/pixelcnn"

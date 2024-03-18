@@ -2,6 +2,7 @@
 
 dump_root="./dump"
 exp_root="./exp"
+tensorboard_root="./tensorboard"
 
 tag=""
 continue_from=""
@@ -53,4 +54,4 @@ train.dataset.validation.feature_dir="${feature_dir}/validation" \
 train.resume.continue_from="${continue_from}" \
 ++train.pretrained_feat_to_wave.path="${hifigan_checkpoint}" \
 train.output.exp_dir="${exp_root}/${tag}" \
-train.output.tensorboard_dir="tensorboard/${tag}/vqvae"
+train.output.tensorboard_dir="${tensorboard_root}/${tag}/vqvae"

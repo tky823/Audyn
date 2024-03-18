@@ -13,6 +13,7 @@ audio_tower_checkpoint=""
 clap_checkpoint=""
 
 exp_root="./exp"
+tensorboard_root="./tensorboard"
 
 clotho_url="https://zenodo.org/records/4783391/files"
 data_root="../data"
