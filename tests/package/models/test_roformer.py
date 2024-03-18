@@ -1,5 +1,6 @@
 import pytest
 import torch
+from dummy import allclose
 
 from audyn.models.roformer import (
     RoformerDecoder,
@@ -51,7 +52,7 @@ def test_roformer_encoder_layer(batch_first: bool) -> None:
     else:
         _, padded_output = torch.split(padded_output, [shift_size, src_length], dim=0)
 
-    assert torch.allclose(output, padded_output, atol=1e-6)
+    allclose(output, padded_output, atol=1e-6)
 
 
 @pytest.mark.parametrize("batch_first", [True, False])
@@ -111,7 +112,7 @@ def test_roformer_decoder_layer(batch_first: bool) -> None:
     else:
         _, padded_output = torch.split(padded_output, [shift_size, tgt_length], dim=0)
 
-    assert torch.allclose(output, padded_output, atol=1e-6)
+    allclose(output, padded_output, atol=1e-6)
 
 
 @pytest.mark.parametrize("batch_first", [True, False])
@@ -158,7 +159,7 @@ def test_roformer_encoder(batch_first: bool) -> None:
     else:
         _, padded_output = torch.split(padded_output, [shift_size, src_length], dim=0)
 
-    assert torch.allclose(output, padded_output, atol=1e-6)
+    allclose(output, padded_output, atol=1e-6)
 
 
 @pytest.mark.parametrize("batch_first", [True, False])
@@ -220,4 +221,4 @@ def test_roformer_decoder(batch_first: bool) -> None:
     else:
         _, padded_output = torch.split(padded_output, [shift_size, tgt_length], dim=0)
 
-    assert torch.allclose(output, padded_output, atol=1e-6)
+    allclose(output, padded_output, atol=1e-6)
