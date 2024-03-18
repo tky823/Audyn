@@ -1,7 +1,7 @@
 #!/bin/bash
 
 dump_root="./dump"
-exp_dir="./exp"
+exp_root="./exp"
 
 tag=""
 checkpoint=""
@@ -26,7 +26,7 @@ fi
 
 python ./local/test_reconstruction.py \
 --config-dir "./conf" \
-hydra.run.dir="${exp_dir}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
+hydra.run.dir="${exp_root}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
 system="${system}" \
 preprocess="${preprocess}" \
 data="${data}" \
@@ -36,4 +36,4 @@ preprocess.dump_format="${dump_format}" \
 test.dataset.test.list_path="${list_dir}/test.txt" \
 test.dataset.test.feature_dir="${feature_dir}/test" \
 test.checkpoint="${checkpoint}" \
-test.output.exp_dir="${exp_dir}/${tag}"
+test.output.exp_dir="${exp_root}/${tag}"

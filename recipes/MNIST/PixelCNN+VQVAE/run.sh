@@ -11,7 +11,7 @@ continue_from=""
 pixelcnn_checkpoint=""
 vqvae_checkpoint=""
 
-exp_dir="./exp"
+exp_root="./exp"
 
 data_root="../data"
 
@@ -43,7 +43,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         . ./train_vqvae.sh \
         --tag "${tag}" \
         --continue-from "${continue_from}" \
-        --exp-dir "${exp_dir}" \
+        --exp-root "${exp_root}" \
         --data-root "${data_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \
@@ -66,7 +66,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         --tag "${tag}" \
         --data-root "${data_root}" \
         --dump-format "${dump_format}" \
-        --exp-dir "${exp_dir}" \
+        --exp-root "${exp_root}" \
         --checkpoint "${vqvae_checkpoint}" \
         --system "${system}" \
         --preprocess "${preprocess}" \
@@ -83,7 +83,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
         . ./train_pixelcnn.sh \
         --tag "${tag}" \
         --continue-from "${continue_from}" \
-        --exp-dir "${exp_dir}" \
+        --exp-root "${exp_root}" \
         --data-root "${data_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \
@@ -104,7 +104,7 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
     (
         . ./test.sh \
         --tag "${tag}" \
-        --exp-dir "${exp_dir}" \
+        --exp-root "${exp_root}" \
         --pixelcnn-checkpoint "${pixelcnn_checkpoint}" \
         --vqvae-checkpoint "${vqvae_checkpoint}" \
         --data-root "${data_root}" \

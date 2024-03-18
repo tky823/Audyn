@@ -1,7 +1,7 @@
 #!/bin/bash
 
 dump_root="./dump"
-exp_dir="./exp"
+exp_root="./exp"
 
 tag=""
 checkpoint=""
@@ -24,7 +24,7 @@ if [ -z "${tag}" ]; then
     tag=$(date +"%Y%m%d-%H%M%S")
 fi
 
-save_dir="${exp_dir}/${tag}/codebook_indices"
+save_dir="${exp_root}/${tag}/codebook_indices"
 
 for subset in "train" "validation" "test"; do
     subset_list_path="${list_dir}/${subset}.txt"
@@ -33,7 +33,7 @@ for subset in "train" "validation" "test"; do
 
     python ./local/save_quantized_features.py \
     --config-dir "./conf" \
-    hydra.run.dir="${exp_dir}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
+    hydra.run.dir="${exp_root}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
     system="${system}" \
     preprocess="${preprocess}" \
     data="${data}" \
@@ -44,5 +44,5 @@ for subset in "train" "validation" "test"; do
     train.dataset.list_path="${subset_list_path}" \
     train.dataset.feature_dir="${subset_feature_dir}" \
     train.checkpoint="${checkpoint}" \
-    train.output.exp_dir="${exp_dir}/${tag}"
+    train.output.exp_dir="${exp_root}/${tag}"
 done

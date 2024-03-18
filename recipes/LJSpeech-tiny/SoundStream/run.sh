@@ -12,7 +12,7 @@ checkpoint=""
 text_to_feat_checkpoint=""
 feat_to_wave_checkpoint=""
 
-exp_dir="./exp"
+exp_root="./exp"
 
 ljspeech_url="https://data.keithito.com/data/speech/LJSpeech-1.1.tar.bz2"
 data_root="../data"
@@ -78,7 +78,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         . ./train.sh \
         --tag "${tag}" \
         --continue-from "${continue_from}" \
-        --exp-dir "${exp_dir}" \
+        --exp-root "${exp_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \
@@ -99,7 +99,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         . ./test_reconstruction.sh \
         --tag "${tag}" \
         --checkpoint "${checkpoint}" \
-        --exp-dir "${exp_dir}" \
+        --exp-root "${exp_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \
@@ -117,7 +117,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
         . ./save_quantized_features.sh \
         --tag "${tag}" \
         --checkpoint "${checkpoint}" \
-        --exp-dir "${exp_dir}" \
+        --exp-root "${exp_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \
@@ -135,7 +135,7 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
         . ./convert_soundstream.sh \
         --tag "${tag}" \
         --checkpoint "${checkpoint}" \
-        --exp-dir "${exp_dir}" \
+        --exp-root "${exp_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \
         --preprocess "${preprocess}" \
@@ -152,7 +152,7 @@ if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
         --tag "${tag}" \
         --continue-from "${continue_from}" \
         --feat-to-wave-checkpoint "${feat_to_wave_checkpoint}" \
-        --exp-dir "${exp_dir}" \
+        --exp-root "${exp_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \
@@ -174,7 +174,7 @@ if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
         --tag "${tag}" \
         --text-to-feat-checkpoint "${text_to_feat_checkpoint}" \
         --feat-to-wave-checkpoint "${feat_to_wave_checkpoint}" \
-        --exp-dir "${exp_dir}" \
+        --exp-root "${exp_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \

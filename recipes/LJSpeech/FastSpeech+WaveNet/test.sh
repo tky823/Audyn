@@ -1,7 +1,7 @@
 #!/bin/bash
 
 dump_root="./dump"
-exp_dir="./exp"
+exp_root="./exp"
 
 tag=""
 text_to_feat_checkpoint=""
@@ -27,7 +27,7 @@ fi
 
 python ./local/test.py \
 --config-dir "./conf" \
-hydra.run.dir="${exp_dir}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
+hydra.run.dir="${exp_root}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
 system="${system}" \
 preprocess="${preprocess}" \
 data="${data}" \
@@ -38,4 +38,4 @@ test.dataset.test.list_path="${list_dir}/test.txt" \
 test.dataset.test.feature_dir="${feature_dir}/test" \
 test.checkpoint.text_to_feat="${text_to_feat_checkpoint}" \
 test.checkpoint.feat_to_wave="${feat_to_wave_checkpoint}" \
-test.output.exp_dir="${exp_dir}/${tag}"
+test.output.exp_dir="${exp_root}/${tag}"

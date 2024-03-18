@@ -1,7 +1,7 @@
 #!/bin/bash
 
 dump_root="./dump"
-exp_dir="./exp"
+exp_root="./exp"
 
 tag=""
 continue_from=""
@@ -36,7 +36,7 @@ cmd=$(
 
 ${cmd} ./local/train_vqvae.py \
 --config-dir "./conf" \
-hydra.run.dir="${exp_dir}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
+hydra.run.dir="${exp_root}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
 system="${system}" \
 preprocess="${preprocess}" \
 data="${data}" \
@@ -51,5 +51,5 @@ train.dataset.train.feature_dir="${feature_dir}/train" \
 train.dataset.validation.list_path="${list_dir}/validation.txt" \
 train.dataset.validation.feature_dir="${feature_dir}/validation" \
 train.resume.continue_from="${continue_from}" \
-train.output.exp_dir="${exp_dir}/${tag}" \
+train.output.exp_dir="${exp_root}/${tag}" \
 train.output.tensorboard_dir="tensorboard/${tag}/vqvae"

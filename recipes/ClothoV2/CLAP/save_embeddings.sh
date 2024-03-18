@@ -1,7 +1,7 @@
 #!/bin/bash
 
 dump_root="./dump"
-exp_dir="./exp"
+exp_root="./exp"
 
 tag=""
 checkpoint=""
@@ -24,7 +24,7 @@ if [ -z "${tag}" ]; then
     tag=$(date +"%Y%m%d-%H%M%S")
 fi
 
-save_dir="${exp_dir}/${tag}/embeddings"
+save_dir="${exp_root}/${tag}/embeddings"
 
 cmd=$(
     python ../../_common/parse_run_command.py \
@@ -40,7 +40,7 @@ for subset in "train" "validation" "test"; do
 
     ${cmd} ./local/save_embeddings.py \
     --config-dir "./conf" \
-    hydra.run.dir="${exp_dir}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
+    hydra.run.dir="${exp_root}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
     system="${system}" \
     preprocess="${preprocess}" \
     data="${data}" \
@@ -51,5 +51,5 @@ for subset in "train" "validation" "test"; do
     test.dataset.test.list_path="${subset_list_path}" \
     test.dataset.test.feature_dir="${subset_feature_dir}" \
     test.checkpoint="${checkpoint}" \
-    test.output.exp_dir="${exp_dir}/${tag}"
+    test.output.exp_dir="${exp_root}/${tag}"
 done
