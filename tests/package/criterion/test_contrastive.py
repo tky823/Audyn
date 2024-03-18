@@ -111,7 +111,7 @@ def test_info_nce_loss_ddp(dim: int) -> None:
 
     port = select_random_port()
     seed = 0
-    world_size = 3
+    world_size = 2
 
     batch_size = 4
 
@@ -264,7 +264,7 @@ def test_ntxent_loss_ddp(dim: int) -> None:
 
     port = select_random_port()
     seed = 0
-    world_size = 3
+    world_size = 2
 
     batch_size = 4
 
@@ -668,7 +668,7 @@ def test_inter_info_nce_loss_ddp(dim: int) -> None:
 
     port = select_random_port()
     seed = 0
-    world_size = 3
+    world_size = 2
 
     batch_size = 4
     in_channels, out_channels = 8, 6
@@ -817,7 +817,7 @@ def test_inter_ntxent_loss_ddp(dim: int) -> None:
 
     port = select_random_port()
     seed = 0
-    world_size = 3
+    world_size = 2
 
     batch_size = 4
     in_channels, out_channels = 8, 6
