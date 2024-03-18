@@ -13,6 +13,7 @@ audio_tower_checkpoint=""
 clap_checkpoint=""
 
 exp_root="./exp"
+tensorboard_root="./tensorboard"
 
 clotho_url="https://zenodo.org/records/4783391/files"
 data_root="../data"
@@ -81,6 +82,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         --tag "${tag}" \
         --continue-from "${continue_from}" \
         --exp-root "${exp_root}" \
+        --tensorboard-root "${tensorboard_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \
@@ -102,6 +104,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         --tag "${tag}" \
         --continue-from "${continue_from}" \
         --exp-root "${exp_root}" \
+        --tensorboard-root "${tensorboard_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \
@@ -125,6 +128,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
         --text-tower-checkpoint "${text_tower_checkpoint}" \
         --audio-tower-checkpoint "${audio_tower_checkpoint}" \
         --exp-root "${exp_root}" \
+        --tensorboard-root "${tensorboard_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \
@@ -146,6 +150,7 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
         --tag "${tag}" \
         --checkpoint "${clap_checkpoint}" \
         --exp-root "${exp_root}" \
+        --tensorboard-root "${tensorboard_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \

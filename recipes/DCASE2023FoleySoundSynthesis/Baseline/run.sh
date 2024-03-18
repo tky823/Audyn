@@ -13,6 +13,7 @@ vqvae_checkpoint=""
 hifigan_checkpoint=""
 
 exp_root="./exp"
+tensorboard_root="./tensorboard"
 
 urbansound8k_url="https://zenodo.org/records/1203745/files/UrbanSound8K.tar.gz"
 official_data_root="../data"
@@ -81,6 +82,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         --tag "${tag}" \
         --continue-from "${continue_from}" \
         --exp-root "${exp_root}" \
+        --tensorboard-root "${tensorboard_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \
@@ -137,6 +139,7 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
         --exp-root "${exp_root}" \
+        --tensorboard-root "${tensorboard_root}" \
         --system "${system}" \
         --preprocess "${preprocess}" \
         --data "${data}" \
@@ -174,6 +177,7 @@ if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
         --tag "${tag}" \
         --continue-from "${continue_from}" \
         --exp-root "${exp_root}" \
+        --tensorboard-root "${tensorboard_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \
