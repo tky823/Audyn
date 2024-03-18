@@ -25,6 +25,7 @@ if [ -z "${tag}" ]; then
 fi
 
 exp_dir="${exp_root}/${tag}"
+tensorboard_dir="${tensorboard_root}/${tag}"
 
 cmd=$(
     python ../../_common/parse_run_command.py \
@@ -49,4 +50,4 @@ preprocess.dump_format="${dump_format}" \
 train.dataset.train.root="${data_root}" \
 train.resume.continue_from="${continue_from}" \
 train.output.exp_dir="${exp_dir}" \
-train.output.tensorboard_dir="${tensorboard_root}/${tag}/vqvae"
+train.output.tensorboard_dir="${tensorboard_dir}/vqvae"
