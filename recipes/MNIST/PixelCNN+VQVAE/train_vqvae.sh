@@ -24,6 +24,8 @@ if [ -z "${tag}" ]; then
     tag=$(date +"%Y%m%d-%H%M%S")
 fi
 
+exp_dir="${exp_root}/${tag}"
+
 cmd=$(
     python ../../_common/parse_run_command.py \
     --config-dir "./conf" \
@@ -33,7 +35,7 @@ cmd=$(
 
 ${cmd} ./local/train_vqvae.py \
 --config-dir "./conf" \
-hydra.run.dir="${exp_root}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
+hydra.run.dir="${exp_dir}/log/$(date +"%Y%m%d-%H%M%S")" \
 system="${system}" \
 preprocess="${preprocess}" \
 data="${data}" \
@@ -46,5 +48,5 @@ criterion="${criterion}" \
 preprocess.dump_format="${dump_format}" \
 train.dataset.train.root="${data_root}" \
 train.resume.continue_from="${continue_from}" \
-train.output.exp_dir="${exp_root}/${tag}" \
+train.output.exp_dir="${exp_dir}" \
 train.output.tensorboard_dir="${tensorboard_root}/${tag}/vqvae"

@@ -25,9 +25,11 @@ if [ -z "${tag}" ]; then
     tag=$(date +"%Y%m%d-%H%M%S")
 fi
 
+exp_dir="${exp_root}/${tag}"
+
 python ./local/test_tts.py \
 --config-dir "./conf" \
-hydra.run.dir="${exp_root}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
+hydra.run.dir="${exp_dir}/log/$(date +"%Y%m%d-%H%M%S")" \
 system="${system}" \
 preprocess="${preprocess}" \
 data="${data}" \

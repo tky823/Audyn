@@ -18,6 +18,7 @@ if [ -z "${tag}" ]; then
     tag=$(date +"%Y%m%d-%H%M%S")
 fi
 
+exp_dir="${exp_root}/${tag}"
 filename="$(basename "${checkpoint}")"
 
 cmd=$(
@@ -29,11 +30,11 @@ cmd=$(
 
 ${cmd} ./local/convert_soundstream.py \
 --config-dir "./conf" \
-hydra.run.dir="${exp_root}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
+hydra.run.dir="${exp_dir}/log/$(date +"%Y%m%d-%H%M%S")" \
 system="${system}" \
 preprocess="${preprocess}" \
 data="${data}" \
 train="${train}" \
 preprocess.dump_format="${dump_format}" \
 train.checkpoint="${checkpoint}" \
-train.output.save_path="${exp_root}/${tag}/model/soundstream_first_stage_decoder/${filename}"
+train.output.save_path="${exp_dir}/model/soundstream_first_stage_decoder/${filename}"

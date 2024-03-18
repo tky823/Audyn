@@ -20,8 +20,9 @@ if [ -z "${tag}" ]; then
     tag=$(date +"%Y%m%d-%H%M%S")
 fi
 
-list_dir="${exp_root}/${tag}/list"
-feature_dir="${exp_root}/${tag}/prior"
+exp_dir="${exp_root}/${tag}"
+list_dir="${exp_dir}/list"
+feature_dir="${exp_dir}/prior"
 
 cmd=$(
     python ../../_common/parse_run_command.py \
@@ -31,7 +32,7 @@ cmd=$(
 )
 
 for subset in "train" "validation"; do
-    list_path="${exp_root}/${tag}/list/${subset}.txt"
+    list_path="${exp_dir}/list/${subset}.txt"
     filename="${subset}\{number\}"
 
     if [ "${subset}" = "train" ]; then
@@ -42,7 +43,7 @@ for subset in "train" "validation"; do
 
     ${cmd} ./local/save_prior.py \
     --config-dir "./conf" \
-    hydra.run.dir="${exp_root}/${tag}/log/$(date +"%Y%m%d-%H%M%S")" \
+    hydra.run.dir="${exp_dir}/log/$(date +"%Y%m%d-%H%M%S")" \
     system="${system}" \
     preprocess="${preprocess}" \
     data="${data}" \
