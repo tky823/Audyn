@@ -973,7 +973,12 @@ def run_contrastive_loss(
 
     set_ddp_environment(rank, world_size, port)
 
-    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
+    dist.init_process_group(
+        backend="gloo",
+        world_size=world_size,
+        rank=rank,
+        timeout=timedelta(minutes=1),
+    )
     torch.manual_seed(seed)
 
     g = torch.Generator()
@@ -1012,7 +1017,12 @@ def run_inter_info_nce_loss(
 
     set_ddp_environment(rank, world_size, port)
 
-    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
+    dist.init_process_group(
+        backend="gloo",
+        world_size=world_size,
+        rank=rank,
+        timeout=timedelta(minutes=1),
+    )
     torch.manual_seed(seed)
 
     g = torch.Generator()
@@ -1075,7 +1085,12 @@ def run_inter_ntxent_loss(
 
     set_ddp_environment(rank, world_size, port)
 
-    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
+    dist.init_process_group(
+        backend="gloo",
+        world_size=world_size,
+        rank=rank,
+        timeout=timedelta(minutes=1),
+    )
     torch.manual_seed(seed)
 
     g = torch.Generator()
