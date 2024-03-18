@@ -111,9 +111,9 @@ def test_info_nce_loss_ddp(dim: int) -> None:
 
     port = select_random_port()
     seed = 0
-    world_size = 4
+    world_size = 3
 
-    batch_size = 3
+    batch_size = 4
 
     torch.manual_seed(seed)
     processes = []
@@ -264,9 +264,9 @@ def test_ntxent_loss_ddp(dim: int) -> None:
 
     port = select_random_port()
     seed = 0
-    world_size = 4
+    world_size = 3
 
-    batch_size = 3
+    batch_size = 4
 
     torch.manual_seed(seed)
     processes = []
@@ -668,9 +668,9 @@ def test_inter_info_nce_loss_ddp(dim: int) -> None:
 
     port = select_random_port()
     seed = 0
-    world_size = 4
+    world_size = 3
 
-    batch_size = 3
+    batch_size = 4
     in_channels, out_channels = 8, 6
     lr = 0.1
     iterations = 10
@@ -817,9 +817,9 @@ def test_inter_ntxent_loss_ddp(dim: int) -> None:
 
     port = select_random_port()
     seed = 0
-    world_size = 4
+    world_size = 3
 
-    batch_size = 3
+    batch_size = 4
     in_channels, out_channels = 8, 6
     lr = 0.1
     iterations = 10
