@@ -31,6 +31,7 @@ fi
 
 exp_dir="${exp_root}/${tag}"
 save_dir="${exp_dir}/codebook_indices"
+tensorboard_dir="${tensorboard_root}/${tag}"
 
 cmd=$(
     python ../../_common/parse_run_command.py \
@@ -58,4 +59,4 @@ train.dataset.validation.feature_dir="${save_dir}/validation" \
 train.resume.continue_from="${continue_from}" \
 ++train.pretrained_feat_to_wave.path="${feat_to_wave_checkpoint}" \
 train.output.exp_dir="${exp_dir}" \
-train.output.tensorboard_dir="${tensorboard_root}/${tag}/valle"
+train.output.tensorboard_dir="${tensorboard_dir}/valle"

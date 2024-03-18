@@ -29,6 +29,7 @@ if [ -z "${tag}" ]; then
 fi
 
 exp_dir="${exp_root}/${tag}"
+tensorboard_dir="${tensorboard_root}/${tag}"
 
 cmd=$(
     python ../../_common/parse_run_command.py \
@@ -55,4 +56,4 @@ train.dataset.validation.list_path="${list_dir}/validation.txt" \
 train.dataset.validation.feature_dir="${feature_dir}/validation" \
 train.resume.continue_from="${continue_from}" \
 train.output.exp_dir="${exp_dir}/text" \
-train.output.tensorboard_dir="${tensorboard_root}/${tag}/text"
+train.output.tensorboard_dir="${tensorboard_dir}/text"
