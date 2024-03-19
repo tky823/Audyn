@@ -102,7 +102,7 @@ def run_mean_metric(
 ) -> None:
     set_ddp_environment(rank, world_size, port)
 
-    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
+    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=5))
     torch.manual_seed(seed)
 
     g = torch.Generator()

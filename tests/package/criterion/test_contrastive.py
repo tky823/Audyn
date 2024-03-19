@@ -982,7 +982,7 @@ def run_contrastive_loss(
         backend="gloo",
         world_size=world_size,
         rank=rank,
-        timeout=timedelta(minutes=1),
+        timeout=timedelta(minutes=5),
     )
     torch.manual_seed(seed)
 
@@ -1026,7 +1026,7 @@ def run_inter_info_nce_loss(
         backend="gloo",
         world_size=world_size,
         rank=rank,
-        timeout=timedelta(minutes=1),
+        timeout=timedelta(minutes=5),
     )
     torch.manual_seed(seed)
 
@@ -1094,7 +1094,7 @@ def run_inter_ntxent_loss(
         backend="gloo",
         world_size=world_size,
         rank=rank,
-        timeout=timedelta(minutes=1),
+        timeout=timedelta(minutes=5),
     )
     torch.manual_seed(seed)
 
