@@ -12,7 +12,7 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 import torch.nn as nn
 from dummy import allclose
-from dummy.utils import set_ddp_environment
+from dummy.utils import select_random_port, set_ddp_environment
 from omegaconf import OmegaConf
 from torch.optim import SGD, Adam
 
@@ -254,7 +254,7 @@ def test_exponential_moving_average_codebook_optimizer(
 @pytest.mark.parametrize("is_rvq", [True, False])
 def test_exponential_moving_average_codebook_optimizer_ddp(is_rvq: bool) -> None:
     """Ensure ExponentialMovingAverageCodebookOptimizer works well for DDP."""
-    port = str(torch.randint(0, 2**16, ()).item())
+    port = select_random_port()
     world_size = 2
     seed, another_seed = 0, 1
 
@@ -609,7 +609,7 @@ def train_exponential_moving_average_codebook_optimizer(
         init_method=config.distributed.init_method,
         rank=int(os.environ["RANK"]),
         world_size=int(os.environ["WORLD_SIZE"]),
-        timeout=timedelta(minutes=1),
+        timeout=timedelta(minutes=5),
     )
     torch.manual_seed(config.seed)
 

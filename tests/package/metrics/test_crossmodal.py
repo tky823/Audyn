@@ -483,7 +483,7 @@ def run_crossmodal_mean_average_precision_itemwise(
 ) -> None:
     set_ddp_environment(rank, world_size, port)
 
-    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
+    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=5))
     torch.manual_seed(seed)
 
     g = torch.Generator()
@@ -531,7 +531,7 @@ def run_crossmodal_mean_average_precision_batchwise(
 ) -> None:
     set_ddp_environment(rank, world_size, port)
 
-    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
+    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=5))
     torch.manual_seed(seed)
 
     g = torch.Generator()
@@ -578,7 +578,7 @@ def run_crossmodal_median_rank_itemwise(
 ) -> None:
     set_ddp_environment(rank, world_size, port)
 
-    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
+    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=5))
     torch.manual_seed(seed)
 
     g = torch.Generator()
@@ -626,7 +626,7 @@ def run_crossmodal_median_rank_batchwise(
 ) -> None:
     set_ddp_environment(rank, world_size, port)
 
-    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
+    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=5))
     torch.manual_seed(seed)
 
     g = torch.Generator()

@@ -338,7 +338,7 @@ def run_mean_average_precision(
 ) -> None:
     set_ddp_environment(process_rank, world_size, port)
 
-    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
+    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=5))
     torch.manual_seed(seed)
 
     g = torch.Generator()
@@ -386,7 +386,7 @@ def run_median_rank(
 ) -> None:
     set_ddp_environment(process_rank, world_size, port)
 
-    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
+    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=5))
     torch.manual_seed(seed)
 
     g = torch.Generator()
