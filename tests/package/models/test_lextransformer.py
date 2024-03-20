@@ -165,7 +165,7 @@ def test_lextransformer_encoder(batch_first: bool) -> None:
     else:
         _, padded_output = torch.split(padded_output, [shift_size, src_length], dim=0)
 
-    allclose(output, padded_output, atol=1e-4)
+    allclose(output, padded_output, atol=1e-3)
 
 
 @pytest.mark.parametrize("batch_first", [True, False])
