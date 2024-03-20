@@ -25,7 +25,7 @@ def test_roformer_encoder_layer(batch_first: bool) -> None:
         batch_first=batch_first,
     )
 
-    # to deativate dropout
+    # to deactivate dropout
     model.eval()
 
     if batch_first:
@@ -70,7 +70,7 @@ def test_roformer_decoder_layer(batch_first: bool) -> None:
         batch_first=batch_first,
     )
 
-    # to deativate dropout
+    # to deactivate dropout
     model.eval()
 
     if batch_first:
@@ -132,7 +132,7 @@ def test_roformer_encoder(batch_first: bool) -> None:
         batch_first=batch_first,
     )
 
-    # to deativate dropout
+    # to deactivate dropout
     model.eval()
 
     if batch_first:
@@ -179,7 +179,7 @@ def test_roformer_decoder(batch_first: bool) -> None:
         batch_first=batch_first,
     )
 
-    # to deativate dropout
+    # to deactivate dropout
     model.eval()
 
     if batch_first:

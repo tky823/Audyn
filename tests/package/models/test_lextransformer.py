@@ -27,7 +27,7 @@ def test_lextransformer_encoder_layer(batch_first: bool) -> None:
         batch_first=batch_first,
     )
 
-    # to deativate dropout
+    # to deactivate dropout
     model.eval()
 
     if batch_first:
@@ -74,7 +74,7 @@ def test_lextransformer_decoder_layer(batch_first: bool) -> None:
         batch_first=batch_first,
     )
 
-    # to deativate dropout
+    # to deactivate dropout
     model.eval()
 
     if batch_first:
@@ -138,7 +138,7 @@ def test_lextransformer_encoder(batch_first: bool) -> None:
         batch_first=batch_first,
     )
 
-    # to deativate dropout
+    # to deactivate dropout
     model.eval()
 
     if batch_first:
@@ -187,7 +187,7 @@ def test_lextransformer_decoder(batch_first: bool) -> None:
         batch_first=batch_first,
     )
 
-    # to deativate dropout
+    # to deactivate dropout
     model.eval()
 
     if batch_first:
