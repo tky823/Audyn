@@ -2,26 +2,28 @@ import pytest
 import torch
 from dummy import allclose
 
-from audyn.models.roformer import (
-    RoformerDecoder,
-    RoFormerDecoderLayer,
-    RoformerEncoder,
-    RoFormerEncoderLayer,
+from audyn.models.lextransformer import (
+    LEXTransformerDecoder,
+    LEXTransformerDecoderLayer,
+    LEXTransformerEncoder,
+    LEXTransformerEncoderLayer,
 )
 
 
 @pytest.mark.parametrize("batch_first", [True, False])
-def test_roformer_encoder_layer(batch_first: bool) -> None:
+def test_lextransformer_encoder_layer(batch_first: bool) -> None:
     torch.manual_seed(0)
 
     d_model, nhead, dim_feedforward = 8, 2, 3
     batch_size, src_length = 4, 16
+    xpos_base = 100
     shift_size = 3
 
-    model = RoFormerEncoderLayer(
+    model = LEXTransformerEncoderLayer(
         d_model,
         nhead,
         dim_feedforward,
+        xpos_base=xpos_base,
         batch_first=batch_first,
     )
 
@@ -52,21 +54,23 @@ def test_roformer_encoder_layer(batch_first: bool) -> None:
     else:
         _, padded_output = torch.split(padded_output, [shift_size, src_length], dim=0)
 
-    allclose(output, padded_output, atol=1e-6)
+    allclose(output, padded_output, atol=1e-5)
 
 
 @pytest.mark.parametrize("batch_first", [True, False])
-def test_roformer_decoder_layer(batch_first: bool) -> None:
+def test_lextransformer_decoder_layer(batch_first: bool) -> None:
     torch.manual_seed(0)
 
     d_model, nhead, dim_feedforward = 8, 2, 3
     batch_size, tgt_length, memory_length = 4, 16, 20
+    xpos_base = 100
     shift_size = 3
 
-    model = RoFormerDecoderLayer(
+    model = LEXTransformerDecoderLayer(
         d_model,
         nhead,
         dim_feedforward,
+        xpos_base=xpos_base,
         batch_first=batch_first,
     )
 
@@ -112,23 +116,25 @@ def test_roformer_decoder_layer(batch_first: bool) -> None:
     else:
         _, padded_output = torch.split(padded_output, [shift_size, tgt_length], dim=0)
 
-    allclose(output, padded_output, atol=1e-6)
+    allclose(output, padded_output, atol=1e-5)
 
 
 @pytest.mark.parametrize("batch_first", [True, False])
-def test_roformer_encoder(batch_first: bool) -> None:
+def test_lextransformer_encoder(batch_first: bool) -> None:
     torch.manual_seed(0)
 
     d_model, nhead, dim_feedforward = 8, 2, 3
     num_layers = 5
     batch_size, src_length = 4, 16
+    xpos_base = 100
     shift_size = 3
 
-    model = RoformerEncoder(
+    model = LEXTransformerEncoder(
         d_model,
         nhead,
         num_layers=num_layers,
         dim_feedforward=dim_feedforward,
+        xpos_base=xpos_base,
         batch_first=batch_first,
     )
 
@@ -159,23 +165,25 @@ def test_roformer_encoder(batch_first: bool) -> None:
     else:
         _, padded_output = torch.split(padded_output, [shift_size, src_length], dim=0)
 
-    allclose(output, padded_output, atol=1e-6)
+    allclose(output, padded_output, atol=1e-3)
 
 
 @pytest.mark.parametrize("batch_first", [True, False])
-def test_roformer_decoder(batch_first: bool) -> None:
+def test_lextransformer_decoder(batch_first: bool) -> None:
     torch.manual_seed(0)
 
     d_model, nhead, dim_feedforward = 8, 2, 3
     num_layers = 5
     batch_size, tgt_length, memory_length = 4, 16, 20
+    xpos_base = 100
     shift_size = 3
 
-    model = RoformerDecoder(
+    model = LEXTransformerDecoder(
         d_model,
         nhead,
         num_layers=num_layers,
         dim_feedforward=dim_feedforward,
+        xpos_base=xpos_base,
         batch_first=batch_first,
     )
 
@@ -221,4 +229,4 @@ def test_roformer_decoder(batch_first: bool) -> None:
     else:
         _, padded_output = torch.split(padded_output, [shift_size, tgt_length], dim=0)
 
-    allclose(output, padded_output, atol=1e-6)
+    allclose(output, padded_output, atol=1e-5)
