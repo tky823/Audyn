@@ -15,6 +15,8 @@ __all__ = [
     "ExtrapolatablePositionalMultiheadAttention",
 ]
 
+IS_TORCH_LT_2_0 = version.parse(torch.__version__) < version.parse("2.0")
+
 
 class _MultiheadAttention(nn.MultiheadAttention):
     """Wrapper class of nn.MultiheadAttention."""
@@ -79,7 +81,7 @@ class _MultiheadAttention(nn.MultiheadAttention):
         """Validate keyword arguments for backward compatibility."""
         valid_keys = set()
 
-        if version.parse(torch.__version__) < version.parse("2.0"):
+        if IS_TORCH_LT_2_0:
             valid_keys.add("is_causal")
 
         invalid_keys = set(kwargs.keys()) - valid_keys
