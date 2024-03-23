@@ -38,7 +38,6 @@ class _MultiheadAttention(nn.MultiheadAttention):
             "dtype": dtype,
         }
 
-        # Key and value are identical to query.
         super().__init__(
             embed_dim,
             num_heads,
@@ -51,12 +50,6 @@ class _MultiheadAttention(nn.MultiheadAttention):
             batch_first=batch_first,
             **factory_kwargs,
         )
-
-        if not self._qkv_same_embed_dim:
-            raise ValueError(
-                "Embedding dimensions of key and value should be equal to "
-                "that of query in self-attention."
-            )
 
     def forward(
         self,
