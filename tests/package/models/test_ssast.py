@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from audyn.models.ssast import (
     MLP,
@@ -10,6 +11,65 @@ from audyn.models.ssast import (
     PositionalPatchEmbedding,
     SelfSupervisedAudioSpectrogramTransformer,
 )
+
+
+def test_official_ssast_multi_task_mpm() -> None:
+    torch.manual_seed(0)
+
+    d_model = 768
+    n_bins, n_frames = 128, 1024
+    kernel_size = (n_bins, 2)
+
+    num_masks = 400
+    min_cluster, max_cluster = 3, 6
+
+    nhead = 12
+    dim_feedforward = 3072
+    num_layers = 12
+
+    patch_embedding = PositionalPatchEmbedding(
+        d_model,
+        kernel_size=kernel_size,
+        n_bins=n_bins,
+        n_frames=n_frames,
+    )
+    masker = Masker(
+        d_model,
+        num_masks=num_masks,
+        min_cluster=min_cluster,
+        max_cluster=max_cluster,
+    )
+    encoder_layer = nn.TransformerEncoderLayer(
+        d_model,
+        nhead,
+        dim_feedforward=dim_feedforward,
+        activation=F.gelu,
+        batch_first=True,
+    )
+    norm = nn.LayerNorm(d_model)
+    transformer = nn.TransformerEncoder(
+        encoder_layer,
+        num_layers=num_layers,
+        norm=norm,
+    )
+    reconstructor = MLP(d_model, kernel_size[0] * kernel_size[1])
+    classifier = MLP(d_model, kernel_size[0] * kernel_size[1])
+    model = MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
+        patch_embedding,
+        masker,
+        transformer,
+        reconstructor=reconstructor,
+        classifier=classifier,
+    )
+
+    num_parameters = 0
+
+    for p in model.parameters():
+        if p.requires_grad:
+            num_parameters += p.numel()
+
+    # except for parameters related to CLS and DIST tokens
+    assert num_parameters == 87222272
 
 
 def test_ssast_multi_task_mpm() -> None:
