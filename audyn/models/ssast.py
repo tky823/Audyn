@@ -725,6 +725,17 @@ class AverageAggregator(Aggregator):
     def forward(
         self, input: torch.Tensor, padding_mask: Optional[torch.BoolTensor] = None
     ) -> torch.Tensor:
+        """Forward pass of AverageAggregator.
+
+        Args:
+            input (torch.Tensor): Patches of shape (batch_size, embedding_dim, height, width).
+            padding_mask (torch.BoolTensor, optional): Padding mask of shape
+                (batch_size, height, width).
+
+        Returns:
+            torch.Tensor: Aggregated feature of shape (batch_size, embedding_dim, height, width).
+
+        """
         if padding_mask is None:
             batch_size, _, height, width = input.size()
             padding_mask = torch.full(
