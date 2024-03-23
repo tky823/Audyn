@@ -477,6 +477,10 @@ class Masker(nn.Module):
     def forward(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.BoolTensor]:
         """Replace some patches with mask tokens.
 
+        .. note::
+
+            Even when ``self.training = False``, masking is applied to input patches.
+
         Args:
             input (torch.Tensor): Patches of shape (batch_size, embedding_dim, height, width).
 
