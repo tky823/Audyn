@@ -14,6 +14,7 @@ __all__ = [
     "MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel",
     "PositionalPatchEmbedding",
     "Masker",
+    "MLP",
     "SSASTMPM",
     "MultiTaskSSASTMPM",
 ]
@@ -544,6 +545,32 @@ class Masker(nn.Module):
         masking_mask = masking_mask.to(torch.bool)
 
         return output, masking_mask
+
+
+class MLP(nn.Module):
+    """Multi-layer perceptron used for reconstructor and classifier."""
+
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        hidden_channels: Optional[int] = None,
+    ) -> None:
+        super().__init__()
+
+        if hidden_channels is None:
+            hidden_channels = in_channels
+
+        self.linear1 = nn.Linear(in_channels, hidden_channels)
+        self.nonlinear = nn.ReLU()
+        self.linear2 = nn.Linear(hidden_channels, out_channels)
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        x = self.linear1(input)
+        x = self.nonlinear(x)
+        output = self.linear2(x)
+
+        return output
 
 
 class SSASTMPM(SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel):
