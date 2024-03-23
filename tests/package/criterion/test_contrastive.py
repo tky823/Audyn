@@ -111,7 +111,7 @@ def test_info_nce_loss_ddp(dim: int) -> None:
     seed = 0
 
     if IS_LINUX:
-        world_size = 4
+        world_size = 3
     else:
         world_size = 2
 
@@ -265,7 +265,7 @@ def test_ntxent_loss_ddp(dim: int) -> None:
     seed = 0
 
     if IS_LINUX:
-        world_size = 4
+        world_size = 3
     else:
         world_size = 2
 
@@ -670,7 +670,7 @@ def test_inter_info_nce_loss_ddp(dim: int) -> None:
     seed = 0
 
     if IS_LINUX:
-        world_size = 4
+        world_size = 3
     else:
         world_size = 2
 
@@ -820,7 +820,7 @@ def test_inter_ntxent_loss_ddp(dim: int) -> None:
     seed = 0
 
     if IS_LINUX:
-        world_size = 4
+        world_size = 3
     else:
         world_size = 2
 
