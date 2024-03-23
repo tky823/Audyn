@@ -1,6 +1,8 @@
 """Self-supervised audio spectorgram transformer."""
 
 import math
+import warnings
+from abc import abstractmethod
 from typing import Any, Optional, Tuple, Union
 
 import torch
@@ -15,6 +17,10 @@ __all__ = [
     "PositionalPatchEmbedding",
     "Masker",
     "MLP",
+    "Aggregator",
+    "AverageAggregator",
+    "Head",
+    "MLPHead",
     "SSASTMPM",
     "MultiTaskSSASTMPM",
 ]
@@ -195,11 +201,21 @@ class SelfSupervisedAudioSpectrogramTransformer(nn.Module):
         self,
         embedding: "PositionalPatchEmbedding",
         backbone: nn.TransformerEncoder,
+        aggregator: Optional["Aggregator"] = None,
+        head: Optional["Head"] = None,
     ) -> None:
         super().__init__()
 
         self.embedding = embedding
         self.backbone = backbone
+        self.aggregator = aggregator
+        self.head = head
+
+        if self.aggregator is None and self.head is not None:
+            warnings.warn(
+                "Head is given, but aggregator is not given, "
+                "which may lead to unexpected behavior."
+            )
 
     def forward(self, input: torch.Tensor) -> Tuple[
         Tuple[torch.Tensor, torch.Tensor, torch.LongTensor],
@@ -216,6 +232,12 @@ class SelfSupervisedAudioSpectrogramTransformer(nn.Module):
         """
         x = self.embedding(input)
         output = self.patch_transformer_forward(x)
+
+        if self.aggregator is not None:
+            output = self.aggregator(output)
+
+        if self.head is not None:
+            output = self.head(output)
 
         return output
 
@@ -687,6 +709,65 @@ class MLP(nn.Module):
         x = self.linear1(input)
         x = self.nonlinear(x)
         output = self.linear2(x)
+
+        return output
+
+
+class Aggregator(nn.Module):
+    @abstractmethod
+    def forward(
+        self, input: torch.Tensor, padding_mask: Optional[torch.BoolTensor] = None
+    ) -> torch.Tensor:
+        pass
+
+
+class AverageAggregator(Aggregator):
+    def forward(
+        self, input: torch.Tensor, padding_mask: Optional[torch.BoolTensor] = None
+    ) -> torch.Tensor:
+        if padding_mask is None:
+            batch_size, _, height, width = input.size()
+            padding_mask = torch.full(
+                (batch_size, height, width),
+                fill_value=False,
+                dtype=torch.bool,
+                device=input.device,
+            )
+
+        x = input.masked_fill(padding_mask.unsqueeze(dim=-1), 0)
+        non_padding_mask = torch.logical_not(padding_mask)
+        non_padding_mask = non_padding_mask.to(torch.long)
+        non_padding_mask = non_padding_mask.sum(dim=(-2, -1))
+        output = x.sum(dim=(-2, -1)) / non_padding_mask.unsqueeze(dim=-1)
+
+        return output
+
+
+class Head(nn.Module):
+    @abstractmethod
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        pass
+
+
+class MLPHead(Head):
+    def __init__(self, in_channels: int, out_channels: int) -> None:
+        super().__init__()
+
+        self.norm = nn.LayerNorm(in_channels)
+        self.linear = nn.Linear(in_channels, out_channels)
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of MLPHead.
+
+        Args:
+            input (torch.Tensor): Aggregated feature of shape (batch_size, in_channels).
+
+        Returns:
+            torch.Tensor: Transformed feature of shape (batch_size, out_channels).
+
+        """
+        x = self.norm(input)
+        output = self.linear(x)
 
         return output
 
