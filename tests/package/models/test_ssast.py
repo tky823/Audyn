@@ -3,13 +3,16 @@ import torch.nn as nn
 
 from audyn.models.ssast import (
     MLP,
+    AverageAggregator,
     Masker,
+    MLPHead,
     MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel,
     PositionalPatchEmbedding,
+    SelfSupervisedAudioSpectrogramTransformer,
 )
 
 
-def test_ssast() -> None:
+def test_ssast_multi_task_mpm() -> None:
     torch.manual_seed(0)
 
     d_model = 8
@@ -22,6 +25,7 @@ def test_ssast() -> None:
 
     nhead = 2
     dim_feedforward = 5
+    num_layers = 2
 
     patch_embedding = PositionalPatchEmbedding(
         d_model,
@@ -38,7 +42,12 @@ def test_ssast() -> None:
     encoder_layer = nn.TransformerEncoderLayer(
         d_model, nhead, dim_feedforward=dim_feedforward, batch_first=True
     )
-    transformer = nn.TransformerEncoder(encoder_layer, num_layers=2)
+    norm = nn.LayerNorm(d_model)
+    transformer = nn.TransformerEncoder(
+        encoder_layer,
+        num_layers=num_layers,
+        norm=norm,
+    )
     reconstructor = MLP(d_model, kernel_size[0] * kernel_size[1])
     classifier = MLP(d_model, kernel_size[0] * kernel_size[1])
     model = MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
@@ -60,6 +69,46 @@ def test_ssast() -> None:
     assert reconstruction_target.size(0) == classification_target.size(0)
     assert reconstruction_target.size(-1) == classification_target.size(-1)
     assert reconstruction_length.size() == classification_length.size()
+
+
+def test_ssast() -> None:
+    torch.manual_seed(0)
+
+    d_model, out_channels = 8, 10
+    n_bins, n_frames = 8, 30
+    kernel_size = (n_bins, 2)
+    batch_size = 4
+
+    nhead = 2
+    dim_feedforward = 5
+    num_layers = 2
+
+    patch_embedding = PositionalPatchEmbedding(
+        d_model,
+        kernel_size=kernel_size,
+        n_bins=n_bins,
+        n_frames=n_frames,
+    )
+    norm = nn.LayerNorm(d_model)
+    encoder_layer = nn.TransformerEncoderLayer(
+        d_model, nhead, dim_feedforward=dim_feedforward, batch_first=True
+    )
+    transformer = nn.TransformerEncoder(
+        encoder_layer,
+        num_layers=num_layers,
+        norm=norm,
+    )
+    aggregator = AverageAggregator()
+    head = MLPHead(d_model, out_channels)
+
+    model = SelfSupervisedAudioSpectrogramTransformer(
+        patch_embedding, transformer, aggregator=aggregator, head=head
+    )
+
+    input = torch.randn((batch_size, n_bins, n_frames))
+    output = model(input)
+
+    assert output.size() == (batch_size, out_channels)
 
 
 def test_ssast_positional_patch_embedding() -> None:
