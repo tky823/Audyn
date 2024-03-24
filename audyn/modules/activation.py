@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from packaging import version
 
+from ..functional.activation import scaled_dot_product_attention
 from .positional_encoding import ExtrapolatablePositionalEmbedding, RotaryPositionalEmbedding
 
 __all__ = [
@@ -305,32 +306,20 @@ class TrainableAbsolutePositionalMultiheadAttention(_MultiheadAttention):
         v = self._apply_pos_emb(v, v_pos_emb)
 
         q = q.permute(1, 2, 0, 3)
-        k = k.permute(1, 2, 3, 0)
+        k = k.permute(1, 2, 0, 3)
         v = v.permute(1, 2, 0, 3)
-        qk = torch.matmul(q, k) / math.sqrt(head_dim)
 
-        if key_padding_mask is not None:
-            key_padding_mask = key_padding_mask.view(batch_size, 1, 1, key_length)
+        dropout_p = dropout if self.training else 0
 
-            if attn_mask is None:
-                attn_mask = key_padding_mask
-            else:
-                if attn_mask.dim() == 3:
-                    attn_mask.view(batch_size, num_heads, query_length, key_length)
-                else:
-                    assert attn_mask.dim() == 2
-
-                attn_mask = attn_mask + key_padding_mask
-
-        if attn_mask is not None:
-            qk = qk + attn_mask
-
-        attn_weights = F.softmax(qk, dim=-1)
-
-        if dropout > 0:
-            attn_weights = F.dropout(attn_weights, p=dropout, training=self.training)
-
-        qkv = torch.matmul(attn_weights, v)
+        qkv, attn_weights = scaled_dot_product_attention(
+            q,
+            k,
+            v,
+            key_padding_mask=key_padding_mask,
+            attn_mask=attn_mask,
+            dropout_p=dropout_p,
+            need_weights=need_weights,
+        )
 
         if batch_first:
             qkv = qkv.permute(0, 2, 1, 3).contiguous()
@@ -833,23 +822,6 @@ class RotaryPositionalMultiheadAttention(_MultiheadAttention):
         query_length, batch_size, _ = query.size()
         key_length, _, _ = key.size()
 
-        key_padding_mask = F._canonical_mask(
-            mask=key_padding_mask,
-            mask_name="key_padding_mask",
-            other_type=F._none_or_dtype(attn_mask),
-            other_name="attn_mask",
-            target_type=query.dtype,
-        )
-
-        attn_mask = F._canonical_mask(
-            mask=attn_mask,
-            mask_name="attn_mask",
-            other_type=None,
-            other_name="",
-            target_type=query.dtype,
-            check_other=False,
-        )
-
         if self._qkv_same_embed_dim:
             q_proj_weight, k_proj_weight, v_proj_weight = torch.split(
                 in_proj_weight, [embed_dim] * 3, dim=-2
@@ -878,33 +850,20 @@ class RotaryPositionalMultiheadAttention(_MultiheadAttention):
         v = v.view(key_length, batch_size, num_heads, head_dim)
 
         q = q.permute(1, 2, 0, 3)
-        k = k.permute(1, 2, 3, 0)
+        k = k.permute(1, 2, 0, 3)
         v = v.permute(1, 2, 0, 3)
 
-        qk = torch.matmul(q, k) / math.sqrt(head_dim)
+        dropout_p = dropout if self.training else 0
 
-        if key_padding_mask is not None:
-            key_padding_mask = key_padding_mask.view(batch_size, 1, 1, key_length)
-
-            if attn_mask is None:
-                attn_mask = key_padding_mask
-            else:
-                if attn_mask.dim() == 3:
-                    attn_mask.view(batch_size, num_heads, query_length, key_length)
-                else:
-                    assert attn_mask.dim() == 2
-
-                attn_mask = attn_mask + key_padding_mask
-
-        if attn_mask is not None:
-            qk = qk + attn_mask
-
-        attn_weights = F.softmax(qk, dim=-1)
-
-        if dropout > 0:
-            attn_weights = F.dropout(attn_weights, p=dropout, training=self.training)
-
-        qkv = torch.matmul(attn_weights, v)
+        qkv, attn_weights = scaled_dot_product_attention(
+            q,
+            k,
+            v,
+            key_padding_mask=key_padding_mask,
+            attn_mask=attn_mask,
+            dropout_p=dropout_p,
+            need_weights=need_weights,
+        )
 
         if batch_first:
             qkv = qkv.permute(0, 2, 1, 3).contiguous()
@@ -1064,23 +1023,6 @@ class ExtrapolatablePositionalMultiheadAttention(_MultiheadAttention):
         query_length, batch_size, _ = query.size()
         key_length, _, _ = key.size()
 
-        key_padding_mask = F._canonical_mask(
-            mask=key_padding_mask,
-            mask_name="key_padding_mask",
-            other_type=F._none_or_dtype(attn_mask),
-            other_name="attn_mask",
-            target_type=query.dtype,
-        )
-
-        attn_mask = F._canonical_mask(
-            mask=attn_mask,
-            mask_name="attn_mask",
-            other_type=None,
-            other_name="",
-            target_type=query.dtype,
-            check_other=False,
-        )
-
         if self._qkv_same_embed_dim:
             q_proj_weight, k_proj_weight, v_proj_weight = torch.split(
                 in_proj_weight, [embed_dim] * 3, dim=-2
@@ -1109,33 +1051,20 @@ class ExtrapolatablePositionalMultiheadAttention(_MultiheadAttention):
         v = v.view(key_length, batch_size, num_heads, head_dim)
 
         q = q.permute(1, 2, 0, 3)
-        k = k.permute(1, 2, 3, 0)
+        k = k.permute(1, 2, 0, 3)
         v = v.permute(1, 2, 0, 3)
 
-        qk = torch.matmul(q, k) / math.sqrt(head_dim)
+        dropout_p = dropout if self.training else 0
 
-        if key_padding_mask is not None:
-            key_padding_mask = key_padding_mask.view(batch_size, 1, 1, key_length)
-
-            if attn_mask is None:
-                attn_mask = key_padding_mask
-            else:
-                if attn_mask.dim() == 3:
-                    attn_mask.view(batch_size, num_heads, query_length, key_length)
-                else:
-                    assert attn_mask.dim() == 2
-
-                attn_mask = attn_mask + key_padding_mask
-
-        if attn_mask is not None:
-            qk = qk + attn_mask
-
-        attn_weights = F.softmax(qk, dim=-1)
-
-        if dropout > 0:
-            attn_weights = F.dropout(attn_weights, p=dropout, training=self.training)
-
-        qkv = torch.matmul(attn_weights, v)
+        qkv, attn_weights = scaled_dot_product_attention(
+            q,
+            k,
+            v,
+            key_padding_mask=key_padding_mask,
+            attn_mask=attn_mask,
+            dropout_p=dropout_p,
+            need_weights=need_weights,
+        )
 
         if batch_first:
             qkv = qkv.permute(0, 2, 1, 3).contiguous()
