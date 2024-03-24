@@ -122,7 +122,7 @@ def test_roformer_encoder(batch_first: bool) -> None:
     d_model, nhead, dim_feedforward = 8, 2, 3
     num_layers = 5
     batch_size, src_length = 4, 16
-    shift_size = 3
+    shift_size = src_length
 
     model = RoformerEncoder(
         d_model,
@@ -169,7 +169,7 @@ def test_roformer_decoder(batch_first: bool) -> None:
     d_model, nhead, dim_feedforward = 8, 2, 3
     num_layers = 5
     batch_size, tgt_length, memory_length = 4, 16, 20
-    shift_size = 3
+    shift_size = tgt_length
 
     model = RoformerDecoder(
         d_model,
