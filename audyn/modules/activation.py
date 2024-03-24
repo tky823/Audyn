@@ -81,7 +81,7 @@ class _MultiheadAttention(nn.MultiheadAttention):
         """Validate keyword arguments for backward compatibility."""
         valid_keys = set()
 
-        if IS_TORCH_LT_2_0:
+        if not IS_TORCH_LT_2_0:
             valid_keys.add("is_causal")
 
         invalid_keys = set(kwargs.keys()) - valid_keys
