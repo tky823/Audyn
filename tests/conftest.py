@@ -10,9 +10,10 @@ import pytest
 
 def pytest_configure():
     max_number = 2**16
+    min_number = 1024
 
     seed = str(uuid.uuid4())
     seed = seed.replace("-", "")
     seed = int(seed, 16)
 
-    pytest.random_port = seed % max_number
+    pytest.random_port = seed % (max_number - min_number) + min_number
