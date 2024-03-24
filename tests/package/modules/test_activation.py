@@ -16,8 +16,9 @@ from audyn.modules.activation import (
 @pytest.mark.parametrize("batch_first", [True, False])
 @pytest.mark.parametrize("use_attn_mask", [True, False])
 @pytest.mark.parametrize("share_heads", [True, False])
+@pytest.mark.parametrize("need_weights", [True, False])
 def test_trainable_absolute_positional_attn(
-    bias: bool, batch_first: bool, use_attn_mask: bool, share_heads: bool
+    bias: bool, batch_first: bool, use_attn_mask: bool, share_heads: bool, need_weights: bool
 ) -> None:
     torch.manual_seed(0)
 
@@ -52,6 +53,8 @@ def test_trainable_absolute_positional_attn(
         value,
         key_padding_mask=key_padding_mask,
         attn_mask=attn_mask,
+        need_weights=need_weights,
+        average_attn_weights=need_weights,
     )
 
     if batch_first:
@@ -59,7 +62,8 @@ def test_trainable_absolute_positional_attn(
     else:
         assert absolute_output.size() == (max_query_length, batch_size, embed_dim)
 
-    assert absolute_attn_weights.size() == (batch_size, max_query_length, max_key_length)
+    if need_weights:
+        assert absolute_attn_weights.size() == (batch_size, max_query_length, max_key_length)
 
     # compatibility with nn.MultiheadAttention
     mha = nn.MultiheadAttention(
@@ -96,6 +100,8 @@ def test_trainable_absolute_positional_attn(
         value,
         key_padding_mask=key_padding_mask,
         attn_mask=attn_mask,
+        need_weights=need_weights,
+        average_attn_weights=need_weights,
     )
     absolute_output, absolute_attn_weights = absolute_mha(
         query,
@@ -103,6 +109,8 @@ def test_trainable_absolute_positional_attn(
         value,
         key_padding_mask=key_padding_mask,
         attn_mask=attn_mask,
+        need_weights=need_weights,
+        average_attn_weights=need_weights,
     )
 
     if batch_first:
@@ -110,10 +118,11 @@ def test_trainable_absolute_positional_attn(
     else:
         assert absolute_output.size() == (max_query_length, batch_size, embed_dim)
 
-    assert absolute_attn_weights.size() == (batch_size, max_query_length, max_key_length)
-
     assert torch.allclose(output, absolute_output, atol=1e-7)
-    assert torch.allclose(attn_weights, absolute_attn_weights)
+
+    if need_weights:
+        assert absolute_attn_weights.size() == (batch_size, max_query_length, max_key_length)
+        assert torch.allclose(attn_weights, absolute_attn_weights)
 
     (query, key, value), (query_length, key_length) = create_qkv(
         batch_size,
@@ -147,6 +156,8 @@ def test_trainable_absolute_positional_attn(
         value,
         key_padding_mask=key_padding_mask,
         attn_mask=attn_mask,
+        need_weights=need_weights,
+        average_attn_weights=need_weights,
     )
 
     if batch_first:
@@ -154,7 +165,8 @@ def test_trainable_absolute_positional_attn(
     else:
         assert absolute_output.size() == (max_query_length, batch_size, embed_dim)
 
-    assert absolute_attn_weights.size() == (batch_size, max_query_length, max_key_length)
+    if need_weights:
+        assert absolute_attn_weights.size() == (batch_size, max_query_length, max_key_length)
 
 
 @pytest.mark.parametrize("bias", [True, False])
@@ -381,8 +393,9 @@ def test_relative_positional_attn(
 @pytest.mark.parametrize("batch_first", [True, False])
 @pytest.mark.parametrize("use_attn_mask", [True, False])
 @pytest.mark.parametrize("share_heads", [True, False])
+@pytest.mark.parametrize("need_weights", [True, False])
 def test_rotary_positional_attn(
-    bias: bool, batch_first: bool, use_attn_mask: bool, share_heads: bool
+    bias: bool, batch_first: bool, use_attn_mask: bool, share_heads: bool, need_weights: bool
 ) -> None:
     torch.manual_seed(0)
 
@@ -416,6 +429,8 @@ def test_rotary_positional_attn(
         value,
         key_padding_mask=key_padding_mask,
         attn_mask=attn_mask,
+        need_weights=need_weights,
+        average_attn_weights=need_weights,
     )
 
     if batch_first:
@@ -423,7 +438,8 @@ def test_rotary_positional_attn(
     else:
         assert rotary_output.size() == (max_query_length, batch_size, embed_dim)
 
-    assert rotary_attn_weights.size() == (batch_size, max_query_length, max_key_length)
+    if need_weights:
+        assert rotary_attn_weights.size() == (batch_size, max_query_length, max_key_length)
 
     # ensure invariance of relative positions
     if batch_first:
@@ -456,6 +472,8 @@ def test_rotary_positional_attn(
         value,
         key_padding_mask=key_padding_mask,
         attn_mask=attn_mask,
+        need_weights=need_weights,
+        average_attn_weights=need_weights,
     )
 
     if batch_first:
@@ -463,15 +481,17 @@ def test_rotary_positional_attn(
     else:
         _, padded_rotary_output = torch.split(padded_rotary_output, [1, max_query_length], dim=0)
 
-    _, padded_rotary_attn_weights = torch.split(
-        padded_rotary_attn_weights, [1, max_query_length], dim=-2
-    )
-    _, padded_rotary_attn_weights = torch.split(
-        padded_rotary_attn_weights, [1, max_key_length], dim=-1
-    )
-
     assert torch.allclose(padded_rotary_output, rotary_output, atol=1e-7)
-    assert torch.allclose(padded_rotary_attn_weights, rotary_attn_weights, atol=1e-6)
+
+    if need_weights:
+        _, padded_rotary_attn_weights = torch.split(
+            padded_rotary_attn_weights, [1, max_query_length], dim=-2
+        )
+        _, padded_rotary_attn_weights = torch.split(
+            padded_rotary_attn_weights, [1, max_key_length], dim=-1
+        )
+
+        assert torch.allclose(padded_rotary_attn_weights, rotary_attn_weights, atol=1e-6)
 
     (query, key, value), (query_length, key_length) = create_qkv(
         batch_size,
@@ -504,6 +524,8 @@ def test_rotary_positional_attn(
         value,
         key_padding_mask=key_padding_mask,
         attn_mask=attn_mask,
+        need_weights=need_weights,
+        average_attn_weights=need_weights,
     )
 
     if batch_first:
@@ -511,15 +533,17 @@ def test_rotary_positional_attn(
     else:
         assert rotary_output.size() == (max_query_length, batch_size, embed_dim)
 
-    assert rotary_attn_weights.size() == (batch_size, max_query_length, max_key_length)
+    if need_weights:
+        assert rotary_attn_weights.size() == (batch_size, max_query_length, max_key_length)
 
 
 @pytest.mark.parametrize("bias", [True, False])
 @pytest.mark.parametrize("batch_first", [True, False])
 @pytest.mark.parametrize("use_attn_mask", [True, False])
 @pytest.mark.parametrize("share_heads", [True, False])
+@pytest.mark.parametrize("need_weights", [True, False])
 def test_extrapolatable_positional_attn(
-    bias: bool, batch_first: bool, use_attn_mask: bool, share_heads: bool
+    bias: bool, batch_first: bool, use_attn_mask: bool, share_heads: bool, need_weights: bool
 ) -> None:
     torch.manual_seed(0)
 
@@ -553,6 +577,8 @@ def test_extrapolatable_positional_attn(
         value,
         key_padding_mask=key_padding_mask,
         attn_mask=attn_mask,
+        need_weights=need_weights,
+        average_attn_weights=need_weights,
     )
 
     if batch_first:
@@ -560,7 +586,8 @@ def test_extrapolatable_positional_attn(
     else:
         assert xpos_output.size() == (max_query_length, batch_size, embed_dim)
 
-    assert xpos_attn_weights.size() == (batch_size, max_query_length, max_key_length)
+    if need_weights:
+        assert xpos_attn_weights.size() == (batch_size, max_query_length, max_key_length)
 
     # ensure invariance of relative positions
     if batch_first:
@@ -593,6 +620,8 @@ def test_extrapolatable_positional_attn(
         value,
         key_padding_mask=key_padding_mask,
         attn_mask=attn_mask,
+        need_weights=need_weights,
+        average_attn_weights=need_weights,
     )
 
     if batch_first:
@@ -600,15 +629,17 @@ def test_extrapolatable_positional_attn(
     else:
         _, padded_xpos_output = torch.split(padded_xpos_output, [1, max_query_length], dim=0)
 
-    _, padded_xpos_attn_weights = torch.split(
-        padded_xpos_attn_weights, [1, max_query_length], dim=-2
-    )
-    _, padded_xpos_attn_weights = torch.split(
-        padded_xpos_attn_weights, [1, max_key_length], dim=-1
-    )
-
     assert torch.allclose(padded_xpos_output, xpos_output, atol=1e-5)
-    assert torch.allclose(padded_xpos_attn_weights, xpos_attn_weights, atol=1e-6)
+
+    if need_weights:
+        _, padded_xpos_attn_weights = torch.split(
+            padded_xpos_attn_weights, [1, max_query_length], dim=-2
+        )
+        _, padded_xpos_attn_weights = torch.split(
+            padded_xpos_attn_weights, [1, max_key_length], dim=-1
+        )
+
+        assert torch.allclose(padded_xpos_attn_weights, xpos_attn_weights, atol=1e-6)
 
     (query, key, value), (query_length, key_length) = create_qkv(
         batch_size,
@@ -641,6 +672,8 @@ def test_extrapolatable_positional_attn(
         value,
         key_padding_mask=key_padding_mask,
         attn_mask=attn_mask,
+        need_weights=need_weights,
+        average_attn_weights=need_weights,
     )
 
     if batch_first:
@@ -648,7 +681,8 @@ def test_extrapolatable_positional_attn(
     else:
         assert xpos_output.size() == (max_query_length, batch_size, embed_dim)
 
-    assert xpos_attn_weights.size() == (batch_size, max_query_length, max_key_length)
+    if need_weights:
+        assert xpos_attn_weights.size() == (batch_size, max_query_length, max_key_length)
 
 
 def create_qkv(

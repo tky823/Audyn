@@ -17,7 +17,7 @@ def test_lextransformer_encoder_layer(batch_first: bool) -> None:
     d_model, nhead, dim_feedforward = 8, 2, 3
     batch_size, src_length = 4, 16
     xpos_base = 100
-    shift_size = 3
+    shift_size = src_length
 
     model = LEXTransformerEncoderLayer(
         d_model,
@@ -64,7 +64,7 @@ def test_lextransformer_decoder_layer(batch_first: bool) -> None:
     d_model, nhead, dim_feedforward = 8, 2, 3
     batch_size, tgt_length, memory_length = 4, 16, 20
     xpos_base = 100
-    shift_size = 3
+    shift_size = tgt_length
 
     model = LEXTransformerDecoderLayer(
         d_model,
@@ -127,7 +127,7 @@ def test_lextransformer_encoder(batch_first: bool) -> None:
     num_layers = 5
     batch_size, src_length = 4, 16
     xpos_base = 100
-    shift_size = 3
+    shift_size = src_length
 
     model = LEXTransformerEncoder(
         d_model,
@@ -176,7 +176,7 @@ def test_lextransformer_decoder(batch_first: bool) -> None:
     num_layers = 5
     batch_size, tgt_length, memory_length = 4, 16, 20
     xpos_base = 100
-    shift_size = 3
+    shift_size = tgt_length
 
     model = LEXTransformerDecoder(
         d_model,
