@@ -330,7 +330,7 @@ class TrainableAbsolutePositionalMultiheadAttention(_MultiheadAttention):
 
         output = self.out_proj(qkv)
 
-        if average_attn_weights:
+        if average_attn_weights and need_weights:
             attn_weights = attn_weights.mean(dim=1)
 
         if not need_weights:
@@ -639,7 +639,7 @@ class RelativePositionalMultiheadAttention(_MultiheadAttention):
 
         output = self.out_proj(qkv)
 
-        if average_attn_weights:
+        if average_attn_weights and need_weights:
             attn_weights = attn_weights.mean(dim=1)
 
         if not need_weights:
@@ -874,7 +874,7 @@ class RotaryPositionalMultiheadAttention(_MultiheadAttention):
 
         output = self.out_proj(qkv)
 
-        if average_attn_weights:
+        if average_attn_weights and need_weights:
             attn_weights = attn_weights.mean(dim=1)
 
         if not need_weights:
@@ -1075,7 +1075,7 @@ class ExtrapolatablePositionalMultiheadAttention(_MultiheadAttention):
 
         output = self.out_proj(qkv)
 
-        if average_attn_weights:
+        if average_attn_weights and need_weights:
             attn_weights = attn_weights.mean(dim=1)
 
         if not need_weights:
