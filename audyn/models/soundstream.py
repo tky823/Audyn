@@ -179,7 +179,7 @@ class SoundStream(RVQVAE):
 class SoundStreamReconstructor(SoundStream):
     """Wrapper class of SoundStream for waveform reconstruction.
 
-    Different from SoundStream class, inference method is used for reconstruction.
+    Unlike SoundStream class, inference method is used for reconstruction.
     """
 
     @torch.no_grad()
