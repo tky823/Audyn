@@ -397,7 +397,7 @@ class MaskedWaveNetAffineCoupling(WaveNetAffineCoupling):
         kernel_size: int = 5,
         dilation_rate: int = 1,
         bias: bool = True,
-        causal: bool = False,
+        is_causal: bool = False,
         conv: str = "gated",
         dropout: float = 0,
         weight_norm: bool = True,
@@ -415,7 +415,7 @@ class MaskedWaveNetAffineCoupling(WaveNetAffineCoupling):
             stride=1,
             dilation_rate=dilation_rate,
             bias=bias,
-            causal=causal,
+            is_causal=is_causal,
             conv=conv,
             dropout=dropout,
             weight_norm=weight_norm,
@@ -527,6 +527,7 @@ class MaskedWaveNetAffineCoupling(WaveNetAffineCoupling):
 
 
 class MaskedStackedResidualConvBlock1d(StackedResidualConvBlock1d):
+
     def __init__(
         self,
         in_channels: int,
@@ -537,7 +538,7 @@ class MaskedStackedResidualConvBlock1d(StackedResidualConvBlock1d):
         stride: int = 1,
         dilation_rate: int = 1,
         bias: bool = True,
-        causal: bool = False,
+        is_causal: bool = False,
         conv: str = "gated",
         dropout: float = 0,
         weight_norm: bool = True,
@@ -586,7 +587,7 @@ class MaskedStackedResidualConvBlock1d(StackedResidualConvBlock1d):
                     stride=stride,
                     dilation=dilation,
                     bias=bias,
-                    causal=causal,
+                    is_causal=is_causal,
                     dual_head=dual_head,
                     conv=conv,
                     dropout=dropout,
@@ -662,7 +663,7 @@ class ResidualConvBlock1d(BaseResidualConvBlock1d):
         stride: int = 1,
         dilation: int = 1,
         bias: bool = True,
-        causal: bool = True,
+        is_causal: bool = True,
         dual_head: bool = True,
         conv: str = "gated",
         dropout: float = 0,
@@ -679,7 +680,7 @@ class ResidualConvBlock1d(BaseResidualConvBlock1d):
         self.in_channels = in_channels
         self.skip_channels = skip_channels
         self.kernel_size, self.dilation = kernel_size, dilation
-        self.causal = causal
+        self.is_causal = is_causal
         self.dual_head = dual_head
 
         if conv == "gated":
@@ -692,7 +693,7 @@ class ResidualConvBlock1d(BaseResidualConvBlock1d):
                 stride=1,
                 dilation=dilation,
                 bias=bias,
-                causal=causal,
+                is_causal=is_causal,
                 local_dim=local_dim,
                 global_dim=global_dim,
                 weight_norm=weight_norm,

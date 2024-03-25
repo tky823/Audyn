@@ -39,7 +39,7 @@ decoder:
   down_scale: 2
   kernel_size: 3
   bias: true
-  causal: false
+  is_causal: false
   conv: gated
   weight_norm: true
   scaling: false
