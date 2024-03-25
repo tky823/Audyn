@@ -26,7 +26,7 @@ class WaveNet(nn.Module):
         kernel_size: int = 3,
         dilated: bool = True,
         bias: bool = True,
-        causal: bool = True,
+        is_causal: bool = True,
         conv: str = "gated",
         upsample: Optional[nn.Module] = None,
         local_dim: Optional[int] = None,
@@ -69,7 +69,7 @@ class WaveNet(nn.Module):
                     kernel_size=kernel_size,
                     dilated=dilated,
                     bias=bias,
-                    causal=causal,
+                    is_causal=is_causal,
                     dual_head=dual_head,
                     conv=conv,
                     local_dim=local_dim,
@@ -382,6 +382,7 @@ class WaveNet(nn.Module):
 
 
 class MultiSpeakerWaveNet(WaveNet):
+
     def __init__(
         self,
         in_channels: int,
@@ -394,7 +395,7 @@ class MultiSpeakerWaveNet(WaveNet):
         kernel_size: int = 3,
         dilated: bool = True,
         bias: bool = True,
-        causal: bool = True,
+        is_causal: bool = True,
         conv: str = "gated",
         upsample: Optional[nn.Module] = None,
         speaker_encoder: nn.Module = None,
@@ -446,7 +447,7 @@ class MultiSpeakerWaveNet(WaveNet):
                     kernel_size=kernel_size,
                     dilated=dilated,
                     bias=bias,
-                    causal=causal,
+                    is_causal=is_causal,
                     dual_head=dual_head,
                     conv=conv,
                     local_dim=local_dim,
@@ -595,7 +596,7 @@ class StackedResidualConvBlock1d(nn.Module):
         kernel_size: int = 3,
         dilated: bool = True,
         bias: bool = True,
-        causal: bool = True,
+        is_causal: bool = True,
         dual_head: bool = True,
         conv: str = "gated",
         local_dim: Optional[int] = None,
@@ -631,7 +632,7 @@ class StackedResidualConvBlock1d(nn.Module):
                     stride=1,
                     dilation=dilation,
                     bias=bias,
-                    causal=causal,
+                    is_causal=is_causal,
                     dual_head=_dual_head,
                     conv=conv,
                     local_dim=local_dim,

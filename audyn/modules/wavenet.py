@@ -18,7 +18,7 @@ class ResidualConvBlock1d(nn.Module):
         stride: int = 1,
         dilation: int = 1,
         bias: bool = True,
-        causal: bool = True,
+        is_causal: bool = True,
         dual_head: bool = True,
         conv: str = "gated",
         local_dim: Optional[int] = None,
@@ -33,7 +33,7 @@ class ResidualConvBlock1d(nn.Module):
         self.in_channels = in_channels
         self.skip_channels = skip_channels
         self.kernel_size, self.dilation = kernel_size, dilation
-        self.causal = causal
+        self.is_causal = is_causal
         self.dual_head = dual_head
 
         if conv == "gated":
@@ -46,7 +46,7 @@ class ResidualConvBlock1d(nn.Module):
                 stride=1,
                 dilation=dilation,
                 bias=bias,
-                causal=causal,
+                is_causal=is_causal,
                 local_dim=local_dim,
                 global_dim=global_dim,
                 weight_norm=weight_norm,
@@ -116,9 +116,9 @@ class ResidualConvBlock1d(nn.Module):
         local_conditioning: Optional[torch.Tensor] = None,
         global_conditioning: Optional[torch.Tensor] = None,
     ) -> Tuple[Optional[torch.Tensor], torch.Tensor]:
-        causal = self.causal
+        is_causal = self.is_causal
 
-        if not causal:
+        if not is_causal:
             raise NotImplementedError("Only causal forward is supported.")
 
         assert input.size(-1) == 1
@@ -201,7 +201,7 @@ class GatedConv1d(nn.Module):
         stride: int = 2,
         dilation: int = 1,
         bias: bool = True,
-        causal: bool = True,
+        is_causal: bool = True,
         local_dim: Optional[int] = None,
         global_dim: Optional[int] = None,
         weight_norm: bool = True,
@@ -209,7 +209,7 @@ class GatedConv1d(nn.Module):
         super().__init__()
 
         self.kernel_size, self.stride, self.dilation = kernel_size, stride, dilation
-        self.causal = causal
+        self.is_causal = is_causal
 
         self.conv1d_tanh = nn.Conv1d(
             in_channels,
@@ -293,11 +293,11 @@ class GatedConv1d(nn.Module):
 
         """
         kernel_size, stride, dilation = self.kernel_size, self.stride, self.dilation
-        causal = self.causal
+        is_causal = self.is_causal
 
         padding = (kernel_size - 1) * dilation
 
-        if causal:
+        if is_causal:
             padding_left = padding
             padding_right = 0
         else:
@@ -378,9 +378,9 @@ class GatedConv1d(nn.Module):
 
         """
         kernel_size, stride, dilation = self.kernel_size, self.stride, self.dilation
-        causal = self.causal
+        is_causal = self.is_causal
 
-        if not causal:
+        if not is_causal:
             raise NotImplementedError("Only causal forward is supported.")
 
         assert input.size(-1) == 1
