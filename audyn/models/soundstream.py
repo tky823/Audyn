@@ -265,7 +265,7 @@ class Encoder(nn.Module):
         stride: List[_size_1_t],
         dilation_rate: _size_1_t = 3,
         num_layers: int = 3,
-        causal: bool = True,
+        is_causal: bool = True,
     ) -> None:
         super().__init__()
 
@@ -290,7 +290,7 @@ class Encoder(nn.Module):
                 stride=_stride,
                 dilation_rate=dilation_rate,
                 num_layers=num_layers,
-                causal=causal,
+                is_causal=is_causal,
             )
             backbone.append(block)
             _in_channels = _out_channels
@@ -311,7 +311,7 @@ class Encoder(nn.Module):
         self.kernel_size_in = _single(kernel_size_in)
         self.kernel_size_out = _single(kernel_size_out)
         self.stride = stride
-        self.causal = causal
+        self.is_causal = is_causal
 
     def forward(self, input: torch.Tensor, denoise: bool = False) -> torch.Tensor:
         """Forward pass of Encoder.
@@ -351,7 +351,7 @@ class Encoder(nn.Module):
         (kernel_size,) = _single(kernel_size)
         padding = kernel_size - 1
 
-        if self.causal:
+        if self.is_causal:
             padding_left = padding
             padding_right = 0
         else:
@@ -376,7 +376,7 @@ class Decoder(nn.Module):
         stride: List[_size_1_t],
         dilation_rate: _size_1_t = 3,
         num_layers: int = 3,
-        causal: bool = True,
+        is_causal: bool = True,
     ) -> None:
         super().__init__()
 
@@ -405,7 +405,7 @@ class Decoder(nn.Module):
                 stride=_stride,
                 dilation_rate=dilation_rate,
                 num_layers=num_layers,
-                causal=causal,
+                is_causal=is_causal,
             )
             backbone.append(block)
             _in_channels = _out_channels
@@ -421,7 +421,7 @@ class Decoder(nn.Module):
 
         self.kernel_size_in = _single(kernel_size_in)
         self.kernel_size_out = _single(kernel_size_out)
-        self.causal = causal
+        self.is_causal = is_causal
 
     def forward(self, input: torch.Tensor, denoise: bool = False) -> torch.Tensor:
         """Forward pass of Decoder.
@@ -462,7 +462,7 @@ class Decoder(nn.Module):
         (kernel_size,) = _single(kernel_size)
         padding = kernel_size - 1
 
-        if self.causal:
+        if self.is_causal:
             padding_left = padding
             padding_right = 0
         else:

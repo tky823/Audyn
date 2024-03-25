@@ -4,8 +4,8 @@ import torch
 from audyn.models.soundstream import Decoder, Encoder, SoundStream, SpectrogramDiscriminator
 
 
-@pytest.mark.parametrize("causal", [True, False])
-def test_soundstream(causal: bool) -> None:
+@pytest.mark.parametrize("is_causal", [True, False])
+def test_soundstream(is_causal: bool) -> None:
     torch.manual_seed(0)
 
     in_channels, embedding_dim, hidden_channels = 1, 5, 2
@@ -34,7 +34,7 @@ def test_soundstream(causal: bool) -> None:
         stride=stride,
         dilation_rate=dilation_rate,
         num_layers=num_layers,
-        causal=causal,
+        is_causal=is_causal,
     )
     decoder = Decoder(
         embedding_dim,
@@ -47,7 +47,7 @@ def test_soundstream(causal: bool) -> None:
         stride=stride[-1::-1],
         dilation_rate=dilation_rate,
         num_layers=num_layers,
-        causal=causal,
+        is_causal=is_causal,
     )
     model = SoundStream(
         encoder,
@@ -96,8 +96,8 @@ def test_soundstream(causal: bool) -> None:
     assert indices.size() == (batch_size, num_stages, compressed_length)
 
 
-@pytest.mark.parametrize("causal", [True, False])
-def test_soundstream_encoder(causal: bool) -> None:
+@pytest.mark.parametrize("is_causal", [True, False])
+def test_soundstream_encoder(is_causal: bool) -> None:
     torch.manual_seed(0)
 
     in_channels, out_channels, hidden_channels = 1, 5, 2
@@ -124,7 +124,7 @@ def test_soundstream_encoder(causal: bool) -> None:
         stride=stride,
         dilation_rate=dilation_rate,
         num_layers=num_layers,
-        causal=causal,
+        is_causal=is_causal,
     )
 
     input = torch.randn((batch_size, in_channels, input_length))
@@ -133,8 +133,8 @@ def test_soundstream_encoder(causal: bool) -> None:
     assert output.size() == (batch_size, out_channels, output_length)
 
 
-@pytest.mark.parametrize("causal", [True, False])
-def test_soundstream_decoder(causal: bool) -> None:
+@pytest.mark.parametrize("is_causal", [True, False])
+def test_soundstream_decoder(is_causal: bool) -> None:
     torch.manual_seed(0)
 
     in_channels, out_channels, hidden_channels = 5, 1, 2
@@ -161,7 +161,7 @@ def test_soundstream_decoder(causal: bool) -> None:
         stride=stride,
         dilation_rate=dilation_rate,
         num_layers=num_layers,
-        causal=causal,
+        is_causal=is_causal,
     )
 
     input = torch.randn((batch_size, in_channels, input_length))

@@ -18,7 +18,7 @@ class EncoderBlock(nn.Module):
         stride: _size_1_t,
         dilation_rate: _size_1_t = 3,
         num_layers: int = 3,
-        causal: bool = True,
+        is_causal: bool = True,
     ) -> None:
         super().__init__()
 
@@ -30,7 +30,7 @@ class EncoderBlock(nn.Module):
                 in_channels,
                 kernel_size=kernel_size,
                 dilation=dilation,
-                causal=causal,
+                is_causal=is_causal,
             )
             backbone.append(unit)
 
@@ -50,14 +50,14 @@ class EncoderBlock(nn.Module):
 
         self.kernel_size_out = _single(kernel_size_out)
         self.stride = stride
-        self.causal = causal
+        self.is_causal = is_causal
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         (kernel_size_out,) = self.kernel_size_out
         (stride,) = self.stride
         padding = kernel_size_out - stride
 
-        if self.causal:
+        if self.is_causal:
             padding_left = padding
             padding_right = 0
         else:
@@ -81,7 +81,7 @@ class DecoderBlock(nn.Module):
         stride: _size_1_t,
         dilation_rate: _size_1_t = 3,
         num_layers: int = 3,
-        causal: bool = True,
+        is_causal: bool = True,
     ) -> None:
         super().__init__()
 
@@ -105,7 +105,7 @@ class DecoderBlock(nn.Module):
                 out_channels,
                 kernel_size=kernel_size,
                 dilation=dilation,
-                causal=causal,
+                is_causal=is_causal,
             )
             backbone.append(unit)
 
@@ -113,14 +113,14 @@ class DecoderBlock(nn.Module):
 
         self.kernel_size_in = _single(kernel_size_in)
         self.stride = stride
-        self.causal = causal
+        self.is_causal = is_causal
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         (kernel_size_in,) = self.kernel_size_in
         (stride,) = self.stride
         padding = kernel_size_in - stride
 
-        if self.causal:
+        if self.is_causal:
             padding_left = 0
             padding_right = padding
         else:
@@ -142,7 +142,7 @@ class ResidualUnit1d(nn.Module):
         num_features (int): Number of channels.
         kernel_size (_size_1_t): Kernel size of first convolution.
         dilation (_size_1_t): Dilation of first convolution. Default: ``1``.
-        causal (bool): If ``True``, causality is guaranteed.
+        is_causal (bool): If ``True``, causality is guaranteed.
 
     """
 
@@ -151,7 +151,7 @@ class ResidualUnit1d(nn.Module):
         num_features: int,
         kernel_size: _size_1_t,
         dilation: _size_1_t = 1,
-        causal: bool = True,
+        is_causal: bool = True,
     ) -> None:
         super().__init__()
 
@@ -169,7 +169,7 @@ class ResidualUnit1d(nn.Module):
 
         self.kernel_size = kernel_size
         self.dilation = dilation
-        self.causal = causal
+        self.is_causal = is_causal
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         (kernel_size,) = self.kernel_size
@@ -177,7 +177,7 @@ class ResidualUnit1d(nn.Module):
 
         dilated_kernel_size = (kernel_size - 1) * dilation + 1
 
-        if self.causal:
+        if self.is_causal:
             padding = dilated_kernel_size // 2
             x = F.pad(input, (padding, padding))
         else:
