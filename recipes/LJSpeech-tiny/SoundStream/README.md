@@ -6,8 +6,8 @@
 
 ```sh
 . ./run.sh \
---stage 0 \
---stop-stage 0
+--stage -1 \
+--stop-stage -1
 ```
 
 ### Stage 0: Preprocessing
