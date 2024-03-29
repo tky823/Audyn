@@ -7,6 +7,7 @@ spectrogram:
   n_fft: 1024
   hop_length: 256
 melspectrogram:
+  _target_: torchaudio.transforms.MelSpectrogram
   sample_rate: ${..audio.sample_rate}
   n_fft: ${..spectrogram.n_fft}
   hop_length: ${..spectrogram.hop_length}
