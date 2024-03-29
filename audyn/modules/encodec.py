@@ -13,25 +13,40 @@ IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
 
 class EncoderBlock(nn.Module):
+    """Encoder block of EnCodec."""
+
     def __init__(
         self,
         in_channels: int,
         out_channels: int,
         kernel_size: _size_1_t,
         stride: _size_1_t,
+        dilation_rate: _size_1_t = 1,
+        num_layers: int = 1,
         activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.elu,
         weight_regularization: Optional[str] = "weight_norm",
         is_causal: bool = True,
     ) -> None:
         super().__init__()
 
-        self.backbone = ResidualUnit1d(
-            in_channels,
-            kernel_size=kernel_size,
-            activation=activation,
-            weight_regularization=weight_regularization,
-            is_causal=is_causal,
-        )
+        if num_layers == 1:
+            assert dilation_rate == 1, "When num_layers=1, dilation_rate > 1 is unavailable."
+
+        backbone = []
+
+        for layer_idx in range(num_layers):
+            dilation = dilation_rate**layer_idx
+            unit = ResidualUnit1d(
+                in_channels,
+                kernel_size=kernel_size,
+                dilation=dilation,
+                activation=activation,
+                weight_regularization=weight_regularization,
+                is_causal=is_causal,
+            )
+            backbone.append(unit)
+
+        self.backbone = nn.Sequential(*backbone)
 
         stride = _single(stride)
         (stride_out,) = stride
@@ -99,17 +114,24 @@ class EncoderBlock(nn.Module):
 
 
 class DecoderBlock(nn.Module):
+    """Decoder block of EnCodec."""
+
     def __init__(
         self,
         in_channels: int,
         out_channels: int,
         kernel_size: _size_1_t,
         stride: _size_1_t,
+        dilation_rate: _size_1_t = 1,
+        num_layers: int = 1,
         activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.elu,
         weight_regularization: Optional[str] = "weight_norm",
         is_causal: bool = True,
     ) -> None:
         super().__init__()
+
+        if num_layers == 1:
+            assert dilation_rate == 1, "When num_layers=1, dilation_rate > 1 is unavailable."
 
         stride = _single(stride)
         (stride_in,) = stride
@@ -126,13 +148,21 @@ class DecoderBlock(nn.Module):
             stride=stride,
         )
 
-        self.backbone = ResidualUnit1d(
-            out_channels,
-            kernel_size=kernel_size,
-            activation=activation,
-            weight_regularization=weight_regularization,
-            is_causal=is_causal,
-        )
+        backbone = []
+
+        for layer_idx in range(num_layers):
+            dilation = dilation_rate**layer_idx
+            unit = ResidualUnit1d(
+                out_channels,
+                kernel_size=kernel_size,
+                dilation=dilation,
+                activation=activation,
+                weight_regularization=weight_regularization,
+                is_causal=is_causal,
+            )
+            backbone.append(unit)
+
+        self.backbone = nn.Sequential(*backbone)
 
         self.kernel_size_in = _single(kernel_size_in)
         self.stride = stride
