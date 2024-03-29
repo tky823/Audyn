@@ -9,7 +9,7 @@ num_post_layers: 2
 kernel_size: 3
 dilated: true
 bias: true
-causal: true
+is_causal: true
 conv: gated
 upsample:
   _target_: audyn.models.wavenet.Upsample

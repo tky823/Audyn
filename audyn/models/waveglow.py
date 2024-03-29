@@ -29,7 +29,7 @@ class WaveGlow(BaseFlow):
         kernel_size: int = 3,
         dilation_rate: int = 2,
         bias: bool = True,
-        causal: bool = False,
+        is_causal: bool = False,
         conv: str = "gated",
         upsample: Optional[nn.Module] = None,
         local_dim: Optional[int] = None,
@@ -70,7 +70,7 @@ class WaveGlow(BaseFlow):
                     kernel_size=kernel_size,
                     dilation_rate=dilation_rate,
                     bias=bias,
-                    causal=causal,
+                    is_causal=is_causal,
                     conv=conv,
                     local_dim=local_dim,
                     global_dim=global_dim,
@@ -325,6 +325,7 @@ class WaveGlow(BaseFlow):
 
 
 class MultiSpeakerWaveGlow(WaveGlow):
+
     def __init__(
         self,
         in_channels: int,
@@ -338,7 +339,7 @@ class MultiSpeakerWaveGlow(WaveGlow):
         kernel_size: int = 3,
         dilation_rate: int = 2,
         bias: bool = True,
-        causal: bool = False,
+        is_causal: bool = False,
         conv: str = "gated",
         upsample: Optional[nn.Module] = None,
         speaker_encoder: nn.Module = None,
@@ -383,7 +384,7 @@ class MultiSpeakerWaveGlow(WaveGlow):
                     kernel_size=kernel_size,
                     dilation_rate=dilation_rate,
                     bias=bias,
-                    causal=causal,
+                    is_causal=is_causal,
                     conv=conv,
                     local_dim=local_dim,
                     global_dim=global_dim,
@@ -489,6 +490,7 @@ class MultiSpeakerWaveGlow(WaveGlow):
 
 
 class StackedWaveGlowBlock(BaseFlow):
+
     def __init__(
         self,
         in_channels: Union[int, List[int]],
@@ -499,7 +501,7 @@ class StackedWaveGlowBlock(BaseFlow):
         kernel_size: int = 3,
         dilation_rate: int = 2,
         bias: bool = True,
-        causal: bool = False,
+        is_causal: bool = False,
         conv: str = "gated",
         local_dim: Optional[int] = None,
         global_dim: Optional[int] = None,
@@ -523,7 +525,7 @@ class StackedWaveGlowBlock(BaseFlow):
                 kernel_size=kernel_size,
                 dilation_rate=dilation_rate,
                 bias=bias,
-                causal=causal,
+                is_causal=is_causal,
                 conv=conv,
                 local_dim=local_dim,
                 global_dim=global_dim,
@@ -583,6 +585,7 @@ class StackedWaveGlowBlock(BaseFlow):
 
 
 class WaveGlowBlock(BaseFlow):
+
     def __init__(
         self,
         in_channels: Union[int, List[int]],
@@ -592,7 +595,7 @@ class WaveGlowBlock(BaseFlow):
         kernel_size: int = 3,
         dilation_rate: int = 2,
         bias: bool = True,
-        causal: bool = False,
+        is_causal: bool = False,
         conv: str = "gated",
         local_dim: Optional[int] = None,
         global_dim: Optional[int] = None,
@@ -620,7 +623,7 @@ class WaveGlowBlock(BaseFlow):
             kernel_size=kernel_size,
             dilation_rate=dilation_rate,
             bias=bias,
-            causal=causal,
+            is_causal=is_causal,
             conv=conv,
             local_dim=local_dim,
             global_dim=global_dim,

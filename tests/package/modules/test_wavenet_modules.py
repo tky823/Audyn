@@ -5,7 +5,7 @@ from dummy import allclose
 
 from audyn.modules.wavenet import GatedConv1d, ResidualConvBlock1d
 
-parameters_causal = [True, False]
+parameters_is_causal = [True, False]
 parameters_dual_head = [True, False]
 parameters_dilation = [1, 4]
 
@@ -14,9 +14,9 @@ num_frames = 16
 
 
 @pytest.mark.parametrize("dilation", parameters_dilation)
-@pytest.mark.parametrize("causal", parameters_causal)
+@pytest.mark.parametrize("is_causal", parameters_is_causal)
 @pytest.mark.parametrize("dual_head", parameters_dual_head)
-def test_residual_conv_block1d(dilation: int, causal: bool, dual_head: bool):
+def test_residual_conv_block1d(dilation: int, is_causal: bool, dual_head: bool):
     torch.manual_seed(0)
 
     in_channels = 4
@@ -29,7 +29,7 @@ def test_residual_conv_block1d(dilation: int, causal: bool, dual_head: bool):
         hidden_channels,
         stride=1,
         dilation=dilation,
-        causal=causal,
+        is_causal=is_causal,
         dual_head=dual_head,
     )
 
@@ -42,14 +42,14 @@ def test_residual_conv_block1d(dilation: int, causal: bool, dual_head: bool):
 
     assert skip.size() == (batch_size, hidden_channels, num_frames)
 
-    if causal:
+    if is_causal:
         # incremental forward
         model = ResidualConvBlock1d(
             in_channels,
             hidden_channels,
             stride=1,
             dilation=dilation,
-            causal=causal,
+            is_causal=is_causal,
         )
 
         zero = torch.zeros((batch_size, in_channels, 1), dtype=torch.float)
@@ -76,9 +76,9 @@ def test_residual_conv_block1d(dilation: int, causal: bool, dual_head: bool):
 
 
 @pytest.mark.parametrize("dilation", parameters_dilation)
-@pytest.mark.parametrize("causal", parameters_causal)
+@pytest.mark.parametrize("is_causal", parameters_is_causal)
 @pytest.mark.parametrize("dual_head", parameters_dual_head)
-def test_residual_conv_block1d_local(dilation: int, causal: bool, dual_head: bool):
+def test_residual_conv_block1d_local(dilation: int, is_causal: bool, dual_head: bool):
     torch.manual_seed(0)
 
     in_channels = 4
@@ -93,7 +93,7 @@ def test_residual_conv_block1d_local(dilation: int, causal: bool, dual_head: boo
         hidden_channels,
         stride=1,
         dilation=dilation,
-        causal=causal,
+        is_causal=is_causal,
         dual_head=dual_head,
         local_dim=local_dim,
     )
@@ -107,14 +107,14 @@ def test_residual_conv_block1d_local(dilation: int, causal: bool, dual_head: boo
 
     assert skip.size() == (batch_size, hidden_channels, num_frames)
 
-    if causal:
+    if is_causal:
         # incremental forward
         model = ResidualConvBlock1d(
             in_channels,
             hidden_channels,
             stride=1,
             dilation=dilation,
-            causal=causal,
+            is_causal=is_causal,
             local_dim=local_dim,
         )
 
@@ -145,9 +145,9 @@ def test_residual_conv_block1d_local(dilation: int, causal: bool, dual_head: boo
 
 
 @pytest.mark.parametrize("dilation", parameters_dilation)
-@pytest.mark.parametrize("causal", parameters_causal)
+@pytest.mark.parametrize("is_causal", parameters_is_causal)
 @pytest.mark.parametrize("dual_head", parameters_dual_head)
-def test_residual_conv_block1d_global(dilation: int, causal: bool, dual_head: bool):
+def test_residual_conv_block1d_global(dilation: int, is_causal: bool, dual_head: bool):
     torch.manual_seed(0)
 
     in_channels = 4
@@ -162,7 +162,7 @@ def test_residual_conv_block1d_global(dilation: int, causal: bool, dual_head: bo
         hidden_channels,
         stride=1,
         dilation=dilation,
-        causal=causal,
+        is_causal=is_causal,
         dual_head=dual_head,
         global_dim=global_dim,
     )
@@ -176,14 +176,14 @@ def test_residual_conv_block1d_global(dilation: int, causal: bool, dual_head: bo
 
     assert skip.size() == (batch_size, hidden_channels, num_frames)
 
-    if causal:
+    if is_causal:
         # incremental forward
         model = ResidualConvBlock1d(
             in_channels,
             hidden_channels,
             stride=1,
             dilation=dilation,
-            causal=causal,
+            is_causal=is_causal,
             global_dim=global_dim,
         )
 
@@ -214,8 +214,8 @@ def test_residual_conv_block1d_global(dilation: int, causal: bool, dual_head: bo
 
 
 @pytest.mark.parametrize("dilation", parameters_dilation)
-@pytest.mark.parametrize("causal", parameters_causal)
-def test_gated_conv1d(dilation: int, causal: bool):
+@pytest.mark.parametrize("is_causal", parameters_is_causal)
+def test_gated_conv1d(dilation: int, is_causal: bool):
     torch.manual_seed(0)
 
     in_channels, out_channels = 4, 8
@@ -227,14 +227,14 @@ def test_gated_conv1d(dilation: int, causal: bool):
         out_channels,
         stride=1,
         dilation=dilation,
-        causal=causal,
+        is_causal=is_causal,
     )
 
     input = _pad(
         input,
         kernel_size=model.kernel_size,
         dilation=model.dilation,
-        causal=model.causal,
+        is_causal=model.is_causal,
     )
     x_tanh_target = model.conv1d_tanh(input)
     x_sigmoid_target = model.conv1d_sigmoid(input)
@@ -250,14 +250,14 @@ def test_gated_conv1d(dilation: int, causal: bool):
     allclose(x_tanh_output, x_tanh_target)
     allclose(x_sigmoid_output, x_sigmoid_target)
 
-    if causal:
+    if is_causal:
         # incremental forward
         model = GatedConv1d(
             in_channels,
             in_channels,
             stride=1,
             dilation=dilation,
-            causal=causal,
+            is_causal=is_causal,
         )
 
         zero = torch.zeros((batch_size, in_channels, 1), dtype=torch.float)
@@ -282,8 +282,8 @@ def test_gated_conv1d(dilation: int, causal: bool):
 
 
 @pytest.mark.parametrize("dilation", parameters_dilation)
-@pytest.mark.parametrize("causal", parameters_causal)
-def test_gated_conv1d_local(dilation: int, causal: bool):
+@pytest.mark.parametrize("is_causal", parameters_is_causal)
+def test_gated_conv1d_local(dilation: int, is_causal: bool):
     torch.manual_seed(0)
 
     in_channels, out_channels = 4, 8
@@ -297,7 +297,7 @@ def test_gated_conv1d_local(dilation: int, causal: bool):
         out_channels,
         stride=1,
         dilation=dilation,
-        causal=causal,
+        is_causal=is_causal,
         local_dim=local_dim,
     )
 
@@ -305,7 +305,7 @@ def test_gated_conv1d_local(dilation: int, causal: bool):
         input,
         kernel_size=model.kernel_size,
         dilation=model.dilation,
-        causal=model.causal,
+        is_causal=model.is_causal,
     )
     x_tanh_target = model.conv1d_tanh(input)
     x_sigmoid_target = model.conv1d_sigmoid(input)
@@ -334,14 +334,14 @@ def test_gated_conv1d_local(dilation: int, causal: bool):
     allclose(x_tanh_output, x_tanh_target)
     allclose(x_sigmoid_output, x_sigmoid_target)
 
-    if causal:
+    if is_causal:
         # incremental forward
         model = GatedConv1d(
             in_channels,
             in_channels,
             stride=1,
             dilation=dilation,
-            causal=causal,
+            is_causal=is_causal,
             local_dim=local_dim,
         )
 
@@ -370,8 +370,8 @@ def test_gated_conv1d_local(dilation: int, causal: bool):
 
 
 @pytest.mark.parametrize("dilation", parameters_dilation)
-@pytest.mark.parametrize("causal", parameters_causal)
-def test_gated_conv1d_global(dilation: int, causal: bool):
+@pytest.mark.parametrize("is_causal", parameters_is_causal)
+def test_gated_conv1d_global(dilation: int, is_causal: bool):
     torch.manual_seed(0)
 
     in_channels, out_channels = 4, 8
@@ -386,7 +386,7 @@ def test_gated_conv1d_global(dilation: int, causal: bool):
         out_channels,
         stride=1,
         dilation=dilation,
-        causal=causal,
+        is_causal=is_causal,
         global_dim=global_dim,
     )
 
@@ -394,7 +394,7 @@ def test_gated_conv1d_global(dilation: int, causal: bool):
         input,
         kernel_size=model.kernel_size,
         dilation=model.dilation,
-        causal=model.causal,
+        is_causal=model.is_causal,
     )
 
     if global_conditioning.dim() == 2:
@@ -427,14 +427,14 @@ def test_gated_conv1d_global(dilation: int, causal: bool):
     allclose(x_tanh_output, x_tanh_target)
     allclose(x_sigmoid_output, x_sigmoid_target)
 
-    if causal:
+    if is_causal:
         # incremental forward
         model = GatedConv1d(
             in_channels,
             in_channels,
             stride=1,
             dilation=dilation,
-            causal=causal,
+            is_causal=is_causal,
             global_dim=global_dim,
         )
 
@@ -466,11 +466,11 @@ def _pad(
     input: torch.Tensor,
     kernel_size: int,
     dilation: int = 1,
-    causal: bool = True,
+    is_causal: bool = True,
 ) -> torch.Tensor:
     padding = (kernel_size - 1) * dilation
 
-    if causal:
+    if is_causal:
         padding_left = padding
         padding_right = 0
     else:

@@ -62,6 +62,12 @@ class VALLE(nn.Module):
         assert (
             acoustic_embedding.padding_idx == acoustic_pad_idx
         ), "padding_idx of acoustic_embedding should be 0."
+        assert acoustic_pad_idx == 0, "acoustic_pad_idx should be 0, but {} is specfied.".format(
+            acoustic_pad_idx
+        )
+        assert acoustic_eos_idx == 1, "acoustic_eos_idx should be 1, but {} is specfied.".format(
+            acoustic_eos_idx
+        )
         assert channels_last, "Only channels_last=True is supported."
 
         self.text_embedding = text_embedding
@@ -179,7 +185,7 @@ class VALLE(nn.Module):
             last_output = torch.softmax(last_logit, dim=-1)
             last_output = torch.distributions.Categorical(last_output).sample()
 
-            if last_output.item() == 0:
+            if last_output.item() == self.acoustic_eos_idx - 1:
                 break
 
             output = torch.cat([output, last_output], dim=1)
@@ -192,6 +198,9 @@ class VALLE(nn.Module):
             acoustic_last = self.acoustic_embedding(last_output)
             x_acoustic = torch.cat([x_acoustic, acoustic_last], dim=1)
 
+        # shift indices
+        # acoustic_pad_idx: 0 -> -1
+        # acoustic_eos_idx: 1 -> 0
         output = output - 1
 
         return output

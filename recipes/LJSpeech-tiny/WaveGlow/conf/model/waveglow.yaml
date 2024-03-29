@@ -9,7 +9,7 @@ num_groups: 8
 early_size: 2
 kernel_size: 3
 bias: true
-causal: false
+is_causal: false
 conv: gated
 upsample:
   _target_: audyn.models.wavenet.Upsample

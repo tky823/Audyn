@@ -12,7 +12,7 @@ from audyn.models.wavenet import (
 )
 
 parameters_dilated = [True, False]
-parameters_causal = [True, False]
+parameters_is_causal = [True, False]
 parameters_dual_head = [True, False]
 parameters_dilation = [1, 4]
 
@@ -21,8 +21,8 @@ num_frames = 16
 
 
 @pytest.mark.parametrize("dilated", parameters_dilated)
-@pytest.mark.parametrize("causal", parameters_causal)
-def test_wavenet(dilated: bool, causal: bool):
+@pytest.mark.parametrize("is_causal", parameters_is_causal)
+def test_wavenet(dilated: bool, is_causal: bool):
     torch.manual_seed(0)
 
     in_channels = 4
@@ -39,7 +39,7 @@ def test_wavenet(dilated: bool, causal: bool):
         num_layers=num_layers,
         num_stacks=num_stacks,
         dilated=dilated,
-        causal=causal,
+        is_causal=is_causal,
     )
 
     output = model(discrete_input)
@@ -48,7 +48,7 @@ def test_wavenet(dilated: bool, causal: bool):
     output = model(continuous_input)
     assert output.size() == (batch_size, in_channels, num_frames)
 
-    if causal:
+    if is_causal:
         # incremental forward
         model = WaveNet(
             in_channels,
@@ -57,7 +57,7 @@ def test_wavenet(dilated: bool, causal: bool):
             num_layers=num_layers,
             num_stacks=num_stacks,
             dilated=dilated,
-            causal=causal,
+            is_causal=is_causal,
         )
 
         # discrete
@@ -126,8 +126,8 @@ def test_wavenet(dilated: bool, causal: bool):
 
 
 @pytest.mark.parametrize("dilated", parameters_dilated)
-@pytest.mark.parametrize("causal", parameters_causal)
-def test_wavenet_local(dilated: bool, causal: bool):
+@pytest.mark.parametrize("is_causal", parameters_is_causal)
+def test_wavenet_local(dilated: bool, is_causal: bool):
     torch.manual_seed(0)
 
     in_channels = 4
@@ -154,7 +154,7 @@ def test_wavenet_local(dilated: bool, causal: bool):
         num_layers=num_layers,
         num_stacks=num_stacks,
         dilated=dilated,
-        causal=causal,
+        is_causal=is_causal,
         upsample=upsample,
         local_dim=n_mels,
     )
@@ -165,7 +165,7 @@ def test_wavenet_local(dilated: bool, causal: bool):
     output = model(continuous_input)
     assert output.size() == (batch_size, in_channels, num_frames)
 
-    if causal:
+    if is_causal:
         # incremental forward
         upsample = nn.ConvTranspose1d(
             n_mels,
@@ -180,7 +180,7 @@ def test_wavenet_local(dilated: bool, causal: bool):
             num_layers=num_layers,
             num_stacks=num_stacks,
             dilated=dilated,
-            causal=causal,
+            is_causal=is_causal,
             upsample=upsample,
             local_dim=n_mels,
         )
@@ -261,8 +261,8 @@ def test_wavenet_local(dilated: bool, causal: bool):
 
 
 @pytest.mark.parametrize("dilated", parameters_dilated)
-@pytest.mark.parametrize("causal", parameters_causal)
-def test_wavenet_global(dilated: bool, causal: bool):
+@pytest.mark.parametrize("is_causal", parameters_is_causal)
+def test_wavenet_global(dilated: bool, is_causal: bool):
     torch.manual_seed(0)
 
     in_channels = 4
@@ -282,7 +282,7 @@ def test_wavenet_global(dilated: bool, causal: bool):
         num_layers=num_layers,
         num_stacks=num_stacks,
         dilated=dilated,
-        causal=causal,
+        is_causal=is_causal,
         global_dim=embed_dim,
     )
 
@@ -292,7 +292,7 @@ def test_wavenet_global(dilated: bool, causal: bool):
     output = model(continuous_input)
     assert output.size() == (batch_size, in_channels, num_frames)
 
-    if causal:
+    if is_causal:
         # incremental forward
         model = WaveNet(
             in_channels,
@@ -301,7 +301,7 @@ def test_wavenet_global(dilated: bool, causal: bool):
             num_layers=num_layers,
             num_stacks=num_stacks,
             dilated=dilated,
-            causal=causal,
+            is_causal=is_causal,
             global_dim=embed_dim,
         )
 
@@ -381,8 +381,8 @@ def test_wavenet_global(dilated: bool, causal: bool):
 
 
 @pytest.mark.parametrize("dilated", parameters_dilated)
-@pytest.mark.parametrize("causal", parameters_causal)
-def test_multispk_wavenet(dilated: bool, causal: bool):
+@pytest.mark.parametrize("is_causal", parameters_is_causal)
+def test_multispk_wavenet(dilated: bool, is_causal: bool):
     torch.manual_seed(0)
 
     in_channels = 4
@@ -419,7 +419,7 @@ def test_multispk_wavenet(dilated: bool, causal: bool):
         num_layers=num_layers,
         num_stacks=num_stacks,
         dilated=dilated,
-        causal=causal,
+        is_causal=is_causal,
         upsample=upsample,
         speaker_encoder=speaker_encoder,
         local_dim=n_mels,
@@ -440,7 +440,7 @@ def test_multispk_wavenet(dilated: bool, causal: bool):
     )
     assert output.size() == (batch_size, in_channels, num_frames)
 
-    if causal:
+    if is_causal:
         # incremental forward
         upsample = nn.ConvTranspose1d(
             n_mels,
@@ -460,7 +460,7 @@ def test_multispk_wavenet(dilated: bool, causal: bool):
             num_layers=num_layers,
             num_stacks=num_stacks,
             dilated=dilated,
-            causal=causal,
+            is_causal=is_causal,
             upsample=upsample,
             speaker_encoder=speaker_encoder,
             local_dim=n_mels,
@@ -563,9 +563,9 @@ def test_multispk_wavenet(dilated: bool, causal: bool):
 
 
 @pytest.mark.parametrize("dilated", parameters_dilated)
-@pytest.mark.parametrize("causal", parameters_causal)
+@pytest.mark.parametrize("is_causal", parameters_is_causal)
 @pytest.mark.parametrize("dual_head", parameters_dual_head)
-def test_stacked_residual_conv_block1d(dilated: bool, causal: bool, dual_head: bool):
+def test_stacked_residual_conv_block1d(dilated: bool, is_causal: bool, dual_head: bool):
     torch.manual_seed(0)
 
     in_channels = 4
@@ -579,7 +579,7 @@ def test_stacked_residual_conv_block1d(dilated: bool, causal: bool, dual_head: b
         hidden_channels,
         num_layers=num_layers,
         dilated=dilated,
-        causal=causal,
+        is_causal=is_causal,
         dual_head=dual_head,
     )
 
@@ -592,7 +592,7 @@ def test_stacked_residual_conv_block1d(dilated: bool, causal: bool, dual_head: b
 
     assert skip.size() == (batch_size, hidden_channels, num_frames)
 
-    if causal:
+    if is_causal:
         # incremental forward
         model = StackedResidualConvBlock1d(
             in_channels,
@@ -600,7 +600,7 @@ def test_stacked_residual_conv_block1d(dilated: bool, causal: bool, dual_head: b
             skip_channels=in_channels,
             num_layers=num_layers,
             dilated=dilated,
-            causal=causal,
+            is_causal=is_causal,
             dual_head=dual_head,
         )
 
@@ -626,9 +626,9 @@ def test_stacked_residual_conv_block1d(dilated: bool, causal: bool, dual_head: b
 
 
 @pytest.mark.parametrize("dilated", parameters_dilated)
-@pytest.mark.parametrize("causal", parameters_causal)
+@pytest.mark.parametrize("is_causal", parameters_is_causal)
 @pytest.mark.parametrize("dual_head", parameters_dual_head)
-def test_stacked_residual_conv_block1d_local(dilated: bool, causal: bool, dual_head: bool):
+def test_stacked_residual_conv_block1d_local(dilated: bool, is_causal: bool, dual_head: bool):
     torch.manual_seed(0)
 
     in_channels = 4
@@ -645,7 +645,7 @@ def test_stacked_residual_conv_block1d_local(dilated: bool, causal: bool, dual_h
         hidden_channels,
         num_layers=num_layers,
         dilated=dilated,
-        causal=causal,
+        is_causal=is_causal,
         dual_head=dual_head,
         local_dim=local_dim,
     )
@@ -659,7 +659,7 @@ def test_stacked_residual_conv_block1d_local(dilated: bool, causal: bool, dual_h
 
     assert skip.size() == (batch_size, hidden_channels, num_frames)
 
-    if causal:
+    if is_causal:
         # incremental forward
         model = StackedResidualConvBlock1d(
             in_channels,
@@ -667,7 +667,7 @@ def test_stacked_residual_conv_block1d_local(dilated: bool, causal: bool, dual_h
             skip_channels=in_channels,
             num_layers=num_layers,
             dilated=dilated,
-            causal=causal,
+            is_causal=is_causal,
             dual_head=dual_head,
             local_dim=local_dim,
         )
@@ -697,9 +697,9 @@ def test_stacked_residual_conv_block1d_local(dilated: bool, causal: bool, dual_h
 
 
 @pytest.mark.parametrize("dilated", parameters_dilated)
-@pytest.mark.parametrize("causal", parameters_causal)
+@pytest.mark.parametrize("is_causal", parameters_is_causal)
 @pytest.mark.parametrize("dual_head", parameters_dual_head)
-def test_stacked_residual_conv_block1d_global(dilated: bool, causal: bool, dual_head: bool):
+def test_stacked_residual_conv_block1d_global(dilated: bool, is_causal: bool, dual_head: bool):
     torch.manual_seed(0)
 
     in_channels = 4
@@ -716,7 +716,7 @@ def test_stacked_residual_conv_block1d_global(dilated: bool, causal: bool, dual_
         hidden_channels,
         num_layers=num_layers,
         dilated=dilated,
-        causal=causal,
+        is_causal=is_causal,
         dual_head=dual_head,
         global_dim=global_dim,
     )
@@ -730,7 +730,7 @@ def test_stacked_residual_conv_block1d_global(dilated: bool, causal: bool, dual_
 
     assert skip.size() == (batch_size, hidden_channels, num_frames)
 
-    if causal:
+    if is_causal:
         # incremental forward
         model = StackedResidualConvBlock1d(
             in_channels,
@@ -738,7 +738,7 @@ def test_stacked_residual_conv_block1d_global(dilated: bool, causal: bool, dual_
             skip_channels=in_channels,
             num_layers=num_layers,
             dilated=dilated,
-            causal=causal,
+            is_causal=is_causal,
             dual_head=dual_head,
             global_dim=global_dim,
         )

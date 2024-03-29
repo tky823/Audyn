@@ -81,7 +81,7 @@ class GlowTTSDurationLoss(FastSpeechMSELoss):
 
         .. note::
 
-            Different from duration loss used in FastSpeech, maximum duration of target
+            Unlike duration loss used in FastSpeech, maximum duration of target
             feature (e.g. Melspectrogram) might be modified by GlowTTS decoder.
             The modified duration is judged by ``torch.count_nonzero`` of ``target``.
 

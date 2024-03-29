@@ -41,7 +41,7 @@ decoder:
   kernel_size: 5
   dilation_rate: 5
   bias: true
-  causal: false
+  is_causal: false
   conv: gated
   weight_norm: true
   scaling: false
