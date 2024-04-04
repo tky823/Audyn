@@ -73,9 +73,9 @@ def test_trainable_absolute_positional_attn(
         batch_first=batch_first,
     )
 
-    absolute_mha.q_pos_emb.data.zero_()
-    absolute_mha.k_pos_emb.data.zero_()
-    absolute_mha.v_pos_emb.data.zero_()
+    absolute_mha.q_positional_embedding.data.zero_()
+    absolute_mha.k_positional_embedding.data.zero_()
+    absolute_mha.v_positional_embedding.data.zero_()
 
     absolute_mha.in_proj_weight.data.copy_(mha.in_proj_weight.data)
     absolute_mha.out_proj.weight.data.copy_(mha.out_proj.weight.data)
@@ -230,8 +230,8 @@ def test_relative_positional_attn(
         batch_first=batch_first,
     )
 
-    relative_mha.k_pos_emb.data.zero_()
-    relative_mha.v_pos_emb.data.zero_()
+    relative_mha.k_positional_embedding.data.zero_()
+    relative_mha.v_positional_embedding.data.zero_()
 
     relative_mha.in_proj_weight.data.copy_(mha.in_proj_weight.data)
     relative_mha.out_proj.weight.data.copy_(mha.out_proj.weight.data)
