@@ -338,7 +338,7 @@ class TrainableAbsolutePositionalMultiheadAttention(_MultiheadAttention):
 
         return output, attn_weights
 
-    def _apply_positional_embeddingn_embedding(
+    def _apply_positional_embedding(
         self, input: torch.Tensor, positional_embedding: torch.Tensor
     ) -> torch.Tensor:
         """Apply positional embedding to input.
