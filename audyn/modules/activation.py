@@ -137,21 +137,21 @@ class TrainableAbsolutePositionalMultiheadAttention(_MultiheadAttention):
         else:
             embedding_shape = (max_length, embed_dim)
 
-        self.q_pos_emb = nn.Parameter(
+        self.q_positional_embedding = nn.Parameter(
             torch.empty(
                 *embedding_shape,
                 **factory_kwargs,
             ),
             requires_grad=True,
         )
-        self.k_pos_emb = nn.Parameter(
+        self.k_positional_embedding = nn.Parameter(
             torch.empty(
                 *embedding_shape,
                 **factory_kwargs,
             ),
             requires_grad=True,
         )
-        self.v_pos_emb = nn.Parameter(
+        self.v_positional_embedding = nn.Parameter(
             torch.empty(
                 *embedding_shape,
                 **factory_kwargs,
@@ -174,9 +174,9 @@ class TrainableAbsolutePositionalMultiheadAttention(_MultiheadAttention):
         super()._reset_parameters()
 
         if (
-            hasattr(self, "q_pos_emb")
-            and hasattr(self, "k_pos_emb")
-            and hasattr(self, "v_pos_emb")
+            hasattr(self, "q_positional_embedding")
+            and hasattr(self, "k_positional_embedding")
+            and hasattr(self, "v_positional_embedding")
         ):
             self._reset_embeddings()
 
@@ -184,9 +184,9 @@ class TrainableAbsolutePositionalMultiheadAttention(_MultiheadAttention):
         head_dim = self.embed_dim // self.num_heads
 
         std = math.sqrt(head_dim)
-        self.q_pos_emb.data.normal_(std=1 / std)
-        self.k_pos_emb.data.normal_(std=1 / std)
-        self.v_pos_emb.data.normal_(std=1 / std)
+        self.q_positional_embedding.data.normal_(std=1 / std)
+        self.k_positional_embedding.data.normal_(std=1 / std)
+        self.v_positional_embedding.data.normal_(std=1 / std)
 
     def forward(
         self,
@@ -231,9 +231,9 @@ class TrainableAbsolutePositionalMultiheadAttention(_MultiheadAttention):
         in_proj_weight = self.in_proj_weight
         in_proj_bias = self.in_proj_bias
         max_length = self.max_length
-        q_pos_emb = self.q_pos_emb
-        k_pos_emb = self.k_pos_emb
-        v_pos_emb = self.v_pos_emb
+        q_positional_embedding = self.q_positional_embedding
+        k_positional_embedding = self.k_positional_embedding
+        v_positional_embedding = self.v_positional_embedding
 
         head_dim = embed_dim // num_heads
 
@@ -301,9 +301,9 @@ class TrainableAbsolutePositionalMultiheadAttention(_MultiheadAttention):
         k = k.view(key_length, batch_size, num_heads, head_dim)
         v = v.view(key_length, batch_size, num_heads, head_dim)
 
-        q = self._apply_pos_emb(q, q_pos_emb)
-        k = self._apply_pos_emb(k, k_pos_emb)
-        v = self._apply_pos_emb(v, v_pos_emb)
+        q = self._apply_positional_embedding(q, q_positional_embedding)
+        k = self._apply_positional_embedding(k, k_positional_embedding)
+        v = self._apply_positional_embedding(v, v_positional_embedding)
 
         q = q.permute(1, 2, 0, 3)
         k = k.permute(1, 2, 0, 3)
@@ -338,7 +338,9 @@ class TrainableAbsolutePositionalMultiheadAttention(_MultiheadAttention):
 
         return output, attn_weights
 
-    def _apply_pos_emb(self, input: torch.Tensor, pos_emb: torch.Tensor) -> torch.Tensor:
+    def _apply_positional_embeddingn_embedding(
+        self, input: torch.Tensor, positional_embedding: torch.Tensor
+    ) -> torch.Tensor:
         """Apply positional embedding to input.
 
         Args:
@@ -352,14 +354,16 @@ class TrainableAbsolutePositionalMultiheadAttention(_MultiheadAttention):
         share_heads = self.share_heads
         input_length, _, num_heads, head_dim = input.size()
 
-        pos_emb, _ = torch.split(pos_emb, [input_length, max_length - input_length], dim=0)
+        positional_embedding, _ = torch.split(
+            positional_embedding, [input_length, max_length - input_length], dim=0
+        )
 
         if share_heads:
-            pos_emb = pos_emb.view(input_length, 1, 1, head_dim)
+            positional_embedding = positional_embedding.view(input_length, 1, 1, head_dim)
         else:
-            pos_emb = pos_emb.view(input_length, 1, num_heads, head_dim)
+            positional_embedding = positional_embedding.view(input_length, 1, num_heads, head_dim)
 
-        output = input + pos_emb
+        output = input + positional_embedding
 
         return output
 
@@ -414,14 +418,14 @@ class RelativePositionalMultiheadAttention(_MultiheadAttention):
         else:
             embedding_shape = (2 * window_size + 1, embed_dim)
 
-        self.k_pos_emb = nn.Parameter(
+        self.k_positional_embedding = nn.Parameter(
             torch.empty(
                 *embedding_shape,
                 **factory_kwargs,
             ),
             requires_grad=True,
         )
-        self.v_pos_emb = nn.Parameter(
+        self.v_positional_embedding = nn.Parameter(
             torch.empty(
                 *embedding_shape,
                 **factory_kwargs,
@@ -443,15 +447,15 @@ class RelativePositionalMultiheadAttention(_MultiheadAttention):
         """
         super()._reset_parameters()
 
-        if hasattr(self, "k_pos_emb") and hasattr(self, "v_pos_emb"):
+        if hasattr(self, "k_positional_embedding") and hasattr(self, "v_positional_embedding"):
             self._reset_embeddings()
 
     def _reset_embeddings(self) -> None:
         head_dim = self.embed_dim // self.num_heads
 
         std = math.sqrt(head_dim)
-        self.k_pos_emb.data.normal_(std=1 / std)
-        self.v_pos_emb.data.normal_(std=1 / std)
+        self.k_positional_embedding.data.normal_(std=1 / std)
+        self.v_positional_embedding.data.normal_(std=1 / std)
 
     def forward(
         self,
@@ -496,8 +500,8 @@ class RelativePositionalMultiheadAttention(_MultiheadAttention):
         in_proj_weight = self.in_proj_weight
         in_proj_bias = self.in_proj_bias
         share_heads = self.share_heads
-        k_pos_emb = self.k_pos_emb
-        v_pos_emb = self.v_pos_emb
+        k_positional_embedding = self.k_positional_embedding
+        v_positional_embedding = self.v_positional_embedding
 
         head_dim = embed_dim // num_heads
 
@@ -565,23 +569,23 @@ class RelativePositionalMultiheadAttention(_MultiheadAttention):
 
         # offset for key
         if share_heads:
-            k_pos_emb = self.expand_embedding(
-                k_pos_emb,
+            k_positional_embedding = self.expand_embedding(
+                k_positional_embedding,
                 query_length=query_length,
                 key_length=key_length,
                 num_heads=1,
             )
         else:
-            k_pos_emb = self.expand_embedding(
-                k_pos_emb,
+            k_positional_embedding = self.expand_embedding(
+                k_positional_embedding,
                 query_length=query_length,
                 key_length=key_length,
                 num_heads=num_heads,
             )
 
         q = q.permute(1, 2, 0, 3)
-        k_pos_emb = k_pos_emb.permute(0, 2, 1, 3)
-        k_offset = torch.matmul(q, k_pos_emb) / math.sqrt(head_dim)
+        k_positional_embedding = k_positional_embedding.permute(0, 2, 1, 3)
+        k_offset = torch.matmul(q, k_positional_embedding) / math.sqrt(head_dim)
         k_offset = k_offset.permute(2, 0, 1, 3)
         qk = qk + k_offset
 
@@ -610,23 +614,23 @@ class RelativePositionalMultiheadAttention(_MultiheadAttention):
 
         # offset for value
         if share_heads:
-            v_pos_emb = self.expand_embedding(
-                v_pos_emb,
+            v_positional_embedding = self.expand_embedding(
+                v_positional_embedding,
                 query_length=query_length,
                 key_length=key_length,
                 num_heads=1,
             )
         else:
-            v_pos_emb = self.expand_embedding(
-                v_pos_emb,
+            v_positional_embedding = self.expand_embedding(
+                v_positional_embedding,
                 query_length=query_length,
                 key_length=key_length,
                 num_heads=num_heads,
             )
 
         _attn_weights = attn_weights.permute(1, 2, 0, 3)
-        v_pos_emb = v_pos_emb.permute(0, 2, 3, 1)
-        v_offset = torch.matmul(_attn_weights, v_pos_emb)
+        v_positional_embedding = v_positional_embedding.permute(0, 2, 3, 1)
+        v_offset = torch.matmul(_attn_weights, v_positional_embedding)
         v_offset = v_offset.permute(2, 0, 1, 3)
         qkv = qkv + v_offset
 
@@ -649,7 +653,7 @@ class RelativePositionalMultiheadAttention(_MultiheadAttention):
 
     @staticmethod
     def expand_embedding(
-        pos_embedding: torch.Tensor,
+        positional_embedding: torch.Tensor,
         query_length: int,
         key_length: int,
         num_heads: Optional[int] = None,
@@ -657,7 +661,7 @@ class RelativePositionalMultiheadAttention(_MultiheadAttention):
         """Expand embedding.
 
         Args:
-            pos_embedding (torch.Tensor): Positional embedding
+            positional_embedding (torch.Tensor): Positional embedding
                 of shape (2 * window_size + 1, embed_dim).
             query_length (int): Query sequence length.
             key_length (int): Key sequence length.
@@ -670,49 +674,64 @@ class RelativePositionalMultiheadAttention(_MultiheadAttention):
                 (embed_dim, query_length, key_length).
 
         """
-        window_size, embed_dim = pos_embedding.size()
+        window_size, embed_dim = positional_embedding.size()
         half_window_size = (window_size - 1) // 2
         left_padding = query_length - half_window_size - 1
         right_padding = key_length - half_window_size - 1
 
-        left_pos_embedding, center_pos_embedding, right_pos_embedding = torch.split(
-            pos_embedding, [half_window_size, 1, half_window_size], dim=0
+        left_positional_embedding, center_positional_embedding, right_positional_embedding = (
+            torch.split(positional_embedding, [half_window_size, 1, half_window_size], dim=0)
         )
 
         if left_padding > 0:
-            left_pos_embedding, middle_pos_embedding = torch.split(
-                left_pos_embedding, [1, half_window_size - 1], dim=0
+            left_positional_embedding, middle_positional_embedding = torch.split(
+                left_positional_embedding, [1, half_window_size - 1], dim=0
             )
-            left_pos_embedding = left_pos_embedding.expand((left_padding + 1, embed_dim))
-            left_pos_embedding = torch.cat([left_pos_embedding, middle_pos_embedding], dim=0)
+            left_positional_embedding = left_positional_embedding.expand(
+                (left_padding + 1, embed_dim)
+            )
+            left_positional_embedding = torch.cat(
+                [left_positional_embedding, middle_positional_embedding], dim=0
+            )
         else:
-            left_pos_embedding = F.pad(left_pos_embedding, (0, 0, left_padding, 0))
+            left_positional_embedding = F.pad(left_positional_embedding, (0, 0, left_padding, 0))
 
         if right_padding > 0:
-            middle_pos_embedding, right_pos_embedding = torch.split(
-                right_pos_embedding, [half_window_size - 1, 1], dim=0
+            middle_positional_embedding, right_positional_embedding = torch.split(
+                right_positional_embedding, [half_window_size - 1, 1], dim=0
             )
-            right_pos_embedding = right_pos_embedding.expand((right_padding + 1, embed_dim))
-            right_pos_embedding = torch.cat([middle_pos_embedding, right_pos_embedding], dim=0)
+            right_positional_embedding = right_positional_embedding.expand(
+                (right_padding + 1, embed_dim)
+            )
+            right_positional_embedding = torch.cat(
+                [middle_positional_embedding, right_positional_embedding], dim=0
+            )
         else:
-            right_pos_embedding = F.pad(right_pos_embedding, (0, 0, 0, right_padding))
+            right_positional_embedding = F.pad(
+                right_positional_embedding, (0, 0, 0, right_padding)
+            )
 
-        pos_embedding = torch.cat(
-            [left_pos_embedding, center_pos_embedding, right_pos_embedding], dim=0
+        positional_embedding = torch.cat(
+            [left_positional_embedding, center_positional_embedding, right_positional_embedding],
+            dim=0,
         )
-        pos_embedding = pos_embedding.view(1, 1, query_length + key_length - 1, embed_dim)
-        pos_embedding = pos_embedding.permute(0, 3, 1, 2)
-        pos_embedding = F.unfold(pos_embedding, kernel_size=(1, key_length), stride=1)
-        pos_embedding = pos_embedding.view(embed_dim, key_length, query_length)
-        pos_embedding = pos_embedding.permute(0, 2, 1)
-        pos_embedding = torch.flip(pos_embedding, dims=(-2,))
+        positional_embedding = positional_embedding.view(
+            1, 1, query_length + key_length - 1, embed_dim
+        )
+        positional_embedding = positional_embedding.permute(0, 3, 1, 2)
+        positional_embedding = F.unfold(
+            positional_embedding, kernel_size=(1, key_length), stride=1
+        )
+        positional_embedding = positional_embedding.view(embed_dim, key_length, query_length)
+        positional_embedding = positional_embedding.permute(0, 2, 1)
+        positional_embedding = torch.flip(positional_embedding, dims=(-2,))
 
         if num_heads is not None:
-            pos_embedding = pos_embedding.view(
+            positional_embedding = positional_embedding.view(
                 num_heads, embed_dim // num_heads, query_length, key_length
             )
 
-        return pos_embedding
+        return positional_embedding
 
 
 class RotaryPositionalMultiheadAttention(_MultiheadAttention):
@@ -842,8 +861,8 @@ class RotaryPositionalMultiheadAttention(_MultiheadAttention):
         k = F.linear(key, k_proj_weight, bias=k_proj_bias)
         v = F.linear(value, v_proj_weight, bias=v_proj_bias)
 
-        q = self._apply_pos_emb(q.contiguous())
-        k = self._apply_pos_emb(k.contiguous())
+        q = self._apply_positional_embedding(q.contiguous())
+        k = self._apply_positional_embedding(k.contiguous())
 
         q = q.view(query_length, batch_size, num_heads, head_dim)
         k = k.view(key_length, batch_size, num_heads, head_dim)
@@ -882,7 +901,7 @@ class RotaryPositionalMultiheadAttention(_MultiheadAttention):
 
         return output, attn_weights
 
-    def _apply_pos_emb(self, input: torch.Tensor) -> torch.Tensor:
+    def _apply_positional_embedding(self, input: torch.Tensor) -> torch.Tensor:
         """Apply positional embedding to input.
 
         Args:
@@ -1043,8 +1062,8 @@ class ExtrapolatablePositionalMultiheadAttention(_MultiheadAttention):
         k = F.linear(key, k_proj_weight, bias=k_proj_bias)
         v = F.linear(value, v_proj_weight, bias=v_proj_bias)
 
-        q = self._apply_q_pos_emb(q.contiguous())
-        k = self._apply_k_pos_emb(k.contiguous())
+        q = self._apply_q_positional_embedding(q.contiguous())
+        k = self._apply_k_positional_embedding(k.contiguous())
 
         q = q.view(query_length, batch_size, num_heads, head_dim)
         k = k.view(key_length, batch_size, num_heads, head_dim)
@@ -1083,7 +1102,7 @@ class ExtrapolatablePositionalMultiheadAttention(_MultiheadAttention):
 
         return output, attn_weights
 
-    def _apply_q_pos_emb(self, input: torch.Tensor) -> torch.Tensor:
+    def _apply_q_positional_embedding(self, input: torch.Tensor) -> torch.Tensor:
         """Apply positional embedding to query.
 
         Args:
@@ -1093,11 +1112,11 @@ class ExtrapolatablePositionalMultiheadAttention(_MultiheadAttention):
             torch.Tensor: Output sequence same shape as query.
 
         """
-        output = self._apply_pos_emb(input, xpos=self.q_xpos)
+        output = self._apply_positional_embedding(input, xpos=self.q_xpos)
 
         return output
 
-    def _apply_k_pos_emb(self, input: torch.Tensor) -> torch.Tensor:
+    def _apply_k_positional_embedding(self, input: torch.Tensor) -> torch.Tensor:
         """Apply positional embedding to key.
 
         Args:
@@ -1107,11 +1126,11 @@ class ExtrapolatablePositionalMultiheadAttention(_MultiheadAttention):
             torch.Tensor: Output sequence same shape as key.
 
         """
-        output = self._apply_pos_emb(input, xpos=self.k_xpos)
+        output = self._apply_positional_embedding(input, xpos=self.k_xpos)
 
         return output
 
-    def _apply_pos_emb(
+    def _apply_positional_embedding(
         self, input: torch.Tensor, xpos: ExtrapolatablePositionalEmbedding
     ) -> torch.Tensor:
         """Apply positional embedding to input.

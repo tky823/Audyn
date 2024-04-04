@@ -52,14 +52,14 @@ class AbsolutePositionalEncoding(nn.Module):
         sin = torch.sin(theta)
         cos = torch.cos(theta)
 
-        pos_emb = torch.stack([sin, cos], dim=2)  # (length, num_features // 2, 2)
-        pos_emb = pos_emb.view(length, num_features)
-        pos_emb = pos_emb.to(input.device)
+        positional_embedding = torch.stack([sin, cos], dim=2)  # (length, num_features // 2, 2)
+        positional_embedding = positional_embedding.view(length, num_features)
+        positional_embedding = positional_embedding.to(input.device)
 
         if not batch_first:
-            pos_emb = pos_emb.unsqueeze(dim=1)
+            positional_embedding = positional_embedding.unsqueeze(dim=1)
 
-        output = input + pos_emb
+        output = input + positional_embedding
 
         return output
 
