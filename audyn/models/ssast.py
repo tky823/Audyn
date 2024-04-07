@@ -53,9 +53,7 @@ class SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(nn.Module):
     def forward(self, *args, **kwargs) -> Any:
         raise NotImplementedError("Forward pass is not implemented.")
 
-    def patch_transformer_forward(
-        self, input: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.BoolTensor]:
+    def patch_transformer_forward(self, input: torch.Tensor) -> torch.Tensor:
         """Transformer with patch inputs.
 
         Args:
@@ -69,8 +67,23 @@ class SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(nn.Module):
         _, _, height, width = input.size()
 
         x = self.patches_to_sequence(input)
-        x = self.backbone(x)
+        x = self.transformer_forward(x)
         output = self.sequence_to_patches(x, height=height, width=width)
+
+        return output
+
+    def transformer_forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of Transformer.
+
+        Args:
+            input (torch.Tensor): Patch feature of shape
+                (batch_size, height * width, embedding_dim).
+
+        Returns:
+            torch.Tensor: Estimated patches of shape (batch_size, height * width, embedding_dim).
+
+        """
+        output = self.backbone(input)
 
         return output
 
@@ -86,7 +99,14 @@ class SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(nn.Module):
 
         """
         x = self.embedding(input)
-        output = self.patch_transformer_forward(x)
+
+        # just to compute height and width
+        target = self.spectrogram_to_patches(input)
+        _, _, height, width = target.size()
+
+        x = self.transformer_forward(x)
+        _, x = self.split_sequence(x)
+        output = self.sequence_to_patches(x, height=height, width=width)
 
         return output
 
@@ -184,6 +204,50 @@ class SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(nn.Module):
 
         return output, length
 
+    def split_sequence(self, sequence: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Split sequence to head tokens and content tokens.
+
+        Args:
+            sequence (torch.Tensor): Sequence containing head tokens, i.e. class and distillation
+                tokens. The shape is (batch_size, length, embedding_dim).
+
+        Returns:
+            tuple: Tuple of tensors containing
+
+                - torch.Tensor: Head tokens of shape (batch_size, num_head_tokens, embedding_dim).
+                - torch.Tensor: Sequence of shape
+                    (batch_size, length - num_head_tokens, embedding_dim).
+
+        .. note::
+
+            This method is applicable even when sequence does not contain head tokens. In that
+            case, an empty sequnce is returened as the first item of returned tensors.
+
+        """
+        head_tokens, sequence = self.embedding.split_sequence(sequence)
+
+        return head_tokens, sequence
+
+    def prepend_tokens(
+        self, sequence: torch.Tensor, tokens: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
+        """Prepaned tokens to sequence.
+
+        Args:
+            sequence (torch.Tensor): Sequence of shape (batch_size, length, embedding_dim).
+            tokens (torch.Tensor, optional): Tokens of shape
+                (batch_size, num_tokens, embedding_dim).
+
+        Returns:
+            torch.Tensor: Concatenated sequence of shape
+                (batch_size, length + num_tokens, embedding_dim).
+
+        """
+        if tokens is None:
+            return sequence
+        else:
+            return torch.cat([tokens, sequence], dim=-2)
+
 
 class SelfSupervisedAudioSpectrogramTransformer(nn.Module):
     """Self-supervised audio spectrogram transformer.
@@ -227,11 +291,22 @@ class SelfSupervisedAudioSpectrogramTransformer(nn.Module):
             input (torch.Tensor): Spectrogram of shape (batch_size, n_bins, n_frames).
 
         Returns:
-            torch.Tensor: Estimated patches of shape (batch_size, embedding_dim, height, width).
+            torch.Tensor: Estimated patches. The shape is one of
+                - (batch_size, height * width + num_head_tokens, embedding_dim).
+                - (batch_size, height * width + num_head_tokens, out_channels).
+                - (batch_size, embedding_dim).
+                - (batch_size, out_channels).
 
         """
         x = self.embedding(input)
-        output = self.patch_transformer_forward(x)
+
+        # just to compute height and width
+        target = self.spectrogram_to_patches(input)
+        _, _, height, width = target.size()
+
+        x = self.transformer_forward(x)
+        _, x = self.split_sequence(x)
+        output = self.sequence_to_patches(x, height=height, width=width)
 
         if self.aggregator is not None:
             output = self.aggregator(output)
@@ -241,9 +316,12 @@ class SelfSupervisedAudioSpectrogramTransformer(nn.Module):
 
         return output
 
-    def patch_transformer_forward(
-        self, input: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.BoolTensor]:
+    def transformer_forward(self, input: torch.Tensor) -> torch.Tensor:
+        output = self.backbone(input)
+
+        return output
+
+    def patch_transformer_forward(self, input: torch.Tensor) -> torch.Tensor:
         """Transformer with patch inputs.
 
         Args:
@@ -257,7 +335,7 @@ class SelfSupervisedAudioSpectrogramTransformer(nn.Module):
         _, _, height, width = input.size()
 
         x = self.patches_to_sequence(input)
-        x = self.backbone(x)
+        x = self.transformer_forward(x)
         output = self.sequence_to_patches(x, height=height, width=width)
 
         return output
@@ -318,6 +396,30 @@ class SelfSupervisedAudioSpectrogramTransformer(nn.Module):
 
         return output
 
+    def split_sequence(self, sequence: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Split sequence to head tokens and content tokens.
+
+        Args:
+            sequence (torch.Tensor): Sequence containing head tokens, i.e. class and distillation
+                tokens. The shape is (batch_size, length, embedding_dim).
+
+        Returns:
+            tuple: Tuple of tensors containing
+
+                - torch.Tensor: Head tokens of shape (batch_size, num_head_tokens, embedding_dim).
+                - torch.Tensor: Sequence of shape
+                    (batch_size, length - num_head_tokens, embedding_dim).
+
+        .. note::
+
+            This method is applicable even when sequence does not contain head tokens. In that
+            case, an empty sequnce is returened as the first item of returned tensors.
+
+        """
+        head_tokens, sequence = self.embedding.split_sequence(sequence)
+
+        return head_tokens, sequence
+
 
 class MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
     SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel
@@ -374,9 +476,18 @@ class MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
         x = self.embedding(input)
         target = self.spectrogram_to_patches(input)
 
+        _, _, height, width = target.size()
+
+        head_tokens, x = self.split_sequence(x)
+        x_patch = self.sequence_to_patches(x, height=height, width=width)
+
         # for reconstruction
-        x, masking_mask = self.masker(x)
-        x = self.patch_transformer_forward(x)
+        x, masking_mask = self.masker(x_patch)
+        x = self.patches_to_sequence(x)
+        x = self.prepend_tokens(x, tokens=head_tokens)
+        x = self.transformer_forward(x)
+        _, x = self.split_sequence(x)
+        x = self.sequence_to_patches(x, height=height, width=width)
         reconstruction_output, reconstruction_length = self.select_masked_patches(
             x, masking_mask=masking_mask
         )
@@ -387,8 +498,12 @@ class MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
         reconstruction_output = self.reconstructor(reconstruction_output)
 
         # for classification
-        x, masking_mask = self.masker(x)
-        x = self.patch_transformer_forward(x)
+        x, masking_mask = self.masker(x_patch)
+        x = self.patches_to_sequence(x)
+        x = self.prepend_tokens(x, tokens=head_tokens)
+        x = self.transformer_forward(x)
+        _, x = self.split_sequence(x)
+        x = self.sequence_to_patches(x, height=height, width=width)
         classification_output, classification_length = self.select_masked_patches(
             x, masking_mask=masking_mask
         )
@@ -411,8 +526,15 @@ class PositionalPatchEmbedding(nn.Module):
         embedding_dim (int): Embedding dimension.
         kernel_size (_size_2_t): Kernel size that corresponds to patch.
         stride (_size_2_t): Stride.
+        insert_cls_token (bool): If ``True``, class token is inserted to beginning of sequence.
+        insert_dist_token (bool): If ``True``, distillation token is inserd to beginning sequence.
         n_bins (int): Number of input bins.
         n_frames (int): Number of input frames.
+
+    .. note::
+
+        Unlike official implementation, trainable positional embedding for CLS (and DIST) token(s)
+        are omitted in terms of redundancy.
 
     """
 
@@ -421,6 +543,8 @@ class PositionalPatchEmbedding(nn.Module):
         embedding_dim: int,
         kernel_size: _size_2_t,
         stride: Optional[_size_2_t] = None,
+        insert_cls_token: bool = False,
+        insert_dist_token: bool = False,
         n_bins: int = None,
         n_frames: int = None,
         device: torch.device = None,
@@ -439,12 +563,22 @@ class PositionalPatchEmbedding(nn.Module):
         if n_frames is None:
             raise ValueError("n_frames is required.")
 
+        if insert_dist_token and not insert_cls_token:
+            raise ValueError("When insert_dist_token=True, insert_cls_token should be True.")
+
         kernel_size = _pair(kernel_size)
 
         if stride is None:
             stride = kernel_size
 
         stride = _pair(stride)
+
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.insert_cls_token = insert_cls_token
+        self.insert_dist_token = insert_dist_token
+        self.n_bins = n_bins
+        self.n_frames = n_frames
 
         self.conv2d = nn.Conv2d(
             1,
@@ -457,11 +591,39 @@ class PositionalPatchEmbedding(nn.Module):
         positional_embedding = torch.empty((embedding_dim, height, width), **factory_kwargs)
         self.positional_embedding = nn.Parameter(positional_embedding)
 
+        num_head_tokens = 0
+
+        if insert_cls_token:
+            num_head_tokens += 1
+            cls_token = torch.empty(
+                (embedding_dim,),
+                **factory_kwargs,
+            )
+            self.cls_token = nn.Parameter(cls_token)
+        else:
+            self.register_parameter("cls_token", None)
+
+        if insert_dist_token:
+            num_head_tokens += 1
+            dist_token = torch.empty(
+                (embedding_dim,),
+                **factory_kwargs,
+            )
+            self.dist_token = nn.Parameter(dist_token)
+        else:
+            self.register_parameter("dist_token", None)
+
         self._reset_parameters()
 
     def _reset_parameters(self) -> None:
         # based on official implementation
         nn.init.trunc_normal_(self.positional_embedding.data, std=0.02)
+
+        if self.cls_token is not None:
+            nn.init.trunc_normal_(self.cls_token.data, std=0.02)
+
+        if self.dist_token is not None:
+            nn.init.trunc_normal_(self.dist_token.data, std=0.02)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         """Forward pass of PositionalPatchEmbedding.
@@ -470,18 +632,29 @@ class PositionalPatchEmbedding(nn.Module):
             input (torch.Tensor): Spectrogram of shape (batch_size, n_bins, n_frames).
 
         Returns:
-            torch.Tensor: (batch_size, embedding_dim, height, width).
+            torch.Tensor: (batch_size, height * width + num_head_tokens, embedding_dim),
+                where `num_head_tokens` represents number of tokens for [CLS] and [DIST].
 
         """
         positional_embedding = self.positional_embedding
         _, n_bins, n_frames = input.size()
         x = input.unsqueeze(dim=-3)
         x = self.conv2d(x)
-        output = x + self.resample_positional_embedding(
+        x = x + self.resample_positional_embedding(
             positional_embedding,
             n_bins,
             n_frames,
         )
+        output = self.patches_to_sequence(x)
+        batch_size = output.size(0)
+
+        if self.insert_dist_token:
+            dist_token = self.dist_token.expand((batch_size, 1, -1))
+            output = torch.cat([dist_token, output], dim=-2)
+
+        if self.insert_cls_token:
+            cls_token = self.cls_token.expand((batch_size, 1, -1))
+            output = torch.cat([cls_token, output], dim=-2)
 
         return output
 
@@ -502,6 +675,68 @@ class PositionalPatchEmbedding(nn.Module):
         output = x.view(batch_size, -1, height, width)
 
         return output
+
+    def patches_to_sequence(self, input: Union[torch.Tensor, torch.BoolTensor]) -> torch.Tensor:
+        """Convert 3D (batch_size, height, width) or 4D (batch_size, embedding_dim, height, width)
+        tensor to shape (batch_size, length, *) for input of Transformer.
+
+        Args:
+            input (torch.Tensor): Patches of shape (batch_size, height, width) or
+                (batch_size, embedding_dim, height, width).
+
+        Returns:
+            torch.Tensor: Sequence of shape (batch_size, length) or
+                (batch_size, length, embedding_dim).
+
+        """
+        n_dims = input.dim()
+
+        if n_dims == 3:
+            batch_size, height, width = input.size()
+            output = input.view(batch_size, height * width)
+        elif n_dims == 4:
+            batch_size, embedding_dim, height, width = input.size()
+            x = input.view(batch_size, embedding_dim, height * width)
+            output = x.permute(0, 2, 1).contiguous()
+        else:
+            raise ValueError("Only 3D and 4D tensors are supported.")
+
+        return output
+
+    def split_sequence(self, sequence: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Split sequence to head tokens and content tokens.
+
+        Args:
+            sequence (torch.Tensor): Sequence containing head tokens, i.e. class and distillation
+                tokens. The shape is (batch_size, length, embedding_dim).
+
+        Returns:
+            tuple: Tuple of tensors containing
+
+                - torch.Tensor: Head tokens of shape (batch_size, num_head_tokens, embedding_dim).
+                - torch.Tensor: Sequence of shape
+                    (batch_size, length - num_head_tokens, embedding_dim).
+
+        .. note::
+
+            This method is applicable even when sequence does not contain head tokens. In that
+            case, an empty sequnce is returened as the first item of returned tensors.
+
+        """
+        length = sequence.size(-2)
+        num_head_tokens = 0
+
+        if self.cls_token is not None:
+            num_head_tokens += 1
+
+        if self.dist_token is not None:
+            num_head_tokens += 1
+
+        head_tokens, sequence = torch.split(
+            sequence, [num_head_tokens, length - num_head_tokens], dim=-2
+        )
+
+        return head_tokens, sequence
 
     def resample_positional_embedding(
         self, positional_embedding: Union[torch.Tensor], n_bins: int, n_frames: int
