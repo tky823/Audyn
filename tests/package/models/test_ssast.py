@@ -245,7 +245,7 @@ def test_ssast_positional_patch_embedding() -> None:
     height = (n_bins - Kh) // Sh + 1
     width = (n_frames - Kw) // Sw + 1
 
-    assert output.size() == (batch_size, d_model, height, width)
+    assert output.size() == (batch_size, height * width, d_model)
 
 
 def test_ssast_masker() -> None:
