@@ -1,6 +1,8 @@
 """Self-supervised audio spectorgram transformer."""
 
+import copy
 import math
+import os
 import warnings
 from abc import abstractmethod
 from typing import Any, Optional, Tuple, Union
@@ -8,8 +10,11 @@ from typing import Any, Optional, Tuple, Union
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from omegaconf import OmegaConf
 from torch.nn.common_types import _size_2_t
 from torch.nn.modules.utils import _pair
+
+from ..utils import instantiate
 
 __all__ = [
     "SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel",
@@ -281,6 +286,63 @@ class SelfSupervisedAudioSpectrogramTransformer(nn.Module):
                 "which may lead to unexpected behavior."
             )
 
+    @classmethod
+    def build_from_pretrained(
+        cls,
+        pretrained_model_name_or_path: str,
+        stride: Optional[_size_2_t] = None,
+        n_bins: Optional[int] = None,
+        n_frames: Optional[int] = None,
+        aggregator: Optional[nn.Module] = None,
+        head: Optional[nn.Module] = None,
+    ) -> "SelfSupervisedAudioSpectrogramTransformer":
+        """Build pretrained SelfSupervisedAudioSpectrogramTransformer.
+
+        Args:
+            pretrained_model_name_or_path (str): Path to pretrained model.
+            aggregator (nn.Module, optional): Aggregator module.
+            head (nn.Module, optional): Head module.
+
+        """
+        if os.path.exists(pretrained_model_name_or_path):
+            state_dict = torch.load(
+                pretrained_model_name_or_path, map_location=lambda storage, loc: storage
+            )
+            model_state_dict = state_dict["model"]
+            resolved_config = state_dict["resolved_config"]
+            resolved_config = OmegaConf.create(resolved_config)
+            pretrained_model_config = resolved_config.model
+            patch_embedding = instantiate(pretrained_model_config.embedding)
+            transformer = instantiate(pretrained_model_config.backbone)
+
+            model = cls(
+                patch_embedding,
+                transformer,
+                aggregator=aggregator,
+                head=head,
+            )
+
+            keys = list(model_state_dict.keys())
+
+            for key in keys:
+                if (
+                    key.startswith("masker.")
+                    or key.startswith("classifier.")
+                    or key.startswith("reconstructor.")
+                ):
+                    _ = model_state_dict.pop(key)
+
+            model.load_state_dict(model_state_dict)
+
+            # update patch embedding if necessary
+            model.embedding = _align_patch_embedding(
+                model.embedding, stride=stride, n_bins=n_bins, n_frames=n_frames
+            )
+
+            return model
+        else:
+            raise FileNotFoundError(f"{pretrained_model_name_or_path} does not exist.")
+
     def forward(self, input: torch.Tensor) -> Tuple[
         Tuple[torch.Tensor, torch.Tensor, torch.LongTensor],
         Tuple[torch.Tensor, torch.Tensor, torch.LongTensor],
@@ -451,6 +513,50 @@ class MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
         self.reconstructor = reconstructor
         self.classifier = classifier
 
+    @classmethod
+    def build_from_pretrained(
+        cls,
+        pretrained_model_name_or_path: str,
+        stride: Optional[_size_2_t] = None,
+        n_bins: Optional[int] = None,
+        n_frames: Optional[int] = None,
+        reconstructor: Optional[nn.Module] = None,
+        classifier: Optional[nn.Module] = None,
+    ) -> "MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel":
+        """Build pretrained MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel.
+
+        Args:
+            pretrained_model_name_or_path (str): Path to pretrained model.
+
+        """
+        if os.path.exists(pretrained_model_name_or_path):
+            state_dict = torch.load(
+                pretrained_model_name_or_path, map_location=lambda storage, loc: storage
+            )
+            resolved_config = state_dict["resolved_config"]
+            resolved_config = OmegaConf.create(resolved_config)
+
+            model: MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel = (
+                instantiate(resolved_config.model)
+            )
+            model.load_state_dict(state_dict["model"])
+
+            # update patch embedding if necessary
+            model.embedding = _align_patch_embedding(
+                model.embedding, stride=stride, n_bins=n_bins, n_frames=n_frames
+            )
+
+            # update reconstructor and classifier if necessary
+            if reconstructor is not None:
+                model.reconstructor = reconstructor
+
+            if classifier is not None:
+                model.classifier = classifier
+
+            return model
+        else:
+            raise FileNotFoundError(f"{pretrained_model_name_or_path} does not exist.")
+
     def forward(self, input: torch.Tensor) -> Tuple[
         Tuple[torch.Tensor, torch.Tensor, torch.LongTensor],
         Tuple[torch.Tensor, torch.Tensor, torch.LongTensor],
@@ -573,6 +679,7 @@ class PositionalPatchEmbedding(nn.Module):
 
         stride = _pair(stride)
 
+        self.embedding_dim = embedding_dim
         self.kernel_size = kernel_size
         self.stride = stride
         self.insert_cls_token = insert_cls_token
@@ -1024,3 +1131,57 @@ class SSASTMPM(SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel):
 
 class MultiTaskSSASTMPM(MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel):
     """Alias of MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel."""
+
+
+def _align_patch_embedding(
+    orig_patch_embedding: PositionalPatchEmbedding,
+    stride: Optional[_size_2_t] = None,
+    n_bins: Optional[int] = None,
+    n_frames: Optional[int] = None,
+) -> PositionalPatchEmbedding:
+    pretrained_embedding_dim = orig_patch_embedding.embedding_dim
+    pretrained_kernel_size = orig_patch_embedding.kernel_size
+    pretrained_stride = orig_patch_embedding.stride
+    pretrained_insert_cls_token = orig_patch_embedding.insert_cls_token
+    pretrained_insert_dist_token = orig_patch_embedding.insert_dist_token
+    pretrained_n_bins = orig_patch_embedding.n_bins
+    pretrained_n_frames = orig_patch_embedding.n_frames
+    pretraine_conv2d = orig_patch_embedding.conv2d
+    pretrained_positional_embedding = orig_patch_embedding.positional_embedding
+    pretrained_cls_token = orig_patch_embedding.cls_token
+    pretrained_dist_token = orig_patch_embedding.dist_token
+
+    if stride is None:
+        stride = pretrained_stride
+
+    if n_bins is None:
+        n_bins = pretrained_n_bins
+
+    if n_frames is None:
+        n_frames = pretrained_n_frames
+
+    new_patch_embedding = PositionalPatchEmbedding(
+        pretrained_embedding_dim,
+        kernel_size=pretrained_kernel_size,
+        stride=stride,
+        insert_cls_token=pretrained_insert_cls_token,
+        insert_dist_token=pretrained_insert_dist_token,
+        n_bins=n_bins,
+        n_frames=n_frames,
+    )
+
+    conv2d_state_dict = copy.deepcopy(pretraine_conv2d.state_dict())
+    new_patch_embedding.conv2d.load_state_dict(conv2d_state_dict)
+
+    pretrained_positional_embedding = new_patch_embedding.resample_positional_embedding(
+        pretrained_positional_embedding, n_bins, n_frames
+    )
+    new_patch_embedding.positional_embedding.data.copy_(pretrained_positional_embedding)
+
+    if pretrained_insert_cls_token:
+        new_patch_embedding.cls_token.data.copy_(pretrained_cls_token)
+
+    if pretrained_insert_dist_token:
+        new_patch_embedding.dist_token.data.copy_(pretrained_dist_token)
+
+    return new_patch_embedding
