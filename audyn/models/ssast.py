@@ -14,7 +14,8 @@ from omegaconf import OmegaConf
 from torch.nn.common_types import _size_2_t
 from torch.nn.modules.utils import _pair
 
-from ..utils import instantiate
+from ..utils import instantiate, model_cache_dir
+from ..utils.github import download_file_from_github_release
 
 __all__ = [
     "SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel",
@@ -29,6 +30,17 @@ __all__ = [
     "SSASTMPM",
     "MultiTaskSSASTMPM",
 ]
+
+pretrained_model_configs = {
+    "multitask-ssast-frame-base-400": {
+        "url": "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev3/multitask-ssast-frame-base-400.pth",  # noqa: E501
+        "path": os.path.join(
+            model_cache_dir,
+            "SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel",
+            "multitask-ssast-frame-base-400.pth",
+        ),
+    }
+}
 
 
 class SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(nn.Module):
@@ -340,6 +352,21 @@ class SelfSupervisedAudioSpectrogramTransformer(nn.Module):
             )
 
             return model
+        elif pretrained_model_name_or_path in pretrained_model_configs:
+            config = pretrained_model_configs[pretrained_model_name_or_path]
+            url = config["url"]
+            path = config["path"]
+            download_file_from_github_release(url, path=path)
+            model = cls.build_from_pretrained(
+                path,
+                stride=stride,
+                n_bins=n_bins,
+                n_frames=n_frames,
+                aggregator=aggregator,
+                head=head,
+            )
+
+            return model
         else:
             raise FileNotFoundError(f"{pretrained_model_name_or_path} does not exist.")
 
@@ -552,6 +579,22 @@ class MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
 
             if classifier is not None:
                 model.classifier = classifier
+
+            return model
+        elif pretrained_model_name_or_path in pretrained_model_configs:
+            config = pretrained_model_configs[pretrained_model_name_or_path]
+            url = config["url"]
+            path = config["path"]
+            download_file_from_github_release(url, path=path)
+
+            model = cls.build_from_pretrained(
+                path,
+                stride=stride,
+                n_bins=n_bins,
+                n_frames=n_frames,
+                reconstructor=reconstructor,
+                classifier=classifier,
+            )
 
             return model
         else:
