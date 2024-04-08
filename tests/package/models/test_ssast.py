@@ -19,6 +19,8 @@ def test_official_ssast_multi_task_mpm() -> None:
     d_model = 768
     n_bins, n_frames = 128, 1024
     kernel_size = (n_bins, 2)
+    insert_cls_token = True
+    insert_dist_token = True
 
     num_masks = 400
     min_cluster, max_cluster = 3, 6
@@ -30,6 +32,8 @@ def test_official_ssast_multi_task_mpm() -> None:
     patch_embedding = PositionalPatchEmbedding(
         d_model,
         kernel_size=kernel_size,
+        insert_cls_token=insert_cls_token,
+        insert_dist_token=insert_dist_token,
         n_bins=n_bins,
         n_frames=n_frames,
     )
@@ -68,8 +72,13 @@ def test_official_ssast_multi_task_mpm() -> None:
         if p.requires_grad:
             num_parameters += p.numel()
 
-    # except for parameters related to CLS and DIST tokens
-    assert num_parameters == 87222272
+    assert num_parameters == 87223808
+
+    model = (
+        MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel.build_from_pretrained(
+            "multitask-ssast-frame-base-400"
+        )
+    )
 
 
 def test_official_ssast() -> None:
@@ -79,6 +88,8 @@ def test_official_ssast() -> None:
     n_bins, n_frames = 128, 100
     kernel_size = (n_bins, 2)
     stride = (n_bins, 1)
+    insert_cls_token = True
+    insert_dist_token = True
 
     nhead = 12
     dim_feedforward = 3072
@@ -88,6 +99,8 @@ def test_official_ssast() -> None:
         d_model,
         kernel_size=kernel_size,
         stride=stride,
+        insert_cls_token=insert_cls_token,
+        insert_dist_token=insert_dist_token,
         n_bins=n_bins,
         n_frames=n_frames,
     )
@@ -119,8 +132,7 @@ def test_official_ssast() -> None:
         if p.requires_grad:
             num_parameters += p.numel()
 
-    # except for parameters related to CLS and DIST tokens
-    assert num_parameters == 85357859
+    assert num_parameters == 85359395
 
 
 def test_ssast_multi_task_mpm() -> None:
