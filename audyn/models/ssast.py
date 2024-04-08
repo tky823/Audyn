@@ -32,6 +32,14 @@ __all__ = [
 ]
 
 pretrained_model_configs = {
+    "multitask-ssast-patch-base-400": {
+        "url": "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev3/multitask-ssast-patch-base-400.pth",  # noqa: E501
+        "path": os.path.join(
+            model_cache_dir,
+            "SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel",
+            "multitask-ssast-patch-base-400.pth",
+        ),
+    },
     "multitask-ssast-frame-base-400": {
         "url": "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev3/multitask-ssast-frame-base-400.pth",  # noqa: E501
         "path": os.path.join(
@@ -39,7 +47,7 @@ pretrained_model_configs = {
             "SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel",
             "multitask-ssast-frame-base-400.pth",
         ),
-    }
+    },
 }
 
 
@@ -311,11 +319,22 @@ class SelfSupervisedAudioSpectrogramTransformer(nn.Module):
         """Build pretrained SelfSupervisedAudioSpectrogramTransformer.
 
         Args:
-            pretrained_model_name_or_path (str): Path to pretrained model.
+            pretrained_model_name_or_path (str): Path to pretrained model or name of pretrained model.
             aggregator (nn.Module, optional): Aggregator module.
             head (nn.Module, optional): Head module.
 
-        """
+        Examples:
+
+            >>> from audyn.models.ssast import SelfSupervisedAudioSpectrogramTransformer
+            >>> model = SelfSupervisedAudioSpectrogramTransformer.build_from_pretrained("multitask-ssast-frame-base-400")
+
+        .. note::
+
+            Supported pretrained model names are
+                - multitask-ssast-patch-base-400
+                - multitask-ssast-frame-base-400
+
+        """  # noqa: E501
         if os.path.exists(pretrained_model_name_or_path):
             state_dict = torch.load(
                 pretrained_model_name_or_path, map_location=lambda storage, loc: storage
@@ -553,9 +572,20 @@ class MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
         """Build pretrained MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel.
 
         Args:
-            pretrained_model_name_or_path (str): Path to pretrained model.
+            pretrained_model_name_or_path (str): Path to pretrained model or name of pretrained model.
 
-        """
+        Examples:
+
+            >>> from audyn.models.ssast import MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel
+            >>> model = MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel.build_from_pretrained("multitask-ssast-frame-base-400")
+
+        .. note::
+
+            Supported pretrained model names are
+                - multitask-ssast-patch-base-400
+                - multitask-ssast-frame-base-400
+
+        """  # noqa: E501
         if os.path.exists(pretrained_model_name_or_path):
             state_dict = torch.load(
                 pretrained_model_name_or_path, map_location=lambda storage, loc: storage
