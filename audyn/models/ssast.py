@@ -4,9 +4,8 @@ import copy
 import math
 import os
 import warnings
-from abc import abstractmethod
 from collections import OrderedDict
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -16,7 +15,13 @@ from torch.nn.common_types import _size_2_t
 
 from ..utils import instantiate, model_cache_dir
 from ..utils.github import download_file_from_github_release
-from .ast import PositionalPatchEmbedding
+from .ast import (
+    Aggregator,
+    BaseAudioSpectrogramTransformer,
+    Head,
+    MLPHead,
+    PositionalPatchEmbedding,
+)
 
 __all__ = [
     "SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel",
@@ -24,10 +29,10 @@ __all__ = [
     "PositionalPatchEmbedding",  # for backward compatibility
     "Masker",
     "MLP",
-    "Aggregator",
+    "Aggregator",  # for backward compatibility
     "AverageAggregator",
-    "Head",
-    "MLPHead",
+    "Head",  # for backward compatibility
+    "MLPHead",  # for backward compatibility
     "SSASTMPM",
     "MultiTaskSSASTMPM",
     "SSAST",
@@ -53,7 +58,7 @@ pretrained_model_configs = {
 }
 
 
-class SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(nn.Module):
+class SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(BaseAudioSpectrogramTransformer):
     """Masked patch model for self-supervised audio spectrogram transformer.
 
     Args:
@@ -67,11 +72,11 @@ class SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(nn.Module):
 
     def __init__(
         self,
-        embedding: "PositionalPatchEmbedding",
+        embedding: PositionalPatchEmbedding,
         masker: "Masker",
         backbone: nn.TransformerEncoder,
     ) -> None:
-        super().__init__()
+        super(BaseAudioSpectrogramTransformer, self).__init__()
 
         self.embedding = embedding
         self.masker = masker
@@ -79,40 +84,6 @@ class SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(nn.Module):
 
     def forward(self, *args, **kwargs) -> Any:
         raise NotImplementedError("Forward pass is not implemented.")
-
-    def patch_transformer_forward(self, input: torch.Tensor) -> torch.Tensor:
-        """Transformer with patch inputs.
-
-        Args:
-            input (torch.Tensor): Patch feature of shape
-                (batch_size, embedding_dim, height, width).
-
-        Returns:
-            torch.Tensor: Estimated patches of shape (batch_size, embedding_dim, height, width).
-
-        """
-        _, _, height, width = input.size()
-
-        x = self.patches_to_sequence(input)
-        x = self.transformer_forward(x)
-        output = self.sequence_to_patches(x, height=height, width=width)
-
-        return output
-
-    def transformer_forward(self, input: torch.Tensor) -> torch.Tensor:
-        """Forward pass of Transformer.
-
-        Args:
-            input (torch.Tensor): Patch feature of shape
-                (batch_size, height * width, embedding_dim).
-
-        Returns:
-            torch.Tensor: Estimated patches of shape (batch_size, height * width, embedding_dim).
-
-        """
-        output = self.backbone(input)
-
-        return output
 
     @torch.no_grad()
     def inference(self, input: torch.Tensor) -> torch.Tensor:
@@ -134,62 +105,6 @@ class SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(nn.Module):
         x = self.transformer_forward(x)
         _, x = self.split_sequence(x)
         output = self.sequence_to_patches(x, height=height, width=width)
-
-        return output
-
-    def spectrogram_to_patches(self, input: torch.Tensor) -> torch.Tensor:
-        """Convert spectrogram to patches.
-
-        Actual implementation depends on ``self.embedding.spectrogram_to_patches``.
-
-        """
-        return self.embedding.spectrogram_to_patches(input)
-
-    def patches_to_sequence(self, input: Union[torch.Tensor, torch.BoolTensor]) -> torch.Tensor:
-        """Convert 3D (batch_size, height, width) or 4D (batch_size, embedding_dim, height, width)
-        tensor to shape (batch_size, length, *) for input of Transformer.
-
-        Args:
-            input (torch.Tensor): Patches of shape (batch_size, height, width) or
-                (batch_size, embedding_dim, height, width).
-
-        Returns:
-            torch.Tensor: Sequence of shape (batch_size, length) or
-                (batch_size, length, embedding_dim).
-
-        """
-        n_dims = input.dim()
-
-        if n_dims == 3:
-            batch_size, height, width = input.size()
-            output = input.view(batch_size, height * width)
-        elif n_dims == 4:
-            batch_size, embedding_dim, height, width = input.size()
-            x = input.view(batch_size, embedding_dim, height * width)
-            output = x.permute(0, 2, 1).contiguous()
-        else:
-            raise ValueError("Only 3D and 4D tensors are supported.")
-
-        return output
-
-    def sequence_to_patches(
-        self, input: Union[torch.Tensor, torch.BoolTensor], height: int, width: int
-    ) -> torch.Tensor:
-        """Convert (batch_size, max_length, *) tensor to 3D (batch_size, height, width)
-        or 4D (batch_size, embedding_dim, height, width) one.
-        This method corresponds to inversion of ``patches_to_sequence``.
-        """
-        n_dims = input.dim()
-
-        if n_dims == 2:
-            batch_size, _ = input.size()
-            output = input.view(batch_size, height, width)
-        elif n_dims == 3:
-            batch_size, _, embedding_dim = input.size()
-            x = input.view(batch_size, height, width, embedding_dim)
-            output = x.permute(0, 3, 1, 2).contiguous()
-        else:
-            raise ValueError("Only 2D and 3D tensors are supported.")
 
         return output
 
@@ -231,30 +146,6 @@ class SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(nn.Module):
 
         return output, length
 
-    def split_sequence(self, sequence: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Split sequence to head tokens and content tokens.
-
-        Args:
-            sequence (torch.Tensor): Sequence containing head tokens, i.e. class and distillation
-                tokens. The shape is (batch_size, length, embedding_dim).
-
-        Returns:
-            tuple: Tuple of tensors containing
-
-                - torch.Tensor: Head tokens of shape (batch_size, num_head_tokens, embedding_dim).
-                - torch.Tensor: Sequence of shape
-                    (batch_size, length - num_head_tokens, embedding_dim).
-
-        .. note::
-
-            This method is applicable even when sequence does not contain head tokens. In that
-            case, an empty sequnce is returened as the first item of returned tensors.
-
-        """
-        head_tokens, sequence = self.embedding.split_sequence(sequence)
-
-        return head_tokens, sequence
-
     def prepend_tokens(
         self, sequence: torch.Tensor, tokens: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
@@ -276,36 +167,34 @@ class SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(nn.Module):
             return torch.cat([tokens, sequence], dim=-2)
 
 
-class SelfSupervisedAudioSpectrogramTransformer(nn.Module):
+class SelfSupervisedAudioSpectrogramTransformer(BaseAudioSpectrogramTransformer):
     """Self-supervised audio spectrogram transformer.
 
     Args:
         embedding (audyn.models.ssast.PositionalPatchEmbedding): Patch embedding
             followed by positional embedding.
-        masker (audyn.models.ssast.Masker): Masking module that replaces some patches
-            with mask tokens.
         backbone (nn.TransformerEncoder): Transformer (encoder).
 
     """
 
     def __init__(
         self,
-        embedding: "PositionalPatchEmbedding",
+        embedding: PositionalPatchEmbedding,
         backbone: nn.TransformerEncoder,
         aggregator: Optional["Aggregator"] = None,
         head: Optional["Head"] = None,
     ) -> None:
-        super().__init__()
+        super().__init__(embedding=embedding, backbone=backbone)
 
-        self.embedding = embedding
-        self.backbone = backbone
         self.aggregator = aggregator
         self.head = head
 
         if self.aggregator is None and self.head is not None:
             warnings.warn(
                 "Head is given, but aggregator is not given, "
-                "which may lead to unexpected behavior."
+                "which may lead to unexpected behavior.",
+                UserWarning,
+                stacklevel=2,
             )
 
     @classmethod
@@ -400,10 +289,7 @@ class SelfSupervisedAudioSpectrogramTransformer(nn.Module):
         else:
             raise FileNotFoundError(f"{pretrained_model_name_or_path} does not exist.")
 
-    def forward(self, input: torch.Tensor) -> Tuple[
-        Tuple[torch.Tensor, torch.Tensor, torch.LongTensor],
-        Tuple[torch.Tensor, torch.Tensor, torch.LongTensor],
-    ]:
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
         """Forward pass of SelfSupervisedAudioSpectrogramTransformer.
 
         Args:
@@ -434,110 +320,6 @@ class SelfSupervisedAudioSpectrogramTransformer(nn.Module):
             output = self.head(output)
 
         return output
-
-    def transformer_forward(self, input: torch.Tensor) -> torch.Tensor:
-        output = self.backbone(input)
-
-        return output
-
-    def patch_transformer_forward(self, input: torch.Tensor) -> torch.Tensor:
-        """Transformer with patch inputs.
-
-        Args:
-            input (torch.Tensor): Patch feature of shape
-                (batch_size, embedding_dim, height, width).
-
-        Returns:
-            torch.Tensor: Estimated patches of shape (batch_size, embedding_dim, height, width).
-
-        """
-        _, _, height, width = input.size()
-
-        x = self.patches_to_sequence(input)
-        x = self.transformer_forward(x)
-        output = self.sequence_to_patches(x, height=height, width=width)
-
-        return output
-
-    def spectrogram_to_patches(self, input: torch.Tensor) -> torch.Tensor:
-        """Convert spectrogram to patches.
-
-        Actual implementation depends on ``self.embedding.spectrogram_to_patches``.
-
-        """
-        return self.embedding.spectrogram_to_patches(input)
-
-    def patches_to_sequence(self, input: Union[torch.Tensor, torch.BoolTensor]) -> torch.Tensor:
-        """Convert 3D (batch_size, height, width) or 4D (batch_size, embedding_dim, height, width)
-        tensor to shape (batch_size, length, *) for input of Transformer.
-
-        Args:
-            input (torch.Tensor): Patches of shape (batch_size, height, width) or
-                (batch_size, embedding_dim, height, width).
-
-        Returns:
-            torch.Tensor: Sequence of shape (batch_size, length) or
-                (batch_size, length, embedding_dim).
-
-        """
-        n_dims = input.dim()
-
-        if n_dims == 3:
-            batch_size, height, width = input.size()
-            output = input.view(batch_size, height * width)
-        elif n_dims == 4:
-            batch_size, embedding_dim, height, width = input.size()
-            x = input.view(batch_size, embedding_dim, height * width)
-            output = x.permute(0, 2, 1).contiguous()
-        else:
-            raise ValueError("Only 3D and 4D tensors are supported.")
-
-        return output
-
-    def sequence_to_patches(
-        self, input: Union[torch.Tensor, torch.BoolTensor], height: int, width: int
-    ) -> torch.Tensor:
-        """Convert (batch_size, max_length, *) tensor to 3D (batch_size, height, width)
-        or 4D (batch_size, embedding_dim, height, width) one.
-        This method corresponds to inversion of ``patches_to_sequence``.
-        """
-        n_dims = input.dim()
-
-        if n_dims == 2:
-            batch_size, _ = input.size()
-            output = input.view(batch_size, height, width)
-        elif n_dims == 3:
-            batch_size, _, embedding_dim = input.size()
-            x = input.view(batch_size, height, width, embedding_dim)
-            output = x.permute(0, 3, 1, 2).contiguous()
-        else:
-            raise ValueError("Only 2D and 3D tensors are supported.")
-
-        return output
-
-    def split_sequence(self, sequence: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Split sequence to head tokens and content tokens.
-
-        Args:
-            sequence (torch.Tensor): Sequence containing head tokens, i.e. class and distillation
-                tokens. The shape is (batch_size, length, embedding_dim).
-
-        Returns:
-            tuple: Tuple of tensors containing
-
-                - torch.Tensor: Head tokens of shape (batch_size, num_head_tokens, embedding_dim).
-                - torch.Tensor: Sequence of shape
-                    (batch_size, length - num_head_tokens, embedding_dim).
-
-        .. note::
-
-            This method is applicable even when sequence does not contain head tokens. In that
-            case, an empty sequnce is returened as the first item of returned tensors.
-
-        """
-        head_tokens, sequence = self.embedding.split_sequence(sequence)
-
-        return head_tokens, sequence
 
 
 class MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
@@ -865,14 +647,6 @@ class MLP(nn.Module):
         return output
 
 
-class Aggregator(nn.Module):
-    @abstractmethod
-    def forward(
-        self, input: torch.Tensor, padding_mask: Optional[torch.BoolTensor] = None
-    ) -> torch.Tensor:
-        pass
-
-
 class AverageAggregator(Aggregator):
     def forward(
         self, input: torch.Tensor, padding_mask: Optional[torch.BoolTensor] = None
@@ -897,40 +671,11 @@ class AverageAggregator(Aggregator):
                 device=input.device,
             )
 
-        x = input.masked_fill(padding_mask.unsqueeze(dim=-1), 0)
+        x = input.masked_fill(padding_mask.unsqueeze(dim=-3), 0)
         non_padding_mask = torch.logical_not(padding_mask)
         non_padding_mask = non_padding_mask.to(torch.long)
         non_padding_mask = non_padding_mask.sum(dim=(-2, -1))
         output = x.sum(dim=(-2, -1)) / non_padding_mask.unsqueeze(dim=-1)
-
-        return output
-
-
-class Head(nn.Module):
-    @abstractmethod
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
-        pass
-
-
-class MLPHead(Head):
-    def __init__(self, in_channels: int, out_channels: int) -> None:
-        super().__init__()
-
-        self.norm = nn.LayerNorm(in_channels)
-        self.linear = nn.Linear(in_channels, out_channels)
-
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
-        """Forward pass of MLPHead.
-
-        Args:
-            input (torch.Tensor): Aggregated feature of shape (batch_size, in_channels).
-
-        Returns:
-            torch.Tensor: Transformed feature of shape (batch_size, out_channels).
-
-        """
-        x = self.norm(input)
-        output = self.linear(x)
 
         return output
 
