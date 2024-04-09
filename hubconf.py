@@ -9,8 +9,8 @@ from audyn.models.ssast import (
 from audyn.models.ssast import SelfSupervisedAudioSpectrogramTransformer as _SSAST
 
 
-def multitask_ssast_mpm(
-    pretrained_model_name: str,
+def multitask_ssast_base_400(
+    token_unit: str = "patch",
     stride: Optional[_size_2_t] = None,
     n_bins: Optional[int] = None,
     n_frames: Optional[int] = None,
@@ -20,15 +20,16 @@ def multitask_ssast_mpm(
     """Build SelfSupervisedAudioSpectrogramTransformer.
 
     Args:
-        pretrained_model_name (str): Pretrained model name.
-
-    .. note::
-
-        Supported pretrained model names are
-            - multitask-ssast-patch-base-400
-            - multitask-ssast-frame-base-400
+        token_unit (str): Token unit. ``patch`` and ``frame`` are supported.
 
     """
+    if token_unit == "patch":
+        pretrained_model_name = "multitask-ssast-patch-base-400"
+    elif token_unit == "frame":
+        pretrained_model_name = "multitask-ssast-frame-base-400"
+    else:
+        raise ValueError(f"{token_unit} is not supported as token_unit.")
+
     model = _MultiTaskSSASTMPM.build_from_pretrained(
         pretrained_model_name,
         stride=stride,
@@ -41,8 +42,8 @@ def multitask_ssast_mpm(
     return model
 
 
-def ssast(
-    pretrained_model_name: str,
+def ssast_base_400(
+    token_unit: str = "patch",
     stride: Optional[_size_2_t] = None,
     n_bins: Optional[int] = None,
     n_frames: Optional[int] = None,
@@ -52,17 +53,18 @@ def ssast(
     """Build SelfSupervisedAudioSpectrogramTransformer.
 
     Args:
-        pretrained_model_name (str): Pretrained model name.
+        token_unit (str): Token unit. ``patch`` and ``frame`` are supported.
         aggregator (nn.Module, optional): Aggregator module.
         head (nn.Module, optional): Head module.
 
-    .. note::
-
-        Supported pretrained model names are
-            - multitask-ssast-patch-base-400
-            - multitask-ssast-frame-base-400
-
     """
+    if token_unit == "patch":
+        pretrained_model_name = "multitask-ssast-patch-base-400"
+    elif token_unit == "frame":
+        pretrained_model_name = "multitask-ssast-frame-base-400"
+    else:
+        raise ValueError(f"{token_unit} is not supported as token_unit.")
+
     model = _SSAST.build_from_pretrained(
         pretrained_model_name,
         stride=stride,
