@@ -1,3 +1,4 @@
+import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -13,12 +14,26 @@ from audyn.models.ssast import (
 )
 
 
-def test_official_ssast_multi_task_mpm() -> None:
+@pytest.mark.parametrize(
+    "model_name",
+    [
+        "multitask-ssast-patch-base-400",
+        "multitask-ssast-frame-base-400",
+    ],
+)
+def test_official_ssast_multi_task_mpm(model_name: str) -> None:
     torch.manual_seed(0)
 
     d_model = 768
     n_bins, n_frames = 128, 1024
-    kernel_size = (n_bins, 2)
+
+    if model_name == "multitask-ssast-patch-base-400":
+        kernel_size = (16, 16)
+    elif model_name == "multitask-ssast-frame-base-400":
+        kernel_size = (n_bins, 2)
+    else:
+        raise ValueError("Invalid model name is given.")
+
     insert_cls_token = True
     insert_dist_token = True
 
@@ -28,6 +43,8 @@ def test_official_ssast_multi_task_mpm() -> None:
     nhead = 12
     dim_feedforward = 3072
     num_layers = 12
+
+    expected_num_parameters = 87223808
 
     patch_embedding = PositionalPatchEmbedding(
         d_model,
@@ -72,22 +89,47 @@ def test_official_ssast_multi_task_mpm() -> None:
         if p.requires_grad:
             num_parameters += p.numel()
 
-    assert num_parameters == 87223808
+    assert num_parameters == expected_num_parameters
 
     model = (
         MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel.build_from_pretrained(
-            "multitask-ssast-frame-base-400"
+            model_name
         )
     )
 
+    num_parameters = 0
 
-def test_official_ssast() -> None:
+    for p in model.parameters():
+        if p.requires_grad:
+            num_parameters += p.numel()
+
+    assert num_parameters == expected_num_parameters
+
+
+@pytest.mark.parametrize(
+    "model_name",
+    [
+        "multitask-ssast-patch-base-400",
+        "multitask-ssast-frame-base-400",
+    ],
+)
+def test_official_ssast(model_name: str) -> None:
     torch.manual_seed(0)
 
     d_model, out_channels = 768, 35
     n_bins, n_frames = 128, 100
-    kernel_size = (n_bins, 2)
-    stride = (n_bins, 1)
+
+    if model_name == "multitask-ssast-patch-base-400":
+        kernel_size = (16, 16)
+        stride = (10, 10)
+        expected_num_parameters = 85366307
+    elif model_name == "multitask-ssast-frame-base-400":
+        kernel_size = (n_bins, 2)
+        stride = (n_bins, 1)
+        expected_num_parameters = 85359395
+    else:
+        raise ValueError("Invalid model name is given.")
+
     insert_cls_token = True
     insert_dist_token = True
 
@@ -132,7 +174,20 @@ def test_official_ssast() -> None:
         if p.requires_grad:
             num_parameters += p.numel()
 
-    assert num_parameters == 85359395
+    assert num_parameters == expected_num_parameters
+
+    # build_from_pretrained
+    model = SelfSupervisedAudioSpectrogramTransformer.build_from_pretrained(
+        model_name, stride=stride, n_bins=n_bins, n_frames=n_frames, head=head
+    )
+
+    num_parameters = 0
+
+    for p in model.parameters():
+        if p.requires_grad:
+            num_parameters += p.numel()
+
+    assert num_parameters == expected_num_parameters
 
 
 def test_ssast_multi_task_mpm() -> None:
