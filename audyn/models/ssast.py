@@ -5,6 +5,7 @@ import math
 import os
 import warnings
 from abc import abstractmethod
+from collections import OrderedDict
 from typing import Any, Optional, Tuple, Union
 
 import torch
@@ -339,7 +340,7 @@ class SelfSupervisedAudioSpectrogramTransformer(nn.Module):
             state_dict = torch.load(
                 pretrained_model_name_or_path, map_location=lambda storage, loc: storage
             )
-            model_state_dict = state_dict["model"]
+            model_state_dict: OrderedDict = state_dict["model"]
             resolved_config = state_dict["resolved_config"]
             resolved_config = OmegaConf.create(resolved_config)
             pretrained_model_config = resolved_config.model
@@ -355,6 +356,7 @@ class SelfSupervisedAudioSpectrogramTransformer(nn.Module):
 
             keys = list(model_state_dict.keys())
 
+            # remove states containing in pretraining model only
             for key in keys:
                 if (
                     key.startswith("masker.")
@@ -363,6 +365,14 @@ class SelfSupervisedAudioSpectrogramTransformer(nn.Module):
                 ):
                     _ = model_state_dict.pop(key)
 
+            # add states containing in finetuning model only
+            additional_state_dict = OrderedDict()
+
+            for key, value in model.state_dict().items():
+                if key.startswith("aggregator.") or key.startswith("head."):
+                    additional_state_dict[key] = value
+
+            model_state_dict.update(additional_state_dict)
             model.load_state_dict(model_state_dict)
 
             # update patch embedding if necessary
