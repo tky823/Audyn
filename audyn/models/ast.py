@@ -33,6 +33,7 @@ class PositionalPatchEmbedding(nn.Module):
         stride: Optional[_size_2_t] = None,
         insert_cls_token: bool = False,
         insert_dist_token: bool = False,
+        dropout: float = 0,
         n_bins: int = None,
         n_frames: int = None,
         device: torch.device = None,
@@ -102,6 +103,8 @@ class PositionalPatchEmbedding(nn.Module):
         else:
             self.register_parameter("dist_token", None)
 
+        self.dropout = nn.Dropout(dropout)
+
         self._reset_parameters()
 
     def _reset_parameters(self) -> None:
@@ -134,16 +137,18 @@ class PositionalPatchEmbedding(nn.Module):
             n_bins,
             n_frames,
         )
-        output = self.patches_to_sequence(x)
-        batch_size = output.size(0)
+        x = self.patches_to_sequence(x)
+        batch_size = x.size(0)
 
         if self.insert_dist_token:
             dist_token = self.dist_token.expand((batch_size, 1, -1))
-            output = torch.cat([dist_token, output], dim=-2)
+            x = torch.cat([dist_token, x], dim=-2)
 
         if self.insert_cls_token:
             cls_token = self.cls_token.expand((batch_size, 1, -1))
-            output = torch.cat([cls_token, output], dim=-2)
+            x = torch.cat([cls_token, x], dim=-2)
+
+        output = self.dropout(x)
 
         return output
 
