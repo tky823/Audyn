@@ -30,6 +30,7 @@ __all__ = [
     "MLPHead",
     "SSASTMPM",
     "MultiTaskSSASTMPM",
+    "SSAST",
 ]
 
 pretrained_model_configs = {
@@ -1224,6 +1225,10 @@ class SSASTMPM(SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel):
 
 class MultiTaskSSASTMPM(MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel):
     """Alias of MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel."""
+
+
+class SSAST(SelfSupervisedAudioSpectrogramTransformer):
+    """Alias of SelfSupervisedAudioSpectrogramTransformer."""
 
 
 def _align_patch_embedding(
