@@ -70,5 +70,9 @@ def test_ssast(token_unit: str) -> None:
     with torch.no_grad():
         output = model(input)
 
-    assert output.size(0) == batch_size
-    assert output.size(2) == 768
+    if token_unit == "patch":
+        assert output.size() == (batch_size, 768, 12, 9)
+    elif token_unit == "frame":
+        assert output.size() == (batch_size, 768, 1, 99)
+    else:
+        raise ValueError(f"{token_unit} is not supported as token_unit.")
