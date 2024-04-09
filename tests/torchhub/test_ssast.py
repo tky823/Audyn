@@ -6,7 +6,7 @@ import torch
 def test_multitask_ssast_mpm(token_unit: str) -> None:
     torch.manual_seed(0)
 
-    repo = "tky823/Audyn:feature/hubconf"
+    repo = "tky823/Audyn"
     model = "multitask_ssast_base_400"
     batch_size = 4
     n_bins, n_frames = 128, 1024
@@ -44,7 +44,7 @@ def test_multitask_ssast_mpm(token_unit: str) -> None:
 def test_ssast(token_unit: str) -> None:
     torch.manual_seed(0)
 
-    repo = "tky823/Audyn:feature/hubconf"
+    repo = "tky823/Audyn"
     model = "ssast_base_400"
     batch_size = 4
     n_bins, n_frames = 128, 100
