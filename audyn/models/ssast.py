@@ -929,7 +929,11 @@ class PositionalPatchEmbedding(nn.Module):
         return head_tokens, sequence
 
     def resample_positional_embedding(
-        self, positional_embedding: Union[torch.Tensor], n_bins: int, n_frames: int
+        self,
+        positional_embedding: Union[torch.Tensor],
+        n_bins: int,
+        n_frames: int,
+        mode: str = "bilinear",
     ) -> torch.Tensor:
         """Resample positional embedding.
 
@@ -938,6 +942,7 @@ class PositionalPatchEmbedding(nn.Module):
                 (embedding_dim, height, width).
             n_bins (int): Number of bins, not height.
             n_frames (int): Number of frames, not width.
+            mode (str): Interpolation mode. Default: ``bilinear``.
 
         Returns:
             torch.Tensor: Resampled positional embedding of shape (embedding_dim, height', width').
@@ -947,29 +952,34 @@ class PositionalPatchEmbedding(nn.Module):
         height, width = self.compute_output_shape(n_bins, n_frames)
 
         if width_org > width:
-            start_idx = (width_org - width) // 2
+            start_idx = width_org // 2 - width // 2
             _, positional_embedding, _ = torch.split(
                 positional_embedding,
                 [start_idx, width, width_org - width - start_idx],
                 dim=-1,
             )
         elif width > width_org:
-            positional_embedding = F.interpolate(positional_embedding, size=(width,))
-
-        positional_embedding = positional_embedding.permute(0, 2, 1)
+            positional_embedding = positional_embedding.unsqueeze(dim=-3)
+            positional_embedding = F.interpolate(
+                positional_embedding, size=(height_org, width), mode=mode
+            )
+            positional_embedding = positional_embedding.squeeze(dim=-3)
 
         if height_org > height:
-            start_idx = (height_org - height) // 2
+            start_idx = height_org // 2 - height // 2
             _, positional_embedding, _ = torch.split(
                 positional_embedding,
                 [start_idx, height, height_org - height - start_idx],
                 dim=-1,
             )
         elif height > height_org:
-            positional_embedding = F.interpolate(positional_embedding, size=(height,))
+            positional_embedding = positional_embedding.unsqueeze(dim=-3)
+            positional_embedding = F.interpolate(
+                positional_embedding, size=(height, width), mode=mode
+            )
+            positional_embedding = positional_embedding.squeeze(dim=-3)
 
-        positional_embedding = positional_embedding.permute(0, 2, 1)
-        output = positional_embedding.contiguous()
+        output = positional_embedding
 
         return output
 
