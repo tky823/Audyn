@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from audyn.models.ssast import (
     MLP,
     AverageAggregator,
+    FastMasker,
     Masker,
     MLPHead,
     MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel,
@@ -54,7 +55,7 @@ def test_official_ssast_multi_task_mpm(model_name: str) -> None:
         n_bins=n_bins,
         n_frames=n_frames,
     )
-    masker = Masker(
+    masker = FastMasker(
         d_model,
         num_masks=num_masks,
         min_cluster=min_cluster,
@@ -211,7 +212,7 @@ def test_ssast_multi_task_mpm() -> None:
         n_bins=n_bins,
         n_frames=n_frames,
     )
-    masker = Masker(
+    masker = FastMasker(
         d_model,
         num_masks=num_masks,
         min_cluster=min_cluster,
@@ -319,13 +320,44 @@ def test_ssast_masker() -> None:
     torch.manual_seed(0)
 
     d_model = 8
-    height, width = 10, 30
+    height, width = 10, 16
     batch_size = 4
 
-    num_masks = 10
-    min_cluster, max_cluster = 2, 3
+    num_masks = 50
+    min_cluster, max_cluster = 3, 6
 
-    model = Masker(d_model, num_masks=num_masks, min_cluster=min_cluster, max_cluster=max_cluster)
+    model = Masker(
+        d_model,
+        num_masks=num_masks,
+        min_cluster=min_cluster,
+        max_cluster=max_cluster,
+    )
+
+    input = torch.randn((batch_size, d_model, height, width))
+    output, masking_mask = model(input)
+
+    assert output.size() == input.size()
+    assert masking_mask.size(0) == input.size(0)
+    assert masking_mask.size()[1:] == input.size()[2:]
+    assert torch.all(masking_mask.sum(dim=(-2, -1)) == num_masks)
+
+
+def test_ssast_fast_masker() -> None:
+    torch.manual_seed(0)
+
+    d_model = 8
+    height, width = 10, 16
+    batch_size = 4
+
+    num_masks = 50
+    min_cluster, max_cluster = 3, 6
+
+    model = FastMasker(
+        d_model,
+        num_masks=num_masks,
+        min_cluster=min_cluster,
+        max_cluster=max_cluster,
+    )
 
     input = torch.randn((batch_size, d_model, height, width))
     output, masking_mask = model(input)
