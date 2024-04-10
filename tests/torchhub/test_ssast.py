@@ -1,15 +1,21 @@
 import pytest
 import torch
+from dummy.utils.github import retrieve_git_branch
 
 
 @pytest.mark.parametrize("token_unit", ["patch", "frame"])
 def test_multitask_ssast_mpm(token_unit: str) -> None:
     torch.manual_seed(0)
 
+    branch = retrieve_git_branch()
+
     repo = "tky823/Audyn"
     model = "multitask_ssast_base_400"
     batch_size = 4
     n_bins, n_frames = 128, 1024
+
+    if branch is not None and branch != "main":
+        repo = repo + ":" + branch
 
     model = torch.hub.load(
         repo,
@@ -44,10 +50,15 @@ def test_multitask_ssast_mpm(token_unit: str) -> None:
 def test_ssast(token_unit: str) -> None:
     torch.manual_seed(0)
 
+    branch = retrieve_git_branch()
+
     repo = "tky823/Audyn"
     model = "ssast_base_400"
     batch_size = 4
     n_bins, n_frames = 128, 100
+
+    if branch is not None and branch != "main":
+        repo = repo + ":" + branch
 
     if token_unit == "patch":
         stride = (10, 10)
