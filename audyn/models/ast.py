@@ -1,12 +1,19 @@
+import copy
+import os
 import warnings
 from abc import abstractmethod
+from collections import OrderedDict
 from typing import Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from omegaconf import OmegaConf
 from torch.nn.common_types import _size_2_t
 from torch.nn.modules.utils import _pair
+
+from ..utils import instantiate, model_cache_dir
+from ..utils.github import download_file_from_github_release
 
 __all__ = [
     "AudioSpectrogramTransformer",
@@ -18,6 +25,17 @@ __all__ = [
     "MLPHead",
     "AST",
 ]
+
+pretrained_model_configs = {
+    "ast-base-stride10": {
+        "url": "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev3/ast-base-stride10.pth",  # noqa: E501
+        "path": os.path.join(
+            model_cache_dir,
+            "AudioSpectrogramTransformer",
+            "ast-base-stride10.pth",
+        ),
+    },
+}
 
 
 class BaseAudioSpectrogramTransformer(nn.Module):
@@ -167,6 +185,75 @@ class AudioSpectrogramTransformer(BaseAudioSpectrogramTransformer):
                 UserWarning,
                 stacklevel=2,
             )
+
+    @classmethod
+    def build_from_pretrained(
+        cls,
+        pretrained_model_name_or_path: str,
+        stride: Optional[_size_2_t] = None,
+        n_bins: Optional[int] = None,
+        n_frames: Optional[int] = None,
+        aggregator: Optional[nn.Module] = None,
+        head: Optional[nn.Module] = None,
+    ) -> "AudioSpectrogramTransformer":
+        """Build pretrained AudioSpectrogramTransformer.
+
+        Args:
+            pretrained_model_name_or_path (str): Path to pretrained model or name of pretrained model.
+            aggregator (nn.Module, optional): Aggregator module.
+            head (nn.Module, optional): Head module.
+
+        Examples:
+
+            >>> from audyn.models.ast import AudioSpectrogramTransformer
+            >>> model = AudioSpectrogramTransformer.build_from_pretrained("mast-base-stride10")
+
+        .. note::
+
+            Supported pretrained model names are
+                - ast-base-stride10
+
+        """  # noqa: E501
+        if os.path.exists(pretrained_model_name_or_path):
+            state_dict = torch.load(
+                pretrained_model_name_or_path, map_location=lambda storage, loc: storage
+            )
+            model_state_dict: OrderedDict = state_dict["model"]
+            resolved_config = state_dict["resolved_config"]
+            resolved_config = OmegaConf.create(resolved_config)
+            pretrained_model_config = resolved_config.model
+            model: AudioSpectrogramTransformer = instantiate(pretrained_model_config)
+            model.load_state_dict(model_state_dict)
+
+            if aggregator is not None:
+                model.aggregator = aggregator
+
+            if head is not None:
+                model.head = head
+
+            # update patch embedding if necessary
+            model.embedding = _align_patch_embedding(
+                model.embedding, stride=stride, n_bins=n_bins, n_frames=n_frames
+            )
+
+            return model
+        elif pretrained_model_name_or_path in pretrained_model_configs:
+            config = pretrained_model_configs[pretrained_model_name_or_path]
+            url = config["url"]
+            path = config["path"]
+            download_file_from_github_release(url, path=path)
+            model = cls.build_from_pretrained(
+                path,
+                stride=stride,
+                n_bins=n_bins,
+                n_frames=n_frames,
+                aggregator=aggregator,
+                head=head,
+            )
+
+            return model
+        else:
+            raise FileNotFoundError(f"{pretrained_model_name_or_path} does not exist.")
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         """Forward pass of AudioSpectrogramTransformer.
@@ -620,3 +707,57 @@ class MLPHead(Head):
 
 class AST(AudioSpectrogramTransformer):
     """Alias of AudioSpectrogramTransformer."""
+
+
+def _align_patch_embedding(
+    orig_patch_embedding: PositionalPatchEmbedding,
+    stride: Optional[_size_2_t] = None,
+    n_bins: Optional[int] = None,
+    n_frames: Optional[int] = None,
+) -> PositionalPatchEmbedding:
+    pretrained_embedding_dim = orig_patch_embedding.embedding_dim
+    pretrained_kernel_size = orig_patch_embedding.kernel_size
+    pretrained_stride = orig_patch_embedding.stride
+    pretrained_insert_cls_token = orig_patch_embedding.insert_cls_token
+    pretrained_insert_dist_token = orig_patch_embedding.insert_dist_token
+    pretrained_n_bins = orig_patch_embedding.n_bins
+    pretrained_n_frames = orig_patch_embedding.n_frames
+    pretraine_conv2d = orig_patch_embedding.conv2d
+    pretrained_positional_embedding = orig_patch_embedding.positional_embedding
+    pretrained_cls_token = orig_patch_embedding.cls_token
+    pretrained_dist_token = orig_patch_embedding.dist_token
+
+    if stride is None:
+        stride = pretrained_stride
+
+    if n_bins is None:
+        n_bins = pretrained_n_bins
+
+    if n_frames is None:
+        n_frames = pretrained_n_frames
+
+    new_patch_embedding = PositionalPatchEmbedding(
+        pretrained_embedding_dim,
+        kernel_size=pretrained_kernel_size,
+        stride=stride,
+        insert_cls_token=pretrained_insert_cls_token,
+        insert_dist_token=pretrained_insert_dist_token,
+        n_bins=n_bins,
+        n_frames=n_frames,
+    )
+
+    conv2d_state_dict = copy.deepcopy(pretraine_conv2d.state_dict())
+    new_patch_embedding.conv2d.load_state_dict(conv2d_state_dict)
+
+    pretrained_positional_embedding = new_patch_embedding.resample_positional_embedding(
+        pretrained_positional_embedding, n_bins, n_frames
+    )
+    new_patch_embedding.positional_embedding.data.copy_(pretrained_positional_embedding)
+
+    if pretrained_insert_cls_token:
+        new_patch_embedding.cls_token.data.copy_(pretrained_cls_token)
+
+    if pretrained_insert_dist_token:
+        new_patch_embedding.dist_token.data.copy_(pretrained_dist_token)
+
+    return new_patch_embedding

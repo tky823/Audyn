@@ -1,6 +1,5 @@
 """Self-supervised audio spectorgram transformer."""
 
-import copy
 import math
 import os
 import warnings
@@ -22,6 +21,7 @@ from .ast import (
     Head,
     MLPHead,
     PositionalPatchEmbedding,
+    _align_patch_embedding,
 )
 
 __all__ = [
@@ -807,57 +807,3 @@ class MultiTaskSSASTMPM(MultiTaskSelfSupervisedAudioSpectrogramTransformerMasked
 
 class SSAST(SelfSupervisedAudioSpectrogramTransformer):
     """Alias of SelfSupervisedAudioSpectrogramTransformer."""
-
-
-def _align_patch_embedding(
-    orig_patch_embedding: PositionalPatchEmbedding,
-    stride: Optional[_size_2_t] = None,
-    n_bins: Optional[int] = None,
-    n_frames: Optional[int] = None,
-) -> PositionalPatchEmbedding:
-    pretrained_embedding_dim = orig_patch_embedding.embedding_dim
-    pretrained_kernel_size = orig_patch_embedding.kernel_size
-    pretrained_stride = orig_patch_embedding.stride
-    pretrained_insert_cls_token = orig_patch_embedding.insert_cls_token
-    pretrained_insert_dist_token = orig_patch_embedding.insert_dist_token
-    pretrained_n_bins = orig_patch_embedding.n_bins
-    pretrained_n_frames = orig_patch_embedding.n_frames
-    pretraine_conv2d = orig_patch_embedding.conv2d
-    pretrained_positional_embedding = orig_patch_embedding.positional_embedding
-    pretrained_cls_token = orig_patch_embedding.cls_token
-    pretrained_dist_token = orig_patch_embedding.dist_token
-
-    if stride is None:
-        stride = pretrained_stride
-
-    if n_bins is None:
-        n_bins = pretrained_n_bins
-
-    if n_frames is None:
-        n_frames = pretrained_n_frames
-
-    new_patch_embedding = PositionalPatchEmbedding(
-        pretrained_embedding_dim,
-        kernel_size=pretrained_kernel_size,
-        stride=stride,
-        insert_cls_token=pretrained_insert_cls_token,
-        insert_dist_token=pretrained_insert_dist_token,
-        n_bins=n_bins,
-        n_frames=n_frames,
-    )
-
-    conv2d_state_dict = copy.deepcopy(pretraine_conv2d.state_dict())
-    new_patch_embedding.conv2d.load_state_dict(conv2d_state_dict)
-
-    pretrained_positional_embedding = new_patch_embedding.resample_positional_embedding(
-        pretrained_positional_embedding, n_bins, n_frames
-    )
-    new_patch_embedding.positional_embedding.data.copy_(pretrained_positional_embedding)
-
-    if pretrained_insert_cls_token:
-        new_patch_embedding.cls_token.data.copy_(pretrained_cls_token)
-
-    if pretrained_insert_dist_token:
-        new_patch_embedding.dist_token.data.copy_(pretrained_dist_token)
-
-    return new_patch_embedding
