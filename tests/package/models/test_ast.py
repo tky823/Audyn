@@ -1,3 +1,6 @@
+import os
+import tempfile
+
 import torch
 import torch.nn as nn
 
@@ -7,6 +10,7 @@ from audyn.models.ast import (
     MLPHead,
     PositionalPatchEmbedding,
 )
+from audyn.utils.github import download_file_from_github_release
 
 
 def test_official_ast() -> None:
@@ -84,6 +88,31 @@ def test_official_ast() -> None:
             num_parameters += p.numel()
 
     assert num_parameters == expected_num_parameters
+
+    # regression test
+    model = AudioSpectrogramTransformer.build_from_pretrained(
+        "ast-base-stride10",
+        stride=stride,
+        n_bins=n_bins,
+        n_frames=n_frames,
+        aggregator=aggregator,
+    )
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        url = "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev3/test_official_ast.pth"
+        path = os.path.join(temp_dir, "test_official_ast.pth")
+        download_file_from_github_release(url, path)
+
+        data = torch.load(path)
+        input = data["input"]
+        expected_output = data["output"]
+
+    model.eval()
+
+    with torch.no_grad():
+        output = model(input)
+
+    assert torch.allclose(output, expected_output)
 
 
 def test_ast() -> None:
