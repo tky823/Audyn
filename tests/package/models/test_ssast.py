@@ -1,7 +1,6 @@
 import pytest
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from audyn.models.ssast import (
     MLP,
@@ -65,7 +64,7 @@ def test_official_ssast_multi_task_mpm(model_name: str) -> None:
         d_model,
         nhead,
         dim_feedforward=dim_feedforward,
-        activation=F.gelu,
+        activation=nn.GELU(),
         batch_first=True,
     )
     norm = nn.LayerNorm(d_model)
@@ -151,7 +150,7 @@ def test_official_ssast(model_name: str) -> None:
         d_model,
         nhead,
         dim_feedforward=dim_feedforward,
-        activation=F.gelu,
+        activation=nn.GELU(),
         batch_first=True,
     )
     norm = nn.LayerNorm(d_model)
@@ -197,6 +196,7 @@ def test_ssast_multi_task_mpm() -> None:
     d_model = 8
     n_bins, n_frames = 8, 30
     kernel_size = (n_bins, 2)
+    insert_cls_token, insert_dist_token = True, True
     batch_size = 4
 
     num_masks = 10
@@ -209,6 +209,8 @@ def test_ssast_multi_task_mpm() -> None:
     patch_embedding = PositionalPatchEmbedding(
         d_model,
         kernel_size=kernel_size,
+        insert_cls_token=insert_cls_token,
+        insert_dist_token=insert_dist_token,
         n_bins=n_bins,
         n_frames=n_frames,
     )
