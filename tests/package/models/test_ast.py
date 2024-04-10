@@ -90,6 +90,7 @@ def test_official_ast() -> None:
     assert num_parameters == expected_num_parameters
 
     # regression test
+    n_bins, n_frames = 256, 100
     model = AudioSpectrogramTransformer.build_from_pretrained(
         "ast-base-stride10",
         stride=stride,
