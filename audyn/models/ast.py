@@ -206,7 +206,7 @@ class AudioSpectrogramTransformer(BaseAudioSpectrogramTransformer):
         Examples:
 
             >>> from audyn.models.ast import AudioSpectrogramTransformer
-            >>> model = AudioSpectrogramTransformer.build_from_pretrained("mast-base-stride10")
+            >>> model = AudioSpectrogramTransformer.build_from_pretrained("ast-base-stride10")
 
         .. note::
 
