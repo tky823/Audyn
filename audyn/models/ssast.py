@@ -4,6 +4,7 @@ import copy
 import math
 import os
 import warnings
+from abc import abstractmethod
 from collections import OrderedDict
 from typing import Any, Optional, Tuple
 
@@ -28,6 +29,7 @@ __all__ = [
     "MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel",
     "PositionalPatchEmbedding",  # for backward compatibility
     "Masker",
+    "FastMasker",
     "MLP",
     "Aggregator",  # for backward compatibility
     "AverageAggregator",
@@ -491,7 +493,7 @@ class MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
         return reconstruction, classification
 
 
-class Masker(nn.Module):
+class _Masker(nn.Module):
     """Replace some patches with mask token.
 
     Args:
@@ -534,15 +536,9 @@ class Masker(nn.Module):
         else:
             self.register_parameter("mask_embedding", None)
 
-        self._reset_parameters()
+        self.mask_embedding: Optional[torch.Tensor]
 
-    def _reset_parameters(self) -> None:
-        # based on official implementation
-        if self.mask_embedding is not None:
-            # NOTE: mask_embedding shares data with self.mask_embedding
-            #       by .view operation.
-            mask_embedding = self.mask_embedding.data.view(1, 1, -1)
-            nn.init.xavier_normal_(mask_embedding)
+        self._reset_parameters()
 
     def forward(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.BoolTensor]:
         """Replace some patches with mask tokens.
@@ -561,6 +557,148 @@ class Masker(nn.Module):
                 - torch.BoolTensor: Masking mask of shape (batch_size, height, width).
 
         """
+        masking_mask = self.create_masking_mask(input)
+
+        if self.mask_embedding is None:
+            embedding_dim = self.embedding_dim
+            factory_kwargs = {
+                "device": input.device,
+                "dtype": input.dtype,
+            }
+            mask_embedding = torch.zeros((embedding_dim,), **factory_kwargs)
+        else:
+            mask_embedding = self.mask_embedding
+
+        null_attn_mask = masking_mask.long()
+        attn_mask = 1 - null_attn_mask
+        x = attn_mask.unsqueeze(dim=-3) * input
+        x_mask = null_attn_mask.unsqueeze(dim=-3) * mask_embedding.view(-1, 1, 1)
+        output = x + x_mask
+
+        return output, masking_mask
+
+    def _reset_parameters(self) -> None:
+        # based on official implementation
+        if self.mask_embedding is not None:
+            # NOTE: mask_embedding shares data with self.mask_embedding
+            #       by .view operation.
+            mask_embedding = self.mask_embedding.data.view(1, 1, -1)
+            nn.init.xavier_normal_(mask_embedding)
+
+    @abstractmethod
+    def create_masking_mask(self, input: torch.Tensor) -> torch.BoolTensor:
+        """Create masking mask from given batched input.
+
+        Args:
+            input (torch.Tensor): Patches of shape (batch_size, embedding_dim, height, width).
+
+        Returns:
+            torch.BoolTensor: Mask of shape (batch_size, height, width), where `True` represents
+                position of mask token in tensor.
+
+        """
+
+
+class Masker(_Masker):
+    def create_masking_mask(self, input: torch.Tensor) -> torch.BoolTensor:
+        cluster_size = torch.randint(self.min_cluster, self.max_cluster, ()).item()
+        _, _, height, width = input.size()
+        mask_height = min(height, cluster_size)
+        mask_width = min(width, cluster_size)
+        masking_mask = []
+
+        for unbatched_input in input:
+            _masking_mask = self._create_unbatched_masking_mask(
+                unbatched_input,
+                mask_height=mask_height,
+                mask_width=mask_width,
+                num_masks=self.num_masks,
+            )
+            masking_mask.append(_masking_mask)
+
+        masking_mask = torch.stack(masking_mask, dim=0)
+        masking_mask = masking_mask.to(input.device)
+
+        return masking_mask
+
+    def _create_unbatched_masking_mask(
+        self,
+        input: torch.Tensor,
+        mask_height: int,
+        mask_width: int,
+        num_masks: Optional[int] = None,
+    ) -> torch.BoolTensor:
+        """Create masking mask for unbatched input.
+
+        Args:
+            input (torch.Tensor): Unbatched feature of shape (embedding_dim, height, width).
+
+        Returns:
+            torch.LongTensor: Unbatched masking mask of shape (height, width).
+        """
+        if num_masks is None:
+            num_masks = self.num_masks
+
+        _, height, width = input.size()
+        indices = torch.randperm(height * width).tolist()
+        mask_indices = []
+
+        # When number of patches is less than num_masks, set appropriate value.
+        num_masks = min(num_masks, len(indices))
+        is_finished = False
+
+        while not is_finished:
+            idx = indices[0]
+            _mask_height = min(mask_height, height - idx // width)
+            _mask_width = min(mask_width, width - idx % width)
+
+            for height_offset in range(_mask_height):
+                for width_offset in range(_mask_width):
+                    offset = width * height_offset + width_offset
+                    mask_idx = idx + offset
+
+                    if mask_idx in mask_indices:
+                        # duplicated index
+                        continue
+
+                    mask_indices.append(mask_idx)
+                    indices.remove(mask_idx)
+
+                    if len(mask_indices) >= num_masks:
+                        is_finished = True
+
+                    if is_finished:
+                        break
+
+                if is_finished:
+                    break
+
+        masking_mask = torch.zeros((height * width), dtype=torch.bool)
+        mask_indices = torch.tensor(mask_indices)
+        masking_mask.scatter_(0, mask_indices, True)
+        masking_mask = masking_mask.view(height, width)
+
+        return masking_mask
+
+
+class FastMasker(_Masker):
+    """Replace some patches with mask token.
+
+    Args:
+        embedding_dim (int): Embedding dimension.
+        num_masks (int): Number of mask tokens.
+        min_cluster (int): Minimum cluster size. Default: ``3``.
+        max_cluster (int, optional): Maximum cluster size. Default: ``min_cluster + 3``.
+        trainable (bool): If ``True``, mask token is trainable.
+
+    .. note::
+
+        The implementation of this class is different from the original implementation
+        to increase computing speed.
+
+    """
+
+    def create_masking_mask(self, input: torch.Tensor) -> torch.BoolTensor:
         num_masks = self.num_masks
 
         cluster_size = torch.randint(self.min_cluster, self.max_cluster, ()).item()
@@ -591,34 +729,13 @@ class Masker(nn.Module):
         Pw = mask_width - 1
         padding = (-(Pw // 2), -(Pw - Pw // 2), -(Ph // 2), -(Ph - Ph // 2))
         masking_mask = F.pad(masking_mask, padding)
+        masking_mask = masking_mask.squeeze(dim=-3)
         # masking_mask includes positive values greater than 1,
         # so convert it into False or True.
         masking_mask = masking_mask > 0
-        # Then, convert it into 0 or 1.
-        masking_mask = masking_mask.to(torch.long)
         masking_mask = masking_mask.to(input.device)
 
-        if self.mask_embedding is None:
-            embedding_dim = self.embedding_dim
-            factory_kwargs = {
-                "device": input.device,
-                "dtype": input.dtype,
-            }
-            mask_embedding = torch.zeros((embedding_dim,), **factory_kwargs)
-        else:
-            mask_embedding = self.mask_embedding
-
-        null_attn_mask = masking_mask.long()
-        attn_mask = 1 - null_attn_mask
-
-        x = attn_mask * input
-        x_mask = null_attn_mask * mask_embedding.view(-1, 1, 1)
-        output = x + x_mask
-
-        masking_mask = masking_mask.squeeze(dim=-3)
-        masking_mask = masking_mask.to(torch.bool)
-
-        return output, masking_mask
+        return masking_mask
 
 
 class MLP(nn.Module):
