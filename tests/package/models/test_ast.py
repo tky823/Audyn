@@ -12,8 +12,8 @@ from audyn.models.ast import (
 def test_official_ast() -> None:
     torch.manual_seed(0)
 
-    d_model, out_channels = 768, 35
-    n_bins, n_frames = 128, 100
+    d_model, out_channels = 768, 527
+    n_bins, n_frames = 128, 1024
     kernel_size = (16, 16)
     stride = (10, 10)
 
@@ -24,7 +24,7 @@ def test_official_ast() -> None:
     dim_feedforward = 3072
     num_layers = 12
 
-    expected_num_parameters = 85366307
+    expected_num_parameters = 86592527
 
     patch_embedding = PositionalPatchEmbedding(
         d_model,
@@ -73,6 +73,7 @@ def test_official_ast() -> None:
         stride=stride,
         n_bins=n_bins,
         n_frames=n_frames,
+        aggregator=aggregator,
         head=head,
     )
 
