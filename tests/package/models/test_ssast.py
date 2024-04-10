@@ -1,3 +1,6 @@
+import os
+import tempfile
+
 import pytest
 import torch
 import torch.nn as nn
@@ -12,6 +15,7 @@ from audyn.models.ssast import (
     PositionalPatchEmbedding,
     SelfSupervisedAudioSpectrogramTransformer,
 )
+from audyn.utils.github import download_file_from_github_release
 
 
 @pytest.mark.parametrize(
@@ -188,6 +192,42 @@ def test_official_ssast(model_name: str) -> None:
             num_parameters += p.numel()
 
     assert num_parameters == expected_num_parameters
+
+    # regression test
+    n_bins, n_frames = 256, 100
+
+    if model_name == "multitask-ssast-patch-base-400":
+        filename = "test_official_ssast_patch.pth"
+        stride = (8, 8)
+    elif model_name == "multitask-ssast-frame-base-400":
+        filename = "test_official_ssast_frame.pth"
+        stride = (n_bins, 1)
+    else:
+        raise ValueError("Invalid model name is given.")
+
+    model = SelfSupervisedAudioSpectrogramTransformer.build_from_pretrained(
+        model_name,
+        stride=stride,
+        n_bins=n_bins,
+        n_frames=n_frames,
+        aggregator=aggregator,
+    )
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        url = f"https://github.com/tky823/Audyn/releases/download/v0.0.1.dev3/{filename}"
+        path = os.path.join(temp_dir, filename)
+        download_file_from_github_release(url, path)
+
+        data = torch.load(path)
+        input = data["input"]
+        expected_output = data["output"]
+
+    model.eval()
+
+    with torch.no_grad():
+        output = model(input)
+
+    assert torch.allclose(output, expected_output)
 
 
 def test_ssast_multi_task_mpm() -> None:
