@@ -320,7 +320,6 @@ def test_ssast_masker() -> None:
     torch.manual_seed(0)
 
     d_model = 8
-    height, width = 10, 16
     batch_size = 4
 
     num_masks = 50
@@ -333,6 +332,8 @@ def test_ssast_masker() -> None:
         max_cluster=max_cluster,
     )
 
+    # patch-based SSAST-like inputs
+    height, width = 10, 16
     input = torch.randn((batch_size, d_model, height, width))
     output, masking_mask = model(input)
 
@@ -340,6 +341,15 @@ def test_ssast_masker() -> None:
     assert masking_mask.size(0) == input.size(0)
     assert masking_mask.size()[1:] == input.size()[2:]
     assert torch.all(masking_mask.sum(dim=(-2, -1)) == num_masks)
+
+    # frame-based SSAST-like inputs
+    height, width = 1, 100
+    input = torch.randn((batch_size, d_model, height, width))
+    output, masking_mask = model(input)
+
+    assert output.size() == input.size()
+    assert masking_mask.size(0) == input.size(0)
+    assert masking_mask.size()[1:] == input.size()[2:]
 
 
 def test_ssast_fast_masker() -> None:
