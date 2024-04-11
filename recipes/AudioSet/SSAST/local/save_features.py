@@ -17,12 +17,10 @@ def main(config: DictConfig) -> None:
     list_path = config.preprocess.list_path
     feature_dir = config.preprocess.feature_dir
     jsonl_path = config.preprocess.jsonl_path
-    download_dir = config.preprocess.download_dir
 
     assert list_path is not None, "Specify preprocess.list_path."
     assert feature_dir is not None, "Specify preprocess.feature_dir."
     assert jsonl_path is not None, "Specify preprocess.jsonl_path."
-    assert download_dir is not None, "Specify preprocess.download_dir."
 
     if dump_format != "webdataset":
         raise ValueError("Only webdataset is supported as dump_format.")
@@ -43,24 +41,24 @@ def main(config: DictConfig) -> None:
     with wds.ShardWriter(template_path, maxsize=max_shard_size) as sink, open(list_path) as f:
         for line in tqdm(f):
             filename = line.strip()
-            video = videos[filename]
+            ytid = os.path.basename(filename)
+            video = videos[ytid]
             process_webdataset(
                 sink,
                 video=video,
-                download_dir=download_dir,
             )
 
 
 def process_webdataset(
     sink: wds.ShardWriter,
     video: Dict[str, Any],
-    download_dir: str,
 ) -> None:
     feature = {}
 
     ytid = video["ytid"]
     tags = video["tags"]
-    m4a_path = os.path.join(download_dir, video["path"])
+    root = video["root"]
+    m4a_path = os.path.join(root, video["path"])
     metadata = torchaudio.info(m4a_path)
 
     with open(m4a_path, mode="rb") as f:
