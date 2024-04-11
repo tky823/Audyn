@@ -1,13 +1,20 @@
 import glob
 import os
+import re
+import tempfile
 import warnings
-from typing import Any, Dict
+from typing import Any, Callable, Dict, Iterable, Optional
 
 import torch
+import torchaudio
 import webdataset as wds
 from torch.utils.data import Dataset
 
-__all__ = ["TorchObjectDataset", "SortableTorchObjectDataset"]
+__all__ = [
+    "TorchObjectDataset",
+    "SortableTorchObjectDataset",
+    "Composer",
+]
 
 available_dump_formats = ["torch", "webdataset"]
 
@@ -108,6 +115,9 @@ class WebDatasetWrapper(wds.WebDataset):
         *args,
         detshuffle: bool = True,
         shuffle_size: Any = None,
+        composer: Callable[[Any], Any] = None,
+        decode_audio_as_waveform: Optional[bool] = None,
+        decode_audio_as_monoral: Optional[bool] = None,
         **kwargs,
     ) -> "WebDatasetWrapper":
         """Instantiate WebDatasetWrapper.
@@ -116,12 +126,43 @@ class WebDatasetWrapper(wds.WebDataset):
             args: Positional arguments given to WebDataset.
             kwargs: Keyword arguments given to WebDataset.
             shuffle_size (any, optional): Shuffle size for training dataset.
+            decode_audio_as_waveform (bool, optional): If ``True``, audio is decoded as waveform
+                tensor and sampling rate is ignored. Otherwise, audio is decoded as tuple of
+                waveform tensor and sampling rate. This parameter is given to Composer class.
+                When composer is specified, this parameter is not used. Default: ``True``.
+            decode_audio_as_monoral (bool, optional): If ``True``, decoded audio is treated as
+                monoral waveform of shape (num_samples,) by reducing channel dimension. Otherwise,
+                shape of waveform is (num_channels, num_samples), which is returned by
+                ``torchaudio.load``. When composer is specified, this parameter is not used.
+                Default: ``True``.
 
         Returns:
             WebDatasetWrapper: Wrapper of WebDataset. ``with_epoch``, ``with_length``,
                 ``shuffle``, and ``decode`` are called if necessary.
 
         """
+        if composer is None:
+            if decode_audio_as_waveform is None:
+                decode_audio_as_waveform = True
+
+            if decode_audio_as_monoral is None:
+                decode_audio_as_monoral = True
+
+            composer = Composer(
+                decode_audio_as_waveform=decode_audio_as_waveform,
+                decode_audio_as_monoral=decode_audio_as_monoral,
+            )
+        else:
+            if decode_audio_as_waveform is not None:
+                warnings.warn(
+                    "decode_audio_as_waveform is given, but ignored.", UserWarning, stacklevel=2
+                )
+
+            if decode_audio_as_monoral is not None:
+                warnings.warn(
+                    "decode_audio_as_monoral is given, but ignored.", UserWarning, stacklevel=2
+                )
+
         template_path = os.path.join(feature_dir, "*.tar")
         urls = []
 
@@ -144,5 +185,48 @@ class WebDatasetWrapper(wds.WebDataset):
             dataset = dataset.shuffle(shuffle_size)
 
         dataset = dataset.decode()
+        dataset = dataset.compose(composer)
 
         return dataset
+
+
+class Composer:
+    """Composer given to webdataset."""
+
+    def __init__(
+        self,
+        decode_audio_as_waveform: bool = True,
+        decode_audio_as_monoral: bool = True,
+    ):
+        self.decode_audio_as_waveform = decode_audio_as_waveform
+        self.decode_audio_as_monoral = decode_audio_as_monoral
+
+    def decode(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        for key in sample.keys():
+            ext = re.sub(r".*[.]", "", key)
+
+            if ext in ["flac", "mp3", "sox", "wav", "m4a", "ogg", "wma"]:
+                data = sample[key]
+
+                if isinstance(data, bytes):
+                    with tempfile.TemporaryDirectory() as temp_dir:
+                        path = os.path.join(temp_dir, f"audio.{ext}")
+
+                        with open(path, "wb") as f:
+                            f.write(data)
+
+                        waveform, sample_rate = torchaudio.load(path)
+
+                        if self.decode_audio_as_monoral:
+                            waveform = waveform.mean(dim=0)
+
+                        if self.decode_audio_as_waveform:
+                            sample[key] = waveform
+                        else:
+                            sample[key] = waveform, sample_rate
+
+        return sample
+
+    def __call__(self, samples: Iterable[Dict[str, Any]]) -> Iterable[Dict[str, Any]]:
+        for sample in samples:
+            yield self.decode(sample)
