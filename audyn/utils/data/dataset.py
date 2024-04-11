@@ -13,6 +13,7 @@ from torch.utils.data import Dataset
 __all__ = [
     "TorchObjectDataset",
     "SortableTorchObjectDataset",
+    "WebDatasetWrapper",
     "Composer",
 ]
 
