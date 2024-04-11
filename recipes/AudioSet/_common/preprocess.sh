@@ -31,56 +31,56 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
 
     mkdir -p "${list_dir}"
 
-    subset="balanced_train"
+    full_list_path="${list_dir}/full_train.txt"
+    :> "${full_list_path}"
+
     subset_name="balanced_train_segments"
-    list_path="${list_dir}/${subset}.txt"
+    list_path="${list_dir}/${subset_name}.txt"
     :> "${list_path}"
 
     for path in $(ls "${audioset_m4a_root}/${subset_name}"/*/*.m4a); do
         filename=$(basename "${path}")
         ytid=${filename/.m4a/}
-        echo ${ytid} >> "${list_path}"
+        echo "${subset_name}/${ytid}" >> "${list_path}"
     done
 
-    subset="unbalanced_train"
+    cat "${list_path}" >> "${full_list_path}"
+
     subset_name="unbalanced_train_segments"
-    list_path="${list_dir}/${subset}.txt"
+    list_path="${list_dir}/${subset_name}.txt"
     :> "${list_path}"
 
     for path in $(ls "${audioset_m4a_root}/${subset_name}"/*/*.m4a); do
         filename=$(basename "${path}")
         ytid=${filename/.m4a/}
-        echo ${ytid} >> "${list_path}"
+        echo "${subset_name}/${ytid}" >> "${list_path}"
     done
 
-    subset="validation"
+    cat "${list_path}" >> "${full_list_path}"
+
+    full_list_path="${list_dir}/full_validation.txt"
+    :> "${full_list_path}"
+
     subset_name="eval_segments"
-    list_path="${list_dir}/${subset}.txt"
+    list_path="${list_dir}/${subset_name}.txt"
     :> "${list_path}"
 
     for path in $(ls "${audioset_m4a_root}/${subset_name}"/*/*.m4a); do
         filename=$(basename "${path}")
         ytid=${filename/.m4a/}
-        echo ${ytid} >> "${list_path}"
+        echo "${subset_name}/${ytid}" >> "${list_path}"
     done
+
+    cat "${list_path}" >> "${full_list_path}"
 fi
 
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     echo "Preprocess stage 2: Save features"
 
-    mkdir -p "${list_dir}"
-
-    for subset in "balanced_train" "unbalanced_train" "validation"; do
-        if [ "${subset}" = "balanced_train" ]; then
-            jsonl_filename="balanced_train_segments.jsonl"
-        
-        elif [ "${subset}" = "unbalanced_train" ]; then
-            jsonl_filename="unbalanced_train_segments.jsonl"
-        else
-            jsonl_filename="eval_segments.jsonl"
-        fi
-
-        list_path="${list_dir}/${subset}.txt"
+    for subset_name in "balanced_train_segments" "unbalanced_train_segments" "eval_segments" "full_train" "full_validation"; do
+        jsonl_filename="${subset_name}.jsonl"
+        list_path="${list_dir}/${subset_name}.txt"
+        subset_feature_dir="${feature_dir}/${subset_name}"
         jsonl_path="${audioset_jsonl_root}/${jsonl_filename}"
         download_dir="${audioset_m4a_root}/${jsonl_filename/.jsonl/}"
 
@@ -90,8 +90,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         preprocess="${preprocess}" \
         data="${data}" \
         preprocess.list_path="${list_path}" \
-        preprocess.feature_dir="${feature_dir}/${subset}" \
-        preprocess.jsonl_path="${jsonl_path}" \
-        preprocess.download_dir="${download_dir}"
+        preprocess.feature_dir="${subset_feature_dir}" \
+        preprocess.jsonl_path="${jsonl_path}"
     done
 fi
