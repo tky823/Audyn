@@ -1,0 +1,8 @@
+defaults:
+  - multitask_ssast
+  - _self_
+
+embedding:
+  kernel_size:
+    - 128
+    - 2
