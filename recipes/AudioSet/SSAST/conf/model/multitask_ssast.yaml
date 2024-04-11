@@ -7,8 +7,8 @@ embedding:
     - ???
   insert_cls_token: true
   insert_dist_token: true
-  n_bins: 128
-  n_frames: 1024
+  n_bins: ${data.melspectrogram.n_mels}
+  n_frames: ${data.melspectrogram.n_frames}
 masker:
   _target_: audyn.models.ssast.Masker
   embedding_dim: ${..embedding.embedding_dim}
