@@ -58,7 +58,7 @@ def test_official_ssast_multi_task_mpm(model_name: str) -> None:
         n_bins=n_bins,
         n_frames=n_frames,
     )
-    masker = FastMasker(
+    masker = Masker(
         d_model,
         num_masks=num_masks,
         min_cluster=min_cluster,
