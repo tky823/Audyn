@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Union
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torchaudio.functional as aF
 import torchaudio.transforms as aT
 
@@ -9,8 +10,8 @@ from audyn.transforms.ast import SelfSupervisedAudioSpectrogramTransformerMelSpe
 from audyn.utils.data.collater import BaseCollater
 
 
-class SSASTCollater(BaseCollater):
-    """Collater for SSAST."""
+class SSASTAudioSetCollater(BaseCollater):
+    """Collater for SSAST using AudioSet."""
 
     def __init__(
         self,
@@ -22,6 +23,7 @@ class SSASTCollater(BaseCollater):
         waveform_key: str = "waveform",
         melspectrogram_key: str = "melspectrogram",
         filename_key: str = "filename",
+        duration: float = 10,
     ) -> None:
         super().__init__()
 
@@ -29,17 +31,23 @@ class SSASTCollater(BaseCollater):
         self.waveform_key = waveform_key
         self.melspectrogram_key = melspectrogram_key
         self.filename_key = filename_key
+        self.duration = duration
 
     def __call__(self, batch: List[Dict[str, Any]]) -> Dict[str, Any]:
         waveform_key = self.waveform_key
         melspectrogram_key = self.melspectrogram_key
         filename_key = self.filename_key
         melspectrogram_transform = self.melspectrogram_transform
+        duration = self.duration
 
         if hasattr(melspectrogram_transform, "sample_rate"):
             melspectrogram_sample_rate = melspectrogram_transform.sample_rate
+            length = int(melspectrogram_sample_rate * duration)
         else:
             melspectrogram_sample_rate = None
+            length = None
+
+            raise NotImplementedError("Sampling rate should be specified now.")
 
         batched_waveform = []
         batched_melspectrogram = []
@@ -56,6 +64,8 @@ class SSASTCollater(BaseCollater):
             ):
                 waveform = aF.resample(waveform, sample_rate, melspectrogram_sample_rate)
 
+            padding = length - waveform.size(-1)
+            waveform = F.pad(waveform, (0, padding))
             melspectrogram = self.melspectrogram_transform(waveform)
 
             batched_waveform.append(waveform)
@@ -64,7 +74,6 @@ class SSASTCollater(BaseCollater):
 
         batched_waveform = torch.stack(batched_waveform, dim=0)
         batched_melspectrogram = torch.stack(batched_melspectrogram, dim=0)
-        batched_filename = torch.stack(batched_filename, dim=0)
 
         output = {
             waveform_key: batched_waveform,
