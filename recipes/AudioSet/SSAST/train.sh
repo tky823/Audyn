@@ -17,7 +17,7 @@ preprocess="audioset"
 data="ssast"
 train="ssast"
 model="multitask_ssast_patch_mask400"
-optimizer="ssast"
+optimizer="adam"
 lr_scheduler="ssast"
 criterion="ssast"
 
