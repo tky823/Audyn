@@ -2,6 +2,8 @@ import json
 import os
 from typing import Any, Dict
 
+import torch
+import torchaudio
 import webdataset as wds
 from omegaconf import DictConfig
 from tqdm import tqdm
@@ -59,6 +61,7 @@ def process_webdataset(
     ytid = video["ytid"]
     tags = video["tags"]
     m4a_path = os.path.join(download_dir, video["path"])
+    metadata = torchaudio.info(m4a_path)
 
     with open(m4a_path, mode="rb") as f:
         audio = f.read()
@@ -67,6 +70,7 @@ def process_webdataset(
     feature["audio.m4a"] = audio
     feature["tags.json"] = tags
     feature["filename.txt"] = ytid
+    feature["sample_rate.pth"] = torch.tensor(metadata.sample_rate, dtype=torch.long)
 
     sink.write(feature)
 
