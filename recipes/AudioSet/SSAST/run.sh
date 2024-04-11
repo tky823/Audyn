@@ -12,6 +12,9 @@ continue_from=""
 exp_root="./exp"
 tensorboard_root="./tensorboard"
 
+train_name="full_train"
+validation_name="full_validation"
+
 audioset_label_csv_url="http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/class_labels_indices.csv"
 audioset_ontology_url="https://raw.githubusercontent.com/audioset/ontology/master/ontology.json"
 audioset_balanced_train_csv_url="http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/balanced_train_segments.csv"
@@ -27,7 +30,7 @@ preprocess="audioset"
 data="ssast"
 train="ssast"
 model="multitask_ssast_patch_mask400"
-optimizer="ssast"
+optimizer="adam"
 lr_scheduler="ssast"
 criterion="ssast"
 
@@ -90,6 +93,8 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         --tensorboard-root "${tensorboard_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
+        --train-name "${train_name}" \
+        --validation-name "${validation_name}" \
         --system "${system}" \
         --preprocess "${preprocess}" \
         --data "${data}" \
