@@ -1,0 +1,67 @@
+defaults:
+  - defaults
+  - override dataset: webdataset
+  - _self_
+
+dataset:
+  train:
+    decode_audio_as_waveform: true
+    decode_audio_as_monoral: true
+  validation:
+    decode_audio_as_waveform: ${..train.decode_audio_as_waveform}
+    decode_audio_as_monoral: ${..train.decode_audio_as_monoral}
+
+dataloader:
+  train:
+    batch_size: 64
+    collate_fn:
+      _target_: utils.data.SSASTAudioSetCollater
+      melspectrogram_transform: ${data.melspectrogram}
+      waveform_key: waveform
+      melspectrogram_key: log_melspectrogram
+      filename_key: filename
+      duration: ${data.audio.duration}
+  validation:
+    batch_size: 64
+    collate_fn: ${..train.collate_fn}
+
+key_mapping:
+  train:
+    input:
+      input: ${....dataloader.train.collate_fn.melspectrogram_key}
+    output:
+      - - reconstruction_output
+        - reconstruction_target
+        - reconstruction_length
+      - - classification_output
+        - classification_target
+        - classification_length
+  validation: ${.train}
+  inference:
+    input: ${..train.input}
+    output: feature
+
+ddp_kwargs:
+
+resume:
+  continue_from:
+
+output:
+  exp_dir: "./exp"
+  tensorboard_dir: "./tensorboard"
+  save_checkpoint:
+    iteration:
+      every: 100000
+      path: ${...exp_dir}/model/iteration{iteration}.pth
+    epoch:
+      every: 1
+      path: ${...exp_dir}/model/epoch{epoch}.pth
+    last:
+      path: ${...exp_dir}/model/last.pth
+    best_epoch:
+      path: ${...exp_dir}/model/best_epoch.pth
+
+steps:
+  epochs:
+  iterations: 800000
+  lr_scheduler:
