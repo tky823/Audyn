@@ -574,8 +574,20 @@ class PositionalPatchEmbedding(nn.Module):
 class Aggregator(nn.Module):
     @abstractmethod
     def forward(
-        self, input: torch.Tensor, padding_mask: Optional[torch.BoolTensor] = None
+        self,
+        input: torch.Tensor,
+        padding_mask: Optional[torch.BoolTensor] = None,
     ) -> torch.Tensor:
+        """Forward pass of Aggregator.
+
+        Args:
+            input (torch.Tensor): Sequence of shape (batch_size, length, embedding_dim).
+            padding_mask (torch.BoolTensor, optional): Padding mask of shape (batch_size, length).
+
+        Returns:
+            torch.Tensor: Aggregated feature of shape (batch_size, embedding_dim).
+
+        """
         pass
 
 
@@ -592,7 +604,9 @@ class AverageAggregator(Aggregator):
         self.insert_dist_token = insert_dist_token
 
     def forward(
-        self, input: torch.Tensor, padding_mask: Optional[torch.BoolTensor] = None
+        self,
+        input: torch.Tensor,
+        padding_mask: Optional[torch.BoolTensor] = None,
     ) -> torch.Tensor:
         """Forward pass of AverageAggregator.
 
@@ -601,7 +615,7 @@ class AverageAggregator(Aggregator):
             padding_mask (torch.BoolTensor, optional): Padding mask of shape (batch_size, length).
 
         Returns:
-            torch.Tensor: Aggregated feature of shape (batch_size, length, embedding_dim).
+            torch.Tensor: Aggregated feature of shape (batch_size, embedding_dim).
 
         """
         num_head_tokens = 0
@@ -644,7 +658,9 @@ class HeadTokensAggregator(Aggregator):
         self.insert_dist_token = insert_dist_token
 
     def forward(
-        self, input: torch.Tensor, padding_mask: Optional[torch.BoolTensor] = None
+        self,
+        input: torch.Tensor,
+        padding_mask: Optional[torch.BoolTensor] = None,
     ) -> torch.Tensor:
         """Forward pass of HeadTokensAggregator.
 
@@ -653,7 +669,7 @@ class HeadTokensAggregator(Aggregator):
             padding_mask (torch.BoolTensor, optional): Padding mask of shape (batch_size, length).
 
         Returns:
-            torch.Tensor: Aggregated feature of shape (batch_size, length, embedding_dim).
+            torch.Tensor: Aggregated feature of shape (batch_size, embedding_dim).
 
         .. note::
 

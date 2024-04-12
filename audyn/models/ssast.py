@@ -31,8 +31,6 @@ __all__ = [
     "Masker",
     "FastMasker",
     "MLP",
-    "Aggregator",  # for backward compatibility
-    "AverageAggregator",
     "Head",  # for backward compatibility
     "MLPHead",  # for backward compatibility
     "SSASTMPM",
@@ -306,14 +304,7 @@ class SelfSupervisedAudioSpectrogramTransformer(BaseAudioSpectrogramTransformer)
 
         """
         x = self.embedding(input)
-
-        # just to compute height and width
-        target = self.spectrogram_to_patches(input)
-        _, _, height, width = target.size()
-
-        x = self.transformer_forward(x)
-        _, x = self.split_sequence(x)
-        output = self.sequence_to_patches(x, height=height, width=width)
+        output = self.transformer_forward(x)
 
         if self.aggregator is not None:
             output = self.aggregator(output)
@@ -760,39 +751,6 @@ class MLP(nn.Module):
         x = self.linear1(input)
         x = self.nonlinear(x)
         output = self.linear2(x)
-
-        return output
-
-
-class AverageAggregator(Aggregator):
-    def forward(
-        self, input: torch.Tensor, padding_mask: Optional[torch.BoolTensor] = None
-    ) -> torch.Tensor:
-        """Forward pass of AverageAggregator.
-
-        Args:
-            input (torch.Tensor): Patches of shape (batch_size, embedding_dim, height, width).
-            padding_mask (torch.BoolTensor, optional): Padding mask of shape
-                (batch_size, height, width).
-
-        Returns:
-            torch.Tensor: Aggregated feature of shape (batch_size, embedding_dim, height, width).
-
-        """
-        if padding_mask is None:
-            batch_size, _, height, width = input.size()
-            padding_mask = torch.full(
-                (batch_size, height, width),
-                fill_value=False,
-                dtype=torch.bool,
-                device=input.device,
-            )
-
-        x = input.masked_fill(padding_mask.unsqueeze(dim=-3), 0)
-        non_padding_mask = torch.logical_not(padding_mask)
-        non_padding_mask = non_padding_mask.to(torch.long)
-        non_padding_mask = non_padding_mask.sum(dim=(-2, -1))
-        output = x.sum(dim=(-2, -1)) / non_padding_mask.unsqueeze(dim=-1)
 
         return output
 
