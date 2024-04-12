@@ -24,7 +24,7 @@ for csv_url in "${audioset_balanced_train_csv_url}" "${audioset_unbalanced_train
     jsonl_path="${audioset_jsonl_root}/${jsonl_filename}"
     download_dir="${audioset_m4a_root}/${csv_filename/.csv/}"
 
-    python local/download_audio.py \
+    python ../_common/local/download_audio.py \
     --config-dir "../_common/conf" \
     hydra.run.dir="log/$(date +"%Y%m%d-%H%M%S")" \
     preprocess="${preprocess}" \
