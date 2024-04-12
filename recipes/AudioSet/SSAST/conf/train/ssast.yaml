@@ -17,9 +17,12 @@ dataloader:
     collate_fn:
       _target_: utils.data.SSASTAudioSetCollater
       melspectrogram_transform: ${data.melspectrogram}
-      waveform_key: waveform
-      melspectrogram_key: log_melspectrogram
-      filename_key: filename
+      audio_key_in: audio.m4a
+      sample_rate_key_in: sample_rate.pth
+      filename_key_in: __key__
+      waveform_key_out: waveform
+      melspectrogram_key_out: log_melspectrogram
+      filename_key_out: filename
       duration: ${data.audio.duration}
   validation:
     batch_size: 64
@@ -28,7 +31,7 @@ dataloader:
 key_mapping:
   train:
     input:
-      input: ${....dataloader.train.collate_fn.melspectrogram_key}
+      input: ${....dataloader.train.collate_fn.melspectrogram_key_out}
     output:
       - - reconstruction_output
         - reconstruction_target
