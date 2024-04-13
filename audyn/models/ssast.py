@@ -673,7 +673,7 @@ class Masker(_Masker):
                 if is_finished:
                     break
 
-        masking_mask = torch.zeros((height * width), dtype=torch.bool)
+        masking_mask = torch.zeros((height * width,), dtype=torch.bool)
         mask_indices = torch.tensor(mask_indices)
         masking_mask.scatter_(0, mask_indices, True)
         masking_mask = masking_mask.view(height, width)
@@ -764,7 +764,7 @@ class FastMasker(_Masker):
 
         indices = torch.randperm(height * width)
         indices = indices[:num_selections]
-        masking_mask = torch.zeros((height * width), dtype=input.dtype)
+        masking_mask = torch.zeros((height * width,), dtype=input.dtype)
         masking_mask.scatter_(0, indices, 1)
 
         return masking_mask
