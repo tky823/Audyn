@@ -337,7 +337,7 @@ class AverageAggregator(Aggregator):
 
         _, x = torch.split(input, [num_head_tokens, input.size(-2) - num_head_tokens], dim=-2)
 
-        if padding_mask is not None:
+        if padding_mask is None:
             batch_size, length, _ = x.size()
             padding_mask = torch.full(
                 (batch_size, length),
@@ -349,7 +349,7 @@ class AverageAggregator(Aggregator):
         x = x.masked_fill(padding_mask.unsqueeze(dim=-1), 0)
         non_padding_mask = torch.logical_not(padding_mask)
         non_padding_mask = non_padding_mask.to(torch.long)
-        output = x.sum(dim=-2) / non_padding_mask.sum(dim=-2, keepdim=True)
+        output = x.sum(dim=-2) / non_padding_mask.sum(dim=-1, keepdim=True)
 
         return output
 
