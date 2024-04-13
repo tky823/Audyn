@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 import torch
 import torch.nn as nn
@@ -11,7 +11,12 @@ from audyn.utils.data.collater import BaseCollater
 
 
 class SSASTAudioSetCollater(BaseCollater):
-    """Collater for SSAST using AudioSet."""
+    """Collater for SSAST using AudioSet.
+
+    Args:
+        duration (float, optional): Duration to trim or pad.
+
+    """
 
     def __init__(
         self,
@@ -27,7 +32,7 @@ class SSASTAudioSetCollater(BaseCollater):
         waveform_key_out: str = "waveform",
         melspectrogram_key_out: str = "melspectrogram",
         filename_key_out: str = "filename",
-        duration: float = 10,
+        duration: Optional[float] = 10,
     ) -> None:
         super().__init__()
 
@@ -55,13 +60,16 @@ class SSASTAudioSetCollater(BaseCollater):
         duration = self.duration
 
         if hasattr(melspectrogram_transform, "sample_rate"):
-            melspectrogram_sample_rate = melspectrogram_transform.sample_rate
-            length = int(melspectrogram_sample_rate * duration)
+            melspectrogram_sample_rate: int = melspectrogram_transform.sample_rate
         else:
-            melspectrogram_sample_rate = None
-            length = None
+            raise NotImplementedError("Sampling rate of melspectrogram_transform should be set.")
 
-            raise NotImplementedError("Sampling rate should be specified now.")
+        if duration is None:
+            length = None
+            max_length = 0
+        else:
+            length = int(melspectrogram_sample_rate * duration)
+            max_length = length
 
         batched_waveform = []
         batched_melspectrogram = []
@@ -72,19 +80,26 @@ class SSASTAudioSetCollater(BaseCollater):
             sample_rate = sample[sample_rate_key_in]
             filename = sample[filename_key_in]
 
-            if (
-                melspectrogram_sample_rate is not None
-                and sample_rate != melspectrogram_sample_rate
-            ):
+            if sample_rate != melspectrogram_sample_rate:
                 waveform = aF.resample(waveform, sample_rate, melspectrogram_sample_rate)
 
-            padding = length - waveform.size(-1)
-            waveform = F.pad(waveform, (0, padding))
-            melspectrogram = self.melspectrogram_transform(waveform)
+            if length is not None:
+                padding = length - waveform.size(-1)
+                waveform = F.pad(waveform, (0, padding))
+
+            # NOTE: When length is not None, max_length cannot be updated.
+            max_length = max(max_length, waveform.size(-1))
 
             batched_waveform.append(waveform)
-            batched_melspectrogram.append(melspectrogram)
             batched_filename.append(filename)
+
+        for waveform in batched_waveform:
+            # NOTE: When length is not None, padding is 0.
+            padding = max_length - waveform.size(-1)
+            waveform = F.pad(waveform, (0, padding))
+
+            melspectrogram = self.melspectrogram_transform(waveform)
+            batched_melspectrogram.append(melspectrogram)
 
         batched_waveform = torch.stack(batched_waveform, dim=0)
         batched_melspectrogram = torch.stack(batched_melspectrogram, dim=0)
