@@ -5,9 +5,9 @@ import pytest
 import torch
 import torch.nn as nn
 
+from audyn.models.ast import AverageAggregator
 from audyn.models.ssast import (
     MLP,
-    AverageAggregator,
     FastMasker,
     Masker,
     MLPHead,
@@ -25,7 +25,8 @@ from audyn.utils.github import download_file_from_github_release
         "multitask-ssast-frame-base-400",
     ],
 )
-def test_official_ssast_multi_task_mpm(model_name: str) -> None:
+@pytest.mark.parametrize("sample_wise", [True, False])
+def test_official_ssast_multi_task_mpm(model_name: str, sample_wise: bool) -> None:
     torch.manual_seed(0)
 
     d_model = 768
@@ -63,6 +64,7 @@ def test_official_ssast_multi_task_mpm(model_name: str) -> None:
         num_masks=num_masks,
         min_cluster=min_cluster,
         max_cluster=max_cluster,
+        sample_wise=sample_wise,
     )
     encoder_layer = nn.TransformerEncoderLayer(
         d_model,
@@ -230,7 +232,8 @@ def test_official_ssast(model_name: str) -> None:
     assert torch.allclose(output, expected_output)
 
 
-def test_ssast_multi_task_mpm() -> None:
+@pytest.mark.parametrize("sample_wise", [True, False])
+def test_ssast_multi_task_mpm(sample_wise: bool) -> None:
     torch.manual_seed(0)
 
     d_model = 8
@@ -259,6 +262,7 @@ def test_ssast_multi_task_mpm() -> None:
         num_masks=num_masks,
         min_cluster=min_cluster,
         max_cluster=max_cluster,
+        sample_wise=sample_wise,
     )
     encoder_layer = nn.TransformerEncoderLayer(
         d_model, nhead, dim_feedforward=dim_feedforward, batch_first=True
@@ -332,7 +336,8 @@ def test_ssast() -> None:
     assert output.size() == (batch_size, out_channels)
 
 
-def test_ssast_masker() -> None:
+@pytest.mark.parametrize("sample_wise", [True, False])
+def test_ssast_masker(sample_wise: bool) -> None:
     torch.manual_seed(0)
 
     d_model = 8
@@ -346,6 +351,7 @@ def test_ssast_masker() -> None:
         num_masks=num_masks,
         min_cluster=min_cluster,
         max_cluster=max_cluster,
+        sample_wise=sample_wise,
     )
 
     # patch-based SSAST-like inputs
@@ -368,7 +374,8 @@ def test_ssast_masker() -> None:
     assert masking_mask.size()[1:] == input.size()[2:]
 
 
-def test_ssast_fast_masker() -> None:
+@pytest.mark.parametrize("sample_wise", [True, False])
+def test_ssast_fast_masker(sample_wise: bool) -> None:
     torch.manual_seed(0)
 
     d_model = 8
@@ -383,6 +390,7 @@ def test_ssast_fast_masker() -> None:
         num_masks=num_masks,
         min_cluster=min_cluster,
         max_cluster=max_cluster,
+        sample_wise=sample_wise,
     )
 
     input = torch.randn((batch_size, d_model, height, width))
