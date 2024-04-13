@@ -5,6 +5,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchaudio.transforms as aT
 
+from ..utils.data.audioset.ast import mean as _audioset_mean
+from ..utils.data.audioset.ast import std as _audioset_std
 from .kaldi import KaldiMelSpectrogram
 
 __all__ = [
@@ -37,7 +39,6 @@ class SelfSupervisedAudioSpectrogramTransformerMelSpectrogram(nn.Module):
     # https://github.com/YuanGongND/ssast/blob/a1a3eecb94731e226308a6812f2fbf268d789caf/src/dataloader.py#L95-L144
     # and
     # https://github.com/YuanGongND/ssast/blob/a1a3eecb94731e226308a6812f2fbf268d789caf/src/dataloader.py#L183-L202
-    # TODO: Mel-spectrogram transform for AST
 
     def __init__(
         self,
@@ -116,6 +117,69 @@ class SelfSupervisedAudioSpectrogramTransformerMelSpectrogram(nn.Module):
             spectrogram = torch.exp(spectrogram)
 
         return spectrogram
+
+    @classmethod
+    def build_from_default_config(
+        cls,
+        dataset: str,
+        sample_rate: Optional[int] = None,
+        n_mels: Optional[int] = None,
+        n_frames: Optional[int] = None,
+        freq_mask_param: Optional[int] = None,
+        time_mask_param: Optional[int] = None,
+        mean: Optional[float] = None,
+        std: Optional[float] = None,
+        take_log: bool = True,
+    ) -> "SelfSupervisedAudioSpectrogramTransformerMelSpectrogram":
+        """Dataset-aware factory method for
+        SelfSupervisedAudioSpectrogramTransformerMelSpectrogram.
+
+        Args:
+            dataset (str): Dataset name. Now, ``audioset`` is available.
+            n_frames (int, optional): Number of frames. During pretraining by AudioSet, this
+                parameter is typically ``1024``. During finetuning, any number is available,
+                but we use ``100`` by default.
+
+        Returns:
+            SelfSupervisedAudioSpectrogramTransformerMelSpectrogram: Mel-spectrogram transform.
+
+        """
+        if dataset.lower() == "audioset":
+            if sample_rate is None:
+                sample_rate = 16000
+
+            if n_mels is None:
+                n_mels = 128
+
+            if freq_mask_param is None:
+                freq_mask_param = 48
+
+            if time_mask_param is None:
+                time_mask_param = 192
+
+            if mean is None:
+                mean = _audioset_mean
+
+            if std is None:
+                std = _audioset_std
+
+            if n_frames is None:
+                n_frames = 1024
+
+            transform = cls(
+                sample_rate,
+                n_mels=n_mels,
+                n_frames=n_frames,
+                freq_mask_param=freq_mask_param,
+                time_mask_param=time_mask_param,
+                mean=mean,
+                std=std,
+                take_log=take_log,
+            )
+        else:
+            raise ValueError(f"{dataset} is not supported as dataset.")
+
+        return transform
 
 
 class SSASTMelSpectrogram(SelfSupervisedAudioSpectrogramTransformerMelSpectrogram):
