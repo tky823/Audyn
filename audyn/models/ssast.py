@@ -712,7 +712,7 @@ class FastMasker(_Masker):
         if self.sample_wise:
             masking_mask = []
 
-            for unbatched_input in enumerate(input):
+            for unbatched_input in input:
                 _masking_mask = self._create_unbatched_masking_mask(
                     unbatched_input, num_selections=num_selections
                 )
