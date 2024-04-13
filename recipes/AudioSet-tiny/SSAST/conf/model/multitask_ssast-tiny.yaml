@@ -15,6 +15,8 @@ masker:
   num_masks: ???
   min_cluster: 3
   max_cluster: 6
+  trainable: true
+  sample_wise: false
 backbone:
   _target_: torch.nn.TransformerEncoder
   encoder_layer:
