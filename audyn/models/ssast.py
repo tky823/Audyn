@@ -764,7 +764,7 @@ class FastMasker(_Masker):
 
         indices = torch.randperm(height * width)
         indices = indices[:num_selections]
-        masking_mask = torch.zeros((height * width,), dtype=torch.bool)
+        masking_mask = torch.zeros((height * width,), dtype=input.dtype)
         masking_mask.scatter_(0, indices, 1)
 
         return masking_mask
