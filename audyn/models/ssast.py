@@ -487,6 +487,7 @@ class _Masker(nn.Module):
         min_cluster (int): Minimum cluster size. Default: ``3``.
         max_cluster (int, optional): Maximum cluster size. Default: ``min_cluster + 3``.
         trainable (bool): If ``True``, mask token is trainable.
+        sample_wise (bool): If ``True``, masking is applied per sample.
 
     """
 
@@ -497,6 +498,7 @@ class _Masker(nn.Module):
         min_cluster: int = 3,
         max_cluster: Optional[int] = None,
         trainable: bool = True,
+        sample_wise: bool = False,
         device: torch.device = None,
         dtype: torch.dtype = None,
     ) -> None:
@@ -514,6 +516,7 @@ class _Masker(nn.Module):
         self.min_cluster = min_cluster
         self.max_cluster = max_cluster
         self.trainable = trainable
+        self.sample_wise = sample_wise
 
         if trainable:
             mask_embedding = torch.empty((embedding_dim,), **factory_kwargs)
@@ -587,21 +590,32 @@ class _Masker(nn.Module):
 class Masker(_Masker):
     def create_masking_mask(self, input: torch.Tensor) -> torch.BoolTensor:
         cluster_size = torch.randint(self.min_cluster, self.max_cluster, ()).item()
-        _, _, height, width = input.size()
+        batch_size, _, height, width = input.size()
         mask_height = min(height, cluster_size)
         mask_width = min(width, cluster_size)
-        masking_mask = []
 
-        for unbatched_input in input:
-            _masking_mask = self._create_unbatched_masking_mask(
-                unbatched_input,
+        if self.sample_wise:
+            masking_mask = []
+
+            for unbatched_input in input:
+                _masking_mask = self._create_unbatched_masking_mask(
+                    unbatched_input,
+                    mask_height=mask_height,
+                    mask_width=mask_width,
+                    num_masks=self.num_masks,
+                )
+                masking_mask.append(_masking_mask)
+
+            masking_mask = torch.stack(masking_mask, dim=0)
+        else:
+            masking_mask = self._create_unbatched_masking_mask(
+                input[0],
                 mask_height=mask_height,
                 mask_width=mask_width,
                 num_masks=self.num_masks,
             )
-            masking_mask.append(_masking_mask)
+            masking_mask = masking_mask.expand((batch_size, -1, -1))
 
-        masking_mask = torch.stack(masking_mask, dim=0)
         masking_mask = masking_mask.to(input.device)
 
         return masking_mask
@@ -619,7 +633,8 @@ class Masker(_Masker):
             input (torch.Tensor): Unbatched feature of shape (embedding_dim, height, width).
 
         Returns:
-            torch.LongTensor: Unbatched masking mask of shape (height, width).
+            torch.BoolTensor: Unbatched masking mask of shape (height, width).
+
         """
         if num_masks is None:
             num_masks = self.num_masks
@@ -693,16 +708,23 @@ class FastMasker(_Masker):
 
         # Considering overlap and triming at edge, we use math.ceil here.
         num_selections = math.ceil(num_masks / (mask_height * mask_width))
-        masking_mask = []
 
-        for _ in range(batch_size):
-            indices = torch.randperm(height * width)
-            indices = indices[:num_selections]
-            _masking_mask = torch.zeros((height * width), dtype=input.dtype)
-            _masking_mask.scatter_(0, indices, 1)
-            masking_mask.append(_masking_mask)
+        if self.sample_wise:
+            masking_mask = []
 
-        masking_mask = torch.stack(masking_mask, dim=0)
+            for unbatched_input in enumerate(input):
+                _masking_mask = self._create_unbatched_masking_mask(
+                    unbatched_input, num_selections=num_selections
+                )
+                masking_mask.append(_masking_mask)
+
+            masking_mask = torch.stack(masking_mask, dim=0)
+        else:
+            masking_mask = self._create_unbatched_masking_mask(
+                input[0], num_selections=num_selections
+            )
+            masking_mask = masking_mask.expand((batch_size, -1))
+
         masking_mask = masking_mask.unsqueeze(dim=-2)
         masking_mask = masking_mask.expand((-1, mask_height * mask_width, -1))
         masking_mask = F.fold(
@@ -719,6 +741,31 @@ class FastMasker(_Masker):
         # so convert it into False or True.
         masking_mask = masking_mask > 0
         masking_mask = masking_mask.to(input.device)
+
+        return masking_mask
+
+    def _create_unbatched_masking_mask(
+        self,
+        input: torch.Tensor,
+        num_selections: int,
+    ) -> torch.BoolTensor:
+        """Create masking mask for unbatched input.
+
+        Args:
+            input (torch.Tensor): Unbatched feature of shape (embedding_dim, height, width).
+            num_selections (int): Number of selections for masking. The value may be different
+                from ``self.num_masks``.
+
+        Returns:
+            torch.BoolTensor: Unbatched masking mask of shape (height * width).
+
+        """
+        _, height, width = input.size()
+
+        indices = torch.randperm(height * width)
+        indices = indices[:num_selections]
+        masking_mask = torch.zeros((height * width), dtype=input.dtype)
+        masking_mask.scatter_(0, indices, 1)
 
         return masking_mask
 
