@@ -15,6 +15,7 @@ class SSASTAudioSetCollater(BaseCollater):
 
     def __init__(
         self,
+        dump_format: str,
         melspectrogram_transform: Union[
             SelfSupervisedAudioSpectrogramTransformerMelSpectrogram,
             aT.MelSpectrogram,
@@ -30,6 +31,7 @@ class SSASTAudioSetCollater(BaseCollater):
     ) -> None:
         super().__init__()
 
+        self.dump_format = dump_format
         self.melspectrogram_transform = melspectrogram_transform
         self.audio_key_in = audio_key_in
         self.sample_rate_key_in = sample_rate_key_in
@@ -40,6 +42,9 @@ class SSASTAudioSetCollater(BaseCollater):
         self.duration = duration
 
     def __call__(self, batch: List[Dict[str, Any]]) -> Dict[str, Any]:
+        if self.dump_format != "webdataset":
+            raise ValueError("Only webdataset is supported as dump_format.")
+
         audio_key_in = self.audio_key_in
         sample_rate_key_in = self.sample_rate_key_in
         filename_key_in = self.filename_key_in

@@ -16,6 +16,7 @@ dataloader:
     batch_size: 64
     collate_fn:
       _target_: utils.data.SSASTAudioSetCollater
+      dump_format: ${preprocess.dump_format}
       melspectrogram_transform: ${data.melspectrogram}
       audio_key_in: audio.m4a
       sample_rate_key_in: sample_rate.pth
