@@ -154,6 +154,26 @@ class BaseAudioSpectrogramTransformer(nn.Module):
 
         return head_tokens, sequence
 
+    def prepend_tokens(
+        self, sequence: torch.Tensor, tokens: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
+        """Prepaned tokens to sequence.
+
+        Args:
+            sequence (torch.Tensor): Sequence of shape (batch_size, length, embedding_dim).
+            tokens (torch.Tensor, optional): Tokens of shape
+                (batch_size, num_tokens, embedding_dim).
+
+        Returns:
+            torch.Tensor: Concatenated sequence of shape
+                (batch_size, length + num_tokens, embedding_dim).
+
+        """
+        if tokens is None:
+            return sequence
+        else:
+            return torch.cat([tokens, sequence], dim=-2)
+
 
 class AudioSpectrogramTransformer(BaseAudioSpectrogramTransformer):
     """Audio spectrogram transformer.
