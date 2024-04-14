@@ -13,7 +13,7 @@ dataset:
 
 dataloader:
   train:
-    batch_size: 64
+    batch_size: 24
     collate_fn:
       _target_: utils.data.SSASTAudioSetCollater
       dump_format: ${preprocess.dump_format}
@@ -26,7 +26,7 @@ dataloader:
       filename_key_out: filename
       duration: ${data.audio.duration}
   validation:
-    batch_size: 64
+    batch_size: 24
     collate_fn: ${..train.collate_fn}
 
 key_mapping:
