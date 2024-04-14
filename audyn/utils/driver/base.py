@@ -638,7 +638,7 @@ class BaseTrainer(BaseDriver):
             self.scaler.update()
 
             if self.config.train.steps.lr_scheduler == "iteration":
-                self.lr_scheduler.step()
+                self.lr_scheduler_step()
 
             prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}"
             prompt += f", Iter {self.iteration_idx+1}/{self.iterations}]"
@@ -668,7 +668,7 @@ class BaseTrainer(BaseDriver):
                 break
 
         if self.config.train.steps.lr_scheduler == "epoch":
-            self.lr_scheduler.step()
+            self.lr_scheduler_step()
 
         train_loss = {}
 
@@ -877,6 +877,18 @@ class BaseTrainer(BaseDriver):
                 optimizer.step()
             else:
                 self.scaler.step(optimizer)
+
+    def lr_scheduler_step(self, lr_scheduler: Optional[_LRScheduler] = None) -> None:
+        """Call .step of learning rate scheduler.
+
+        Args:
+            lr_scheduler (_LRScheduler): Learning rate scheduler.
+
+        """
+        if lr_scheduler is None:
+            lr_scheduler = self.lr_scheduler
+
+        lr_scheduler.step()
 
     def display_loss(
         self, train_loss: Dict[str, float], validation_loss: Optional[Dict[str, float]] = None
