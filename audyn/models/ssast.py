@@ -486,7 +486,7 @@ class _Masker(nn.Module):
         num_masks (int): Number of mask tokens.
         min_cluster (int): Minimum cluster size. Default: ``3``.
         max_cluster (int, optional): Maximum cluster size. Default: ``min_cluster + 3``.
-        trainable (bool): If ``True``, mask token is trainable.
+        trainable (bool): If ``True``, embedding of mask token is trainable.
         sample_wise (bool): If ``True``, masking is applied per sample.
 
     """
@@ -689,7 +689,8 @@ class FastMasker(_Masker):
         num_masks (int): Number of mask tokens.
         min_cluster (int): Minimum cluster size. Default: ``3``.
         max_cluster (int, optional): Maximum cluster size. Default: ``min_cluster + 3``.
-        trainable (bool): If ``True``, mask token is trainable.
+        trainable (bool): If ``True``, embedding of mask token is trainable.
+        sample_wise (bool): If ``True``, masking is applied per sample.
 
     .. note::
 
