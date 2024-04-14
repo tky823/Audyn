@@ -634,7 +634,7 @@ class BaseTrainer(BaseDriver):
             self.scaler.scale(total_loss).backward()
             self.unscale_optimizer_if_necessary()
             self.clip_gradient_if_necessary()
-            self.optimizer_step()
+            self.optimizer_step(self.optimizer)
             self.scaler.update()
 
             if self.config.train.steps.lr_scheduler == "iteration":
