@@ -14,7 +14,7 @@ from omegaconf import DictConfig, OmegaConf
 from packaging import version
 from torch.cuda.amp import GradScaler, autocast
 from torch.optim import Optimizer
-from torch.optim.lr_scheduler import _LRScheduler
+from torch.optim.lr_scheduler import ReduceLROnPlateau, _LRScheduler
 from torch.utils.data import DataLoader
 
 from ... import __version__ as _version
@@ -638,7 +638,7 @@ class BaseTrainer(BaseDriver):
             self.scaler.update()
 
             if self.config.train.steps.lr_scheduler == "iteration":
-                self.lr_scheduler_step()
+                self.lr_scheduler_step(self.lr_scheduler, loss=loss)
 
             prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}"
             prompt += f", Iter {self.iteration_idx+1}/{self.iterations}]"
@@ -667,14 +667,14 @@ class BaseTrainer(BaseDriver):
                 # Finish training
                 break
 
-        if self.config.train.steps.lr_scheduler == "epoch":
-            self.lr_scheduler_step()
-
         train_loss = {}
 
         for criterion_name in criterion_names:
             loss = mean_metrics[criterion_name].compute()
             train_loss[criterion_name] = loss.item()
+
+        if self.config.train.steps.lr_scheduler == "epoch":
+            self.lr_scheduler_step(self.lr_scheduler, loss=train_loss)
 
         return train_loss
 
@@ -878,7 +878,11 @@ class BaseTrainer(BaseDriver):
             else:
                 self.scaler.step(optimizer)
 
-    def lr_scheduler_step(self, lr_scheduler: Optional[_LRScheduler] = None) -> None:
+    def lr_scheduler_step(
+        self,
+        lr_scheduler: Optional[_LRScheduler] = None,
+        loss: Optional[Dict[str, Union[torch.Tensor, float]]] = None,
+    ) -> None:
         """Call .step of learning rate scheduler.
 
         Args:
@@ -888,7 +892,21 @@ class BaseTrainer(BaseDriver):
         if lr_scheduler is None:
             lr_scheduler = self.lr_scheduler
 
-        lr_scheduler.step()
+        if isinstance(lr_scheduler, ReduceLROnPlateau):
+            if loss is None:
+                raise ValueError("ReduceLROnPlateau requires loss to update.")
+
+            total_loss = 0
+            criterion_names = self.criterion_names(self.config.criterion)
+
+            for criterion_name in criterion_names:
+                weight = self.config.criterion[criterion_name].weight
+                loss = loss[criterion_name]
+                total_loss += weight * loss
+
+            lr_scheduler.step(total_loss)
+        else:
+            lr_scheduler.step()
 
     def display_loss(
         self, train_loss: Dict[str, float], validation_loss: Optional[Dict[str, float]] = None
