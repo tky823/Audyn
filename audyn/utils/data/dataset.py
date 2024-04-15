@@ -198,12 +198,14 @@ class Composer:
         self,
         decode_audio_as_waveform: bool = True,
         decode_audio_as_monoral: bool = True,
-    ):
+    ) -> None:
         self.decode_audio_as_waveform = decode_audio_as_waveform
         self.decode_audio_as_monoral = decode_audio_as_monoral
 
     def decode(self, sample: Dict[str, Any]) -> Dict[str, Any]:
         for key in sample.keys():
+            # ported from
+            # https://github.com/webdataset/webdataset/blob/f11fd66c163722c607ec99475a6f3cb880ec35b8/webdataset/autodecode.py#L418-L434
             ext = re.sub(r".*[.]", "", key)
 
             if ext in ["flac", "mp3", "sox", "wav", "m4a", "ogg", "wma"]:
