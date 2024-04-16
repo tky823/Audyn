@@ -2018,11 +2018,23 @@ class BaseGenerator(BaseDriver):
             is_distributed=config.system.distributed.enable,
         )
 
-        generator = BaseGenerator(
-            test_loader,
-            model,
-            config=config,
-        )
+        if (
+            hasattr(config.test, "generator")
+            and hasattr(config.test.generator, "_target_")
+            and config.test.generator._target_ is not None
+        ):
+            generator = instantiate(
+                config.test.generator,
+                test_loader,
+                model,
+                config=config,
+            )
+        else:
+            generator = cls(
+                test_loader,
+                model,
+                config=config,
+            )
 
         return generator
 
