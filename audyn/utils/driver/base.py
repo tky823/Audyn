@@ -402,7 +402,15 @@ class BaseTrainer(BaseDriver):
             and hasattr(config.train.trainer, "_target_")
             and config.train.trainer._target_ is not None
         ):
-            trainer = instantiate(
+            # instantiate does not support config as keyword arguments.
+            OmegaConf.update(
+                config,
+                "train.trainer",
+                {"_partial_": True},
+                merge=True,
+                force_add=True,
+            )
+            trainer_cls = instantiate(
                 config.train.trainer,
                 loaders,
                 model,
@@ -410,8 +418,8 @@ class BaseTrainer(BaseDriver):
                 lr_scheduler=lr_scheduler,
                 grad_clipper=grad_clipper,
                 criterion=criterion,
-                config=config,
             )
+            trainer = trainer_cls(config=config)
         else:
             trainer = cls(
                 loaders,
@@ -2053,12 +2061,20 @@ class BaseGenerator(BaseDriver):
             and hasattr(config.test.generator, "_target_")
             and config.test.generator._target_ is not None
         ):
-            generator = instantiate(
+            # instantiate does not support config as keyword arguments.
+            OmegaConf.update(
+                config,
+                "test.generator",
+                {"_partial_": True},
+                merge=True,
+                force_add=True,
+            )
+            generator_cls = instantiate(
                 config.test.generator,
                 test_loader,
                 model,
-                config=config,
             )
+            generator = generator_cls(config=config)
         else:
             generator = cls(
                 test_loader,
