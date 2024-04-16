@@ -331,6 +331,108 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
         monkeypatch.undo()
 
 
+@pytest.mark.parametrize("use_ema", [True, False])
+def test_base_driver_build_from_config(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
+    """Test BaseTrainer and BaseGenerator."""
+    DATA_SIZE = 20
+    BATCH_SIZE = 2
+    INITIAL_ITERATION = 3
+
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
+        monkeypatch.chdir(temp_dir)
+
+        overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
+        exp_dir = "./exp"
+
+        train_name = "dummy"
+        model_name = "dummy"
+        criterion_name = "dummy"
+        lr_scheduler_name = "dummy"
+
+        if use_ema:
+            optimizer_name = "dummy"
+        else:
+            optimizer_name = "dummy_ema"
+
+        with hydra.initialize(
+            version_base="1.2",
+            config_path=relpath(config_template_path, dirname(realpath(__file__))),
+            job_name="test_driver",
+        ):
+            config = hydra.compose(
+                config_name="config",
+                overrides=create_dummy_override(
+                    overrides_conf_dir=overrides_conf_dir,
+                    exp_dir=exp_dir,
+                    data_size=DATA_SIZE,
+                    batch_size=BATCH_SIZE,
+                    iterations=INITIAL_ITERATION,
+                    train=train_name,
+                    model=model_name,
+                    criterion=criterion_name,
+                    optimizer=optimizer_name,
+                    lr_scheduler=lr_scheduler_name,
+                ),
+                return_hydra_config=True,
+            )
+
+        setup_system(config)
+
+        trainer = BaseTrainer.build_from_config(config)
+        trainer.run()
+        trainer.writer.flush()
+
+        with hydra.initialize(
+            version_base="1.2",
+            config_path=relpath(config_template_path, dirname(realpath(__file__))),
+            job_name="test_driver",
+        ):
+            config = hydra.compose(
+                config_name="config",
+                overrides=create_dummy_override(
+                    overrides_conf_dir=overrides_conf_dir,
+                    exp_dir=exp_dir,
+                    data_size=DATA_SIZE,
+                    batch_size=BATCH_SIZE,
+                    iterations=len(trainer.loaders.train),
+                    train=train_name,
+                    model=model_name,
+                    criterion=criterion_name,
+                    optimizer=optimizer_name,
+                    lr_scheduler=lr_scheduler_name,
+                    continue_from=f"{exp_dir}/model/iteration{INITIAL_ITERATION}.pth",
+                ),
+                return_hydra_config=True,
+            )
+
+        setup_system(config)
+
+        trainer.build_from_config(config)
+        trainer.run()
+        trainer.writer.flush()
+
+        with hydra.initialize(
+            version_base="1.2",
+            config_path=relpath(config_template_path, dirname(realpath(__file__))),
+            job_name="test_driver",
+        ):
+            config = hydra.compose(
+                config_name="config",
+                overrides=create_dummy_override(
+                    overrides_conf_dir=overrides_conf_dir,
+                    exp_dir=exp_dir,
+                    data_size=DATA_SIZE,
+                    checkpoint=f"{exp_dir}/model/last.pth",
+                ),
+                return_hydra_config=True,
+            )
+
+        generator = BaseGenerator.build_from_config(config)
+        generator.run()
+
+        monkeypatch.undo()
+
+
 @pytest.mark.parametrize("model_name", ["dummy_text-to-feat", "dummy_glowtts"])
 @pytest.mark.parametrize(
     "is_legacy_grad_clipper, is_legacy_grad_clipper_recipe",
