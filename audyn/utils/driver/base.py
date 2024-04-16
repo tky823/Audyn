@@ -1997,6 +1997,35 @@ class BaseGenerator(BaseDriver):
 
         self._reset(config)
 
+    @classmethod
+    def build_from_config(cls, config: DictConfig) -> "BaseTrainer":
+        """Instantiate Generator from config.
+
+        Args:
+            config (DictConfig): Config to instantiate generator. If ``config.test`` has
+                ``generator._target_``, its class is used. Otherwise, ``BaseGenerator`` is used.
+
+        Returns:
+            BaseGenerator: Built generator.
+
+        """
+        test_dataset = instantiate(config.test.dataset.test)
+        test_loader = instantiate(config.test.dataloader.test, test_dataset)
+        model = instantiate_model(config.test.checkpoint)
+        model = set_device(
+            model,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
+
+        generator = BaseGenerator(
+            test_loader,
+            model,
+            config=config,
+        )
+
+        return generator
+
     def _reset(self, config: DictConfig) -> None:
         self.set_system(config=config.system)
 
