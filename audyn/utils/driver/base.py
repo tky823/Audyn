@@ -24,7 +24,15 @@ from ...optim.optimizer import (
     MovingAverageWrapper,
     MultiOptimizers,
 )
-from ...utils import instantiate
+from ...utils.hydra.utils import (
+    instantiate,
+    instantiate_criterion,
+    instantiate_grad_clipper,
+    instantiate_lr_scheduler,
+    instantiate_model,
+    instantiate_optimizer,
+)
+from ...utils.model import set_device
 from ..alignment import expand_by_duration
 from ..clip_grad import GradClipper
 from ..data import BaseDataLoaders, select_device
@@ -344,6 +352,78 @@ class BaseTrainer(BaseDriver):
         self.config = config
 
         self._reset(config)
+
+    @classmethod
+    def build_from_config(cls, config: DictConfig) -> "BaseTrainer":
+        """Instantiate Trainer from config.
+
+        Args:
+            config (DictConfig): Config to instantiate trainer. If ``config.train`` has
+                ``trainer._target_``, its class is used. Otherwise, ``BaseTrainer`` is used.
+
+        Returns:
+            BaseTrainer: Built trainer.
+
+        """
+        train_dataset = instantiate(config.train.dataset.train)
+        validation_dataset = instantiate(config.train.dataset.validation)
+
+        train_loader = instantiate(config.train.dataloader.train, train_dataset)
+        validation_loader = instantiate(config.train.dataloader.validation, validation_dataset)
+        loaders = BaseDataLoaders(train_loader, validation_loader)
+
+        model = instantiate_model(config.model)
+        model = set_device(
+            model,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+            ddp_kwargs=config.train.ddp_kwargs,
+        )
+        criterion = instantiate_criterion(config.criterion)
+        criterion = set_device(
+            criterion,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+            ddp_kwargs=config.train.ddp_kwargs,
+        )
+
+        # TODO: support model and criterion by instantiate_optimizer.
+        optimizer = instantiate_optimizer(config.optimizer, model)
+        lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
+
+        if hasattr(config.train, "clip_gradient"):
+            # for backward compatibility
+            grad_clipper = instantiate_grad_clipper(config.train.clip_gradient, model.parameters())
+        else:
+            grad_clipper = None
+
+        if (
+            hasattr(config.train, "trainer")
+            and hasattr(config.train.trainer, "_target_")
+            and config.train.trainer._target_ is not None
+        ):
+            trainer = instantiate(
+                config.train.trainer,
+                loaders,
+                model,
+                optimizer,
+                lr_scheduler=lr_scheduler,
+                grad_clipper=grad_clipper,
+                criterion=criterion,
+                config=config,
+            )
+        else:
+            trainer = cls(
+                loaders,
+                model,
+                optimizer,
+                lr_scheduler=lr_scheduler,
+                grad_clipper=grad_clipper,
+                criterion=criterion,
+                config=config,
+            )
+
+        return trainer
 
     def _reset(self, config: DictConfig) -> None:
         self.set_system(config=config.system)
