@@ -467,7 +467,7 @@ def _align_patch_embedding(
     pretrained_insert_dist_token = orig_patch_embedding.insert_dist_token
     pretrained_n_bins = orig_patch_embedding.n_bins
     pretrained_n_frames = orig_patch_embedding.n_frames
-    pretraine_conv2d = orig_patch_embedding.conv2d
+    pretrained_conv2d = orig_patch_embedding.conv2d
     pretrained_positional_embedding = orig_patch_embedding.positional_embedding
     pretrained_cls_token = orig_patch_embedding.cls_token
     pretrained_dist_token = orig_patch_embedding.dist_token
@@ -491,7 +491,7 @@ def _align_patch_embedding(
         n_frames=n_frames,
     )
 
-    conv2d_state_dict = copy.deepcopy(pretraine_conv2d.state_dict())
+    conv2d_state_dict = copy.deepcopy(pretrained_conv2d.state_dict())
     new_patch_embedding.conv2d.load_state_dict(conv2d_state_dict)
 
     pretrained_positional_embedding = new_patch_embedding.resample_positional_embedding(
