@@ -1,3 +1,4 @@
+import warnings
 from abc import abstractmethod
 from typing import Optional, Tuple, Union
 
@@ -27,6 +28,9 @@ class DisentangledPositionalPatchEmbedding(nn.Module):
         dropout (float): Dropout rate.
         n_bins (int): Number of input bins.
         n_frames (int): Number of input frames.
+        support_extrapolation (bool): If ``True``, embeddings are extrapolated for longer input
+            as in audio spectrogram transformer. Otherwise, input sequence is trimmed.
+            Default: ``False``.
 
     .. note::
 
@@ -45,6 +49,7 @@ class DisentangledPositionalPatchEmbedding(nn.Module):
         dropout: float = 0,
         n_bins: int = None,
         n_frames: int = None,
+        support_extrapolation: bool = False,
         device: torch.device = None,
         dtype: torch.dtype = None,
     ) -> None:
@@ -78,6 +83,7 @@ class DisentangledPositionalPatchEmbedding(nn.Module):
         self.insert_dist_token = insert_dist_token
         self.n_bins = n_bins
         self.n_frames = n_frames
+        self.support_extrapolation = support_extrapolation
 
         self.conv2d = nn.Conv2d(
             1,
@@ -144,18 +150,39 @@ class DisentangledPositionalPatchEmbedding(nn.Module):
         time_embedding = self.time_embedding
 
         batch_size, n_bins, n_frames = input.size()
+        height, width = self.compute_output_shape(n_bins, n_frames)
+        height_org = frequency_embedding.size(-1)
+        width_org = time_embedding.size(-1)
         x = input.unsqueeze(dim=-3)
         x = self.conv2d(x)
 
         # resample embeddings
-        frequency_embedding = self.resample_frequency_embedding(
-            frequency_embedding,
-            n_bins,
-        )
-        time_embedding = self.resample_time_embedding(
-            time_embedding,
-            n_frames,
-        )
+        if height > height_org and not self.support_extrapolation:
+            warnings.warn(
+                "Number of frequency bins is greater than predefined value.",
+                UserWarning,
+                stacklevel=2,
+            )
+            x, _ = torch.split(x, [height_org, height - height_org], dim=-1)
+        else:
+            frequency_embedding = self.resample_frequency_embedding(
+                frequency_embedding,
+                n_bins,
+            )
+
+        if width > width_org and not self.support_extrapolation:
+            warnings.warn(
+                "Number of time frames is greater than predefined value.",
+                UserWarning,
+                stacklevel=2,
+            )
+            x, _ = torch.split(x, [width_org, width - width_org], dim=-2)
+        else:
+            time_embedding = self.resample_time_embedding(
+                time_embedding,
+                n_frames,
+            )
+
         x = x + frequency_embedding.unsqueeze(dim=-1) + time_embedding.unsqueeze(dim=-2)
 
         x = self.patches_to_sequence(x)
@@ -262,7 +289,11 @@ class DisentangledPositionalPatchEmbedding(nn.Module):
         height, _ = self.compute_output_shape(n_bins, self.n_frames)
 
         if height_org > height:
-            start_idx = height_org // 2 - height // 2
+            if self.training:
+                start_idx = torch.randint(0, height_org - height, ()).item()
+            else:
+                start_idx = 0
+
             _, embedding, _ = torch.split(
                 embedding,
                 [start_idx, height, height_org - height - start_idx],
@@ -285,7 +316,11 @@ class DisentangledPositionalPatchEmbedding(nn.Module):
         _, width = self.compute_output_shape(self.n_bins, n_frames)
 
         if width_org > width:
-            start_idx = width_org // 2 - width // 2
+            if self.training:
+                start_idx = torch.randint(0, width_org - width, ()).item()
+            else:
+                start_idx = 0
+
             _, embedding, _ = torch.split(
                 embedding,
                 [start_idx, width, width_org - width - start_idx],
