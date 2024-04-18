@@ -345,7 +345,8 @@ class Patchout(nn.Module):
 
             output, length = self.select_kept_patches(input, keeping_mask=keeping_mask)
         else:
-            output = input
+            x = input.view(batch_size, -1, height * width)
+            output = x.permute(0, 2, 1).contiguous()
             length = torch.full(
                 (batch_size,),
                 fill_value=height * width,
