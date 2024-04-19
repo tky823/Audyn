@@ -71,12 +71,19 @@ class ConstantQTransform(nn.Module):
     ) -> None:
         super().__init__()
 
+        f_nyq = sample_rate / 2
         f_max, bins_per_octave = _set_f_max_and_bins_per_octave(
             f_min,
             f_max=f_max,
             n_bins=n_bins,
             bins_per_octave=bins_per_octave,
         )
+
+        msg = (
+            "Max frequency ({f_max}) should not exceed Nyquist frequency ({f_nyq})."
+            " Set smaller f_max or n_bins."
+        )
+        assert f_max > f_nyq, msg.format(f_max=f_max, f_nyq=f_nyq)
 
         if domain is None:
             if by_octave:
