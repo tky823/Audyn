@@ -14,6 +14,10 @@ __all__ = [
 ]
 
 _invalid_domain_message = "Invalid domain {domain} is given."
+_invalid_f_max_message = (
+    "Max frequency ({f_max}) should not exceed Nyquist frequency ({f_nyq})."
+    " Set smaller f_max or n_bins."
+)
 
 
 class ConstantQTransform(nn.Module):
@@ -71,7 +75,6 @@ class ConstantQTransform(nn.Module):
     ) -> None:
         super().__init__()
 
-        f_nyq = sample_rate / 2
         f_max, bins_per_octave = _set_f_max_and_bins_per_octave(
             f_min,
             f_max=f_max,
@@ -79,11 +82,8 @@ class ConstantQTransform(nn.Module):
             bins_per_octave=bins_per_octave,
         )
 
-        msg = (
-            "Max frequency ({f_max}) should not exceed Nyquist frequency ({f_nyq})."
-            " Set smaller f_max or n_bins."
-        )
-        assert f_max <= f_nyq, msg.format(f_max=f_max, f_nyq=f_nyq)
+        if f_max > sample_rate / 2:
+            raise ValueError(_invalid_f_max_message.format(f_max=f_max, f_nyq=sample_rate / 2))
 
         if domain is None:
             if by_octave:
@@ -554,7 +554,7 @@ def build_temporal_kernel(
     )
 
     if f_max > sample_rate / 2:
-        raise ValueError(f"f_max={f_max} exceeds Nyquist frequency {sample_rate / 2}.")
+        raise ValueError(_invalid_f_max_message.format(f_max=f_max, f_nyq=sample_rate / 2))
 
     freqs = torch.arange(n_bins)
     freqs = f_min * (2 ** (freqs / bins_per_octave))
