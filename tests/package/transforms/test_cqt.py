@@ -1,10 +1,12 @@
 import math
+from tempfile import TemporaryDirectory
 
 import pytest
 import torch
 import torchaudio
 import torchaudio.functional as aF
 from dummy import allclose
+from dummy.utils import download_file
 
 from audyn.transforms.cqt import ConstantQTransform, build_temporal_kernel, compute_filter_length
 
@@ -16,13 +18,13 @@ def test_constant_q_transform(n_bins: int) -> None:
     waveform = []
     sample_rate = 16000
     # from librosa
-    paths = [
+    urls = [
         "https://pytorch-tutorial-assets.s3.amazonaws.com/VOiCES_devkit/source-16k/train/sp0307/Lab41-SRI-VOiCES-src-sp0307-ch127535-sg0042.wav",  # noqa: E501
         "https://pytorch-tutorial-assets.s3.amazonaws.com/steam-train-whistle-daniel_simon.wav",
     ]
     timesteps = None
 
-    batch_size = len(paths)
+    batch_size = len(urls)
     f_min = 440
     bins_per_octave = 12
     original_hop_length = 5
@@ -32,8 +34,11 @@ def test_constant_q_transform(n_bins: int) -> None:
     padding = (divided_by - original_hop_length % divided_by) % divided_by
     hop_length = original_hop_length + padding
 
-    for path in paths:
-        _waveform, _sample_rate = torchaudio.load(path)
+    for url in urls:
+        with TemporaryDirectory() as temp_dir:
+            path = download_file(url, temp_dir)
+            _waveform, _sample_rate = torchaudio.load(path)
+
         _waveform = _waveform.mean(dim=0)
 
         if _sample_rate != sample_rate:
