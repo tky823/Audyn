@@ -1,6 +1,7 @@
 import hashlib
 import os
 import uuid
+from urllib.request import Request, urlopen
 
 import torch
 
@@ -29,3 +30,23 @@ def set_ddp_environment(
     num_threads = torch.get_num_threads()
     num_threads = max(num_threads // world_size, 1)
     torch.set_num_threads(num_threads)
+
+
+def download_file(url: str, save_dir: str, chunk_size: int = 8192) -> str:
+    filename = os.path.basename(url)
+    path = os.path.join(save_dir, filename)
+
+    os.makedirs(save_dir, exist_ok=True)
+
+    request = Request(url)
+
+    with urlopen(request) as response, open(path, "wb") as f:
+        while True:
+            chunk = response.read(chunk_size)
+
+            if not chunk:
+                break
+
+            f.write(chunk)
+
+    return path
