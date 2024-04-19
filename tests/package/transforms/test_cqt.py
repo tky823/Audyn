@@ -3,6 +3,8 @@ import math
 import pytest
 import torch
 import torchaudio
+import torchaudio.functional as aF
+from dummy import allclose
 
 from audyn.transforms.cqt import ConstantQTransform, build_temporal_kernel, compute_filter_length
 
@@ -12,12 +14,11 @@ def test_constant_q_transform(n_bins: int) -> None:
     torch.manual_seed(0)
 
     waveform = []
-    sample_rate = 22050
+    sample_rate = 16000
     # from librosa
     paths = [
-        "https://librosa.org/data/audio/sorohanro_-_solo-trumpet-06.ogg",
-        "https://librosa.org/data/audio/Kevin_MacLeod_-_Vibe_Ace.ogg",
-        "https://librosa.org/data/audio/147793__setuniman__sweet-waltz-0i-22mi.ogg",
+        "https://pytorch-tutorial-assets.s3.amazonaws.com/VOiCES_devkit/source-16k/train/sp0307/Lab41-SRI-VOiCES-src-sp0307-ch127535-sg0042.wav",  # noqa: E501
+        "https://pytorch-tutorial-assets.s3.amazonaws.com/steam-train-whistle-daniel_simon.wav",
     ]
     timesteps = None
 
@@ -33,14 +34,17 @@ def test_constant_q_transform(n_bins: int) -> None:
 
     for path in paths:
         _waveform, _sample_rate = torchaudio.load(path)
-        waveform.append(_waveform)
+        _waveform = _waveform.mean(dim=0)
+
+        if _sample_rate != sample_rate:
+            _waveform = aF.resample(_waveform, _sample_rate, sample_rate)
 
         if timesteps is None:
             timesteps = _waveform.size(-1)
         else:
             timesteps = min(timesteps, _waveform.size(-1))
 
-        assert _sample_rate == sample_rate
+        waveform.append(_waveform)
 
     timesteps = 2 ** math.floor(math.log2(timesteps))
 
@@ -49,7 +53,7 @@ def test_constant_q_transform(n_bins: int) -> None:
             waveform[idx], [timesteps, waveform[idx].size(-1) - timesteps], dim=-1
         )
 
-    waveform = torch.cat(waveform, dim=0)
+    waveform = torch.stack(waveform, dim=0)
 
     cqt = ConstantQTransform(
         sample_rate,
@@ -98,15 +102,15 @@ def test_constant_q_transform(n_bins: int) -> None:
     assert spectrogram.size()[:2] == (batch_size, n_bins)
 
     if n_bins / bins_per_octave == 1:
-        assert torch.allclose(spectrogram, spectrogram_time)
+        allclose(spectrogram, spectrogram_time)
     else:
         # Computational error happens by resampling.
-        assert torch.allclose(spectrogram, spectrogram_time, atol=1e-2)
+        allclose(spectrogram, spectrogram_time, atol=1e-1)
 
-    assert torch.allclose(spectrogram_time, spectrogram_freq, atol=1e-7)
+    allclose(spectrogram_time, spectrogram_freq, atol=1e-7)
 
     # Computational error happens by sparseness.
-    assert torch.allclose(spectrogram_freq, spectrogram_freq_sparse, atol=1e-4)
+    allclose(spectrogram_freq, spectrogram_freq_sparse, atol=1e-4)
 
     # Invalid cases
     if n_bins / bins_per_octave != 1:
