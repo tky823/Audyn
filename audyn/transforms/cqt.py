@@ -115,7 +115,7 @@ class ConstantQTransform(nn.Module):
         else:
             assert (
                 not sparse
-            ), "Sparse implementation is not supported when by_octave='False'. Set sparse=False."
+            ), "Sparse implementation is not supported when by_octave=False. Set sparse=False."
             assert len(kwargs) == 0, "Invalid keyword arguments {} are given".format(
                 set(kwargs.keys())
             )
