@@ -83,7 +83,7 @@ class ConstantQTransform(nn.Module):
             "Max frequency ({f_max}) should not exceed Nyquist frequency ({f_nyq})."
             " Set smaller f_max or n_bins."
         )
-        assert f_max > f_nyq, msg.format(f_max=f_max, f_nyq=f_nyq)
+        assert f_max <= f_nyq, msg.format(f_max=f_max, f_nyq=f_nyq)
 
         if domain is None:
             if by_octave:
