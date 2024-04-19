@@ -42,7 +42,7 @@ def test_constant_q_transform(n_bins: int) -> None:
 
         assert _sample_rate == sample_rate
 
-    timesteps -= timesteps % (2**num_repeats)
+    timesteps = 2 ** math.floor(math.log2(timesteps))
 
     for idx in range(len(waveform)):
         waveform[idx], _ = torch.split(
