@@ -434,11 +434,12 @@ class ConstantQTransform(nn.Module):
         batch_size, in_channels, _ = waveform.size()
 
         waveform = waveform.view(batch_size * in_channels, -1)
+        rectanguler_window = torch.ones(n_fft, device=waveform.device)
         spectrogram = torch.stft(
             waveform,
             n_fft=n_fft,
             hop_length=hop_length,
-            window=None,
+            window=rectanguler_window,
             center=False,
             pad_mode=pad_mode,
             normalized=False,
