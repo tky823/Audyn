@@ -3,17 +3,9 @@
 # and
 # https://docs.pytest.org/en/latest/deprecations.html#pytest-namespace
 
-import uuid
 
-import pytest
+from dummy.utils import reset_random_port
 
 
-def pytest_configure():
-    max_number = 2**16
-    min_number = 1024
-
-    seed = str(uuid.uuid4())
-    seed = seed.replace("-", "")
-    seed = int(seed, 16)
-
-    pytest.random_port = seed % (max_number - min_number) + min_number
+def pytest_configure() -> None:
+    reset_random_port()

@@ -9,7 +9,7 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import torch.nn as nn
-from dummy.utils import set_ddp_environment
+from dummy.utils.ddp import retry_on_file_not_found, set_ddp_environment
 from omegaconf import OmegaConf
 from torch.cuda.amp import autocast
 
@@ -84,6 +84,7 @@ def test_residual_vector_quantizer() -> None:
         assert torch.allclose(initialization_output, forward_output)
 
 
+@retry_on_file_not_found(3)
 def test_residual_vector_quantizer_ddp() -> None:
     """Ensure ResidualVectorQuantizer works well for DDP."""
     port = str(torch.randint(0, 2**16, ()).item())

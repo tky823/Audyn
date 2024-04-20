@@ -1,5 +1,6 @@
 import json
 import os
+from io import BufferedWriter
 from typing import Tuple
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -119,7 +120,7 @@ def _obtain_metadata(url: str) -> Tuple[str, int]:
     return converted_url, total_size
 
 
-def _download(response, f, chunk_size: int = 1024, pbar=None) -> None:
+def _download(response, f: BufferedWriter, chunk_size: int = 1024, pbar=None) -> None:
     while True:
         chunk = response.read(chunk_size)
 

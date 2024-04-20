@@ -5,7 +5,8 @@ from datetime import timedelta
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
-from dummy.utils import select_random_port, set_ddp_environment
+from dummy.utils import select_random_port
+from dummy.utils.ddp import retry_on_file_not_found, set_ddp_environment
 
 from audyn.metrics import MeanMetric
 
@@ -38,6 +39,7 @@ def test_mean_metric() -> None:
     assert torch.allclose(mean, expected_mean)
 
 
+@retry_on_file_not_found(3)
 def test_mean_metric_ddp() -> None:
     port = select_random_port()
     seed = 0

@@ -9,7 +9,8 @@ import pytest
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
-from dummy.utils import select_random_port, set_ddp_environment
+from dummy.utils import select_random_port
+from dummy.utils.ddp import retry_on_file_not_found, set_ddp_environment
 
 from audyn.metrics.retrieval import MeanAveragePrecision, MedianRank
 
@@ -62,6 +63,7 @@ def test_mean_average_precision_known_map(mink: int) -> None:
     assert torch.allclose(map_k, expected_map_k)
 
 
+@retry_on_file_not_found(3)
 @pytest.mark.parametrize("mink", parameters_mink)
 def test_mean_average_precision_ddp_oracle(mink: int) -> None:
     port = select_random_port()
@@ -129,6 +131,7 @@ def test_mean_average_precision_ddp_oracle(mink: int) -> None:
     assert torch.allclose(map_k, expected_map_k)
 
 
+@retry_on_file_not_found(3)
 @pytest.mark.parametrize("mink", parameters_mink)
 def test_mean_average_precision_ddp_known_map(mink: int) -> None:
     if IS_WINDOWS:
@@ -252,6 +255,7 @@ def test_median_rank(mink: int) -> None:
     assert torch.allclose(medR, expected_medR)
 
 
+@retry_on_file_not_found(3)
 @pytest.mark.parametrize("ranks", ["oracle", "random"])
 @pytest.mark.parametrize("mink", parameters_mink)
 def test_median_rank_ddp(ranks: str, mink: int) -> None:
