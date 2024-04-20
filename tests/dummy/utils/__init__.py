@@ -1,17 +1,12 @@
-import hashlib
 import os
-import uuid
 from urllib.request import Request, urlopen
 
+import pytest
 import torch
 
 
 def select_random_port() -> int:
-    hash = str(uuid.uuid4())
-    hash = hashlib.sha256(hash.encode()).hexdigest()
-    hash = int(hash, base=16)
-
-    return hash % 65536
+    return pytest.random_port
 
 
 def set_ddp_environment(
