@@ -12,7 +12,8 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 import torch.nn as nn
 from dummy import allclose
-from dummy.utils import select_random_port, set_ddp_environment
+from dummy.utils import select_random_port
+from dummy.utils.ddp import retry_on_file_not_found, set_ddp_environment
 from torch.optim import SGD
 
 from audyn.criterion.contrastive import (
@@ -104,6 +105,7 @@ def test_info_nce_loss(reduction: str) -> None:
     allclose(loss, reference_loss)
 
 
+@retry_on_file_not_found(3)
 @pytest.mark.parametrize("dim", [0, 1, 2])
 def test_info_nce_loss_ddp(dim: int) -> None:
     """Ensure InterInfoNCELoss and IntraInfoNCELoss work well for DDP."""
@@ -258,6 +260,7 @@ def test_ntxent_loss(reduction: str) -> None:
     allclose(loss, reference_loss)
 
 
+@retry_on_file_not_found(3)
 @pytest.mark.parametrize("dim", [0, 1, 2])
 def test_ntxent_loss_ddp(dim: int) -> None:
     """Ensure InterNTXentLoss and IntraNTXentLoss work well for DDP."""
@@ -663,6 +666,7 @@ def test_inter_ntxent_loss(reduction: str) -> None:
     allclose(loss1, loss2)
 
 
+@retry_on_file_not_found(3)
 @pytest.mark.parametrize("dim", [0, 1])
 def test_inter_info_nce_loss_ddp(dim: int) -> None:
     """Ensure InterInfoNCELoss works well for DDP."""
@@ -813,6 +817,7 @@ def test_inter_info_nce_loss_ddp(dim: int) -> None:
                 allclose(module_ddp[_key], module_no_ddp[_key])
 
 
+@retry_on_file_not_found(3)
 @pytest.mark.parametrize("dim", [0, 1])
 def test_inter_ntxent_loss_ddp(dim: int) -> None:
     """Ensure InterNTXentLoss works well for DDP."""
