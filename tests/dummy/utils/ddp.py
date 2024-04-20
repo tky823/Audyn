@@ -3,6 +3,7 @@ import os
 from typing import Any, Callable
 
 import torch
+from dummy.utils import reset_random_port
 
 
 def retry_on_file_not_found(num_retries: int, enable: bool = True) -> Callable:
@@ -28,6 +29,8 @@ def retry_on_file_not_found(num_retries: int, enable: bool = True) -> Callable:
 
                         if attempts > num_retries:
                             raise e
+
+                        reset_random_port()
             else:
                 return func(*args, **kwargs)
 
