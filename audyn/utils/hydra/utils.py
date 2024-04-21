@@ -8,8 +8,7 @@ from omegaconf import DictConfig, ListConfig, OmegaConf
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 
-from audyn.criterion.base import BaseCriterionWrapper, MultiCriteria
-
+from ...criterion.base import BaseCriterionWrapper, MultiCriteria
 from ...metrics.base import StatefulMetric
 from ...models.text_to_wave import CascadeTextToWave
 from ...modules.rvq import ResidualVectorQuantizer
@@ -249,7 +248,7 @@ def instantiate_cascade_text_to_wave(
     text_to_feat_checkpoint: str,
     feat_to_wave_checkpoint: str,
     load_weights: Optional[bool] = None,
-) -> CascadeTextToWave:
+) -> "CascadeTextToWave":
     """Instantiate cascade text-to-wave model.
 
     Args:
