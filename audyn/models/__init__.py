@@ -1,5 +1,6 @@
 from .ast import AST, AudioSpectrogramTransformer
 from .fastspeech import FastSpeech, MultiSpeakerFastSpeech
+from .roformer import RoFormerDecoder, RoFormerDecoderLayer, RoFormerEncoder, RoFormerEncoderLayer
 from .rvqvae import RVQVAE
 from .soundstream import SoundStream
 from .ssast import (
@@ -24,10 +25,17 @@ __all__ = [
     "VQVAE",
     "RVQVAE",
     "SoundStream",
+    # AST
     "AudioSpectrogramTransformer",
     "AST",
+    # SSAST
     "MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel",
     "SelfSupervisedAudioSpectrogramTransformer",
     "SSASTMPM",
     "SSAST",
+    # RoFormer
+    "RoFormerEncoderLayer",
+    "RoFormerDecoderLayer",
+    "RoFormerEncoder",
+    "RoFormerDecoder",
 ]
