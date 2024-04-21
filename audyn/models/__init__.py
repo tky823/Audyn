@@ -1,4 +1,5 @@
 from .ast import AST, AudioSpectrogramTransformer
+from .encodec import EnCodec
 from .fastspeech import FastSpeech, MultiSpeakerFastSpeech
 from .hifigan import HiFiGANDiscriminator, HiFiGANGenerator
 from .roformer import RoFormerDecoder, RoFormerDecoderLayer, RoFormerEncoder, RoFormerEncoderLayer
@@ -32,6 +33,7 @@ __all__ = [
     "VQVAE",
     "RVQVAE",
     "SoundStream",
+    "EnCodec",
     # AST
     "AudioSpectrogramTransformer",
     "AST",
