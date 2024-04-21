@@ -14,8 +14,9 @@ from omegaconf import OmegaConf
 from torch.nn.common_types import _size_2_t
 
 from ..modules.vit import PositionalPatchEmbedding
-from ..utils import instantiate, model_cache_dir
+from ..utils import model_cache_dir
 from ..utils.github import download_file_from_github_release
+from ..utils.hydra.utils import instantiate
 from .ast import Aggregator, BaseAudioSpectrogramTransformer, Head, MLPHead, _align_patch_embedding
 
 __all__ = [
