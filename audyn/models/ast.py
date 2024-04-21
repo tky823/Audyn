@@ -13,7 +13,6 @@ from torch.nn.common_types import _size_2_t
 from ..modules.vit import PositionalPatchEmbedding
 from ..utils import model_cache_dir
 from ..utils.github import download_file_from_github_release
-from ..utils.hydra.utils import instantiate
 
 __all__ = [
     "AudioSpectrogramTransformer",
@@ -234,6 +233,8 @@ class AudioSpectrogramTransformer(BaseAudioSpectrogramTransformer):
                 - ast-base-stride10
 
         """  # noqa: E501
+        from ..utils.hydra.utils import instantiate  # to avoid circular import
+
         if os.path.exists(pretrained_model_name_or_path):
             state_dict = torch.load(
                 pretrained_model_name_or_path, map_location=lambda storage, loc: storage

@@ -16,7 +16,6 @@ from torch.nn.common_types import _size_2_t
 from ..modules.vit import PositionalPatchEmbedding
 from ..utils import model_cache_dir
 from ..utils.github import download_file_from_github_release
-from ..utils.hydra.utils import instantiate
 from .ast import Aggregator, BaseAudioSpectrogramTransformer, Head, MLPHead, _align_patch_embedding
 
 __all__ = [
@@ -201,6 +200,8 @@ class SelfSupervisedAudioSpectrogramTransformer(BaseAudioSpectrogramTransformer)
                 - multitask-ssast-frame-base-400
 
         """  # noqa: E501
+        from ..utils.hydra.utils import instantiate  # to avoid circular import
+
         if os.path.exists(pretrained_model_name_or_path):
             state_dict = torch.load(
                 pretrained_model_name_or_path, map_location=lambda storage, loc: storage
@@ -347,6 +348,8 @@ class MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
                 - multitask-ssast-frame-base-400
 
         """  # noqa: E501
+        from ..utils.hydra.utils import instantiate  # to avoid circular import
+
         if os.path.exists(pretrained_model_name_or_path):
             state_dict = torch.load(
                 pretrained_model_name_or_path, map_location=lambda storage, loc: storage
