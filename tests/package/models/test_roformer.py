@@ -3,9 +3,9 @@ import torch
 from dummy import allclose
 
 from audyn.models.roformer import (
-    RoformerDecoder,
+    RoFormerDecoder,
     RoFormerDecoderLayer,
-    RoformerEncoder,
+    RoFormerEncoder,
     RoFormerEncoderLayer,
 )
 
@@ -124,7 +124,7 @@ def test_roformer_encoder(batch_first: bool) -> None:
     batch_size, src_length = 4, 16
     shift_size = src_length
 
-    model = RoformerEncoder(
+    model = RoFormerEncoder(
         d_model,
         nhead,
         num_layers=num_layers,
@@ -171,7 +171,7 @@ def test_roformer_decoder(batch_first: bool) -> None:
     batch_size, tgt_length, memory_length = 4, 16, 20
     shift_size = tgt_length
 
-    model = RoformerDecoder(
+    model = RoFormerDecoder(
         d_model,
         nhead,
         num_layers=num_layers,
