@@ -3,7 +3,7 @@ import os
 import warnings
 from abc import abstractmethod
 from collections import OrderedDict
-from typing import Optional, Tuple, Union
+from typing import Dict, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -11,7 +11,6 @@ from omegaconf import OmegaConf
 from torch.nn.common_types import _size_2_t
 
 from ..modules.vit import PositionalPatchEmbedding
-from ..utils import model_cache_dir
 from ..utils.github import download_file_from_github_release
 
 __all__ = [
@@ -24,17 +23,6 @@ __all__ = [
     "MLPHead",
     "AST",
 ]
-
-pretrained_model_configs = {
-    "ast-base-stride10": {
-        "url": "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev3/ast-base-stride10.pth",  # noqa: E501
-        "path": os.path.join(
-            model_cache_dir,
-            "AudioSpectrogramTransformer",
-            "ast-base-stride10.pth",
-        ),
-    },
-}
 
 
 class BaseAudioSpectrogramTransformer(nn.Module):
@@ -234,6 +222,8 @@ class AudioSpectrogramTransformer(BaseAudioSpectrogramTransformer):
 
         """  # noqa: E501
         from ..utils.hydra.utils import instantiate  # to avoid circular import
+
+        pretrained_model_configs = _create_pretrained_model_configs()
 
         if os.path.exists(pretrained_model_name_or_path):
             state_dict = torch.load(
@@ -454,6 +444,25 @@ class MLPHead(Head):
 
 class AST(AudioSpectrogramTransformer):
     """Alias of AudioSpectrogramTransformer."""
+
+
+def _create_pretrained_model_configs() -> Dict[str, Dict[str, str]]:
+    """Create pretrained_model_configs without circular import error."""
+
+    from ..utils import model_cache_dir
+
+    pretrained_model_configs = {
+        "ast-base-stride10": {
+            "url": "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev3/ast-base-stride10.pth",  # noqa: E501
+            "path": os.path.join(
+                model_cache_dir,
+                "AudioSpectrogramTransformer",
+                "ast-base-stride10.pth",
+            ),
+        },
+    }
+
+    return pretrained_model_configs
 
 
 def _align_patch_embedding(
