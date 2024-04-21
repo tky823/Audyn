@@ -1,5 +1,9 @@
+from ._download import download_tags
+
 __all__ = [
+    "tags",
     "num_tags",
 ]
 
-num_tags = 527
+tags = download_tags()
+num_tags = len(tags)
