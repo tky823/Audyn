@@ -1,4 +1,4 @@
-"""Implementation of Roformer.
+"""Implementation of RoFormer.
 Ported from https://github.com/pytorch/pytorch/blob/e8836759d0898c29262b5370e16970d697cbaf3a/torch/nn/modules/transformer.py.  # noqa: E501
 """
 
@@ -12,8 +12,8 @@ from packaging import version
 from ..modules.activation import RotaryPositionalMultiheadAttention
 
 __all__ = [
-    "RoformerEncoder",
-    "RoformerDecoder",
+    "RoFormerEncoder",
+    "RoFormerDecoder",
     "RoFormerEncoderLayer",
     "RoFormerDecoderLayer",
 ]
@@ -21,7 +21,7 @@ __all__ = [
 IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
 
-class RoformerEncoder(nn.TransformerEncoder):
+class RoFormerEncoder(nn.TransformerEncoder):
     """Encoder of RoFormer."""
 
     def __init__(
@@ -68,7 +68,7 @@ class RoformerEncoder(nn.TransformerEncoder):
         )
 
 
-class RoformerDecoder(nn.TransformerDecoder):
+class RoFormerDecoder(nn.TransformerDecoder):
     """Decoder of RoFormer."""
 
     def __init__(
