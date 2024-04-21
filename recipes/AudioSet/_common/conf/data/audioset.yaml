@@ -1,3 +1,5 @@
 defaults:
   - defaults
   - _self_
+
+num_tags: ${const.audyn.utils.data.audioset.num_tags}
