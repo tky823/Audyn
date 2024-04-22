@@ -24,7 +24,8 @@ class AudioSetWebDatasetWeightedRandomSampler(WeightedRandomSampler):
         feature_dir (str): Path to directory containing .tar files.
         num_samples (int): Number of samples at each epoch.
         replacement (bool): If ``True``, samples are taken with replacement.
-        smooth (int): Offset to frequency of each class.
+        smooth (int): Offset to frequency of each class. In [#koutini2022efficient]_, ``1000``
+            is used. Default: ``1``.
         ytids (list, optional): YouTube IDs. This list is useful to align order of samples between
             sampler and other modules. If ``None``, order of ytids are determined by
             alphabetical order using built-in ``sorted`` function.
