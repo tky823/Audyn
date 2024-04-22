@@ -10,7 +10,37 @@ __all__ = [
     "decode_audio",
 ]
 
-supported_audio_extensions = ["flac", "mp3", "sox", "wav", "m4a", "ogg", "wma"]
+supported_class_extensions = [
+    "cls",
+    "cls2",
+    "class",
+    "count",
+    "index",
+    "inx",
+    "id",
+]
+supported_text_extensions = [
+    "txt",
+    "text",
+    "transcript",
+]
+supported_torchdump_extensions = [
+    "pth",
+    # TODO: "pt"
+]
+supported_json_extensions = [
+    "json",
+    "jsn",
+]
+supported_audio_extensions = [
+    "flac",
+    "mp3",
+    "sox",
+    "wav",
+    "m4a",
+    "ogg",
+    "wma",
+]
 
 
 def decode_audio(
