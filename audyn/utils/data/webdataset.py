@@ -6,6 +6,10 @@ import torch
 import torchaudio
 
 __all__ = [
+    "supported_class_extensions",
+    "supported_text_extensions",
+    "supported_torchdump_extensions",
+    "supported_json_extensions",
     "supported_audio_extensions",
     "decode_audio",
 ]
