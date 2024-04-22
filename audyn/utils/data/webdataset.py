@@ -6,8 +6,11 @@ import torch
 import torchaudio
 
 __all__ = [
+    "supported_audio_extensions",
     "decode_audio",
 ]
+
+supported_audio_extensions = ["flac", "mp3", "sox", "wav", "m4a", "ogg", "wma"]
 
 
 def decode_audio(

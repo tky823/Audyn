@@ -8,7 +8,7 @@ import torch
 import webdataset as wds
 from torch.utils.data import Dataset
 
-from .webdataset import decode_audio
+from .webdataset import decode_audio, supported_audio_extensions
 
 __all__ = [
     "TorchObjectDataset",
@@ -210,7 +210,7 @@ class Composer:
             # https://github.com/webdataset/webdataset/blob/f11fd66c163722c607ec99475a6f3cb880ec35b8/webdataset/autodecode.py#L418-L434
             ext = re.sub(r".*[.]", "", key)
 
-            if ext in ["flac", "mp3", "sox", "wav", "m4a", "ogg", "wma"]:
+            if ext in supported_audio_extensions:
                 data = sample[key]
 
                 if isinstance(data, bytes):
