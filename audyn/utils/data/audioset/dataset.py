@@ -30,7 +30,7 @@ class WeightedAudioSetWebDataset(IterableDataset):
     In this dataset, samples with rare tags are more likely to be taken.
 
     Args:
-        list_path (str)
+        list_path (str): Path to list file containing filenames.
         feature_dir (str): Path to directory containing .tar files.
         length (int): Number of samples at each epoch.
         replacement (bool): If ``True``, samples are taken with replacement.
