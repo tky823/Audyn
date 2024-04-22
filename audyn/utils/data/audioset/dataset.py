@@ -134,3 +134,38 @@ class WeightedAudioSetWebDataset(IterableDataset):
                 sample[key] = decoded
 
             yield sample
+
+
+class PaSSTAudioSetWebDataset(WeightedAudioSetWebDataset):
+    """AudioSet using WebDataset with weighted random sampling.
+
+    The implementation is based on one described in [#koutini2022efficient]_.
+    In this dataset, samples with rare tags are more likely to be taken.
+
+    Args:
+        list_path (str): Path to list file containing filenames.
+        feature_dir (str): Path to directory containing .tar files.
+        length (int): Number of samples at each epoch.
+        replacement (bool): If ``True``, samples are taken with replacement.
+        smooth (int): Offset to frequency of each class. Default: ``1000``, which is
+            different from ``WeightedAudioSetWebDataset``.
+
+    """
+
+    def __init__(
+        self,
+        list_path: str,
+        feature_dir: str,
+        length: int,
+        replacement: bool = True,
+        smooth: float = 1000,
+        generator=None,
+    ) -> None:
+        super().__init__(
+            list_path,
+            feature_dir,
+            length=length,
+            replacement=replacement,
+            smooth=smooth,
+            generator=generator,
+        )
