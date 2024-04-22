@@ -1,14 +1,14 @@
 import glob
 import os
 import re
-import tempfile
 import warnings
 from typing import Any, Callable, Dict, Iterable, Optional
 
 import torch
-import torchaudio
 import webdataset as wds
 from torch.utils.data import Dataset
+
+from .webdataset import decode_audio
 
 __all__ = [
     "TorchObjectDataset",
@@ -214,23 +214,14 @@ class Composer:
                 data = sample[key]
 
                 if isinstance(data, bytes):
-                    with tempfile.TemporaryDirectory() as temp_dir:
-                        path = os.path.join(temp_dir, f"audio.{ext}")
+                    sample[key] = decode_audio(
+                        data,
+                        ext,
+                        decode_audio_as_monoral=self.decode_audio_as_monoral,
+                        decode_audio_as_waveform=self.decode_audio_as_waveform,
+                    )
 
-                        with open(path, "wb") as f:
-                            f.write(data)
-
-                        waveform, sample_rate = torchaudio.load(path)
-
-                    if self.decode_audio_as_monoral:
-                        waveform = waveform.mean(dim=0)
-
-                    if self.decode_audio_as_waveform:
-                        sample[key] = waveform
-                    else:
-                        sample[key] = waveform, sample_rate
-
-        sample = rename_webdataset_keys(sample)
+            sample = rename_webdataset_keys(sample)
 
         return sample
 
