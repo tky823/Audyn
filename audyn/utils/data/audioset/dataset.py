@@ -4,7 +4,7 @@ import os
 import re
 import tarfile
 from io import BufferedReader, BytesIO
-from typing import Any, Dict, Iterator, Tuple, Type
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Type
 
 import torch
 from torch.utils.data import IterableDataset, get_worker_info
@@ -16,6 +16,7 @@ from ..webdataset import (
     supported_text_extensions,
     supported_torchdump_extensions,
 )
+from .distributed import DistributedAudioSetWebDatasetWeightedRandomSampler
 from .sampler import AudioSetWebDatasetWeightedRandomSampler
 
 __all__ = [
@@ -50,7 +51,6 @@ class WeightedAudioSetWebDataset(IterableDataset):
         length: int,
         replacement: bool = True,
         smooth: float = 1,
-        generator=None,
     ) -> None:
         super().__init__()
 
@@ -85,13 +85,12 @@ class WeightedAudioSetWebDataset(IterableDataset):
         with open(list_path) as f:
             assert len(self.ytids) == sum(1 for _ in f)
 
-        self.sampler = AudioSetWebDatasetWeightedRandomSampler(
+        self.set_sampler(
             feature_dir,
             length,
             replacement=replacement,
             smooth=smooth,
             ytids=self.ytids,
-            generator=generator,
         )
 
     def __iter__(self) -> Iterator:
@@ -148,6 +147,84 @@ class WeightedAudioSetWebDataset(IterableDataset):
                 sample[key] = decoded
 
             yield sample
+
+    def set_sampler(
+        self,
+        feature_dir: str,
+        length: int,
+        replacement: bool = True,
+        smooth: float = 1,
+        ytids: List[str] = None,
+    ) -> None:
+        if ytids is None:
+            ytids = self.ytids
+
+        self.sampler = AudioSetWebDatasetWeightedRandomSampler(
+            feature_dir,
+            length,
+            replacement=replacement,
+            smooth=smooth,
+            ytids=ytids,
+        )
+
+
+class DistributedWeightedAudioSetWebDataset(WeightedAudioSetWebDataset):
+    """AudioSet using WebDataset with weighted random sampling for distributed training.
+
+    See ``audyn.utils.data.audioset.dataset.WeightedAudioSetWebDataset`` for the
+    details of arguments.
+
+    """
+
+    def __init__(
+        self,
+        list_path: str,
+        feature_dir: str,
+        length: int,
+        replacement: bool = True,
+        smooth: float = 1,
+        num_workers: int = 0,
+        num_replicas: Optional[int] = None,
+        rank: Optional[int] = None,
+        seed: int = 0,
+        drop_last: bool = False,
+    ) -> None:
+        self.num_workers = num_workers
+        self.num_replicas = num_replicas
+        self.rank = rank
+        self.seed = seed
+        self.drop_last = drop_last
+
+        super().__init__(
+            list_path,
+            feature_dir,
+            length=length,
+            replacement=replacement,
+            smooth=smooth,
+        )
+
+    def set_sampler(
+        self,
+        feature_dir: str,
+        length: int,
+        replacement: bool = True,
+        smooth: float = 1,
+        ytids: List[str] = None,
+    ) -> None:
+        if ytids is None:
+            ytids = self.ytids
+
+        self.sampler = DistributedAudioSetWebDatasetWeightedRandomSampler(
+            feature_dir,
+            length,
+            num_replicas=self.num_replicas,
+            rank=self.rank,
+            seed=self.seed,
+            drop_last=self.drop_last,
+            replacement=replacement,
+            smooth=smooth,
+            ytids=ytids,
+        )
 
 
 class PaSSTAudioSetWebDataset(WeightedAudioSetWebDataset):
