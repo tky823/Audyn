@@ -4,10 +4,10 @@ import os
 import re
 import tarfile
 from io import BufferedReader, BytesIO
-from typing import Any, Dict, Iterator
+from typing import Any, Dict, Iterator, Tuple, Type
 
 import torch
-from torch.utils.data import IterableDataset
+from torch.utils.data import IterableDataset, get_worker_info
 
 from ..webdataset import (
     decode_audio,
@@ -76,7 +76,7 @@ class WeightedAudioSetWebDataset(IterableDataset):
                     }
                     mapping[ytid]["data"][key] = data
 
-            files[url] = open(url, mode="rb")
+            files[url] = _PicklableFile(url)
 
         self.ytids = sorted(list(mapping.keys()))
         self.mapping = mapping
@@ -95,6 +95,20 @@ class WeightedAudioSetWebDataset(IterableDataset):
         )
 
     def __iter__(self) -> Iterator:
+        worker_info = get_worker_info()
+
+        if worker_info is not None:
+            worker_id = worker_info.id
+            num_workers = worker_info.num_workers
+            num_total_samples = self.sampler.num_samples
+
+            num_samples_per_worker = num_total_samples // num_workers
+
+            if worker_id < num_total_samples % num_workers:
+                num_samples_per_worker += 1
+
+            self.sampler.num_samples = num_samples_per_worker
+
         for index in self.sampler:
             ytid = self.ytids[index]
             mapping = self.mapping[ytid]
@@ -169,3 +183,27 @@ class PaSSTAudioSetWebDataset(WeightedAudioSetWebDataset):
             smooth=smooth,
             generator=generator,
         )
+
+
+class _PicklableFile:
+    """Wrapper class of io.BufferedReader to pickle."""
+
+    def __init__(self, path: str) -> None:
+        self.path = path
+        self.file = open(path, mode="rb")
+
+    def __reduce__(self) -> tuple[Type, Tuple[str]]:
+        self.file.close()
+        return self.__class__, (self.path,)
+
+    def seek(self, *args, **kwargs) -> Any:
+        """Wrapper of file.seek."""
+        return self.file.seek(*args, **kwargs)
+
+    def read(self, *args, **kwargs) -> Any:
+        """Wrapper of file.read."""
+        return self.file.read(*args, **kwargs)
+
+    def close(self, *args, **kwargs) -> Any:
+        """Wrapper of file.close."""
+        return self.file.close(*args, **kwargs)
