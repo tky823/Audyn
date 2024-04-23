@@ -29,6 +29,7 @@ __all__ = [
     "take_log_features",
     "make_noise",
     "default_collate_fn",
+    "rename_webdataset_keys",
 ]
 
 
@@ -129,22 +130,29 @@ def default_collate_fn(
         elif key in tensor_keys:
             dict_batch[key] = torch.stack(dict_batch[key], dim=0)
 
-    dict_batch = _rename_webdataset_keys(dict_batch)
+    dict_batch = rename_webdataset_keys(dict_batch)
 
     return dict_batch
 
 
-def _rename_webdataset_keys(dict_batch: Dict[str, Any]) -> Dict[str, Any]:
+def rename_webdataset_keys(dict_batch: Dict[str, Any]) -> Dict[str, Any]:
     keys = list(dict_batch.keys())
 
     for key in keys:
-        if "." in key:
-            if len(key.split(".")) > 2:
-                raise NotImplementedError("Multiple dots in a key is not supported.")
+        webdataset_key = _rename_webdataset_key_if_possible(key)
 
-            # remove extension
-            webdataset_key, _ = key.split(".")
-
+        if webdataset_key != key:
             dict_batch[webdataset_key] = dict_batch.pop(key)
 
     return dict_batch
+
+
+def _rename_webdataset_key_if_possible(key: str) -> str:
+    if "." in key:
+        if len(key.split(".")) > 2:
+            raise NotImplementedError("Multiple dots in a key is not supported.")
+
+        # remove extension
+        key, _ = key.split(".")
+
+    return key
