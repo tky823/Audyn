@@ -1,7 +1,8 @@
-from typing import List, Optional
+from typing import Iterator, List, Optional
 
 import torch
 import torch.distributed as dist
+from torch.utils.data import get_worker_info
 
 from .sampler import AudioSetWebDatasetWeightedRandomSampler
 
@@ -71,9 +72,6 @@ class DistributedAudioSetWebDatasetWeightedRandomSampler(AudioSetWebDatasetWeigh
         self.seed = seed
         self.drop_last = drop_last
 
-        g = torch.Generator()
-        g.manual_seed(self.seed + self.rank)
-
         num_samples_per_replica = num_samples // num_replicas
 
         if num_samples % num_replicas > 0 and not drop_last:
@@ -85,5 +83,23 @@ class DistributedAudioSetWebDatasetWeightedRandomSampler(AudioSetWebDatasetWeigh
             replacement=replacement,
             smooth=smooth,
             ytids=ytids,
-            generator=g,
         )
+
+    def __iter__(self) -> Iterator[int]:
+        rank = self.rank
+
+        if self.generator is None:
+            self.generator = torch.Generator()
+
+            worker_info = get_worker_info()
+
+            if worker_info is None:
+                worker_id = 0
+                num_workers = 1
+            else:
+                worker_id = worker_info.id
+                num_workers = worker_info.num_workers
+
+            self.generator.manual_seed(self.seed + rank * num_workers + worker_id)
+
+        return super().__iter__()
