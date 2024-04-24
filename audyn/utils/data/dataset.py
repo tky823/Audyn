@@ -220,13 +220,13 @@ class Composer:
 
                         waveform, sample_rate = torchaudio.load(path)
 
-                        if self.decode_audio_as_monoral:
-                            waveform = waveform.mean(dim=0)
+                    if self.decode_audio_as_monoral:
+                        waveform = waveform.mean(dim=0)
 
-                        if self.decode_audio_as_waveform:
-                            sample[key] = waveform
-                        else:
-                            sample[key] = waveform, sample_rate
+                    if self.decode_audio_as_waveform:
+                        sample[key] = waveform
+                    else:
+                        sample[key] = waveform, sample_rate
 
         return sample
 
