@@ -135,16 +135,36 @@ def default_collate_fn(
     return dict_batch
 
 
-def rename_webdataset_keys(dict_batch: Dict[str, Any]) -> Dict[str, Any]:
-    keys = list(dict_batch.keys())
+def rename_webdataset_keys(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Rename keys of WebDataset.
+
+    Args:
+        data (dict): Dictionary-like batch or sample.
+
+    Returns:
+        dict: Dictionary-like batch or sample with renamed keys.
+
+    Examples:
+
+        >>> import torch
+        >>> from audyn.utils.data import rename_webdataset_keys
+        >>> data = {"audio.m4a": torch.tensor((2, 16000))}
+        >>> data.keys()
+        dict_keys(['audio.m4a'])
+        >>> data = rename_webdataset_keys(data)
+        >>> data.keys()
+        dict_keys(['audio'])
+
+    """
+    keys = list(data.keys())
 
     for key in keys:
         webdataset_key = _rename_webdataset_key_if_possible(key)
 
         if webdataset_key != key:
-            dict_batch[webdataset_key] = dict_batch.pop(key)
+            data[webdataset_key] = data.pop(key)
 
-    return dict_batch
+    return data
 
 
 def _rename_webdataset_key_if_possible(key: str) -> str:
