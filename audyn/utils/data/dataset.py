@@ -203,6 +203,8 @@ class Composer:
         self.decode_audio_as_monoral = decode_audio_as_monoral
 
     def decode(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        from . import rename_webdataset_keys
+
         for key in sample.keys():
             # ported from
             # https://github.com/webdataset/webdataset/blob/f11fd66c163722c607ec99475a6f3cb880ec35b8/webdataset/autodecode.py#L418-L434
@@ -227,6 +229,8 @@ class Composer:
                         sample[key] = waveform
                     else:
                         sample[key] = waveform, sample_rate
+
+        sample = rename_webdataset_keys(sample)
 
         return sample
 
