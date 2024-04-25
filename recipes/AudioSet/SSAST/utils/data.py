@@ -28,7 +28,7 @@ class SSASTAudioSetCollater(BaseCollater):
         ],
         audio_key_in: str = "audio.m4a",
         sample_rate_key_in: str = "sample_rate.pth",
-        filename_key_in: str = "__key__",
+        filename_key_in: str = "filename",
         waveform_key_out: str = "waveform",
         melspectrogram_key_out: str = "melspectrogram",
         filename_key_out: str = "filename",
