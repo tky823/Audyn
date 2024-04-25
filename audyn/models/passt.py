@@ -9,24 +9,12 @@ from omegaconf import OmegaConf
 from torch.nn.common_types import _size_2_t
 
 from ..modules.passt import DisentangledPositionalPatchEmbedding, Patchout
-from ..utils import instantiate, model_cache_dir
 from ..utils.github import download_file_from_github_release
 from .ast import Aggregator, BaseAudioSpectrogramTransformer, Head
 
 __all__ = [
     "PaSST",
 ]
-
-pretrained_model_configs = {
-    "passt-base-stride10-struct-ap0.476-swa": {
-        "url": "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev3/passt-base-stride10-struct-ap0.476-swa.pth",  # noqa: E501
-        "path": os.path.join(
-            model_cache_dir,
-            "PaSST",
-            "passt-base-stride10-struct-ap0.476-swa.pth",
-        ),
-    },
-}
 
 
 class PaSST(BaseAudioSpectrogramTransformer):
@@ -86,6 +74,18 @@ class PaSST(BaseAudioSpectrogramTransformer):
                 - passt-base-stride10-struct-ap0.476-swa
 
         """  # noqa: E501
+        from ..utils import instantiate, model_cache_dir
+
+        pretrained_model_configs = {
+            "passt-base-stride10-struct-ap0.476-swa": {
+                "url": "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev3/passt-base-stride10-struct-ap0.476-swa.pth",  # noqa: E501
+                "path": os.path.join(
+                    model_cache_dir,
+                    "PaSST",
+                    "passt-base-stride10-struct-ap0.476-swa.pth",
+                ),
+            },
+        }
         if os.path.exists(pretrained_model_name_or_path):
             state_dict = torch.load(
                 pretrained_model_name_or_path, map_location=lambda storage, loc: storage
