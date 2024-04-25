@@ -1,0 +1,8 @@
+defaults:
+  - passt
+  - _self_
+
+dropout:
+  _target_: audyn.modules.passt.UnstructuredPatchout
+  num_drops: 
+  sample_wise: false

@@ -1,0 +1,9 @@
+defaults:
+  - passt-tiny
+  - _self_
+
+dropout:
+  _target_: audyn.modules.passt.StructuredPatchout
+  num_frequency_drops: 4
+  num_time_drops: 40
+  sample_wise: false
