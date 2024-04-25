@@ -23,7 +23,7 @@ dataloader:
       melspectrogram_transform: ${data.melspectrogram}
       audio_key_in: audio
       sample_rate_key_in: sample_rate
-      filename_key_in: __key__
+      filename_key_in: filename
       waveform_key_out: waveform
       melspectrogram_key_out: log_melspectrogram
       filename_key_out: filename
