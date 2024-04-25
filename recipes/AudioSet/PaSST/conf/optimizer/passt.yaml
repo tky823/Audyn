@@ -1,0 +1,6 @@
+defaults:
+  - adamw
+  - _self_
+
+lr: 1.0e-5
+weight_decay: 1.0e-4

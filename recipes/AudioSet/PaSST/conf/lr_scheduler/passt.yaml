@@ -1,0 +1,7 @@
+_target_: torch.optim.lr_scheduler.LambdaLR
+lr_lambda:
+  _target_: utils.lr_scheduler.ExponentialWarmupLinearCooldownLambda
+  warmup_steps: 5
+  constant_steps: 45
+  cooldown_steps: 50
+  last_factor: 1.0e-2
