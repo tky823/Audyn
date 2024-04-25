@@ -75,3 +75,33 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
         --data "${data}"
     )
 fi
+
+if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
+    echo "Stage 1: Train PaSST"
+
+    set +u
+
+    export PYTHONPATH="./:${PYTHONPATH}"
+
+    set -u
+
+    (
+        . ./train.sh \
+        --tag "${tag}" \
+        --continue-from "${continue_from}" \
+        --exp-root "${exp_root}" \
+        --tensorboard-root "${tensorboard_root}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
+        --train-name "${train_name}" \
+        --validation-name "${validation_name}" \
+        --system "${system}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --train "${train}" \
+        --model "${model}" \
+        --optimizer "${optimizer}" \
+        --lr-scheduler "${lr_scheduler}" \
+        --criterion "${criterion}"
+    )
+fi
