@@ -51,6 +51,8 @@ class WeightedAudioSetWebDataset(IterableDataset):
         length: int,
         replacement: bool = True,
         smooth: float = 1,
+        decode_audio_as_monoral: bool = True,
+        decode_audio_as_waveform: bool = True,
     ) -> None:
         super().__init__()
 
@@ -85,6 +87,9 @@ class WeightedAudioSetWebDataset(IterableDataset):
         with open(list_path) as f:
             assert len(self.ytids) == sum(1 for _ in f)
 
+        self.decode_audio_as_monoral = decode_audio_as_monoral
+        self.decode_audio_as_waveform = decode_audio_as_waveform
+
         self.set_sampler(
             feature_dir,
             length,
@@ -94,6 +99,9 @@ class WeightedAudioSetWebDataset(IterableDataset):
         )
 
     def __iter__(self) -> Iterator:
+        decode_audio_as_monoral = self.decode_audio_as_monoral
+        decode_audio_as_waveform = self.decode_audio_as_waveform
+
         worker_info = get_worker_info()
 
         if worker_info is not None:
@@ -140,7 +148,12 @@ class WeightedAudioSetWebDataset(IterableDataset):
                     binary = BytesIO(binary)
                     decoded = torch.load(binary)
                 elif ext in supported_audio_extensions:
-                    decoded = decode_audio(binary, ext)
+                    decoded = decode_audio(
+                        binary,
+                        ext,
+                        decode_audio_as_monoral=decode_audio_as_monoral,
+                        decode_audio_as_waveform=decode_audio_as_waveform,
+                    )
                 else:
                     raise ValueError(f"Invalid key {key} is detected.")
 
@@ -183,6 +196,8 @@ class DistributedWeightedAudioSetWebDataset(WeightedAudioSetWebDataset):
         length: int,
         replacement: bool = True,
         smooth: float = 1,
+        decode_audio_as_monoral: bool = True,
+        decode_audio_as_waveform: bool = True,
         num_workers: int = 0,
         num_replicas: Optional[int] = None,
         rank: Optional[int] = None,
@@ -201,6 +216,8 @@ class DistributedWeightedAudioSetWebDataset(WeightedAudioSetWebDataset):
             length=length,
             replacement=replacement,
             smooth=smooth,
+            decode_audio_as_monoral=decode_audio_as_monoral,
+            decode_audio_as_waveform=decode_audio_as_waveform,
         )
 
     def set_sampler(
@@ -250,6 +267,8 @@ class PaSSTAudioSetWebDataset(WeightedAudioSetWebDataset):
         length: int,
         replacement: bool = True,
         smooth: float = 1000,
+        decode_audio_as_monoral: bool = True,
+        decode_audio_as_waveform: bool = True,
         generator=None,
     ) -> None:
         super().__init__(
@@ -258,6 +277,8 @@ class PaSSTAudioSetWebDataset(WeightedAudioSetWebDataset):
             length=length,
             replacement=replacement,
             smooth=smooth,
+            decode_audio_as_monoral=decode_audio_as_monoral,
+            decode_audio_as_waveform=decode_audio_as_waveform,
             generator=generator,
         )
 
