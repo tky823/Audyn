@@ -161,6 +161,9 @@ class WeightedAudioSetWebDataset(IterableDataset):
 
             yield sample
 
+    def __len__(self) -> int:
+        return self.sampler.num_samples
+
     def set_sampler(
         self,
         feature_dir: str,
