@@ -1,0 +1,10 @@
+defaults:
+  - audioset
+  - _self_
+
+cross_entropy:
+  key_mapping:
+    estimated:
+      input: output
+    target:
+      target: target
