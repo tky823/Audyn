@@ -1,5 +1,5 @@
 defaults:
-  - audioset
+  - _audioset
   - _self_
 
 cross_entropy:
