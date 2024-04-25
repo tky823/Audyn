@@ -1,12 +1,10 @@
 import glob
 import os
 import re
-import tempfile
 import warnings
 from typing import Any, Callable, Dict, Iterable, Optional
 
 import torch
-import torchaudio
 import webdataset as wds
 from torch.utils.data import Dataset
 
