@@ -13,11 +13,12 @@ from dummy.utils import select_random_port
 from dummy.utils.ddp import set_ddp_environment
 from torch.utils.data import DataLoader
 
-from audyn.utils.data.audioset.collater import AudioSetMultiLabelCollater
 from audyn.utils.data.audioset.dataset import (
+    AudioSetMultiLabelComposer,
     DistributedWeightedAudioSetWebDataset,
     WeightedAudioSetWebDataset,
 )
+from audyn.utils.data.collater import Collater
 
 
 @pytest.mark.parametrize("divisible_by_num_workers", [True, False])
@@ -80,7 +81,8 @@ def test_weighted_audioset_webdataset(
 
         assert len(os.listdir(feature_dir)) == (len(audioset_samples) - 1) // max_shard_count + 1
 
-        collater = AudioSetMultiLabelCollater(tags_key, multilabel_key)
+        composer = AudioSetMultiLabelComposer(tags_key, multilabel_key)
+        collater = Collater(composer=composer)
         dataset = WeightedAudioSetWebDataset(
             list_path,
             feature_dir,
@@ -290,7 +292,8 @@ def run_distributed_weighted_audioset_webdataset_sampler(
     )
     torch.manual_seed(seed)
 
-    collater = AudioSetMultiLabelCollater(tags_key, multilabel_key)
+    composer = AudioSetMultiLabelComposer(tags_key, multilabel_key)
+    collater = Collater(composer=composer)
     dataset = DistributedWeightedAudioSetWebDataset(
         list_path,
         feature_dir,
