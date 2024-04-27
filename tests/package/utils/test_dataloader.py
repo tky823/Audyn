@@ -1,4 +1,5 @@
 import os
+import sys
 import tempfile
 
 import pytest
@@ -9,6 +10,8 @@ from torch.utils.data import DataLoader, Dataset
 
 from audyn.utils.data.dataloader import DistributedDataLoader
 from audyn.utils.data.dataset import WebDatasetWrapper
+
+IS_WINDOWS = sys.platform == "win32"
 
 
 def test_distributed_dataloader() -> None:
@@ -46,6 +49,7 @@ def test_distributed_dataloader() -> None:
     assert set(data_rank0) & set(data_rank1) == set()
 
 
+@pytest.mark.skipif(IS_WINDOWS, "WebDataset does not support Windows.")
 @pytest.mark.parametrize("decode_audio_as_waveform", [True, False])
 @pytest.mark.parametrize("decode_audio_as_monoral", [True, False])
 def test_dataloader_for_composer(decode_audio_as_waveform, decode_audio_as_monoral: bool) -> None:
