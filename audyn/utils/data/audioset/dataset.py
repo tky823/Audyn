@@ -196,8 +196,6 @@ class DistributedWeightedAudioSetWebDataset(WeightedAudioSetWebDataset):
         length: int,
         replacement: bool = True,
         smooth: float = 1,
-        decode_audio_as_monoral: bool = True,
-        decode_audio_as_waveform: bool = True,
         num_workers: int = 0,
         num_replicas: Optional[int] = None,
         rank: Optional[int] = None,
@@ -216,8 +214,6 @@ class DistributedWeightedAudioSetWebDataset(WeightedAudioSetWebDataset):
             length=length,
             replacement=replacement,
             smooth=smooth,
-            decode_audio_as_monoral=decode_audio_as_monoral,
-            decode_audio_as_waveform=decode_audio_as_waveform,
         )
 
     def set_sampler(
