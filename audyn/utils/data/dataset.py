@@ -192,7 +192,15 @@ class WebDatasetWrapper(wds.WebDataset):
 
 
 class Composer:
-    """Composer given to webdataset."""
+    """Composer given to process each sample in list of samples.
+
+    This class is mainly used for webdataset, but is also useful for torch dataset.
+
+    .. note::
+
+        To include additional processing, please implement ``process`` method.
+
+    """
 
     def __init__(
         self,
@@ -225,6 +233,13 @@ class Composer:
 
         return sample
 
+    def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        """Process to edit each sample."""
+        return sample
+
     def __call__(self, samples: Iterable[Dict[str, Any]]) -> Iterable[Dict[str, Any]]:
         for sample in samples:
-            yield self.decode(sample)
+            sample = self.decode(sample)
+            sample = self.process(sample)
+
+            yield sample
