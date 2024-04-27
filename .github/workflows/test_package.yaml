@@ -85,6 +85,7 @@ jobs:
         if: matrix.python-version == '3.8' && matrix.os == 'ubuntu-latest' && matrix.torch-version == '2.1.0'
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
         run: |
           pytest -vvv tests/torchhub/
       - name: Pytest for package
