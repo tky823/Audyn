@@ -82,8 +82,8 @@ def test_ssast(token_unit: str) -> None:
         output = model(input)
 
     if token_unit == "patch":
-        assert output.size() == (batch_size, 768, 12, 9)
+        assert output.size() == (batch_size, 12 * 9 + 2, 768)
     elif token_unit == "frame":
-        assert output.size() == (batch_size, 768, 1, 99)
+        assert output.size() == (batch_size, 1 * 99 + 2, 768)
     else:
         raise ValueError(f"{token_unit} is not supported as token_unit.")
