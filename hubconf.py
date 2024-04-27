@@ -112,7 +112,7 @@ def ssast_base_400(
     return model
 
 
-def passt_base_ap476_swa(
+def passt_base(
     stride: int = 10,
     patchout: str = "struct",
     n_bins: Optional[int] = None,
