@@ -4,6 +4,7 @@ import tempfile
 import pytest
 import torch
 import torch.nn as nn
+from dummy import allclose
 
 from audyn.models.ast import AverageAggregator
 from audyn.models.ssast import (
@@ -229,7 +230,7 @@ def test_official_ssast(model_name: str) -> None:
     with torch.no_grad():
         output = model(input)
 
-    assert torch.allclose(output, expected_output)
+    assert allclose(output, expected_output)
 
 
 @pytest.mark.parametrize("sample_wise", [True, False])
