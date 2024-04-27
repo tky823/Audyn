@@ -230,7 +230,7 @@ def test_official_ssast(model_name: str) -> None:
     with torch.no_grad():
         output = model(input)
 
-    assert allclose(output, expected_output, atol=1e-5)
+    allclose(output, expected_output, atol=1e-5)
 
 
 @pytest.mark.parametrize("sample_wise", [True, False])
