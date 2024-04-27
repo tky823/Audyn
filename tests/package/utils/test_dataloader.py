@@ -102,9 +102,9 @@ def test_dataloader_for_composer(decode_audio_as_waveform, decode_audio_as_monor
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
         for batch in dataloader:
-            assert len(batch["filename.txt"]) == batch_size
+            assert len(batch["filename"]) == batch_size
 
-            audio = batch["audio.flac"]
+            audio = batch["audio"]
 
             if decode_audio_as_waveform:
                 waveform = audio

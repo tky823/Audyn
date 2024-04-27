@@ -106,7 +106,7 @@ def test_webdataset_dataset() -> None:
         dataset = WebDatasetWrapper.instantiate_dataset(list_path, feature_dir)
 
         for idx, sample in enumerate(dataset):
-            assert torch.equal(torch.tensor([idx + 1]), sample[f"{key}.pth"])
+            assert torch.equal(torch.tensor([idx + 1]), sample[key])
 
         loader = DataLoader(dataset, batch_size=batch_size, collate_fn=default_collate_fn)
 
