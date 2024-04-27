@@ -229,7 +229,7 @@ class Composer:
                         decode_audio_as_waveform=self.decode_audio_as_waveform,
                     )
 
-            sample = rename_webdataset_keys(sample)
+        sample = rename_webdataset_keys(sample)
 
         return sample
 
