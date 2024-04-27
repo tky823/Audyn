@@ -33,16 +33,12 @@ def test_multitask_ssast_mpm(token_unit: str) -> None:
     reconstruction_output, reconstruction_target, reconstruction_length = reconstruction_output
     classification_output, classification_target, classification_length = classification_output
 
-    assert reconstruction_output.size(0) == batch_size
-    assert reconstruction_output.size(2) == 256
-    assert reconstruction_target.size(0) == batch_size
-    assert reconstruction_target.size(2) == 256
+    assert reconstruction_output.size() == (batch_size, 400, 256)
+    assert reconstruction_target.size() == (batch_size, 400, 256)
     assert reconstruction_length.size() == (batch_size,)
 
-    assert classification_output.size(0) == batch_size
-    assert classification_output.size(2) == 256
-    assert classification_target.size(0) == batch_size
-    assert classification_target.size(2) == 256
+    assert classification_output.size() == (batch_size, 400, 256)
+    assert classification_target.size() == (batch_size, 400, 256)
     assert classification_length.size() == (batch_size,)
 
 
