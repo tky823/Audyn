@@ -1,0 +1,9 @@
+train:
+  _target_: audyn.utils.data.audioset.dataset.WeightedAudioSetWebDataset
+  list_path:
+  feature_dir:
+  length: 200000
+validation:
+  _target_: audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset
+  list_path:
+  feature_dir:

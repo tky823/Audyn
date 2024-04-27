@@ -5,6 +5,6 @@ defaults:
 cross_entropy:
   key_mapping:
     estimated:
-      input: output
+      input: logit
     target:
-      target: target
+      target: ${train.dataloader.train.collate_fn.composer.multilabel_key}
