@@ -2,7 +2,7 @@ import torch
 from dummy.utils.github import retrieve_git_branch
 
 
-def test_ssast() -> None:
+def test_ast() -> None:
     torch.manual_seed(0)
 
     branch = retrieve_git_branch()
