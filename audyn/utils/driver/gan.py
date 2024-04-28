@@ -254,7 +254,7 @@ class GANTrainer(BaseTrainer):
             self.optimizer_step(self.optimizer.discriminator)
 
             if self.config.train.steps.lr_scheduler.discriminator == "iteration":
-                self.lr_scheduler.discriminator.step()
+                self.lr_scheduler_step(self.lr_scheduler.discriminator, loss=discriminator_loss)
 
             prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}"
             prompt += f", Iter {self.iteration_idx+1}/{self.iterations}]"
@@ -367,7 +367,7 @@ class GANTrainer(BaseTrainer):
             self.scaler.update()
 
             if self.config.train.steps.lr_scheduler.generator == "iteration":
-                self.lr_scheduler.generator.step()
+                self.lr_scheduler_step(self.lr_scheduler.generator, loss=generator_loss)
 
             prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}"
             prompt += f", Iter {self.iteration_idx+1}/{self.iterations}]"
@@ -397,12 +397,6 @@ class GANTrainer(BaseTrainer):
                 # Finish training
                 break
 
-        if self.config.train.steps.lr_scheduler.generator == "epoch":
-            self.lr_scheduler.generator.step()
-
-        if self.config.train.steps.lr_scheduler.discriminator == "epoch":
-            self.lr_scheduler.discriminator.step()
-
         train_loss = {
             generator_key: {},
             discriminator_key: {},
@@ -415,6 +409,14 @@ class GANTrainer(BaseTrainer):
         for criterion_name in discriminator_criterion_names:
             loss = discriminator_mean_metrics[criterion_name].compute()
             train_loss[discriminator_key][criterion_name] = loss.item()
+
+        if self.config.train.steps.lr_scheduler.generator == "epoch":
+            self.lr_scheduler_step(self.lr_scheduler.generator, loss=train_loss[generator_key])
+
+        if self.config.train.steps.lr_scheduler.discriminator == "epoch":
+            self.lr_scheduler_step(
+                self.lr_scheduler.discriminator, loss=train_loss[discriminator_key]
+            )
 
         return train_loss
 

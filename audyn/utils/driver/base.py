@@ -14,7 +14,7 @@ from omegaconf import DictConfig, OmegaConf
 from packaging import version
 from torch.cuda.amp import GradScaler, autocast
 from torch.optim import Optimizer
-from torch.optim.lr_scheduler import _LRScheduler
+from torch.optim.lr_scheduler import ReduceLROnPlateau, _LRScheduler
 from torch.utils.data import DataLoader
 
 from ... import __version__ as _version
@@ -402,7 +402,15 @@ class BaseTrainer(BaseDriver):
             and hasattr(config.train.trainer, "_target_")
             and config.train.trainer._target_ is not None
         ):
-            trainer = instantiate(
+            # instantiate does not support config as keyword arguments.
+            OmegaConf.update(
+                config,
+                "train.trainer",
+                {"_partial_": True},
+                merge=True,
+                force_add=True,
+            )
+            trainer_cls = instantiate(
                 config.train.trainer,
                 loaders,
                 model,
@@ -410,8 +418,8 @@ class BaseTrainer(BaseDriver):
                 lr_scheduler=lr_scheduler,
                 grad_clipper=grad_clipper,
                 criterion=criterion,
-                config=config,
             )
+            trainer = trainer_cls(config=config)
         else:
             trainer = cls(
                 loaders,
@@ -634,11 +642,11 @@ class BaseTrainer(BaseDriver):
             self.scaler.scale(total_loss).backward()
             self.unscale_optimizer_if_necessary()
             self.clip_gradient_if_necessary()
-            self.optimizer_step()
+            self.optimizer_step(self.optimizer)
             self.scaler.update()
 
             if self.config.train.steps.lr_scheduler == "iteration":
-                self.lr_scheduler.step()
+                self.lr_scheduler_step(self.lr_scheduler, loss=loss)
 
             prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}"
             prompt += f", Iter {self.iteration_idx+1}/{self.iterations}]"
@@ -667,14 +675,14 @@ class BaseTrainer(BaseDriver):
                 # Finish training
                 break
 
-        if self.config.train.steps.lr_scheduler == "epoch":
-            self.lr_scheduler.step()
-
         train_loss = {}
 
         for criterion_name in criterion_names:
             loss = mean_metrics[criterion_name].compute()
             train_loss[criterion_name] = loss.item()
+
+        if self.config.train.steps.lr_scheduler == "epoch":
+            self.lr_scheduler_step(self.lr_scheduler, loss=train_loss)
 
         return train_loss
 
@@ -877,6 +885,36 @@ class BaseTrainer(BaseDriver):
                 optimizer.step()
             else:
                 self.scaler.step(optimizer)
+
+    def lr_scheduler_step(
+        self,
+        lr_scheduler: Optional[_LRScheduler] = None,
+        loss: Optional[Dict[str, Union[torch.Tensor, float]]] = None,
+    ) -> None:
+        """Call .step of learning rate scheduler.
+
+        Args:
+            lr_scheduler (_LRScheduler): Learning rate scheduler.
+
+        """
+        if lr_scheduler is None:
+            lr_scheduler = self.lr_scheduler
+
+        if isinstance(lr_scheduler, ReduceLROnPlateau):
+            if loss is None:
+                raise ValueError("ReduceLROnPlateau requires loss to update.")
+
+            total_loss = 0
+            criterion_names = self.criterion_names(self.config.criterion)
+
+            for criterion_name in criterion_names:
+                weight = self.config.criterion[criterion_name].weight
+                loss = loss[criterion_name]
+                total_loss += weight * loss
+
+            lr_scheduler.step(total_loss)
+        else:
+            lr_scheduler.step()
 
     def display_loss(
         self, train_loss: Dict[str, float], validation_loss: Optional[Dict[str, float]] = None
@@ -2023,12 +2061,20 @@ class BaseGenerator(BaseDriver):
             and hasattr(config.test.generator, "_target_")
             and config.test.generator._target_ is not None
         ):
-            generator = instantiate(
+            # instantiate does not support config as keyword arguments.
+            OmegaConf.update(
+                config,
+                "test.generator",
+                {"_partial_": True},
+                merge=True,
+                force_add=True,
+            )
+            generator_cls = instantiate(
                 config.test.generator,
                 test_loader,
                 model,
-                config=config,
             )
+            generator = generator_cls(config=config)
         else:
             generator = cls(
                 test_loader,

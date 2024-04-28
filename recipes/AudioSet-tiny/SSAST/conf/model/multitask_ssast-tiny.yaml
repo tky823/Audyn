@@ -1,0 +1,45 @@
+_target_: audyn.models.ssast.MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel
+embedding:
+  _target_: audyn.models.ast.PositionalPatchEmbedding
+  embedding_dim: 16
+  kernel_size:
+    - ???
+    - ???
+  insert_cls_token: true
+  insert_dist_token: true
+  n_bins: ${data.melspectrogram.n_mels}
+  n_frames: ${data.melspectrogram.n_frames}
+masker:
+  _target_: audyn.models.ssast.Masker
+  embedding_dim: ${..embedding.embedding_dim}
+  num_masks: ???
+  min_cluster: 3
+  max_cluster: 6
+  trainable: true
+  sample_wise: false
+backbone:
+  _target_: torch.nn.TransformerEncoder
+  encoder_layer:
+    _target_: torch.nn.TransformerEncoderLayer
+    d_model: ${...embedding.embedding_dim}
+    nhead: 4
+    dim_feedforward: 32
+    activation:
+      _target_: torch.nn.GELU
+    batch_first: true
+  num_layers: 2
+  norm:
+    _target_: torch.nn.LayerNorm
+    normalized_shape: ${...embedding.embedding_dim}
+reconstructor:
+  _target_: audyn.models.ssast.MLP
+  in_channels: ${..embedding.embedding_dim}
+  out_channels:
+    _target_: operator.mul
+    _args_:
+      - ${....embedding.kernel_size.0}
+      - ${....embedding.kernel_size.1}
+classifier:
+  _target_: audyn.models.ssast.MLP
+  in_channels: ${..reconstructor.in_channels}
+  out_channels: ${..reconstructor.out_channels}

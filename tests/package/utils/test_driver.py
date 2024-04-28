@@ -1847,6 +1847,83 @@ def test_trainer_for_list_optimizer(monkeypatch: MonkeyPatch) -> None:
         monkeypatch.undo()
 
 
+def test_trainer_for_reduce_lr_on_plateau(monkeypatch: MonkeyPatch) -> None:
+    """Test BaseTrainer for dataloaders."""
+    DATA_SIZE = 20
+    BATCH_SIZE = 2
+    ITERATIONS = 40
+    lr_scheduler = "dummy_reduce_lr_on_plateau"
+
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
+        monkeypatch.chdir(temp_dir)
+
+        overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
+        exp_dir = "./exp"
+
+        with hydra.initialize(
+            version_base="1.2",
+            config_path=relpath(config_template_path, dirname(realpath(__file__))),
+            job_name="test_driver",
+        ):
+            config = hydra.compose(
+                config_name="config",
+                overrides=create_dummy_override(
+                    overrides_conf_dir=overrides_conf_dir,
+                    exp_dir=exp_dir,
+                    data_size=DATA_SIZE,
+                    batch_size=BATCH_SIZE,
+                    iterations=ITERATIONS,
+                    lr_scheduler=lr_scheduler,
+                ),
+                return_hydra_config=True,
+            )
+
+        setup_system(config)
+
+        train_dataset = instantiate(config.train.dataset.train)
+        validation_dataset = instantiate(config.train.dataset.validation)
+
+        train_loader = instantiate(
+            config.train.dataloader.train,
+            train_dataset,
+            collate_fn=default_collate_fn,
+        )
+        validation_loader = instantiate(
+            config.train.dataloader.validation,
+            validation_dataset,
+            collate_fn=default_collate_fn,
+        )
+        loaders = BaseDataLoaders(train_loader, validation_loader)
+
+        model = instantiate_model(config.model)
+        model = set_device(
+            model,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
+        optimizer = instantiate_optimizer(config.optimizer, model)
+        lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
+        criterion = instantiate_criterion(config.criterion)
+        criterion = set_device(
+            criterion,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
+
+        trainer = BaseTrainer(
+            loaders,
+            model,
+            optimizer,
+            lr_scheduler=lr_scheduler,
+            criterion=criterion,
+            config=config,
+        )
+        trainer.run()
+        trainer.writer.flush()
+
+        monkeypatch.undo()
+
+
 def create_dummy_override(
     overrides_conf_dir: str,
     exp_dir: str,

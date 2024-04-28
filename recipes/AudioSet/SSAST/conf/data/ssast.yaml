@@ -1,0 +1,18 @@
+defaults:
+  - audioset
+  - _self_
+
+audio:
+  sample_rate: 16000
+  duration: 10
+
+melspectrogram:
+  _target_: audyn.transforms.ast.SelfSupervisedAudioSpectrogramTransformerMelSpectrogram
+  sample_rate: ${..audio.sample_rate}
+  n_mels: 128
+  n_frames: 1024
+  freq_mask_param: 48
+  time_mask_param: 192
+  mean: ${const:audyn.utils.data.audioset.ast.mean}
+  std: ${const:audyn.utils.data.audioset.ast.std}
+  take_log: true

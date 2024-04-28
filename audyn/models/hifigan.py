@@ -10,6 +10,8 @@ from torch.nn.modules.utils import _pair, _single
 __all__ = [
     "Generator",
     "Discriminator",
+    "HiFiGANGenerator",
+    "HiFiGANDiscriminator",
     "MultiScaleDiscriminator",
     "MultiPeriodDiscriminator",
 ]
@@ -1488,3 +1490,11 @@ class ConvBlock2d(nn.Module):
             remove_spectral_norm_args = ("weight",)
 
         self.conv2d = remove_spectral_norm_fn(self.conv2d, *remove_spectral_norm_args)
+
+
+class HiFiGANGenerator(Generator):
+    """Alias of Generator for HiFi-GAN."""
+
+
+class HiFiGANDiscriminator(Discriminator):
+    """Alias of Discriminator for HiFi-GAN."""

@@ -1,17 +1,22 @@
+import os
+import tempfile
+
 import pytest
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+from dummy import allclose
 
+from audyn.models.ast import AverageAggregator
 from audyn.models.ssast import (
     MLP,
-    AverageAggregator,
+    FastMasker,
     Masker,
     MLPHead,
     MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel,
     PositionalPatchEmbedding,
     SelfSupervisedAudioSpectrogramTransformer,
 )
+from audyn.utils.github import download_file_from_github_release
 
 
 @pytest.mark.parametrize(
@@ -21,7 +26,8 @@ from audyn.models.ssast import (
         "multitask-ssast-frame-base-400",
     ],
 )
-def test_official_ssast_multi_task_mpm(model_name: str) -> None:
+@pytest.mark.parametrize("sample_wise", [True, False])
+def test_official_ssast_multi_task_mpm(model_name: str, sample_wise: bool) -> None:
     torch.manual_seed(0)
 
     d_model = 768
@@ -59,12 +65,13 @@ def test_official_ssast_multi_task_mpm(model_name: str) -> None:
         num_masks=num_masks,
         min_cluster=min_cluster,
         max_cluster=max_cluster,
+        sample_wise=sample_wise,
     )
     encoder_layer = nn.TransformerEncoderLayer(
         d_model,
         nhead,
         dim_feedforward=dim_feedforward,
-        activation=F.gelu,
+        activation=nn.GELU(),
         batch_first=True,
     )
     norm = nn.LayerNorm(d_model)
@@ -150,7 +157,7 @@ def test_official_ssast(model_name: str) -> None:
         d_model,
         nhead,
         dim_feedforward=dim_feedforward,
-        activation=F.gelu,
+        activation=nn.GELU(),
         batch_first=True,
     )
     norm = nn.LayerNorm(d_model)
@@ -189,13 +196,51 @@ def test_official_ssast(model_name: str) -> None:
 
     assert num_parameters == expected_num_parameters
 
+    # regression test
+    n_bins, n_frames = 256, 100
 
-def test_ssast_multi_task_mpm() -> None:
+    if model_name == "multitask-ssast-patch-base-400":
+        filename = "test_official_ssast_patch.pth"
+        stride = (8, 8)
+    elif model_name == "multitask-ssast-frame-base-400":
+        filename = "test_official_ssast_frame.pth"
+        stride = (n_bins, 1)
+    else:
+        raise ValueError("Invalid model name is given.")
+
+    model = SelfSupervisedAudioSpectrogramTransformer.build_from_pretrained(
+        model_name,
+        stride=stride,
+        n_bins=n_bins,
+        n_frames=n_frames,
+        aggregator=aggregator,
+    )
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        url = f"https://github.com/tky823/Audyn/releases/download/v0.0.1.dev3/{filename}"
+        path = os.path.join(temp_dir, filename)
+        download_file_from_github_release(url, path)
+
+        data = torch.load(path)
+        input = data["input"]
+        expected_output = data["output"]
+
+    model.eval()
+
+    with torch.no_grad():
+        output = model(input)
+
+    allclose(output, expected_output, atol=1e-5)
+
+
+@pytest.mark.parametrize("sample_wise", [True, False])
+def test_ssast_multi_task_mpm(sample_wise: bool) -> None:
     torch.manual_seed(0)
 
     d_model = 8
     n_bins, n_frames = 8, 30
     kernel_size = (n_bins, 2)
+    insert_cls_token, insert_dist_token = True, True
     batch_size = 4
 
     num_masks = 10
@@ -208,14 +253,17 @@ def test_ssast_multi_task_mpm() -> None:
     patch_embedding = PositionalPatchEmbedding(
         d_model,
         kernel_size=kernel_size,
+        insert_cls_token=insert_cls_token,
+        insert_dist_token=insert_dist_token,
         n_bins=n_bins,
         n_frames=n_frames,
     )
-    masker = Masker(
+    masker = FastMasker(
         d_model,
         num_masks=num_masks,
         min_cluster=min_cluster,
         max_cluster=max_cluster,
+        sample_wise=sample_wise,
     )
     encoder_layer = nn.TransformerEncoderLayer(
         d_model, nhead, dim_feedforward=dim_feedforward, batch_first=True
@@ -289,43 +337,62 @@ def test_ssast() -> None:
     assert output.size() == (batch_size, out_channels)
 
 
-def test_ssast_positional_patch_embedding() -> None:
+@pytest.mark.parametrize("sample_wise", [True, False])
+def test_ssast_masker(sample_wise: bool) -> None:
     torch.manual_seed(0)
 
     d_model = 8
-    n_bins, n_frames = 8, 30
-    kernel_size = (n_bins, 2)
     batch_size = 4
 
-    model = PositionalPatchEmbedding(
+    num_masks = 50
+    min_cluster, max_cluster = 3, 6
+
+    model = Masker(
         d_model,
-        kernel_size=kernel_size,
-        n_bins=n_bins,
-        n_frames=n_frames,
+        num_masks=num_masks,
+        min_cluster=min_cluster,
+        max_cluster=max_cluster,
+        sample_wise=sample_wise,
     )
 
-    input = torch.randn((batch_size, n_bins, n_frames))
-    output = model(input)
+    # patch-based SSAST-like inputs
+    height, width = 10, 16
+    input = torch.randn((batch_size, d_model, height, width))
+    output, masking_mask = model(input)
 
-    Kh, Kw = kernel_size
-    Sh, Sw = kernel_size
-    height = (n_bins - Kh) // Sh + 1
-    width = (n_frames - Kw) // Sw + 1
+    assert output.size() == input.size()
+    assert masking_mask.size(0) == input.size(0)
+    assert masking_mask.size()[1:] == input.size()[2:]
+    assert torch.all(masking_mask.sum(dim=(-2, -1)) == num_masks)
 
-    assert output.size() == (batch_size, height * width, d_model)
+    # frame-based SSAST-like inputs
+    height, width = 1, 100
+    input = torch.randn((batch_size, d_model, height, width))
+    output, masking_mask = model(input)
+
+    assert output.size() == input.size()
+    assert masking_mask.size(0) == input.size(0)
+    assert masking_mask.size()[1:] == input.size()[2:]
 
 
-def test_ssast_masker() -> None:
+@pytest.mark.parametrize("sample_wise", [True, False])
+def test_ssast_fast_masker(sample_wise: bool) -> None:
     torch.manual_seed(0)
 
     d_model = 8
-    height, width = 10, 30
+    height, width = 10, 16
     batch_size = 4
 
-    num_masks = 10
-    min_cluster, max_cluster = 2, 3
+    num_masks = 50
+    min_cluster, max_cluster = 3, 6
 
-    model = Masker(d_model, num_masks=num_masks, min_cluster=min_cluster, max_cluster=max_cluster)
+    model = FastMasker(
+        d_model,
+        num_masks=num_masks,
+        min_cluster=min_cluster,
+        max_cluster=max_cluster,
+        sample_wise=sample_wise,
+    )
 
     input = torch.randn((batch_size, d_model, height, width))
     output, masking_mask = model(input)

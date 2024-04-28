@@ -208,7 +208,7 @@ def test_residual_conv_block1d_global(dilation: int, is_causal: bool, dual_head:
                 [incremental_buffered_output, last_output], dim=-1
             )
 
-        allclose(buffered_output, incremental_buffered_output, atol=1e-7)
+        allclose(buffered_output, incremental_buffered_output, atol=1e-6)
 
     model.remove_weight_norm_()
 

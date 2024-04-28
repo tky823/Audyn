@@ -1,0 +1,74 @@
+defaults:
+  - defaults
+  - override dataset: webdataset
+  - _self_
+
+trainer:
+  _target_: audyn.utils.driver.BaseTrainer
+
+dataset:
+  train:
+    decode_audio_as_waveform: true
+    decode_audio_as_monoral: true
+  validation:
+    decode_audio_as_waveform: ${..train.decode_audio_as_waveform}
+    decode_audio_as_monoral: ${..train.decode_audio_as_monoral}
+
+dataloader:
+  train:
+    batch_size: 24
+    collate_fn:
+      _target_: utils.data.SSASTAudioSetCollater
+      dump_format: ${preprocess.dump_format}
+      melspectrogram_transform: ${data.melspectrogram}
+      audio_key_in: audio
+      sample_rate_key_in: sample_rate
+      filename_key_in: filename
+      waveform_key_out: waveform
+      melspectrogram_key_out: log_melspectrogram
+      filename_key_out: filename
+      duration: ${data.audio.duration}
+  validation:
+    batch_size: 24
+    collate_fn: ${..train.collate_fn}
+
+key_mapping:
+  train:
+    input:
+      input: ${....dataloader.train.collate_fn.melspectrogram_key_out}
+    output:
+      - - reconstruction_output
+        - reconstruction_target
+        - reconstruction_length
+      - - classification_output
+        - classification_target
+        - classification_length
+  validation: ${.train}
+  inference:
+    input: ${..train.input}
+    output: feature
+
+ddp_kwargs:
+
+resume:
+  continue_from:
+
+output:
+  exp_dir: "./exp"
+  tensorboard_dir: "./tensorboard"
+  save_checkpoint:
+    iteration:
+      every: 100000
+      path: ${...exp_dir}/model/iteration{iteration}.pth
+    epoch:
+      every: 1
+      path: ${...exp_dir}/model/epoch{epoch}.pth
+    last:
+      path: ${...exp_dir}/model/last.pth
+    best_epoch:
+      path: ${...exp_dir}/model/best_epoch.pth
+
+steps:
+  epochs:
+  iterations: 800000
+  lr_scheduler:

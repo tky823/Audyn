@@ -29,6 +29,7 @@ __all__ = [
     "take_log_features",
     "make_noise",
     "default_collate_fn",
+    "rename_webdataset_keys",
 ]
 
 
@@ -129,22 +130,49 @@ def default_collate_fn(
         elif key in tensor_keys:
             dict_batch[key] = torch.stack(dict_batch[key], dim=0)
 
-    dict_batch = _rename_webdataset_keys(dict_batch)
+    dict_batch = rename_webdataset_keys(dict_batch)
 
     return dict_batch
 
 
-def _rename_webdataset_keys(dict_batch: Dict[str, Any]) -> Dict[str, Any]:
-    keys = list(dict_batch.keys())
+def rename_webdataset_keys(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Rename keys of WebDataset.
+
+    Args:
+        data (dict): Dictionary-like batch or sample.
+
+    Returns:
+        dict: Dictionary-like batch or sample with renamed keys.
+
+    Examples:
+
+        >>> import torch
+        >>> from audyn.utils.data import rename_webdataset_keys
+        >>> data = {"audio.m4a": torch.tensor((2, 16000))}
+        >>> data.keys()
+        dict_keys(['audio.m4a'])
+        >>> data = rename_webdataset_keys(data)
+        >>> data.keys()
+        dict_keys(['audio'])
+
+    """
+    keys = list(data.keys())
 
     for key in keys:
-        if "." in key:
-            if len(key.split(".")) > 2:
-                raise NotImplementedError("Multiple dots in a key is not supported.")
+        webdataset_key = _rename_webdataset_key_if_possible(key)
 
-            # remove extension
-            webdataset_key, _ = key.split(".")
+        if webdataset_key != key:
+            data[webdataset_key] = data.pop(key)
 
-            dict_batch[webdataset_key] = dict_batch.pop(key)
+    return data
 
-    return dict_batch
+
+def _rename_webdataset_key_if_possible(key: str) -> str:
+    if "." in key:
+        if len(key.split(".")) > 2:
+            raise NotImplementedError("Multiple dots in a key is not supported.")
+
+        # remove extension
+        key, _ = key.split(".")
+
+    return key

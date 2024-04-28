@@ -1,7 +1,8 @@
 import json
 import os
-from typing import Any, Dict, Iterable
+from typing import Any, Dict, Iterable, List
 
+import torch
 from omegaconf import DictConfig
 
 import audyn
@@ -15,6 +16,8 @@ except ImportError:
 
 @audyn.main()
 def main(config: DictConfig) -> None:
+    torch.manual_seed(config.system.seed)
+
     csv_path = config.preprocess.csv_path
     jsonl_path = config.preprocess.jsonl_path
     download_dir = config.preprocess.download_dir
@@ -61,6 +64,7 @@ def download(csv_path: str, jsonl_path: str, download_dir: str) -> None:
             }
 
     ytids = sorted(list(videos.keys()))
+    ytids = shuffle_ytids(ytids)
 
     ydl_opts = {
         "outtmpl": {
@@ -89,6 +93,10 @@ def download(csv_path: str, jsonl_path: str, download_dir: str) -> None:
                 info = ydl.extract_info(url, download=True)
 
                 if info is not None:
+                    path = info["requested_downloads"][-1]["filepath"]
+                    video["root"] = download_dir
+                    video["path"] = os.path.relpath(path, download_dir)
+
                     line = json.dumps(video)
                     f.write(line + "\n")
 
@@ -106,6 +114,13 @@ class Callback:
             "start_time": start,
             "end_time": end,
         }
+
+
+def shuffle_ytids(ytids: List[str]) -> List[str]:
+    indices = torch.randperm(len(ytids)).tolist()
+    ytids = [ytids[idx] for idx in indices]
+
+    return ytids
 
 
 if __name__ == "__main__":

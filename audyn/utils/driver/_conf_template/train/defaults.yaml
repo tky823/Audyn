@@ -4,6 +4,8 @@ defaults:
   - clip_gradient: defaults
   - record: defaults
   - _self_
+
+trainer:
   
 key_mapping:
 
