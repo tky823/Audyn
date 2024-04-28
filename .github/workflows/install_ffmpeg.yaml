@@ -9,7 +9,7 @@ on:
 jobs:
   install:
     name: Install ffmpeg on MacOS
-    runs-on: macos-latest
+    runs-on: macos-13
     strategy:
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11"]
