@@ -37,14 +37,14 @@ jobs:
         run: |
           # torchaudio supports ffmpeg<7
           # https://pytorch.org/audio/stable/installation.html
-          brew install ffmpeg@5
-          echo "/opt/homebrew/opt/ffmpeg@5/bin" >> $GITHUB_PATH
-          echo "LDFLAGS=-L/opt/homebrew/opt/ffmpeg@5/lib" >> "$GITHUB_ENV"
-          echo "CPPFLAGS=-I/opt/homebrew/opt/ffmpeg@5/include" >> "$GITHUB_ENV"
-          echo "PKG_CONFIG_PATH=/opt/homebrew/opt/ffmpeg@5/lib/pkgconfig" >> "$GITHUB_ENV"
-          echo "LD_LIBRARY_PATH=/opt/homebrew/opt/ffmpeg@5/lib" >> "$GITHUB_ENV"
-          echo "FFMPEG_ROOT=/opt/homebrew/opt/ffmpeg@5" >> "$GITHUB_ENV"
-          echo "/opt/homebrew/opt/ffmpeg@5/lib" >> $GITHUB_PATH
+          brew install ffmpeg@4
+          echo "/opt/homebrew/opt/ffmpeg@4/bin" >> $GITHUB_PATH
+          echo "LDFLAGS=-L/opt/homebrew/opt/ffmpeg@4/lib" >> "$GITHUB_ENV"
+          echo "CPPFLAGS=-I/opt/homebrew/opt/ffmpeg@4/include" >> "$GITHUB_ENV"
+          echo "PKG_CONFIG_PATH=/opt/homebrew/opt/ffmpeg@4/lib/pkgconfig" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=/opt/homebrew/opt/ffmpeg@4/lib" >> "$GITHUB_ENV"
+          echo "FFMPEG_ROOT=/opt/homebrew/opt/ffmpeg@4" >> "$GITHUB_ENV"
+          echo "/opt/homebrew/opt/ffmpeg@4/lib" >> $GITHUB_PATH
       - name: Show ffmpeg utility (MacOS)
         run: |
           echo ${LD_LIBRARY_PATH}
