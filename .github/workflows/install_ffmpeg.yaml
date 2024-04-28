@@ -7,8 +7,8 @@ on:
     branches:
       - main
 jobs:
-  build:
-    name: Run tests with pytest
+  install:
+    name: Install ffmpeg on MacOS
     runs-on: macos-latest
     strategy:
       matrix:
