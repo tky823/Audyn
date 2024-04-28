@@ -57,23 +57,6 @@ jobs:
           TORCH_VERSION: ${{ matrix.torch-version }}
         run: |
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
-      - name: Install ffmpeg (MacOS)
-        if: matrix.os == 'macos-13'
-        run: |
-          # torchaudio supports ffmpeg<7
-          # https://pytorch.org/audio/stable/installation.html
-          brew install ffmpeg@5
-          echo "/opt/homebrew/opt/ffmpeg@5/bin" >> $GITHUB_PATH
-          echo "LDFLAGS=-L/opt/homebrew/opt/ffmpeg@5/lib" >> "$GITHUB_ENV"
-          echo "CPPFLAGS=-I/opt/homebrew/opt/ffmpeg@5/include" >> "$GITHUB_ENV"
-          echo "PKG_CONFIG_PATH=/opt/homebrew/opt/ffmpeg@5/lib/pkgconfig" >> "$GITHUB_ENV"
-          echo "LD_LIBRARY_PATH=/opt/homebrew/opt/ffmpeg@5/lib" >> "$GITHUB_ENV"
-          echo "FFMPEG_ROOT=/opt/homebrew/opt/ffmpeg@5" >> "$GITHUB_ENV"
-          echo "/opt/homebrew/opt/ffmpeg@5/lib" >> $GITHUB_PATH
-      - name: Show ffmpeg utility (MacOS)
-        if: matrix.os == 'macos-13'
-        run: |
-          echo ${LD_LIBRARY_PATH}
       - name: Install dependencies
         env:
           MACOSX_DEPLOYMENT_TARGET: '10.13'
