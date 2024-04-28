@@ -66,6 +66,7 @@ jobs:
           echo "CPPFLAGS=-I/opt/homebrew/opt/ffmpeg@6/include" >> "$GITHUB_ENV"
           echo "PKG_CONFIG_PATH=/opt/homebrew/opt/ffmpeg@6/lib/pkgconfig" >> "$GITHUB_ENV"
           echo "LD_LIBRARY_PATH=/opt/homebrew/opt/ffmpeg@6/lib" >> "$GITHUB_ENV"
+          echo "FFMPEG_ROOT=/opt/homebrew/opt/ffmpeg@6" >> "$GITHUB_ENV"
           echo "/opt/homebrew/opt/ffmpeg@6/lib" >> $GITHUB_PATH
       - name: Show ffmpeg utility (MacOS)
         if: matrix.os == 'macos-latest'
