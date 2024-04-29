@@ -10,7 +10,7 @@ dataloader:
   train:
     batch_size: 24
     collate_fn:
-      _target_: audyn.utils.data.collater.Collater
+      _target_: audyn.utils.data.collator.Collator
       composer:
         _target_: audyn.utils.data.audioset.dataset.ASTAudioSetMultiLabelComposer
         dump_format: ${preprocess.dump_format}
