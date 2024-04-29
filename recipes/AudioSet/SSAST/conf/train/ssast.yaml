@@ -6,28 +6,25 @@ defaults:
 trainer:
   _target_: audyn.utils.driver.BaseTrainer
 
-dataset:
-  train:
-    decode_audio_as_waveform: true
-    decode_audio_as_monoral: true
-  validation:
-    decode_audio_as_waveform: ${..train.decode_audio_as_waveform}
-    decode_audio_as_monoral: ${..train.decode_audio_as_monoral}
-
 dataloader:
   train:
     batch_size: 24
     collate_fn:
-      _target_: utils.data.SSASTAudioSetCollater
-      dump_format: ${preprocess.dump_format}
-      melspectrogram_transform: ${data.melspectrogram}
-      audio_key_in: audio
-      sample_rate_key_in: sample_rate
-      filename_key_in: filename
-      waveform_key_out: waveform
-      melspectrogram_key_out: log_melspectrogram
-      filename_key_out: filename
-      duration: ${data.audio.duration}
+      _target_: audyn.utils.data.collater.Collater
+      composer:
+        _target_: audyn.utils.data.audioset.dataset.ASTAudioSetMultiLabelComposer
+        dump_format: ${preprocess.dump_format}
+        melspectrogram_transform: ${data.melspectrogram}
+        audio_key: audio
+        sample_rate_key: sample_rate
+        tags_key: tags
+        filename_key: filename
+        waveform_key: waveform
+        melspectrogram_key: log_melspectrogram
+        multilabel_key: tags_index
+        duration: ${data.audio.duration}
+        decode_audio_as_waveform: true
+        decode_audio_as_monoral: true
   validation:
     batch_size: 24
     collate_fn: ${..train.collate_fn}
@@ -35,7 +32,7 @@ dataloader:
 key_mapping:
   train:
     input:
-      input: ${....dataloader.train.collate_fn.melspectrogram_key_out}
+      input: ${....dataloader.train.collate_fn.composer.melspectrogram_key}
     output:
       - - reconstruction_output
         - reconstruction_target
