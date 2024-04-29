@@ -278,7 +278,7 @@ class _PicklableFile:
         self.path = path
         self.file = open(path, mode="rb")
 
-    def __reduce__(self) -> tuple[Type, Tuple[str]]:
+    def __reduce__(self) -> Tuple[Type, Tuple[str]]:
         self.file.close()
         return self.__class__, (self.path,)
 
