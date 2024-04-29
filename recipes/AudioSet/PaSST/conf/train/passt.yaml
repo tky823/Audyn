@@ -6,6 +6,10 @@ defaults:
 trainer:
   _target_: audyn.utils.driver.BaseTrainer
 
+dataset:
+  train:
+    _target_: audyn.utils.data.audioset.dataset.PaSSTAudioSetWebDataset
+
 dataloader:
   train:
     batch_size: 24
