@@ -26,7 +26,7 @@ data="passt"
 --data "${data}"
 ```
 
-### Stage 1: Training SSAST
+### Stage 1: Training PaSST
 
 To train PaSST using structured patchout, run the following command:
 
