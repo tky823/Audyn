@@ -13,7 +13,7 @@ import torchaudio.functional as aF
 import torchaudio.transforms as aT
 from torch.utils.data import IterableDataset, get_worker_info
 
-from ..dataset import Composer
+from ..composer import Composer
 from ..webdataset import (
     supported_audio_extensions,
     supported_json_extensions,
