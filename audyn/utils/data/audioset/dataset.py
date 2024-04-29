@@ -29,7 +29,7 @@ __all__ = [
     "WeightedAudioSetWebDataset",
     "DistributedWeightedAudioSetWebDataset",
     "AudioSetMultiLabelComposer",
-    "PaSSTAudioSetMultiLabelComposer",
+    "ASTAudioSetMultiLabelComposer",
 ]
 
 
@@ -338,8 +338,8 @@ class AudioSetMultiLabelComposer(Composer):
         return sample
 
 
-class PaSSTAudioSetMultiLabelComposer(AudioSetMultiLabelComposer):
-    """Composer to include multi-label of AudioSet for PaSST.
+class ASTAudioSetMultiLabelComposer(AudioSetMultiLabelComposer):
+    """Composer to include multi-label of AudioSet for AST.
 
     This class returns sample containing ``waveform``, ``melspectrogram``, ``filename``,
     ``tags``, and ``multilabel``.
