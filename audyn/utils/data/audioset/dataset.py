@@ -133,10 +133,9 @@ class WeightedAudioSetWebDataset(IterableDataset):
                 ext = re.sub(r".*[.]", "", key)
 
                 if ext in supported_json_extensions:
-                    binary = binary.decode()
                     decoded = json.loads(binary)
                 elif ext in supported_text_extensions:
-                    decoded = binary.decode()
+                    decoded = binary.decode("utf-8")
                 elif ext in supported_torchdump_extensions:
                     binary = BytesIO(binary)
                     decoded = torch.load(binary)
