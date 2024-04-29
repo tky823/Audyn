@@ -18,7 +18,7 @@ from audyn.utils.data.audioset.dataset import (
     DistributedWeightedAudioSetWebDataset,
     WeightedAudioSetWebDataset,
 )
-from audyn.utils.data.collater import Collater
+from audyn.utils.data.collator import Collator
 
 
 @pytest.mark.parametrize("divisible_by_num_workers", [True, False])
@@ -82,7 +82,7 @@ def test_weighted_audioset_webdataset(
         assert len(os.listdir(feature_dir)) == (len(audioset_samples) - 1) // max_shard_count + 1
 
         composer = AudioSetMultiLabelComposer(tags_key, multilabel_key)
-        collater = Collater(composer=composer)
+        collator = Collator(composer=composer)
         dataset = WeightedAudioSetWebDataset(
             list_path,
             feature_dir,
@@ -92,7 +92,7 @@ def test_weighted_audioset_webdataset(
             dataset,
             batch_size=batch_size,
             num_workers=num_workers,
-            collate_fn=collater,
+            collate_fn=collator,
         )
 
         samples_per_epoch = 0
@@ -293,7 +293,7 @@ def run_distributed_weighted_audioset_webdataset_sampler(
     torch.manual_seed(seed)
 
     composer = AudioSetMultiLabelComposer(tags_key, multilabel_key)
-    collater = Collater(composer=composer)
+    collator = Collator(composer=composer)
     dataset = DistributedWeightedAudioSetWebDataset(
         list_path,
         feature_dir,
@@ -306,7 +306,7 @@ def run_distributed_weighted_audioset_webdataset_sampler(
         dataset,
         batch_size=batch_size,
         num_workers=num_workers,
-        collate_fn=collater,
+        collate_fn=collator,
     )
 
     filenames = []

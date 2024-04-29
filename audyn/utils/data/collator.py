@@ -4,12 +4,12 @@ from . import default_collate_fn
 from .dataset import Composer
 
 __all__ = [
-    "Collater",
+    "Collator",
 ]
 
 
-class Collater:
-    """Base class of collater."""
+class Collator:
+    """Base class of collator."""
 
     def __init__(self, composer: Optional[Composer] = None) -> None:
         self.composer = composer
