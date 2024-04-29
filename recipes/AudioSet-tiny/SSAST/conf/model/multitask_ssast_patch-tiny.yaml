@@ -4,5 +4,5 @@ defaults:
 
 embedding:
   kernel_size:
-    - 128
+    - 64
     - 2

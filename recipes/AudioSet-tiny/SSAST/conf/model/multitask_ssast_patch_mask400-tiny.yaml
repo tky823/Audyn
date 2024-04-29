@@ -3,4 +3,4 @@ defaults:
   - _self_
 
 masker:
-  num_masks: 400
+  num_masks: 40
