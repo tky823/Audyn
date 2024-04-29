@@ -132,6 +132,9 @@ class WeightedAudioSetWebDataset(IterableDataset):
                 binary = f.read(size)
                 ext = re.sub(r".*[.]", "", key)
 
+                # based on
+                # https://github.com/webdataset/webdataset/blob/f11fd66c163722c607ec99475a6f3cb880ec35b8/webdataset/autodecode.py#L156
+
                 if ext in supported_json_extensions:
                     decoded = json.loads(binary)
                 elif ext in supported_text_extensions:
