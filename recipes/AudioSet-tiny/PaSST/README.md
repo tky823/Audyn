@@ -23,7 +23,7 @@ data="passt-tiny"
 --data "${data}"
 ```
 
-### Stage 1: Training SoundStream
+### Stage 1: Training SSAST
 
 To train PaSST using structured patchout, run the following command:
 
