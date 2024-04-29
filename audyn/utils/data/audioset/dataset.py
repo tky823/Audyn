@@ -21,6 +21,7 @@ from .sampler import AudioSetWebDatasetWeightedRandomSampler
 __all__ = [
     "WeightedAudioSetWebDataset",
     "DistributedWeightedAudioSetWebDataset",
+    "PaSSTAudioSetWebDataset",
 ]
 
 
