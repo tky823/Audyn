@@ -13,8 +13,8 @@ from dummy.utils import select_random_port
 from dummy.utils.ddp import set_ddp_environment
 from torch.utils.data import DataLoader
 
+from audyn.utils.data.audioset.composer import AudioSetMultiLabelComposer
 from audyn.utils.data.audioset.dataset import (
-    AudioSetMultiLabelComposer,
     DistributedWeightedAudioSetWebDataset,
     WeightedAudioSetWebDataset,
 )
