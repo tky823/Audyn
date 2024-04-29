@@ -26,7 +26,7 @@ dump_root="dump"
 dump_format="webdataset"
 
 system="defaults"
-preprocess="audioset"
+preprocess="audioset-tiny"
 data="passt-tiny"
 train="passt-tiny"
 model="passt-tiny"
