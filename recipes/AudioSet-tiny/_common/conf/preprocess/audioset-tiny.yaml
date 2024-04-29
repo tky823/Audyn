@@ -1,0 +1,5 @@
+defaults:
+  - audioset
+  - _self_
+
+max_shard_size: 500000
