@@ -4,6 +4,9 @@
 
 ### Stage -1: Downloading dataset
 
+At this stage, we try to download all audio samples from YouTube, which takes so long time.
+See ``recipes/AudioSet/_common/README.md`` for the details.
+
 **NOTE**: `yt-dlp` is required to download dataset.
 
 ```sh
@@ -15,7 +18,7 @@
 ### Stage 0: Preprocessing
 
 ```sh
-data="passt-tiny"
+data="passt"
 
 . ./run.sh \
 --stage 0 \
@@ -30,11 +33,11 @@ To train PaSST using structured patchout, run the following command:
 ```sh
 tag=<TAG>
 
-data="passt-tiny"
-train="passt-tiny"
-model="passt-struct-tiny"
+data="passt"
+train="passt"
+model="passt-stride10-struct"
 optimizer="passt"
-lr_scheduler="passt-tiny"
+lr_scheduler="passt"
 criterion="audioset"
 
 . ./run.sh \
@@ -54,11 +57,11 @@ Instead, you can train PaSST using unstructured patchout by the following comman
 ```sh
 tag=<TAG>
 
-data="passt-tiny"
-train="passt-tiny"
-model="passt-unstruct-tiny"
+data="passt"
+train="passt"
+model="passt-stride10-unstruct"
 optimizer="passt"
-lr_scheduler="passt-tiny"
+lr_scheduler="passt"
 criterion="audioset"
 
 . ./run.sh \
