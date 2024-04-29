@@ -7,10 +7,10 @@ import torchaudio.functional as aF
 import torchaudio.transforms as aT
 
 from audyn.transforms.ast import SelfSupervisedAudioSpectrogramTransformerMelSpectrogram
-from audyn.utils.data.collater import BaseCollater
+from audyn.utils.data.collater import Collater
 
 
-class SSASTAudioSetCollater(BaseCollater):
+class SSASTAudioSetCollater(Collater):
     """Collater for SSAST using AudioSet.
 
     Args:
