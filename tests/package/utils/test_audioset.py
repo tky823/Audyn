@@ -70,7 +70,7 @@ def test_weighted_audioset_webdataset(
 
                 feature = {
                     "__key__": ytid,
-                    "audio.m4a": audio,
+                    "audio.wav": audio,
                     f"{tags_key}.json": tags,
                     "filename.txt": ytid,
                     "sample_rate.pth": torch.tensor(sample_rate, dtype=torch.long),
@@ -158,7 +158,7 @@ def test_distributed_weighted_audioset_webdataset_sampler(
 
                 feature = {
                     "__key__": ytid,
-                    "audio.m4a": audio,
+                    "audio.wav": audio,
                     f"{tags_key}.json": tags,
                     "filename.txt": ytid,
                     "sample_rate.pth": torch.tensor(sample_rate, dtype=torch.long),
