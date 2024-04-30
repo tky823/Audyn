@@ -81,7 +81,8 @@ def test_sortable_torch_object_dataset(sort_key: str) -> None:
 
 
 def test_webdataset_dataset() -> None:
-    key = "input"
+    text_key = "text"
+    torchdump_key = "torchdump"
     list_path = "tests/mock/dataset/torch_object/sample.txt"
     batch_size = 2
 
@@ -98,7 +99,8 @@ def test_webdataset_dataset() -> None:
                 idx = int(line.strip())
                 feature = {
                     "__key__": str(idx),
-                    f"{key}.pth": torch.tensor([idx]),
+                    f"{text_key}.txt": f"{idx}",
+                    f"{torchdump_key}.pth": torch.tensor([idx]),
                 }
 
                 sink.write(feature)
@@ -106,11 +108,14 @@ def test_webdataset_dataset() -> None:
         dataset = WebDatasetWrapper.instantiate_dataset(list_path, feature_dir)
 
         for idx, sample in enumerate(dataset):
-            assert torch.equal(torch.tensor([idx + 1]), sample[key])
+            assert sample[text_key] == f"{idx + 1}"
+            assert torch.equal(torch.tensor([idx + 1]), sample[torchdump_key])
 
         loader = DataLoader(dataset, batch_size=batch_size, collate_fn=default_collate_fn)
 
         for idx, batch in enumerate(loader):
+            assert [f"{batch_size * idx + 1}", f"{batch_size * (idx + 1)}"] == batch[text_key]
             assert torch.equal(
-                torch.tensor([[batch_size * idx + 1], [batch_size * (idx + 1)]]), batch[key]
+                torch.tensor([[batch_size * idx + 1], [batch_size * (idx + 1)]]),
+                batch[torchdump_key],
             )
