@@ -1,8 +1,10 @@
 import os
+import sys
 import tempfile
 
 import pytest
 import torch
+import torchaudio
 import webdataset as wds
 from torch.utils.data import DataLoader
 
@@ -81,9 +83,13 @@ def test_sortable_torch_object_dataset(sort_key: str) -> None:
 
 
 def test_webdataset_dataset() -> None:
+    IS_WINDOWS = sys.platform == "win32"
+
     text_key = "text"
     torchdump_key = "torchdump"
+    torchaudio_key = "torchaudio"
     list_path = "tests/mock/dataset/torch_object/sample.txt"
+    sample_rate = 16000
     batch_size = 2
 
     with tempfile.TemporaryDirectory(dir=".") as temp_dir:
@@ -102,6 +108,14 @@ def test_webdataset_dataset() -> None:
                     f"{text_key}.txt": f"{idx}",
                     f"{torchdump_key}.pth": torch.tensor([idx]),
                 }
+
+                if not IS_WINDOWS:
+                    waveform = torch.randn((1, 16000))
+                    audio_path = os.path.join(temp_dir, "audio.flac")
+                    torchaudio.save(audio_path, waveform, sample_rate, format="flac")
+
+                    with open(audio_path, mode="rb") as f_audio:
+                        feature[f"{torchaudio_key}.flac"] = f_audio.read()
 
                 sink.write(feature)
 
