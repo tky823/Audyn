@@ -43,7 +43,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt update
-          sudo apt install ffmpeg
+          sudo apt install ffmpeg < 7
       - name: Install dependencies (MacOS)
         if: matrix.os == 'macos-13'
         run: |
