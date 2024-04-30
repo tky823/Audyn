@@ -21,15 +21,16 @@ from audyn.utils.data.audioset.dataset import (
 from audyn.utils.data.collator import Collator
 
 
+@pytest.mark.parametrize("num_workers", [0, 2])
 @pytest.mark.parametrize("divisible_by_num_workers", [True, False])
 def test_weighted_audioset_webdataset(
     audioset_samples: Dict[str, Dict[str, Any]],
+    num_workers: int,
     divisible_by_num_workers: bool,
 ) -> None:
     torch.manual_seed(0)
 
     max_shard_count = 4
-    num_workers = 2
     tags_key, multilabel_key = "tags", "tags_index"
 
     if divisible_by_num_workers:
