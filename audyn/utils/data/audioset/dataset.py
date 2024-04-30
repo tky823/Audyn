@@ -3,7 +3,7 @@ import json
 import os
 import re
 import tarfile
-from io import BufferedReader, BytesIO
+from io import BytesIO
 from typing import Any, Dict, Iterator, List, Optional, Tuple, Type
 
 import torch
@@ -57,7 +57,7 @@ class WeightedAudioSetWebDataset(IterableDataset):
 
         ytids = set()
         mapping = {}
-        files: Dict[str, BufferedReader] = {}
+        files: Dict[str, _PicklableFile] = {}
 
         for url in sorted(glob.glob(os.path.join(feature_dir, "*.tar"))):
             with tarfile.open(url) as f:
@@ -284,14 +284,14 @@ class _PicklableFile:
         self.file.close()
         return self.__class__, (self.path,)
 
-    def seek(self, *args, **kwargs) -> Any:
+    def seek(self, *args, **kwargs) -> int:
         """Wrapper of file.seek."""
         return self.file.seek(*args, **kwargs)
 
-    def read(self, *args, **kwargs) -> Any:
+    def read(self, *args, **kwargs) -> bytes:
         """Wrapper of file.read."""
         return self.file.read(*args, **kwargs)
 
-    def close(self, *args, **kwargs) -> Any:
+    def close(self, *args, **kwargs) -> None:
         """Wrapper of file.close."""
         return self.file.close(*args, **kwargs)
