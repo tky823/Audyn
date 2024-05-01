@@ -22,7 +22,7 @@ from audyn.models.gan import BaseGAN
 from audyn.optim.lr_scheduler import GANLRScheduler
 from audyn.optim.optimizer import GANOptimizer
 from audyn.utils import (
-    convert_data_to_ddp_if_possible,
+    convert_dataset_and_dataloader_to_ddp_if_possible,
     instantiate,
     instantiate_cascade_text_to_wave,
     instantiate_criterion,
@@ -278,7 +278,7 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
         assert config.system.distributed.enable
         assert config.train.dataloader.train._target_ == "torch.utils.data.DataLoader"
 
-        convert_data_to_ddp_if_possible(config)
+        convert_dataset_and_dataloader_to_ddp_if_possible(config)
 
         dist.init_process_group(
             backend=config.system.distributed.backend,
@@ -310,6 +310,7 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
         loaders = BaseDataLoaders(train_loader, validation_loader)
 
         model = instantiate_model(config.model)
+        # NOTE: set_device is unavailable here.
         model = nn.parallel.DistributedDataParallel(model)
         optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
@@ -1100,7 +1101,7 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str, dataloader_t
                     == "audyn.utils.data.dataloader.DistributedDataLoader"
                 )
 
-        convert_data_to_ddp_if_possible(config)
+        convert_dataset_and_dataloader_to_ddp_if_possible(config)
 
         if dataloader_type == "audyn_sequential":
             assert (
@@ -2186,6 +2187,59 @@ def create_dummy_text_to_wave_override(
     ]
 
 
+def create_dummy_audioset_override(
+    overrides_conf_dir: str,
+    exp_dir: str,
+    list_path: str,
+    feature_dir: str,
+    batch_size: int = 1,
+    iterations: int = 1,
+    system: str = "defaults",
+    train: str = "dummy_audioset",
+    model: str = "dummy",
+    criterion: str = "dummy",
+    optimizer: str = "dummy",
+    lr_scheduler: str = "dummy",
+    continue_from: str = "",
+    checkpoint: str = "",
+) -> List[str]:
+    sample_rate = 16000
+
+    override_list = [
+        f"system={system}",
+        "preprocess.dump_format=webdataset",
+        f"train={train}",
+        "test=dummy",
+        f"model={model}",
+        f"optimizer={optimizer}",
+        f"lr_scheduler={lr_scheduler}",
+        f"criterion={criterion}",
+        f"hydra.searchpath=[{overrides_conf_dir}]",
+        "hydra.job.num=1",
+        f"hydra.runtime.output_dir={exp_dir}/log",
+        f"data.audio.sample_rate={sample_rate}",
+        f"train.dataset.train.list_path={list_path}",
+        f"train.dataset.train.feature_dir={feature_dir}",
+        f"train.dataset.validation.list_path={list_path}",
+        f"train.dataset.validation.feature_dir={feature_dir}",
+        f"train.dataloader.train.batch_size={batch_size}",
+        f"train.dataloader.validation.batch_size={batch_size}",
+        f"train.output.exp_dir={exp_dir}",
+        f"train.resume.continue_from={continue_from}",
+        f"train.steps.iterations={iterations}",
+        f"test.checkpoint={checkpoint}",
+    ]
+
+    if lr_scheduler == "none":
+        override_list += ["train.steps.lr_scheduler=''"]
+
+    if system == "cpu_ddp" and IS_WINDOWS:
+        port = os.environ["MASTER_PORT"]
+        override_list += [f"system.distributed.init_method=tcp://localhost:{port}"]
+
+    return override_list
+
+
 def create_dummy_for_dataloader_override(
     overrides_conf_dir: str,
     exp_dir: str,
@@ -2340,3 +2394,58 @@ def _validate_dataset_class_by_dump_format(config: DictConfig, dump_format) -> N
         assert fn_name == "instantiate_dataset"
     else:
         raise NotImplementedError(f"{dump_format} is not supported.")
+
+
+@pytest.fixture
+def audioset_samples() -> Dict[str, Dict[str, Any]]:
+    # TODO: define fixture to share with other tests
+    sample_rate = 44100
+
+    samples = {
+        "example0": {
+            "tags": ["/m/09x0r", "/m/05zppz"],
+            "sample_rate": sample_rate,
+        },
+        "example1": {
+            "tags": ["/m/02zsn"],
+            "sample_rate": sample_rate,
+        },
+        "example2": {
+            "tags": ["/m/05zppz", "/m/0ytgt", "/m/01h8n0", "/m/02qldy"],
+            "sample_rate": sample_rate,
+        },
+        "example3": {
+            "tags": ["/m/0261r1"],
+            "sample_rate": sample_rate,
+        },
+        "example4": {
+            "tags": ["/m/0261r1", "/m/09x0r", "/m/0brhx"],
+            "sample_rate": sample_rate,
+        },
+        "example5": {
+            "tags": ["/m/0261r1", "/m/07p6fty"],
+            "sample_rate": sample_rate,
+        },
+        "example6": {
+            "tags": ["/m/09x0r", "/m/07q4ntr"],
+            "sample_rate": sample_rate,
+        },
+        "example7": {
+            "tags": ["/m/09x0r", "/m/07rwj3x", "/m/07sr1lc"],
+            "sample_rate": sample_rate,
+        },
+        "example8": {
+            "tags": ["/m/04gy_2"],
+            "sample_rate": sample_rate,
+        },
+        "example9": {
+            "tags": ["/t/dd00135", "/m/03qc9zr", "/m/02rtxlg", "/m/01j3sz"],
+            "sample_rate": sample_rate,
+        },
+        "example10": {
+            "tags": ["/m/0261r1", "/m/05zppz", "/t/dd00001"],
+            "sample_rate": sample_rate,
+        },
+    }
+
+    return samples
