@@ -15,7 +15,7 @@ jobs:
         python-version: ["3.8", "3.9", "3.10", "3.11"]
         # macos-13: x86_64, macos-latest: arm
         # See https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macos-13, windows-latest]
         torch-version: ["1.9.0", "1.11.0", "2.0.0", "2.1.0", "2.2.0"]
         exclude:
           # skip torch==1.9 and 1.11 for the time being
