@@ -9,6 +9,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple, Type
 import torch
 from torch.utils.data import IterableDataset, get_worker_info
 
+from .. import rename_webdataset_keys
 from ..webdataset import (
     supported_audio_extensions,
     supported_json_extensions,
@@ -161,6 +162,8 @@ class WeightedAudioSetWebDataset(IterableDataset):
                     raise ValueError(f"Invalid key {key} is detected.")
 
                 sample[key] = decoded
+
+            sample = rename_webdataset_keys(sample)
 
             yield sample
 
