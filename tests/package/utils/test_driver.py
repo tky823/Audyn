@@ -22,7 +22,7 @@ from audyn.models.gan import BaseGAN
 from audyn.optim.lr_scheduler import GANLRScheduler
 from audyn.optim.optimizer import GANOptimizer
 from audyn.utils import (
-    convert_dataloader_to_ddp_if_possible,
+    convert_data_to_ddp_if_possible,
     instantiate,
     instantiate_cascade_text_to_wave,
     instantiate_criterion,
@@ -278,7 +278,7 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
         assert config.system.distributed.enable
         assert config.train.dataloader.train._target_ == "torch.utils.data.DataLoader"
 
-        convert_dataloader_to_ddp_if_possible(config)
+        convert_data_to_ddp_if_possible(config)
 
         dist.init_process_group(
             backend=config.system.distributed.backend,
@@ -1100,7 +1100,7 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str, dataloader_t
                     == "audyn.utils.data.dataloader.DistributedDataLoader"
                 )
 
-        convert_dataloader_to_ddp_if_possible(config)
+        convert_data_to_ddp_if_possible(config)
 
         if dataloader_type == "audyn_sequential":
             assert (
