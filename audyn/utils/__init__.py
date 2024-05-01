@@ -37,7 +37,7 @@ __all__ = [
     "audyn_cache_dir",
     "model_cache_dir",
     "setup_system",
-    "convert_data_to_ddp_if_possible",
+    "convert_dataset_and_dataloader_to_ddp_if_possible",
     "convert_dataset_and_dataloader_format_if_necessary",
     "instantiate",
     "instantiate_model",
@@ -118,7 +118,7 @@ def setup_system(config: DictConfig) -> None:
             )
         else:
             # overwrite full_config
-            convert_data_to_ddp_if_possible(full_config)
+            convert_dataset_and_dataloader_to_ddp_if_possible(full_config)
             system_config = full_config.system
 
         setup_distributed(system_config)
@@ -129,7 +129,7 @@ def setup_system(config: DictConfig) -> None:
         torch.cuda.manual_seed_all(system_config.seed)
 
 
-def convert_data_to_ddp_if_possible(config: DictConfig) -> None:
+def convert_dataset_and_dataloader_to_ddp_if_possible(config: DictConfig) -> None:
     """Convert dataset and data loader in config.train.dataloader.train and
     config.train.dataloader.validation for DDP.
 
