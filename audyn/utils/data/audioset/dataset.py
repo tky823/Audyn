@@ -22,6 +22,7 @@ __all__ = [
     "WeightedAudioSetWebDataset",
     "DistributedWeightedAudioSetWebDataset",
     "PaSSTAudioSetWebDataset",
+    "DistributedPaSSTAudioSetWebDataset",
 ]
 
 
@@ -281,6 +282,41 @@ class PaSSTAudioSetWebDataset(WeightedAudioSetWebDataset):
             decode_audio_as_monoral=decode_audio_as_monoral,
             decode_audio_as_waveform=decode_audio_as_waveform,
             generator=generator,
+        )
+
+
+class DistributedPaSSTAudioSetWebDataset(DistributedWeightedAudioSetWebDataset):
+    """AudioSet using WebDataset with weighted random sampling for distributed training.
+
+    See ``audyn.utils.data.audioset.dataset.WeightedAudioSetWebDataset`` for the
+    details of arguments.
+
+    """
+
+    def __init__(
+        self,
+        list_path: str,
+        feature_dir: str,
+        length: int,
+        replacement: bool = True,
+        smooth: float = 1000,
+        num_workers: int = 0,
+        num_replicas: Optional[int] = None,
+        rank: Optional[int] = None,
+        seed: int = 0,
+        drop_last: bool = False,
+    ) -> None:
+        super().__init__(
+            list_path,
+            feature_dir,
+            length,
+            replacement=replacement,
+            smooth=smooth,
+            num_workers=num_workers,
+            num_replicas=num_replicas,
+            rank=rank,
+            seed=seed,
+            drop_last=drop_last,
         )
 
 
