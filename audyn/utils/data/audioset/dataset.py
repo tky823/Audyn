@@ -78,10 +78,12 @@ class WeightedAudioSetWebDataset(IterableDataset):
                     mapping[ytid]["data"][key] = data
 
             files[url] = _PicklableFile(url)
+            files[url].close()
 
         self.ytids = sorted(list(mapping.keys()))
         self.mapping = mapping
         self.files = files
+        self.worker_id = None
 
         with open(list_path) as f:
             assert len(self.ytids) == sum(1 for _ in f)
@@ -95,19 +97,28 @@ class WeightedAudioSetWebDataset(IterableDataset):
         )
 
     def __iter__(self) -> Iterator:
-        worker_info = get_worker_info()
+        if self.worker_id is None:
+            # should be initialized
+            worker_info = get_worker_info()
 
-        if worker_info is not None:
-            worker_id = worker_info.id
-            num_workers = worker_info.num_workers
+            if worker_info is None:
+                self.worker_id = 0
+                num_workers = 1
+            else:
+                self.worker_id = worker_info.id
+                num_workers = worker_info.num_workers
+
             num_total_samples = self.sampler.num_samples
-
             num_samples_per_worker = num_total_samples // num_workers
 
-            if worker_id < num_total_samples % num_workers:
+            if self.worker_id < num_total_samples % num_workers:
                 num_samples_per_worker += 1
 
             self.sampler.num_samples = num_samples_per_worker
+
+            for url in self.files.keys():
+                self.files[url].close()
+                self.files[url] = _PicklableFile(url)
 
         for index in self.sampler:
             ytid = self.ytids[index]
