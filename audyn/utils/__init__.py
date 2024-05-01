@@ -156,7 +156,7 @@ def convert_data_to_ddp_if_possible(config: DictConfig) -> None:
 
     # resolve configs at first
     for subset in subset_names:
-        dataset_config = getattr(config.train.dataloader, subset)
+        dataset_config = getattr(config.train.dataset, subset)
         dataset_config = OmegaConf.to_container(dataset_config, resolve=True)
         dataset_configs[subset] = OmegaConf.create(dataset_config)
 
@@ -170,12 +170,42 @@ def convert_data_to_ddp_if_possible(config: DictConfig) -> None:
 
         # split _target_ into names of package, module, variable
         # e.g.
+        #         _target_: audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset
+        #     package_name: audyn
+        #         mod_name: audyn.utils.data.dataset.WebDatasetWrapper
+        #         var_name: instantiate_dataset
+        #   maybe_mod_name: audyn.utils.data.dataset
+        # maybe_class_name: WebDatasetWrapper
+        #
+        #         _target_: audyn.utils.data.audioset.dataset.DistributedWeightedAudioSetWebDataset
+        #     package_name: audyn
+        #         mod_name: audyn.utils.data.audioset.dataset.
+        #         var_name: DistributedWeightedAudioSetWebDataset
+        #   maybe_mod_name: audyn.utils.data.audioset
+        # maybe_class_name: dataset
+
+        dataset_mod_name, dataset_var_name = dataset_config._target_.rsplit(".", maxsplit=1)
+        dataset_factory_fn = None
+
+        if "." in dataset_mod_name:
+            maybe_mod_name, maybe_class_name = dataset_mod_name.rsplit(".", maxsplit=1)
+            maybe_cls = getattr(importlib.import_module(maybe_mod_name), maybe_class_name)
+
+            if isinstance(maybe_cls, type):
+                # use class or static method as factory function
+                dataset_factory_fn = getattr(maybe_cls, dataset_var_name)
+
+        if dataset_factory_fn is None:
+            dataset_factory_fn = getattr(
+                importlib.import_module(dataset_mod_name), dataset_var_name
+            )
+
+        # split _target_ into names of package, module, variable
+        # e.g.
         #     _target_: audyn.utils.data.SequentialBatchDataLoader
         # package_name: audyn
         #     mod_name: audyn.utils.data
         #     var_name: SequentialBatchDataLoader
-        dataset_mod_name, dataset_var_name = dataset_config._target_.rsplit(".", maxsplit=1)
-        dataset_cls = getattr(importlib.import_module(dataset_mod_name), dataset_var_name)
         dataloader_mod_name, dataloader_var_name = dataloader_config._target_.rsplit(
             ".", maxsplit=1
         )
@@ -214,7 +244,10 @@ def convert_data_to_ddp_if_possible(config: DictConfig) -> None:
                 else:
                     seed = "${system.seed}"
 
-                if dataset_cls is WeightedAudioSetWebDataset:
+                if dataset_factory_fn == WebDatasetWrapper.instantiate_dataset:
+                    # DistributedDataLoader is not available
+                    pass
+                elif dataset_factory_fn is WeightedAudioSetWebDataset:
                     # WeightedAudioSetWebDataset -> DistributedWeightedAudioSetWebDataset
                     ddp_target = ".".join(
                         [
