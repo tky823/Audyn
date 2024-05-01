@@ -114,6 +114,7 @@ class WebDatasetWrapper(wds.WebDataset):
         *args,
         detshuffle: bool = True,
         shuffle_size: Any = None,
+        nodesplitter: Callable = wds.split_by_node,
         composer: Callable[[Any], Any] = None,
         decode_audio_as_waveform: Optional[bool] = None,
         decode_audio_as_monoral: Optional[bool] = None,
@@ -125,6 +126,7 @@ class WebDatasetWrapper(wds.WebDataset):
             args: Positional arguments given to WebDataset.
             kwargs: Keyword arguments given to WebDataset.
             shuffle_size (any, optional): Shuffle size for training dataset.
+            nodesplitter (callable): Module to split dataset by node.
             decode_audio_as_waveform (bool, optional): If ``True``, audio is decoded as waveform
                 tensor and sampling rate is ignored. Otherwise, audio is decoded as tuple of
                 waveform tensor and sampling rate. This parameter is given to Composer class.
@@ -171,7 +173,14 @@ class WebDatasetWrapper(wds.WebDataset):
         with open(list_path) as f:
             length = sum(1 for _ in f)
 
-        dataset = cls(urls, feature_dir, *args, detshuffle=detshuffle, **kwargs)
+        dataset = cls(
+            urls,
+            feature_dir,
+            *args,
+            detshuffle=detshuffle,
+            nodesplitter=nodesplitter,
+            **kwargs,
+        )
         dataset = dataset.with_epoch(length).with_length(length)
 
         if shuffle_size is not None:
