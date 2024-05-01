@@ -30,7 +30,7 @@ def test_weighted_audioset_webdataset(
 ) -> None:
     torch.manual_seed(0)
 
-    max_shard_count = 4
+    max_shard_size = 50000
     tags_key, multilabel_key = "tags", "tags_index"
 
     if divisible_by_num_workers:
@@ -52,7 +52,7 @@ def test_weighted_audioset_webdataset(
         list_path = os.path.join(list_dir, "train.txt")
         tar_path = os.path.join(feature_dir, "%d.tar")
 
-        with wds.ShardWriter(tar_path, maxcount=max_shard_count) as sink, open(
+        with wds.ShardWriter(tar_path, maxsize=max_shard_size) as sink, open(
             list_path, mode="w"
         ) as f_list:
             for ytid in sorted(audioset_samples.keys()):
@@ -79,8 +79,6 @@ def test_weighted_audioset_webdataset(
 
                 sink.write(feature)
                 f_list.write(ytid + "\n")
-
-        assert len(os.listdir(feature_dir)) == (len(audioset_samples) - 1) // max_shard_count + 1
 
         composer = AudioSetMultiLabelComposer(tags_key, multilabel_key)
         collator = Collator(composer=composer)
