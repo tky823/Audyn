@@ -264,7 +264,7 @@ class WeightedAudioSetWebDataset(IterableDataset):
 
                 sample[key] = decoded
 
-                yield sample
+            yield sample
 
 
 class DistributedWeightedAudioSetWebDataset(WeightedAudioSetWebDataset):
