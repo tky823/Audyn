@@ -172,33 +172,28 @@ def convert_dataset_and_dataloader_to_ddp_if_possible(config: DictConfig) -> Non
         # e.g.
         #         _target_: audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset
         #     package_name: audyn
-        #         mod_name: audyn.utils.data.dataset.WebDatasetWrapper
-        #         var_name: instantiate_dataset
-        #   maybe_mod_name: audyn.utils.data.dataset
-        # maybe_class_name: WebDatasetWrapper
+        #         mod_name: audyn.utils.data.dataset
+        #         var_name: WebDatasetWrapper
+        #         fn_name: instantiate_dataset
         #
         #         _target_: audyn.utils.data.audioset.dataset.DistributedWeightedAudioSetWebDataset
         #     package_name: audyn
-        #         mod_name: audyn.utils.data.audioset.dataset.
+        #         mod_name: audyn.utils.data.audioset.dataset
         #         var_name: DistributedWeightedAudioSetWebDataset
-        #   maybe_mod_name: audyn.utils.data.audioset
-        # maybe_class_name: dataset
+        #          fn_name: None
 
         dataset_mod_name, dataset_var_name = dataset_config._target_.rsplit(".", maxsplit=1)
-        dataset_factory_fn = None
 
-        if "." in dataset_mod_name:
-            maybe_mod_name, maybe_class_name = dataset_mod_name.rsplit(".", maxsplit=1)
-            maybe_cls = getattr(importlib.import_module(maybe_mod_name), maybe_class_name)
-
-            if isinstance(maybe_cls, type):
-                # use class or static method as factory function
-                dataset_factory_fn = getattr(maybe_cls, dataset_var_name)
-
-        if dataset_factory_fn is None:
-            dataset_factory_fn = getattr(
-                importlib.import_module(dataset_mod_name), dataset_var_name
-            )
+        try:
+            dataset_fn_name = None
+            imported_dataset_module = importlib.import_module(dataset_mod_name)
+            dataset_factory_fn = getattr(imported_dataset_module, dataset_var_name)
+        except ModuleNotFoundError:
+            dataset_fn_name = dataset_var_name
+            dataset_mod_name, dataset_var_name = dataset_mod_name.rsplit(".", maxsplit=1)
+            imported_dataset_module = importlib.import_module(dataset_mod_name)
+            dataset_cls = getattr(imported_dataset_module, dataset_var_name)
+            dataset_factory_fn = getattr(dataset_cls, dataset_fn_name)
 
         # split _target_ into names of package, module, variable
         # e.g.
