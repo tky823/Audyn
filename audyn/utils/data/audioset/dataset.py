@@ -3,13 +3,15 @@ import json
 import os
 import re
 import tarfile
+import warnings
 from io import BytesIO
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Type
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Type
 
 import torch
 from torch.utils.data import IterableDataset, get_worker_info
 
 from .. import rename_webdataset_keys
+from ..composer import Composer
 from ..webdataset import (
     supported_audio_extensions,
     supported_json_extensions,
@@ -90,6 +92,8 @@ class WeightedAudioSetWebDataset(IterableDataset):
         with open(list_path) as f:
             assert len(self.ytids) == sum(1 for _ in f)
 
+        # set composer and sampler
+        self.composer = None
         self.set_sampler(
             feature_dir,
             length,
@@ -97,6 +101,56 @@ class WeightedAudioSetWebDataset(IterableDataset):
             smooth=smooth,
             ytids=self.ytids,
         )
+
+    @classmethod
+    def instantiate_dataset(
+        cls,
+        list_path: str,
+        feature_dir: str,
+        length: int,
+        *args,
+        replacement: bool = True,
+        smooth: float = 1,
+        composer: Callable[[Any], Any] = None,
+        decode_audio_as_waveform: Optional[bool] = None,
+        decode_audio_as_monoral: Optional[bool] = None,
+        **kwargs,
+    ) -> "WeightedAudioSetWebDataset":
+        dataset = cls(
+            list_path,
+            feature_dir,
+            length,
+            *args,
+            replacement=replacement,
+            smooth=smooth,
+            **kwargs,
+        )
+
+        if composer is None:
+            if decode_audio_as_waveform is None:
+                decode_audio_as_waveform = True
+
+            if decode_audio_as_monoral is None:
+                decode_audio_as_monoral = True
+
+            composer = Composer(
+                decode_audio_as_waveform=decode_audio_as_waveform,
+                decode_audio_as_monoral=decode_audio_as_monoral,
+            )
+        else:
+            if decode_audio_as_waveform is not None:
+                warnings.warn(
+                    "decode_audio_as_waveform is given, but ignored.", UserWarning, stacklevel=2
+                )
+
+            if decode_audio_as_monoral is not None:
+                warnings.warn(
+                    "decode_audio_as_monoral is given, but ignored.", UserWarning, stacklevel=2
+                )
+
+        dataset = dataset.compose(composer)
+
+        return dataset
 
     def __iter__(self) -> Iterator:
         if self.worker_id is None:
@@ -188,6 +242,23 @@ class WeightedAudioSetWebDataset(IterableDataset):
             smooth=smooth,
             ytids=ytids,
         )
+
+    def compose(self, composer: Composer) -> "WeightedAudioSetWebDataset":
+        """Set composer to dataset.
+
+        Args:
+            composer (Composer): Module to process each dict-like sample in a batch.
+
+        Returns:
+            WeightedAudioSetWebDataset: Dataset using composer.
+
+        """
+        if self.composer is not None:
+            raise ValueError("Composer is already defined.")
+
+        self.composer = composer
+
+        return self
 
 
 class DistributedWeightedAudioSetWebDataset(WeightedAudioSetWebDataset):
