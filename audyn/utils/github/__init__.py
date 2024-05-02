@@ -31,11 +31,11 @@ def download_file_from_github_release(
 
     .. note::
 
-        You may need to set ``GITHUB_ACCESS_TOKEN`` as environmental variable to download
+        You may need to set ``GITHUB_TOKEN`` as environmental variable to download
         private assets.
 
     """
-    token = os.getenv("GITHUB_ACCESS_TOKEN", None)
+    token = os.getenv("GITHUB_TOKEN", None)
 
     if os.path.exists(path):
         if force_download:
@@ -74,7 +74,7 @@ def download_file_from_github_release(
 
 def _obtain_metadata(url: str) -> Tuple[str, int]:
     """Convert browser_download_url to actual url to download."""
-    token = os.getenv("GITHUB_ACCESS_TOKEN", None)
+    token = os.getenv("GITHUB_TOKEN", None)
 
     parsed_url = urlparse(url)
     parsed_url.hostname
