@@ -42,6 +42,11 @@ class WeightedAudioSetWebDataset(IterableDataset):
         smooth (int): Offset to frequency of each class. In [#koutini2022efficient]_, ``1000``
             is used. Default: ``1``.
 
+    .. note::
+
+        After finishing all the processes, it is recommended to close opened files
+        by calling ``.close()``.
+
     .. [#koutini2022efficient]
         K. Koutini et al., "Efficient training of audio transformers with patchout,"
         in *Interspeech*, 2022.
@@ -81,7 +86,6 @@ class WeightedAudioSetWebDataset(IterableDataset):
                     mapping[ytid]["data"][key] = data
 
             files[url] = _PicklableFile(url)
-            files[url].close()
 
         self.ytids = sorted(list(mapping.keys()))
         self.mapping = mapping
@@ -100,6 +104,8 @@ class WeightedAudioSetWebDataset(IterableDataset):
             smooth=smooth,
             ytids=self.ytids,
         )
+
+        self.close_all()
 
     @classmethod
     def instantiate_dataset(
@@ -265,6 +271,11 @@ class WeightedAudioSetWebDataset(IterableDataset):
                 sample[key] = decoded
 
             yield sample
+
+    def close_all(self, *args, **kwargs) -> None:
+        """Close all tar files."""
+        for url in self.files.keys():
+            self.files[url].close(*args, **kwargs)
 
 
 class DistributedWeightedAudioSetWebDataset(WeightedAudioSetWebDataset):
