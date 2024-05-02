@@ -180,3 +180,32 @@ class DummyCNN(nn.Module):
         output = x.mean(dim=(1, 2))
 
         return output
+
+
+class DummyWaveformProcessor(nn.Module):
+    def __init__(self, is_monoral: bool) -> None:
+        super().__init__()
+
+        if is_monoral:
+            num_channels = 1
+        else:
+            num_channels = 2
+
+        self.linear = nn.Linear(num_channels, num_channels)
+
+        self.is_monoral = is_monoral
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        if self.is_monoral:
+            x = input.unsqueeze(dim=-1)
+        else:
+            x = input.transpose(-2, -1)
+
+        x = self.linear(x)
+
+        if self.is_monoral:
+            output = x.squeeze(dim=-1)
+        else:
+            output = x.transpose(-2, -1)
+
+        return output
