@@ -3,6 +3,8 @@ from typing import Any, Dict, Iterable
 
 from .webdataset import decode_audio, supported_audio_extensions
 
+__all__ = ["Composer"]
+
 
 class Composer:
     """Composer given to process each sample in list of samples.
