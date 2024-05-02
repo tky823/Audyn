@@ -11,6 +11,7 @@ import pytest
 import torch
 import torch.distributed as dist
 import torch.nn as nn
+import torchaudio
 import webdataset as wds
 from dummy import allclose
 from omegaconf import DictConfig, OmegaConf
@@ -22,6 +23,7 @@ from audyn.models.gan import BaseGAN
 from audyn.optim.lr_scheduler import GANLRScheduler
 from audyn.optim.optimizer import GANOptimizer
 from audyn.utils import (
+    convert_dataset_and_dataloader_format_if_necessary,
     convert_dataset_and_dataloader_to_ddp_if_possible,
     instantiate,
     instantiate_cascade_text_to_wave,
@@ -278,6 +280,7 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
         assert config.system.distributed.enable
         assert config.train.dataloader.train._target_ == "torch.utils.data.DataLoader"
 
+        convert_dataset_and_dataloader_format_if_necessary(config)
         convert_dataset_and_dataloader_to_ddp_if_possible(config)
 
         dist.init_process_group(
@@ -309,6 +312,167 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
         )
         loaders = BaseDataLoaders(train_loader, validation_loader)
 
+        model = instantiate_model(config.model)
+        # NOTE: set_device is unavailable here.
+        model = nn.parallel.DistributedDataParallel(model)
+        optimizer = instantiate_optimizer(config.optimizer, model)
+        lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
+        criterion = instantiate_criterion(config.criterion)
+
+        trainer = BaseTrainer(
+            loaders,
+            model,
+            optimizer,
+            lr_scheduler=lr_scheduler,
+            criterion=criterion,
+            config=config,
+        )
+        trainer.run()
+        trainer.writer.flush()
+
+        dist.destroy_process_group()
+
+        monkeypatch.undo()
+
+
+def test_base_trainer_ddp_for_audioset(
+    monkeypatch: MonkeyPatch, audioset_samples: Dict[str, Dict[str, Any]]
+) -> None:
+    """Test BaseTrainer for DDP."""
+    BATCH_SIZE = 3
+    ITERATIONS = 3
+
+    max_shard_count = 4
+
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
+        monkeypatch.chdir(temp_dir)
+
+        # set environmental variables
+        os.environ["LOCAL_RANK"] = "0"
+        os.environ["RANK"] = "0"
+        os.environ["WORLD_SIZE"] = "1"
+        os.environ["MASTER_ADDR"] = "localhost"
+        os.environ["MASTER_PORT"] = str(torch.randint(0, 2**16, ()).item())
+
+        overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
+        exp_dir = "./exp"
+
+        audio_dir = os.path.join(temp_dir, "audio")
+        list_dir = os.path.join(temp_dir, "list")
+        feature_dir = os.path.join(temp_dir, "feature")
+
+        os.makedirs(audio_dir, exist_ok=True)
+        os.makedirs(list_dir, exist_ok=True)
+        os.makedirs(feature_dir, exist_ok=True)
+
+        list_path = os.path.join(list_dir, "dataset.txt")
+        tar_path = os.path.join(feature_dir, "%d.tar")
+
+        with wds.ShardWriter(tar_path, maxcount=max_shard_count) as sink, open(
+            list_path, mode="w"
+        ) as f_list:
+            for ytid in sorted(audioset_samples.keys()):
+                sample = audioset_samples[ytid]
+                sample_rate = sample["sample_rate"]
+                tags = sample["tags"]
+                waveform = torch.randn((2, 10 * sample_rate))
+                amplitude = torch.abs(waveform)
+                waveform = waveform / torch.max(amplitude)
+                waveform = 0.9 * waveform
+                path = os.path.join(audio_dir, f"{ytid}.wav")
+                torchaudio.save(path, waveform, sample_rate)
+
+                with open(path, mode="rb") as f_audio:
+                    audio = f_audio.read()
+
+                feature = {
+                    "__key__": ytid,
+                    "audio.wav": audio,
+                    "tags.json": tags,
+                    "filename.txt": ytid,
+                    "sample_rate.pth": torch.tensor(sample_rate, dtype=torch.long),
+                }
+
+                sink.write(feature)
+                f_list.write(ytid + "\n")
+
+        with hydra.initialize(
+            version_base="1.2",
+            config_path=relpath(config_template_path, dirname(realpath(__file__))),
+            job_name="test_driver",
+        ):
+            system_name = "cpu_ddp"
+            train_name = "dummy_audioset"
+            lr_scheduler_name = "dummy"
+            optimizer_name = "dummy"
+
+            config = hydra.compose(
+                config_name="config",
+                overrides=create_dummy_audioset_override(
+                    overrides_conf_dir=overrides_conf_dir,
+                    exp_dir=exp_dir,
+                    list_path=list_path,
+                    feature_dir=feature_dir,
+                    batch_size=BATCH_SIZE,
+                    iterations=ITERATIONS,
+                    system=system_name,
+                    train=train_name,
+                    optimizer=optimizer_name,
+                    lr_scheduler=lr_scheduler_name,
+                ),
+                return_hydra_config=True,
+            )
+
+        assert config.system.distributed.enable
+        assert (
+            config.train.dataset.train._target_
+            == "audyn.utils.data.audioset.dataset.WeightedAudioSetWebDataset.instantiate_dataset"
+        )
+        assert (
+            config.train.dataset.validation._target_
+            == "audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset"
+        )
+        assert config.train.dataloader.train._target_ == "torch.utils.data.DataLoader"
+        assert config.train.dataloader.validation._target_ == "torch.utils.data.DataLoader"
+
+        convert_dataset_and_dataloader_format_if_necessary(config)
+        convert_dataset_and_dataloader_to_ddp_if_possible(config)
+
+        dist.init_process_group(
+            backend=config.system.distributed.backend,
+            init_method=config.system.distributed.init_method,
+            rank=int(os.environ["RANK"]),
+            world_size=int(os.environ["WORLD_SIZE"]),
+            timeout=timedelta(minutes=5),
+        )
+        torch.manual_seed(config.system.seed)
+
+        assert config.system.distributed.enable
+        assert (
+            config.train.dataset.train._target_
+            == "audyn.utils.data.audioset.dataset.DistributedWeightedAudioSetWebDataset.instantiate_dataset"  # noqa: E501
+        )
+        assert (
+            config.train.dataset.validation._target_
+            == "audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset"
+        )
+        assert config.train.dataloader.train._target_ == "torch.utils.data.DataLoader"
+        assert config.train.dataloader.validation._target_ == "torch.utils.data.DataLoader"
+
+        train_dataset = instantiate(config.train.dataset.train)
+        validation_dataset = instantiate(config.train.dataset.validation)
+        train_loader = instantiate(
+            config.train.dataloader.train,
+            train_dataset,
+            collate_fn=default_collate_fn,
+        )
+        validation_loader = instantiate(
+            config.train.dataloader.validation,
+            validation_dataset,
+            collate_fn=default_collate_fn,
+        )
+
+        loaders = BaseDataLoaders(train_loader, validation_loader)
         model = instantiate_model(config.model)
         # NOTE: set_device is unavailable here.
         model = nn.parallel.DistributedDataParallel(model)
@@ -1101,6 +1265,7 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str, dataloader_t
                     == "audyn.utils.data.dataloader.DistributedDataLoader"
                 )
 
+        convert_dataset_and_dataloader_format_if_necessary(config)
         convert_dataset_and_dataloader_to_ddp_if_possible(config)
 
         if dataloader_type == "audyn_sequential":
@@ -2196,14 +2361,15 @@ def create_dummy_audioset_override(
     iterations: int = 1,
     system: str = "defaults",
     train: str = "dummy_audioset",
-    model: str = "dummy",
-    criterion: str = "dummy",
     optimizer: str = "dummy",
     lr_scheduler: str = "dummy",
     continue_from: str = "",
     checkpoint: str = "",
 ) -> List[str]:
     sample_rate = 16000
+
+    model = "dummy_waveform_processor"
+    criterion = "dummy_audioset"
 
     override_list = [
         f"system={system}",
