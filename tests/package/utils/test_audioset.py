@@ -120,6 +120,9 @@ def test_weighted_audioset_webdataset(
 
         assert samples_per_epoch == expected_samples_per_epoch
 
+        for url in dataset.files.keys():
+            dataset.files[url].close()
+
 
 @pytest.mark.parametrize("num_workers", [0, 2])
 @pytest.mark.parametrize("divisible_by_num_workers", [True, False])
@@ -360,5 +363,8 @@ def run_distributed_weighted_audioset_webdataset_sampler(
         filenames.append(filenames_per_epoch)
 
     torch.save(filenames, path)
+
+    for url in dataset.files.keys():
+        dataset.files[url].close()
 
     dist.destroy_process_group()
