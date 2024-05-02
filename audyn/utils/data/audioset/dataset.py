@@ -10,7 +10,6 @@ from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Type
 import torch
 from torch.utils.data import IterableDataset, get_worker_info
 
-from .. import rename_webdataset_keys
 from ..composer import Composer
 from ..webdataset import (
     supported_audio_extensions,
@@ -152,7 +151,7 @@ class WeightedAudioSetWebDataset(IterableDataset):
 
         return dataset
 
-    def __iter__(self) -> Iterator:
+    def __iter__(self) -> Iterator[Dict[str, Any]]:
         if self.worker_id is None:
             # should be initialized
             worker_info = get_worker_info()
@@ -176,6 +175,54 @@ class WeightedAudioSetWebDataset(IterableDataset):
                 self.files[url].close()
                 self.files[url] = _PicklableFile(url)
 
+        decoding_iterator = self._decode()
+
+        if self.composer is None:
+            yield from decoding_iterator
+        else:
+            yield from self.composer(decoding_iterator)
+
+    def __len__(self) -> int:
+        return self.sampler.num_samples
+
+    def set_sampler(
+        self,
+        feature_dir: str,
+        length: int,
+        replacement: bool = True,
+        smooth: float = 1,
+        ytids: List[str] = None,
+    ) -> None:
+        if ytids is None:
+            ytids = self.ytids
+
+        self.sampler = AudioSetWebDatasetWeightedRandomSampler(
+            feature_dir,
+            length,
+            replacement=replacement,
+            smooth=smooth,
+            ytids=ytids,
+        )
+
+    def compose(self, composer: Composer) -> "WeightedAudioSetWebDataset":
+        """Set composer to dataset.
+
+        Args:
+            composer (Composer): Module to process each dict-like sample in a batch.
+
+        Returns:
+            WeightedAudioSetWebDataset: Dataset using composer.
+
+        """
+        if self.composer is not None:
+            raise ValueError("Composer is already defined.")
+
+        self.composer = composer
+
+        return self
+
+    def _decode(self) -> Iterator[Dict[str, Any]]:
+        """Return decoding iterator called in __iter__."""
         for index in self.sampler:
             ytid = self.ytids[index]
             mapping = self.mapping[ytid]
@@ -217,48 +264,7 @@ class WeightedAudioSetWebDataset(IterableDataset):
 
                 sample[key] = decoded
 
-            sample = rename_webdataset_keys(sample)
-
-            yield sample
-
-    def __len__(self) -> int:
-        return self.sampler.num_samples
-
-    def set_sampler(
-        self,
-        feature_dir: str,
-        length: int,
-        replacement: bool = True,
-        smooth: float = 1,
-        ytids: List[str] = None,
-    ) -> None:
-        if ytids is None:
-            ytids = self.ytids
-
-        self.sampler = AudioSetWebDatasetWeightedRandomSampler(
-            feature_dir,
-            length,
-            replacement=replacement,
-            smooth=smooth,
-            ytids=ytids,
-        )
-
-    def compose(self, composer: Composer) -> "WeightedAudioSetWebDataset":
-        """Set composer to dataset.
-
-        Args:
-            composer (Composer): Module to process each dict-like sample in a batch.
-
-        Returns:
-            WeightedAudioSetWebDataset: Dataset using composer.
-
-        """
-        if self.composer is not None:
-            raise ValueError("Composer is already defined.")
-
-        self.composer = composer
-
-        return self
+                yield sample
 
 
 class DistributedWeightedAudioSetWebDataset(WeightedAudioSetWebDataset):
