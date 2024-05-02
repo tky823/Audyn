@@ -104,8 +104,6 @@ class WebDatasetWrapper(wds.WebDataset):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        warnings.warn("WebDatasetWrapper is not fully supported.", UserWarning)
-
     @classmethod
     def instantiate_dataset(
         cls,
