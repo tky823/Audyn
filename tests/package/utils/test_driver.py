@@ -491,6 +491,16 @@ def test_base_trainer_ddp_for_audioset(
         trainer.run()
         trainer.writer.flush()
 
+        if hasattr(trainer.loaders.train.dataset, "close_all") and callable(
+            trainer.loaders.train.dataset.close_all
+        ):
+            trainer.loaders.train.dataset.close_all()
+
+        if hasattr(trainer.loaders.validation.dataset, "close_all") and callable(
+            trainer.loaders.validation.dataset.close_all
+        ):
+            trainer.loaders.validation.dataset.close_all()
+
         dist.destroy_process_group()
 
         monkeypatch.undo()
