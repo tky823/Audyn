@@ -407,6 +407,11 @@ def convert_dataset_and_dataloader_format_if_necessary(config: DictConfig) -> No
 
 
 def _search_webdataset_format_dataset(config: DictConfig) -> Tuple[str, Dict[str, Any]]:
+    from .data.audioset.dataset import (
+        DistributedWeightedAudioSetWebDataset,
+        WeightedAudioSetWebDataset,
+    )
+
     # split _target_ into names of package, module, variable
     # e.g.
     #     _target_: audyn.utils.data.TorchObjectDataset
@@ -440,7 +445,11 @@ def _search_webdataset_format_dataset(config: DictConfig) -> Tuple[str, Dict[str
         _warn_unexpected_dataset_for_webdataset(cls)
     elif package_name == "audyn":
         # NOTE: WebDatasetWrapper.instantiate_dataset is not a class.
-        if cls is WebDatasetWrapper:
+        if (
+            cls is WebDatasetWrapper
+            or cls is WeightedAudioSetWebDataset
+            or cls is DistributedWeightedAudioSetWebDataset
+        ):
             # WebDataset is supported by WebDatasetWrapper.
             pass
         elif cls is TorchObjectDataset:
