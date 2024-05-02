@@ -246,7 +246,28 @@ def convert_dataset_and_dataloader_to_ddp_if_possible(config: DictConfig) -> Non
 
                 if dataset_factory_fn == WebDatasetWrapper.instantiate_dataset:
                     # DistributedDataLoader is not available
+                    # wds.split_by_node plays such role
                     pass
+                elif dataset_factory_fn == WeightedAudioSetWebDataset.instantiate_dataset:
+                    # WeightedAudioSetWebDataset.instantiate_dataset
+                    # -> DistributedWeightedAudioSetWebDataset.instantiate_dataset
+                    ddp_target = ".".join(
+                        [
+                            DistributedWeightedAudioSetWebDataset.__module__,
+                            DistributedWeightedAudioSetWebDataset.__name__,
+                            DistributedWeightedAudioSetWebDataset.instantiate_dataset.__name__,
+                        ]
+                    )
+                    additional_ddp_config = {
+                        "_target_": ddp_target,
+                        "num_replicas": int(os.environ["WORLD_SIZE"]),
+                        "rank": int(os.environ["RANK"]),
+                        "seed": seed,
+                    }
+                    dataset_config.update(additional_ddp_config)
+                    OmegaConf.update(
+                        config, f"train.dataset.{subset}", dataset_config, merge=False
+                    )
                 elif dataset_factory_fn is WeightedAudioSetWebDataset:
                     # WeightedAudioSetWebDataset -> DistributedWeightedAudioSetWebDataset
                     ddp_target = ".".join(
