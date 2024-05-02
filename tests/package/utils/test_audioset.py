@@ -82,6 +82,30 @@ def test_weighted_audioset_webdataset(
 
         assert len(os.listdir(feature_dir)) == (len(audioset_samples) - 1) // max_shard_count + 1
 
+        # pattern 1: set composer to dataset
+        composer = AudioSetMultiLabelComposer(tags_key, multilabel_key)
+        collator = Collator()
+        dataset = WeightedAudioSetWebDataset.instantiate_dataset(
+            list_path,
+            feature_dir,
+            length=expected_samples_per_epoch,
+            composer=composer,
+        )
+        dataloader = DataLoader(
+            dataset,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            collate_fn=collator,
+        )
+
+        samples_per_epoch = 0
+
+        for sample in dataloader:
+            samples_per_epoch += len(sample["filename"])
+
+        assert samples_per_epoch == expected_samples_per_epoch
+
+        # pattern 2: set composer to collator
         composer = AudioSetMultiLabelComposer(tags_key, multilabel_key)
         collator = Collator(composer=composer)
         dataset = WeightedAudioSetWebDataset(
