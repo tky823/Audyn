@@ -23,10 +23,12 @@ from audyn.utils.data.collator import Collator
 
 @pytest.mark.parametrize("num_workers", [0, 2])
 @pytest.mark.parametrize("divisible_by_num_workers", [True, False])
+@pytest.mark.parametrize("composer_pattern", [1, 2])
 def test_weighted_audioset_webdataset(
     audioset_samples: Dict[str, Dict[str, Any]],
     num_workers: int,
     divisible_by_num_workers: bool,
+    composer_pattern: int,
 ) -> None:
     torch.manual_seed(0)
 
@@ -82,37 +84,28 @@ def test_weighted_audioset_webdataset(
 
         assert len(os.listdir(feature_dir)) == (len(audioset_samples) - 1) // max_shard_count + 1
 
-        # pattern 1: set composer to dataset
         composer = AudioSetMultiLabelComposer(tags_key, multilabel_key)
-        collator = Collator()
-        dataset = WeightedAudioSetWebDataset.instantiate_dataset(
-            list_path,
-            feature_dir,
-            length=expected_samples_per_epoch,
-            composer=composer,
-        )
-        dataloader = DataLoader(
-            dataset,
-            batch_size=batch_size,
-            num_workers=num_workers,
-            collate_fn=collator,
-        )
 
-        samples_per_epoch = 0
+        if composer_pattern == 1:
+            # pattern 1: set composer to dataset
+            collator = Collator()
+            dataset = WeightedAudioSetWebDataset.instantiate_dataset(
+                list_path,
+                feature_dir,
+                length=expected_samples_per_epoch,
+                composer=composer,
+            )
+        elif composer_pattern == 2:
+            # pattern 2: set composer to collator
+            collator = Collator(composer=composer)
+            dataset = WeightedAudioSetWebDataset(
+                list_path,
+                feature_dir,
+                length=expected_samples_per_epoch,
+            )
+        else:
+            raise ValueError(f"Invalid composer_pattern {composer_pattern} is given.")
 
-        for sample in dataloader:
-            samples_per_epoch += len(sample["filename"])
-
-        assert samples_per_epoch == expected_samples_per_epoch
-
-        # pattern 2: set composer to collator
-        composer = AudioSetMultiLabelComposer(tags_key, multilabel_key)
-        collator = Collator(composer=composer)
-        dataset = WeightedAudioSetWebDataset(
-            list_path,
-            feature_dir,
-            length=expected_samples_per_epoch,
-        )
         dataloader = DataLoader(
             dataset,
             batch_size=batch_size,
@@ -130,10 +123,12 @@ def test_weighted_audioset_webdataset(
 
 @pytest.mark.parametrize("num_workers", [0, 2])
 @pytest.mark.parametrize("divisible_by_num_workers", [True, False])
+@pytest.mark.parametrize("composer_pattern", [1, 2])
 def test_distributed_weighted_audioset_webdataset_sampler(
     audioset_samples: Dict[str, Dict[str, Any]],
     num_workers: int,
     divisible_by_num_workers: bool,
+    composer_pattern: int,
 ) -> None:
     port = select_random_port()
     seed = 0
@@ -212,6 +207,7 @@ def test_distributed_weighted_audioset_webdataset_sampler(
                     "feature_dir": feature_dir,
                     "tags_key": tags_key,
                     "multilabel_key": multilabel_key,
+                    "composer_pattern": composer_pattern,
                 },
             )
             process.start()
@@ -306,6 +302,7 @@ def run_distributed_weighted_audioset_webdataset_sampler(
     feature_dir: str = None,
     tags_key: str = None,
     multilabel_key: str = None,
+    composer_pattern: int = 1,
 ) -> None:
     set_ddp_environment(rank, world_size, port)
 
@@ -318,15 +315,33 @@ def run_distributed_weighted_audioset_webdataset_sampler(
     torch.manual_seed(seed)
 
     composer = AudioSetMultiLabelComposer(tags_key, multilabel_key)
-    collator = Collator(composer=composer)
-    dataset = DistributedWeightedAudioSetWebDataset(
-        list_path,
-        feature_dir,
-        length=samples_per_epoch,
-        num_replicas=world_size,
-        rank=rank,
-        seed=seed,
-    )
+
+    if composer_pattern == 1:
+        # pattern 1: set composer to dataset
+        collator = Collator()
+        dataset = DistributedWeightedAudioSetWebDataset.instantiate_dataset(
+            list_path,
+            feature_dir,
+            length=samples_per_epoch,
+            num_replicas=world_size,
+            rank=rank,
+            seed=seed,
+            composer=composer,
+        )
+    elif composer_pattern == 2:
+        # pattern 2: set composer to collator
+        collator = Collator(composer=composer)
+        dataset = DistributedWeightedAudioSetWebDataset(
+            list_path,
+            feature_dir,
+            length=samples_per_epoch,
+            num_replicas=world_size,
+            rank=rank,
+            seed=seed,
+        )
+    else:
+        raise ValueError(f"Invalid composer_pattern {composer_pattern} is given.")
+
     dataloader = DataLoader(
         dataset,
         batch_size=batch_size,
