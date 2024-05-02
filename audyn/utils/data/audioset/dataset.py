@@ -296,6 +296,66 @@ class DistributedWeightedAudioSetWebDataset(WeightedAudioSetWebDataset):
             smooth=smooth,
         )
 
+    @classmethod
+    def instantiate_dataset(
+        cls,
+        list_path: str,
+        feature_dir: str,
+        length: int,
+        *args,
+        replacement: bool = True,
+        smooth: float = 1,
+        num_workers: int = 0,
+        num_replicas: Optional[int] = None,
+        rank: Optional[int] = None,
+        seed: int = 0,
+        drop_last: bool = False,
+        composer: Callable[[Any], Any] = None,
+        decode_audio_as_waveform: Optional[bool] = None,
+        decode_audio_as_monoral: Optional[bool] = None,
+        **kwargs,
+    ) -> "DistributedWeightedAudioSetWebDataset":
+        dataset = cls(
+            list_path,
+            feature_dir,
+            length,
+            *args,
+            replacement=replacement,
+            smooth=smooth,
+            num_workers=num_workers,
+            num_replicas=num_replicas,
+            rank=rank,
+            seed=seed,
+            drop_last=drop_last,
+            **kwargs,
+        )
+
+        if composer is None:
+            if decode_audio_as_waveform is None:
+                decode_audio_as_waveform = True
+
+            if decode_audio_as_monoral is None:
+                decode_audio_as_monoral = True
+
+            composer = Composer(
+                decode_audio_as_waveform=decode_audio_as_waveform,
+                decode_audio_as_monoral=decode_audio_as_monoral,
+            )
+        else:
+            if decode_audio_as_waveform is not None:
+                warnings.warn(
+                    "decode_audio_as_waveform is given, but ignored.", UserWarning, stacklevel=2
+                )
+
+            if decode_audio_as_monoral is not None:
+                warnings.warn(
+                    "decode_audio_as_monoral is given, but ignored.", UserWarning, stacklevel=2
+                )
+
+        dataset = dataset.compose(composer)
+
+        return dataset
+
     def set_sampler(
         self,
         feature_dir: str,
