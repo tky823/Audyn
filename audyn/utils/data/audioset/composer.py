@@ -10,6 +10,11 @@ from ..composer import Composer
 from . import num_tags as num_audioset_tags
 from . import tags as audioset_tags
 
+__all__ = [
+    "AudioSetMultiLabelComposer",
+    "ASTAudioSetMultiLabelComposer",
+]
+
 
 class AudioSetMultiLabelComposer(Composer):
     """Composer to include multi-label of AudioSet.
