@@ -82,7 +82,6 @@ class ASTAudioSetMultiLabelComposer(AudioSetMultiLabelComposer):
     ``tags``, and ``multilabel``.
 
     Args:
-        dump_format: Dump format. Now, only ``webdataset`` is supported.
         melspectrogram_transform (torchaudio.transforms.MelSpectrogram or nn.Module):
             Module to transform waveform into Mel-spectrogram.
         audio_key (str): Key of ``audio`` (without extension) saved in tar files.
@@ -107,7 +106,6 @@ class ASTAudioSetMultiLabelComposer(AudioSetMultiLabelComposer):
 
     def __init__(
         self,
-        dump_format: str,
         melspectrogram_transform: Union[
             aT.MelSpectrogram,
             nn.Module,
@@ -130,7 +128,6 @@ class ASTAudioSetMultiLabelComposer(AudioSetMultiLabelComposer):
             decode_audio_as_monoral=decode_audio_as_monoral,
         )
 
-        self.dump_format = dump_format
         self.melspectrogram_transform = melspectrogram_transform
         self.audio_key = audio_key
         self.sample_rate_key = sample_rate_key
