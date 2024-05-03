@@ -335,8 +335,11 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
         monkeypatch.undo()
 
 
+@pytest.mark.parametrize("dataset_type", [None, "PaSST"])
 def test_base_trainer_ddp_for_audioset(
-    monkeypatch: MonkeyPatch, audioset_samples: Dict[str, Dict[str, Any]]
+    monkeypatch: MonkeyPatch,
+    audioset_samples: Dict[str, Dict[str, Any]],
+    dataset_type: Optional[str],
 ) -> None:
     """Test BaseTrainer for DDP."""
     BATCH_SIZE = 3
@@ -419,15 +422,26 @@ def test_base_trainer_ddp_for_audioset(
                     train=train_name,
                     optimizer=optimizer_name,
                     lr_scheduler=lr_scheduler_name,
+                    dataset_type=dataset_type,
                 ),
                 return_hydra_config=True,
             )
 
         assert config.system.distributed.enable
-        assert (
-            config.train.dataset.train._target_
-            == "audyn.utils.data.audioset.dataset.WeightedAudioSetWebDataset.instantiate_dataset"
-        )
+
+        if dataset_type is None:
+            assert (
+                config.train.dataset.train._target_
+                == "audyn.utils.data.audioset.dataset.WeightedAudioSetWebDataset.instantiate_dataset"  # noqa: E501
+            )
+        elif dataset_type.lower() == "passt":
+            assert (
+                config.train.dataset.train._target_
+                == "audyn.utils.data.audioset.dataset.PaSSTAudioSetWebDataset.instantiate_dataset"
+            )
+        else:
+            raise ValueError(f"Invalid dataset type {dataset_type} is found.")
+
         assert (
             config.train.dataset.validation._target_
             == "audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset"
@@ -448,10 +462,20 @@ def test_base_trainer_ddp_for_audioset(
         torch.manual_seed(config.system.seed)
 
         assert config.system.distributed.enable
-        assert (
-            config.train.dataset.train._target_
-            == "audyn.utils.data.audioset.dataset.DistributedWeightedAudioSetWebDataset.instantiate_dataset"  # noqa: E501
-        )
+
+        if dataset_type is None:
+            assert (
+                config.train.dataset.train._target_
+                == "audyn.utils.data.audioset.dataset.DistributedWeightedAudioSetWebDataset.instantiate_dataset"  # noqa: E501
+            )
+        elif dataset_type.lower() == "passt":
+            assert (
+                config.train.dataset.train._target_
+                == "audyn.utils.data.audioset.dataset.DistributedPaSSTAudioSetWebDataset.instantiate_dataset"  # noqa: E501
+            )
+        else:
+            raise ValueError(f"Invalid dataset type {dataset_type} is found.")
+
         assert (
             config.train.dataset.validation._target_
             == "audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset"
@@ -2378,6 +2402,7 @@ def create_dummy_audioset_override(
     train: str = "dummy_audioset",
     optimizer: str = "dummy",
     lr_scheduler: str = "dummy",
+    dataset_type: Optional[str] = None,
     continue_from: str = "",
     checkpoint: str = "",
 ) -> List[str]:
@@ -2411,6 +2436,16 @@ def create_dummy_audioset_override(
         f"train.steps.iterations={iterations}",
         f"test.checkpoint={checkpoint}",
     ]
+
+    if dataset_type is None:
+        pass
+    elif dataset_type.lower() == "passt":
+        override_list += [
+            "train.dataset.train._target_="
+            "audyn.utils.data.audioset.dataset.PaSSTAudioSetWebDataset.instantiate_dataset"
+        ]
+    else:
+        raise ValueError(f"Invalid dataset type {dataset_type} is found.")
 
     if lr_scheduler == "none":
         override_list += ["train.steps.lr_scheduler=''"]
