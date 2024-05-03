@@ -1,22 +1,8 @@
 defaults:
+  - dataset: dummy_audioset1
   - dataloader: defaults
   - output: dummy
   - _self_
-
-dataset:
-  train:
-    _target_: audyn.utils.data.audioset.dataset.WeightedAudioSetWebDataset.instantiate_dataset
-    list_path:
-    feature_dir:
-    length: 20
-    decode_audio_as_waveform: true
-    decode_audio_as_monoral: true
-  validation:
-    _target_: audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset
-    list_path:
-    feature_dir:
-    decode_audio_as_waveform: ${..train.decode_audio_as_waveform}
-    decode_audio_as_monoral: ${..train.decode_audio_as_monoral}
 
 key_mapping:
   train:
