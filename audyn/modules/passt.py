@@ -168,6 +168,7 @@ class DisentangledPositionalPatchEmbedding(nn.Module):
             frequency_embedding = self.resample_frequency_embedding(
                 frequency_embedding,
                 n_bins,
+                training=self.training,
             )
 
         if width > width_org and not self.support_extrapolation:
@@ -181,6 +182,7 @@ class DisentangledPositionalPatchEmbedding(nn.Module):
             time_embedding = self.resample_time_embedding(
                 time_embedding,
                 n_frames,
+                training=self.training,
             )
 
         x = x + frequency_embedding.unsqueeze(dim=-1) + time_embedding.unsqueeze(dim=-2)
@@ -284,12 +286,16 @@ class DisentangledPositionalPatchEmbedding(nn.Module):
         embedding: Union[torch.Tensor],
         n_bins: int,
         mode: str = "bilinear",
+        training: Optional[bool] = None,
     ) -> torch.Tensor:
         _, height_org = embedding.size()
         height, _ = self.compute_output_shape(n_bins, self.n_frames)
 
         if height_org > height:
-            if self.training:
+            if training is None:
+                training = self.training
+
+            if training:
                 start_idx = torch.randint(0, height_org - height, ()).item()
             else:
                 start_idx = 0
@@ -311,12 +317,16 @@ class DisentangledPositionalPatchEmbedding(nn.Module):
         embedding: Union[torch.Tensor],
         n_frames: int,
         mode: str = "bilinear",
+        training: Optional[bool] = None,
     ) -> torch.Tensor:
         _, width_org = embedding.size()
         _, width = self.compute_output_shape(self.n_bins, n_frames)
 
         if width_org > width:
-            if self.training:
+            if training is None:
+                training = self.training
+
+            if training:
                 start_idx = torch.randint(0, width_org - width, ()).item()
             else:
                 start_idx = 0
