@@ -145,7 +145,9 @@ def convert_dataset_and_dataloader_to_ddp_if_possible(config: DictConfig) -> Non
 
     """
     from .data.audioset.dataset import (
+        DistributedPaSSTAudioSetWebDataset,
         DistributedWeightedAudioSetWebDataset,
+        PaSSTAudioSetWebDataset,
         WeightedAudioSetWebDataset,
     )
 
@@ -243,14 +245,28 @@ def convert_dataset_and_dataloader_to_ddp_if_possible(config: DictConfig) -> Non
                     # DistributedDataLoader is not available
                     # wds.split_by_node plays such role
                     pass
-                elif dataset_factory_fn == WeightedAudioSetWebDataset.instantiate_dataset:
-                    # WeightedAudioSetWebDataset.instantiate_dataset
-                    # -> DistributedWeightedAudioSetWebDataset.instantiate_dataset
+                elif (
+                    dataset_factory_fn == WeightedAudioSetWebDataset.instantiate_dataset
+                    or dataset_factory_fn == PaSSTAudioSetWebDataset.instantiate_dataset
+                ):
+                    if dataset_factory_fn == WeightedAudioSetWebDataset.instantiate_dataset:
+                        # WeightedAudioSetWebDataset.instantiate_dataset
+                        # -> DistributedWeightedAudioSetWebDataset.instantiate_dataset
+                        ddp_dataset_factory_fn = DistributedWeightedAudioSetWebDataset
+                    elif dataset_factory_fn == PaSSTAudioSetWebDataset.instantiate_dataset:
+                        # PaSSTAudioSetWebDataset.instantiate_dataset
+                        # -> DistributedPaSSTAudioSetWebDataset.instantiate_dataset
+                        ddp_dataset_factory_fn = DistributedPaSSTAudioSetWebDataset
+                    else:
+                        raise ValueError(
+                            f"Invalid dataset_factory_fn {dataset_factory_fn} is found."
+                        )
+
                     ddp_target = ".".join(
                         [
-                            DistributedWeightedAudioSetWebDataset.__module__,
-                            DistributedWeightedAudioSetWebDataset.__name__,
-                            DistributedWeightedAudioSetWebDataset.instantiate_dataset.__name__,
+                            ddp_dataset_factory_fn.__module__,
+                            ddp_dataset_factory_fn.__name__,
+                            ddp_dataset_factory_fn.instantiate_dataset.__name__,
                         ]
                     )
                     additional_ddp_config = {
@@ -263,12 +279,25 @@ def convert_dataset_and_dataloader_to_ddp_if_possible(config: DictConfig) -> Non
                     OmegaConf.update(
                         config, f"train.dataset.{subset}", dataset_config, merge=False
                     )
-                elif dataset_factory_fn is WeightedAudioSetWebDataset:
-                    # WeightedAudioSetWebDataset -> DistributedWeightedAudioSetWebDataset
+                elif (
+                    dataset_factory_fn is WeightedAudioSetWebDataset
+                    or dataset_factory_fn is PaSSTAudioSetWebDataset
+                ):
+                    if dataset_factory_fn is WeightedAudioSetWebDataset:
+                        # WeightedAudioSetWebDataset -> DistributedWeightedAudioSetWebDataset
+                        ddp_dataset_factory_fn = DistributedWeightedAudioSetWebDataset
+                    elif dataset_factory_fn is PaSSTAudioSetWebDataset:
+                        # PaSSTAudioSetWebDataset -> DistributedPaSSTAudioSetWebDataset
+                        ddp_dataset_factory_fn = DistributedPaSSTAudioSetWebDataset
+                    else:
+                        raise ValueError(
+                            f"Invalid dataset_factory_fn {dataset_factory_fn} is found."
+                        )
+
                     ddp_target = ".".join(
                         [
-                            DistributedWeightedAudioSetWebDataset.__module__,
-                            DistributedWeightedAudioSetWebDataset.__name__,
+                            ddp_dataset_factory_fn.__module__,
+                            ddp_dataset_factory_fn.__name__,
                         ]
                     )
                     additional_ddp_config = {
@@ -403,7 +432,9 @@ def convert_dataset_and_dataloader_format_if_necessary(config: DictConfig) -> No
 
 def _search_webdataset_format_dataset(config: DictConfig) -> Tuple[str, Dict[str, Any]]:
     from .data.audioset.dataset import (
+        DistributedPaSSTAudioSetWebDataset,
         DistributedWeightedAudioSetWebDataset,
+        PaSSTAudioSetWebDataset,
         WeightedAudioSetWebDataset,
     )
 
@@ -444,6 +475,8 @@ def _search_webdataset_format_dataset(config: DictConfig) -> Tuple[str, Dict[str
             cls is WebDatasetWrapper
             or cls is WeightedAudioSetWebDataset
             or cls is DistributedWeightedAudioSetWebDataset
+            or cls is PaSSTAudioSetWebDataset
+            or cls is DistributedPaSSTAudioSetWebDataset
         ):
             # WebDataset is supported by WebDatasetWrapper.
             pass
