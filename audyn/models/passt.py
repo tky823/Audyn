@@ -128,6 +128,20 @@ class PaSST(BaseAudioSpectrogramTransformer):
             raise FileNotFoundError(f"{pretrained_model_name_or_path} does not exist.")
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of PaSST.
+
+        Args:
+            input (torch.Tensor): Spectrogram of shape (batch_size, n_bins, n_frames).
+
+        Returns:
+            torch.Tensor: Output features. The shape is one of
+
+                - (batch_size, out_channels) if ``aggregator`` and ``head`` are given.
+                - (batch_size, max_length, embedding_dim) if neither of ``aggregator`` nor ``head`
+                    is given.
+                - (batch_size, embedding_dim) if only ``aggregator`` is given.
+
+        """
         x = self.embedding(input)
         x_patch = self.spectrogram_to_patches(input)
 
