@@ -228,7 +228,8 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
         monkeypatch.undo()
 
 
-def test_base_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
+@pytest.mark.parametrize("train_name", ["dummy", "dummy_ddp"])
+def test_base_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str) -> None:
     """Test BaseTrainer for DDP."""
     DATA_SIZE = 20
     BATCH_SIZE = 2
@@ -253,7 +254,6 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
             job_name="test_driver",
         ):
             system_name = "cpu_ddp"
-            train_name = "dummy"
             model_name = "dummy"
             criterion_name = "dummy"
             lr_scheduler_name = "dummy"
@@ -298,37 +298,43 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
             == "audyn.utils.data.dataloader.DistributedDataLoader"
         )
 
-        train_dataset = instantiate(config.train.dataset.train)
-        validation_dataset = instantiate(config.train.dataset.validation)
-        train_loader = instantiate(
-            config.train.dataloader.train,
-            train_dataset,
-            collate_fn=default_collate_fn,
-        )
-        validation_loader = instantiate(
-            config.train.dataloader.validation,
-            validation_dataset,
-            collate_fn=default_collate_fn,
-        )
-        loaders = BaseDataLoaders(train_loader, validation_loader)
+        if train_name == "dummy":
+            train_dataset = instantiate(config.train.dataset.train)
+            validation_dataset = instantiate(config.train.dataset.validation)
+            train_loader = instantiate(
+                config.train.dataloader.train,
+                train_dataset,
+                collate_fn=default_collate_fn,
+            )
+            validation_loader = instantiate(
+                config.train.dataloader.validation,
+                validation_dataset,
+                collate_fn=default_collate_fn,
+            )
+            loaders = BaseDataLoaders(train_loader, validation_loader)
 
-        model = instantiate_model(config.model)
-        # NOTE: set_device is unavailable here.
-        model = nn.parallel.DistributedDataParallel(model)
-        optimizer = instantiate_optimizer(config.optimizer, model)
-        lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
-        criterion = instantiate_criterion(config.criterion)
+            model = instantiate_model(config.model)
+            # NOTE: set_device is unavailable here.
+            model = nn.parallel.DistributedDataParallel(model)
+            optimizer = instantiate_optimizer(config.optimizer, model)
+            lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
+            criterion = instantiate_criterion(config.criterion)
 
-        trainer = BaseTrainer(
-            loaders,
-            model,
-            optimizer,
-            lr_scheduler=lr_scheduler,
-            criterion=criterion,
-            config=config,
-        )
-        trainer.run()
-        trainer.writer.flush()
+            trainer = BaseTrainer(
+                loaders,
+                model,
+                optimizer,
+                lr_scheduler=lr_scheduler,
+                criterion=criterion,
+                config=config,
+            )
+            trainer.run()
+            trainer.writer.flush()
+        else:
+            assert (
+                config.train.dataloader.train.sampler._target_
+                == "torch.utils.data.distributed.DistributedSampler"
+            )
 
         dist.destroy_process_group()
 

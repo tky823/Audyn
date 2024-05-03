@@ -1,0 +1,11 @@
+defaults:
+  - dummy
+  - _self_
+
+dataloader:
+  train:
+    sampler:
+      _target_: torch.utils.data.distributed.DistributedSampler
+  validation:
+    sampler:
+      _target_: torch.utils.data.distributed.DistributedSampler
