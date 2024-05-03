@@ -13,7 +13,11 @@ from dummy.utils import select_random_port
 from dummy.utils.ddp import set_ddp_environment
 from torch.utils.data import DataLoader
 
-from audyn.utils.data.audioset.composer import AudioSetMultiLabelComposer
+from audyn.transforms.ast import SelfSupervisedAudioSpectrogramTransformerMelSpectrogram
+from audyn.utils.data.audioset.composer import (
+    ASTAudioSetMultiLabelComposer,
+    AudioSetMultiLabelComposer,
+)
 from audyn.utils.data.audioset.dataset import (
     DistributedPaSSTAudioSetWebDataset,
     DistributedWeightedAudioSetWebDataset,
@@ -37,7 +41,10 @@ def test_weighted_audioset_webdataset(
     torch.manual_seed(0)
 
     max_shard_count = 4
+    audio_key, sample_rate_key, filename_key = "audio", "sample_rate", "filename"
     tags_key, multilabel_key = "tags", "tags_index"
+
+    n_mels, n_frames = 40, 100
 
     if divisible_by_num_workers:
         expected_samples_per_epoch = 4
@@ -77,10 +84,10 @@ def test_weighted_audioset_webdataset(
 
                 feature = {
                     "__key__": ytid,
-                    "audio.wav": audio,
+                    f"{audio_key}.wav": audio,
                     f"{tags_key}.json": tags,
-                    "filename.txt": ytid,
-                    "sample_rate.pth": torch.tensor(sample_rate, dtype=torch.long),
+                    f"{filename_key}.txt": ytid,
+                    f"{sample_rate_key}.pth": torch.tensor(sample_rate, dtype=torch.long),
                 }
 
                 sink.write(feature)
@@ -90,12 +97,24 @@ def test_weighted_audioset_webdataset(
 
         if dataset_type is None:
             dataset_cls = WeightedAudioSetWebDataset
+            composer = AudioSetMultiLabelComposer(tags_key, multilabel_key)
         elif dataset_type.lower() == "passt":
             dataset_cls = PaSSTAudioSetWebDataset
+            melspectrogram_transform = SelfSupervisedAudioSpectrogramTransformerMelSpectrogram(
+                sample_rate,
+                n_mels=n_mels,
+                n_frames=n_frames,
+            )
+            composer = ASTAudioSetMultiLabelComposer(
+                melspectrogram_transform,
+                audio_key=audio_key,
+                sample_rate_key=sample_rate_key,
+                tags_key=tags_key,
+                filename_key=filename_key,
+                multilabel_key=multilabel_key,
+            )
         else:
             raise ValueError(f"Invalid dataset type {dataset_type} is given.")
-
-        composer = AudioSetMultiLabelComposer(tags_key, multilabel_key)
 
         if composer_pattern == 1:
             # pattern 1: set composer to dataset
