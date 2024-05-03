@@ -163,7 +163,7 @@ class DisentangledPositionalPatchEmbedding(nn.Module):
                 UserWarning,
                 stacklevel=2,
             )
-            x, _ = torch.split(x, [height_org, height - height_org], dim=-1)
+            x, _ = torch.split(x, [height_org, height - height_org], dim=-2)
         else:
             frequency_embedding = self.resample_frequency_embedding(
                 frequency_embedding,
@@ -177,7 +177,7 @@ class DisentangledPositionalPatchEmbedding(nn.Module):
                 UserWarning,
                 stacklevel=2,
             )
-            x, _ = torch.split(x, [width_org, width - width_org], dim=-2)
+            x, _ = torch.split(x, [width_org, width - width_org], dim=-1)
         else:
             time_embedding = self.resample_time_embedding(
                 time_embedding,
