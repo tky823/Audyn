@@ -145,6 +145,10 @@ class PaSST(BaseAudioSpectrogramTransformer):
         x = self.embedding(input)
         x_patch = self.spectrogram_to_patches(input)
 
+        # NOTE: During training, ``embedding`` uses random operation,
+        #       but ``spectrogram_to_patches`` does not,
+        #       which means each patch in ``x_patch`` does not correspond to
+        #       the one in the same position in ``x``.
         _, _, height, width = x_patch.size()
 
         head_tokens, x = self.split_sequence(x)
@@ -210,11 +214,16 @@ def _align_patch_embedding(
     conv2d_state_dict = copy.deepcopy(pretrained_conv2d.state_dict())
     new_patch_embedding.conv2d.load_state_dict(conv2d_state_dict)
 
+    # Triming of positional embeddings should be deterministic, so training is set to False.
     pretrained_frequency_embedding = new_patch_embedding.resample_frequency_embedding(
-        pretrained_frequency_embedding, n_bins
+        pretrained_frequency_embedding,
+        n_bins,
+        training=False,
     )
     pretrained_time_embedding = new_patch_embedding.resample_time_embedding(
-        pretrained_time_embedding, n_frames
+        pretrained_time_embedding,
+        n_frames,
+        training=False,
     )
     new_patch_embedding.frequency_embedding.data.copy_(pretrained_frequency_embedding)
     new_patch_embedding.time_embedding.data.copy_(pretrained_time_embedding)
