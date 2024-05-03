@@ -17,7 +17,6 @@ dataloader:
       _target_: audyn.utils.data.collator.Collator
       composer:
         _target_: audyn.utils.data.audioset.composer.ASTAudioSetMultiLabelComposer
-        dump_format: ${preprocess.dump_format}
         melspectrogram_transform: ${data.melspectrogram}
         audio_key: audio
         sample_rate_key: sample_rate
