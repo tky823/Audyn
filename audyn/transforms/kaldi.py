@@ -221,10 +221,7 @@ class KaldiMFCC(nn.Module):
             ``frame_shift`` in torchaudio.compliance.kaldi.mfcc.
         f_min (float): Minimum frequency called as low_freq in torchaudio.compliance.kaldi.mfcc.
         f_max (float): Maximum frequency called as high_freq in torchaudio.compliance.kaldi.mfcc.
-        n_mfcc (int): Number of MFCC bins called as num_mel_bins
-            in torchaudio.compliance.kaldi.mfcc.
-        n_mfcc (int): Number of MFCC bins called as num_mel_bins
-            in torchaudio.compliance.kaldi.mfcc.
+        n_mfcc (int): Number of MFCC bins called as num_ceps in torchaudio.compliance.kaldi.mfcc.
         n_mels (int): Number of mel filterbanks called as num_mel_bins in
             torchaudio.compliance.kaldi.fbank.
         power (float, optional): Exponent for the magnitude spectrogram. Only 1 and 2 are
