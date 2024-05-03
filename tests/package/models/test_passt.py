@@ -1,13 +1,24 @@
+import os
+import tempfile
+
 import pytest
 import torch
 import torch.nn as nn
+from dummy import allclose
 
 from audyn.models.ast import HeadTokensAggregator, MLPHead
 from audyn.models.passt import DisentangledPositionalPatchEmbedding, PaSST
 from audyn.modules.passt import StructuredPatchout, UnstructuredPatchout
+from audyn.utils.github import download_file_from_github_release
 
 
-def test_official_passt() -> None:
+@pytest.mark.parametrize(
+    "model_name",
+    [
+        "passt-base-stride10-struct-ap0.476-swa",
+    ],
+)
+def test_official_passt(model_name: str) -> None:
     torch.manual_seed(0)
 
     d_model, out_channels = 768, 527
@@ -76,7 +87,7 @@ def test_official_passt() -> None:
 
     # build_from_pretrained
     model = PaSST.build_from_pretrained(
-        "passt-base-stride10-struct-ap0.476-swa",
+        model_name,
         stride=stride,
         n_bins=n_bins,
         n_frames=n_frames,
@@ -91,6 +102,36 @@ def test_official_passt() -> None:
             num_parameters += p.numel()
 
     assert num_parameters == expected_num_parameters
+
+    # regression test
+    if model_name == "passt-base-stride10-struct-ap0.476-swa":
+        filename = "test_official_passt_base-stride10-struct-ap0.476-swa.pth"
+    else:
+        raise ValueError("Invalid model name is given.")
+
+    model = PaSST.build_from_pretrained(
+        model_name,
+        stride=stride,
+        aggregator=aggregator,
+    )
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        url = f"https://github.com/tky823/Audyn/releases/download/v0.0.1.dev4/{filename}"
+        path = os.path.join(temp_dir, "test_official_passt.pth")
+        download_file_from_github_release(url, path)
+
+        data = torch.load(path)
+        input = data["input"]
+        expected_output = data["output"]
+
+    _, n_bins, n_frames = input.size()
+
+    model.eval()
+
+    with torch.no_grad():
+        output = model(input)
+
+    allclose(output, expected_output)
 
 
 @pytest.mark.parametrize("sample_wise", [True, False])
