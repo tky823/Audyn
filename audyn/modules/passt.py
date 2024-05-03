@@ -300,9 +300,9 @@ class DisentangledPositionalPatchEmbedding(nn.Module):
                 dim=-1,
             )
         elif height > height_org:
-            embedding = embedding.unsqueeze(dim=-2)
+            embedding = embedding.view(1, -1, height_org, 1)
             embedding = F.interpolate(embedding, size=(height, 1), mode=mode)
-            embedding = embedding.squeeze(dim=-2)
+            embedding = embedding.view(-1, height)
 
         return embedding
 
@@ -327,9 +327,9 @@ class DisentangledPositionalPatchEmbedding(nn.Module):
                 dim=-1,
             )
         elif width > width_org:
-            embedding = embedding.unsqueeze(dim=-2)
+            embedding = embedding.view(1, -1, 1, width_org)
             embedding = F.interpolate(embedding, size=(1, width), mode=mode)
-            embedding = embedding.squeeze(dim=-2)
+            embedding = embedding.view(-1, width)
 
         return embedding
 
