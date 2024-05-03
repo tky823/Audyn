@@ -342,10 +342,12 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str) -> None:
 
 
 @pytest.mark.parametrize("dataset_type", [None, "PaSST"])
+@pytest.mark.parametrize("composer_pattern", [1, 2])
 def test_base_trainer_ddp_for_audioset(
     monkeypatch: MonkeyPatch,
     audioset_samples: Dict[str, Dict[str, Any]],
     dataset_type: Optional[str],
+    composer_pattern: int,
 ) -> None:
     """Test BaseTrainer for DDP."""
     BATCH_SIZE = 3
@@ -429,6 +431,7 @@ def test_base_trainer_ddp_for_audioset(
                     optimizer=optimizer_name,
                     lr_scheduler=lr_scheduler_name,
                     dataset_type=dataset_type,
+                    composer_pattern=composer_pattern,
                 ),
                 return_hydra_config=True,
             )
@@ -436,18 +439,16 @@ def test_base_trainer_ddp_for_audioset(
         assert config.system.distributed.enable
 
         if dataset_type is None:
-            assert (
-                config.train.dataset.train._target_
-                == "audyn.utils.data.audioset.dataset.WeightedAudioSetWebDataset.instantiate_dataset"  # noqa: E501
-            )
+            train_dataset_target = "audyn.utils.data.audioset.dataset.WeightedAudioSetWebDataset"
         elif dataset_type.lower() == "passt":
-            assert (
-                config.train.dataset.train._target_
-                == "audyn.utils.data.audioset.dataset.PaSSTAudioSetWebDataset.instantiate_dataset"
-            )
+            train_dataset_target = "audyn.utils.data.audioset.dataset.PaSSTAudioSetWebDataset"
         else:
             raise ValueError(f"Invalid dataset type {dataset_type} is found.")
 
+        if composer_pattern == 1:
+            train_dataset_target += ".instantiate_dataset"
+
+        assert config.train.dataset.train._target_ == train_dataset_target
         assert (
             config.train.dataset.validation._target_
             == "audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset"
@@ -470,18 +471,20 @@ def test_base_trainer_ddp_for_audioset(
         assert config.system.distributed.enable
 
         if dataset_type is None:
-            assert (
-                config.train.dataset.train._target_
-                == "audyn.utils.data.audioset.dataset.DistributedWeightedAudioSetWebDataset.instantiate_dataset"  # noqa: E501
+            train_dataset_target = (
+                "audyn.utils.data.audioset.dataset.DistributedWeightedAudioSetWebDataset"
             )
         elif dataset_type.lower() == "passt":
-            assert (
-                config.train.dataset.train._target_
-                == "audyn.utils.data.audioset.dataset.DistributedPaSSTAudioSetWebDataset.instantiate_dataset"  # noqa: E501
+            train_dataset_target = (
+                "audyn.utils.data.audioset.dataset.DistributedPaSSTAudioSetWebDataset"
             )
         else:
             raise ValueError(f"Invalid dataset type {dataset_type} is found.")
 
+        if composer_pattern == 1:
+            train_dataset_target += ".instantiate_dataset"
+
+        assert config.train.dataset.train._target_ == train_dataset_target
         assert (
             config.train.dataset.validation._target_
             == "audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset"
@@ -491,15 +494,26 @@ def test_base_trainer_ddp_for_audioset(
 
         train_dataset = instantiate(config.train.dataset.train)
         validation_dataset = instantiate(config.train.dataset.validation)
+
+        if composer_pattern == 1:
+            dataloader_kwargs = {
+                "collate_fn": default_collate_fn,
+            }
+        elif composer_pattern == 2:
+            # collator is defined in config
+            dataloader_kwargs = {}
+        else:
+            raise ValueError(f"Invalid composer pattern {composer_pattern} is given.")
+
         train_loader = instantiate(
             config.train.dataloader.train,
             train_dataset,
-            collate_fn=default_collate_fn,
+            **dataloader_kwargs,
         )
         validation_loader = instantiate(
             config.train.dataloader.validation,
             validation_dataset,
-            collate_fn=default_collate_fn,
+            **dataloader_kwargs,
         )
 
         loaders = BaseDataLoaders(train_loader, validation_loader)
@@ -2409,6 +2423,7 @@ def create_dummy_audioset_override(
     optimizer: str = "dummy",
     lr_scheduler: str = "dummy",
     dataset_type: Optional[str] = None,
+    composer_pattern: int = 1,
     continue_from: str = "",
     checkpoint: str = "",
 ) -> List[str]:
@@ -2444,12 +2459,30 @@ def create_dummy_audioset_override(
     ]
 
     if dataset_type is None:
-        pass
+        if composer_pattern == 1:
+            pass
+        elif composer_pattern == 2:
+            override_list += [
+                "train/dataset=dummy_audioset2",
+                "train/dataloader=dummy_audioset2",
+            ]
+        else:
+            raise ValueError(f"Invalid composer pattern {composer_pattern} is given.")
     elif dataset_type.lower() == "passt":
-        override_list += [
-            "train.dataset.train._target_="
-            "audyn.utils.data.audioset.dataset.PaSSTAudioSetWebDataset.instantiate_dataset"
-        ]
+        if composer_pattern == 1:
+            override_list += [
+                "train.dataset.train._target_="
+                "audyn.utils.data.audioset.dataset.PaSSTAudioSetWebDataset.instantiate_dataset"
+            ]
+        elif composer_pattern == 2:
+            override_list += [
+                "train/dataset=dummy_audioset2",
+                "train/dataloader=dummy_audioset2",
+                "train.dataset.train._target_="
+                "audyn.utils.data.audioset.dataset.PaSSTAudioSetWebDataset",
+            ]
+        else:
+            raise ValueError(f"Invalid composer pattern {composer_pattern} is given.")
     else:
         raise ValueError(f"Invalid dataset type {dataset_type} is found.")
 
