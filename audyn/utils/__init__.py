@@ -183,7 +183,6 @@ def convert_dataset_and_dataloader_to_ddp_if_possible(config: DictConfig) -> Non
         #         mod_name: audyn.utils.data.audioset.dataset
         #         var_name: DistributedWeightedAudioSetWebDataset
         #          fn_name: None
-
         dataset_mod_name, dataset_var_name = dataset_config._target_.rsplit(".", maxsplit=1)
 
         try:
