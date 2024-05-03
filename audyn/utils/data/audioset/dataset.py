@@ -420,9 +420,6 @@ class PaSSTAudioSetWebDataset(WeightedAudioSetWebDataset):
         length: int,
         replacement: bool = True,
         smooth: float = 1000,
-        decode_audio_as_monoral: bool = True,
-        decode_audio_as_waveform: bool = True,
-        generator=None,
     ) -> None:
         super().__init__(
             list_path,
@@ -430,9 +427,33 @@ class PaSSTAudioSetWebDataset(WeightedAudioSetWebDataset):
             length=length,
             replacement=replacement,
             smooth=smooth,
-            decode_audio_as_monoral=decode_audio_as_monoral,
+        )
+
+    @classmethod
+    def instantiate_dataset(
+        cls,
+        list_path: str,
+        feature_dir: str,
+        length: int,
+        *args,
+        replacement: bool = True,
+        smooth: float = 1000,
+        composer: Callable[[Any], Any] = None,
+        decode_audio_as_waveform: Optional[bool] = None,
+        decode_audio_as_monoral: Optional[bool] = None,
+        **kwargs,
+    ) -> "PaSSTAudioSetWebDataset":
+        return super().instantiate_dataset(
+            list_path,
+            feature_dir,
+            length,
+            *args,
+            replacement=replacement,
+            smooth=smooth,
+            composer=composer,
             decode_audio_as_waveform=decode_audio_as_waveform,
-            generator=generator,
+            decode_audio_as_monoral=decode_audio_as_monoral,
+            **kwargs,
         )
 
 
