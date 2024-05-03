@@ -204,7 +204,12 @@ class DisentangledPositionalPatchEmbedding(nn.Module):
     def spectrogram_to_patches(self, input: torch.Tensor) -> torch.Tensor:
         """Convert spectrogram to patches."""
         conv2d = self.conv2d
+        frequency_embedding = self.frequency_embedding
+        time_embedding = self.time_embedding
+
         batch_size, n_bins, n_frames = input.size()
+        height_org = frequency_embedding.size(-1)
+        width_org = time_embedding.size(-1)
         x = input.view(batch_size, 1, n_bins, n_frames)
         x = F.unfold(
             x,
@@ -214,8 +219,16 @@ class DisentangledPositionalPatchEmbedding(nn.Module):
             stride=conv2d.stride,
         )
         height, width = self.compute_output_shape(n_bins, n_frames)
+        x = x.view(batch_size, -1, height, width)
 
-        output = x.view(batch_size, -1, height, width)
+        # resample embeddings
+        if height > height_org and not self.support_extrapolation:
+            x, _ = torch.split(x, [height_org, height - height_org], dim=-2)
+
+        if width > width_org and not self.support_extrapolation:
+            x, _ = torch.split(x, [width_org, width - width_org], dim=-1)
+
+        output = x
 
         return output
 
