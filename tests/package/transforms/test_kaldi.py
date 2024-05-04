@@ -59,6 +59,27 @@ def test_kaldi_melspectrogram(set_fbank_kwargs: bool) -> None:
 
     assert melspectrogram.size()[:3] == (batch_size, in_channels, n_mels)
 
+    # compatibility
+    waveform = torch.randn((1, timesteps))
+
+    melspectrogram_transform = KaldiMelSpectrogram(
+        sample_rate,
+        win_length=win_length,
+        hop_length=hop_length,
+        n_mels=n_mels,
+    )
+    melspectrogram = melspectrogram_transform(waveform)
+
+    melspectrogram_ack = aCK.fbank(
+        waveform,
+        frame_length=frame_length,
+        frame_shift=frame_shift,
+        num_mel_bins=n_mels,
+        sample_frequency=sample_rate,
+    )
+
+    allclose(melspectrogram, melspectrogram_ack.transpose(1, 0))
+
 
 @pytest.mark.parametrize("set_mfcc_kwargs", [True, False])
 def test_kaldi_mfcc(set_mfcc_kwargs: bool) -> None:
