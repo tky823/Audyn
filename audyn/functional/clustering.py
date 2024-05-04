@@ -80,10 +80,7 @@ def kmeans_clustering(
         ), "Feature dimension of centroids is different from input."
 
     for _ in range(n_iter):
-        norm = torch.sum(centroids**2, dim=-1)
-        dot = torch.matmul(input, centroids.transpose(1, 0))
-        distance = norm - 2 * dot
-        indices = torch.argmin(distance, dim=-1)
+        indices = _compute_nearest_centroid_indices(input, centroids=centroids)
         assignments = F.one_hot(indices, num_classes=num_clusters)
         assignments = assignments.permute(1, 0)
         prod = torch.matmul(assignments.to(dtype), input)
@@ -95,4 +92,17 @@ def kmeans_clustering(
 
         centroids = prod / num_assignments.to(dtype)
 
+    indices = _compute_nearest_centroid_indices(input, centroids=centroids)
+
     return indices, centroids
+
+
+def _compute_nearest_centroid_indices(
+    input: torch.Tensor, centroids: torch.Tensor
+) -> torch.LongTensor:
+    norm = torch.sum(centroids**2, dim=-1)
+    dot = torch.matmul(input, centroids.transpose(1, 0))
+    distance = norm - 2 * dot
+    indices = torch.argmin(distance, dim=-1)
+
+    return indices
