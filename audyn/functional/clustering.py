@@ -6,6 +6,7 @@ import torch.nn.functional as F
 
 __all__ = [
     "kmeans_clustering",
+    "initialize_centroids",
 ]
 
 
@@ -44,26 +45,7 @@ def kmeans_clustering(
         # initialize centroids
         assert num_clusters is not None, "Set num_clusters."
 
-        # to share random state among devices
-        g = torch.Generator(device=input.device)
-        g.manual_seed(seed)
-
-        if is_distributed:
-            # gather input
-            # (batch_size, embedding_dim) -> (num_gpus * batch_size, embedding_dim)
-            gathered_input = [torch.zeros_like(input) for _ in range(dist.get_world_size())]
-            dist.all_gather(gathered_input, input)
-            gathered_input = torch.concat(gathered_input, dim=0)
-        else:
-            gathered_input = input
-
-        indices = torch.randperm(
-            gathered_input.size(0),
-            generator=g,
-            dtype=torch.long,
-        )
-        indices = indices[:num_clusters].tolist()
-        centroids = gathered_input[indices]
+        centroids = initialize_centroids(input, num_clusters=num_clusters, seed=seed)
     else:
         if num_clusters is None:
             num_clusters = centroids.size(0)
@@ -95,6 +77,40 @@ def kmeans_clustering(
     indices = _compute_nearest_centroid_indices(input, centroids=centroids)
 
     return indices, centroids
+
+
+def initialize_centroids(input: torch.Tensor, num_clusters: int, seed: int = 0) -> torch.Tensor:
+    """Initialize centroids by selecting samples at random.
+
+    .. note::
+
+        When DDP is enabled, inputs are gathered and centroids are synchronized among devices.
+
+    """
+    is_distributed = dist.is_available() and dist.is_initialized()
+
+    # to share random state among devices
+    g = torch.Generator(device=input.device)
+    g.manual_seed(seed)
+
+    if is_distributed:
+        # gather input
+        # (batch_size, embedding_dim) -> (num_gpus * batch_size, embedding_dim)
+        gathered_input = [torch.zeros_like(input) for _ in range(dist.get_world_size())]
+        dist.all_gather(gathered_input, input)
+        gathered_input = torch.concat(gathered_input, dim=0)
+    else:
+        gathered_input = input
+
+    indices = torch.randperm(
+        gathered_input.size(0),
+        generator=g,
+        dtype=torch.long,
+    )
+    indices = indices[:num_clusters].tolist()
+    centroids = gathered_input[indices]
+
+    return centroids
 
 
 def _compute_nearest_centroid_indices(
