@@ -36,6 +36,8 @@ jobs:
           - python-version: "3.11"
             os: macos-13
             torch-version: "2.2.0"
+          - os: macos-13
+            torch-version: "2.3.0"
           - os: windows-latest
             torch-version: "2.2.0"
           - os: windows-latest
