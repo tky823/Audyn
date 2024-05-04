@@ -1,6 +1,7 @@
 from typing import Optional, Tuple
 
 import torch
+import torch.distributed as dist
 import torch.nn.functional as F
 
 __all__ = [
@@ -13,6 +14,7 @@ def kmeans_clustering(
     centroids: Optional[torch.Tensor] = None,
     n_iter: int = 1,
     num_clusters: Optional[int] = None,
+    seed: int = 0,
 ) -> Tuple[torch.LongTensor, torch.Tensor]:
     """K-means clustering.
 
@@ -23,6 +25,7 @@ def kmeans_clustering(
         n_iter (int): Number of iterations. Default: ``1``.
         num_clusters (int, optional): Number of clusters. This parameter is required when
             ``centroids`` is not given.
+        seed (int): Random seed to select initial centroids. Default: ``0``.
 
     Returns:
         tuple: Tuple of tensors
@@ -35,14 +38,32 @@ def kmeans_clustering(
 
     dtype = input.dtype
 
+    is_distributed = dist.is_available() and dist.is_initialized()
+
     if centroids is None:
         # initialize centroids
         assert num_clusters is not None, "Set num_clusters."
 
-        # TODO: support DDP
-        indices = torch.randperm(input.size(0))[:num_clusters]
-        indices = indices.tolist()
-        centroids = input[indices]
+        # to share random state among devices
+        g = torch.Generator(device=input.device)
+        g.manual_seed(seed)
+
+        if is_distributed:
+            # gather input
+            # (batch_size, embedding_dim) -> (num_gpus * batch_size, embedding_dim)
+            gathered_input = [torch.zeros_like(input) for _ in range(dist.get_world_size())]
+            dist.all_gather(gathered_input, input)
+            gathered_input = torch.concat(gathered_input, dim=0)
+        else:
+            gathered_input = input
+
+        indices = torch.randperm(
+            gathered_input.size(0),
+            generator=g,
+            dtype=torch.long,
+        )
+        indices = indices[:num_clusters].tolist()
+        centroids = gathered_input[indices]
     else:
         if num_clusters is None:
             num_clusters = centroids.size(0)
@@ -67,6 +88,11 @@ def kmeans_clustering(
         assignments = assignments.permute(1, 0)
         prod = torch.matmul(assignments.to(dtype), input)
         num_assignments = assignments.sum(dim=-1, keepdim=True)
+
+        if is_distributed:
+            dist.all_reduce(prod)
+            dist.all_reduce(num_assignments)
+
         centroids = prod / num_assignments.to(dtype)
 
     return indices, centroids
