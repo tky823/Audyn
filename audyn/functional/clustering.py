@@ -34,28 +34,15 @@ def kmeans_clustering(
     assert input.dim() == 2, "Only 2D input is supported."
 
     dtype = input.dtype
-    device = input.device
 
     if centroids is None:
         # initialize centroids
         assert num_clusters is not None, "Set num_clusters."
 
-        embedding_dim = input.size(-1)
-
-        factory_kwargs = {
-            "dtype": dtype,
-            "device": device,
-        }
-        centroids = torch.empty(
-            (num_clusters, embedding_dim),
-            **factory_kwargs,
-        )
-
         # TODO: support DDP
         indices = torch.randperm(input.size(0))[:num_clusters]
         indices = indices.tolist()
         centroids = input[indices]
-        centroids.copy_(centroids)
     else:
         if num_clusters is None:
             num_clusters = centroids.size(0)
