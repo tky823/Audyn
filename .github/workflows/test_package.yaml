@@ -38,6 +38,8 @@ jobs:
             torch-version: "2.2.0"
           - os: windows-latest
             torch-version: "2.2.0"
+          - os: windows-latest
+            torch-version: "2.3.0"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
