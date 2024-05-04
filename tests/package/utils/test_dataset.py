@@ -1,8 +1,10 @@
 import os
+import sys
 import tempfile
 
 import pytest
 import torch
+import torchaudio
 import webdataset as wds
 from torch.utils.data import DataLoader
 
@@ -81,8 +83,13 @@ def test_sortable_torch_object_dataset(sort_key: str) -> None:
 
 
 def test_webdataset_dataset() -> None:
-    key = "input"
+    IS_WINDOWS = sys.platform == "win32"
+
+    text_key = "text"
+    torchdump_key = "torchdump"
+    torchaudio_key = "torchaudio"
     list_path = "tests/mock/dataset/torch_object/sample.txt"
+    sample_rate = 16000
     batch_size = 2
 
     with tempfile.TemporaryDirectory(dir=".") as temp_dir:
@@ -98,19 +105,31 @@ def test_webdataset_dataset() -> None:
                 idx = int(line.strip())
                 feature = {
                     "__key__": str(idx),
-                    f"{key}.pth": torch.tensor([idx]),
+                    f"{text_key}.txt": f"{idx}",
+                    f"{torchdump_key}.pth": torch.tensor([idx]),
                 }
+
+                if not IS_WINDOWS:
+                    waveform = torch.randn((1, 16000))
+                    audio_path = os.path.join(temp_dir, "audio.flac")
+                    torchaudio.save(audio_path, waveform, sample_rate, format="flac")
+
+                    with open(audio_path, mode="rb") as f_audio:
+                        feature[f"{torchaudio_key}.flac"] = f_audio.read()
 
                 sink.write(feature)
 
         dataset = WebDatasetWrapper.instantiate_dataset(list_path, feature_dir)
 
         for idx, sample in enumerate(dataset):
-            assert torch.equal(torch.tensor([idx + 1]), sample[key])
+            assert sample[text_key] == f"{idx + 1}"
+            assert torch.equal(torch.tensor([idx + 1]), sample[torchdump_key])
 
         loader = DataLoader(dataset, batch_size=batch_size, collate_fn=default_collate_fn)
 
         for idx, batch in enumerate(loader):
+            assert [f"{batch_size * idx + 1}", f"{batch_size * (idx + 1)}"] == batch[text_key]
             assert torch.equal(
-                torch.tensor([[batch_size * idx + 1], [batch_size * (idx + 1)]]), batch[key]
+                torch.tensor([[batch_size * idx + 1], [batch_size * (idx + 1)]]),
+                batch[torchdump_key],
             )

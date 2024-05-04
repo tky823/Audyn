@@ -272,11 +272,11 @@ class PositionalPatchEmbedding(nn.Module):
                 dim=-1,
             )
         elif width > width_org:
-            positional_embedding = positional_embedding.unsqueeze(dim=-3)
+            positional_embedding = positional_embedding.unsqueeze(dim=0)
             positional_embedding = F.interpolate(
                 positional_embedding, size=(height_org, width), mode=mode
             )
-            positional_embedding = positional_embedding.squeeze(dim=-3)
+            positional_embedding = positional_embedding.squeeze(dim=0)
 
         if height_org > height:
             start_idx = height_org // 2 - height // 2
@@ -286,11 +286,11 @@ class PositionalPatchEmbedding(nn.Module):
                 dim=-1,
             )
         elif height > height_org:
-            positional_embedding = positional_embedding.unsqueeze(dim=-3)
+            positional_embedding = positional_embedding.unsqueeze(dim=0)
             positional_embedding = F.interpolate(
                 positional_embedding, size=(height, width), mode=mode
             )
-            positional_embedding = positional_embedding.squeeze(dim=-3)
+            positional_embedding = positional_embedding.squeeze(dim=0)
 
         output = positional_embedding
 

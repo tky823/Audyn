@@ -41,7 +41,7 @@ class SequentialBatchDataLoader(DataLoader):
         *,
         persistent_workers: bool = False,
         **kwargs,
-    ):
+    ) -> None:
         batch_sampler = SequentialBatchSampler(
             dataset, batch_size=batch_size, shuffle=shuffle, seed=seed, drop_last=drop_last
         )
@@ -101,7 +101,7 @@ class DistributedDataLoader(DataLoader):
         *,
         persistent_workers: bool = False,
         **kwargs,
-    ):
+    ) -> None:
         sampler = DistributedSampler(
             dataset,
             num_replicas=num_replicas,
@@ -149,7 +149,7 @@ class DistributedSequentialBatchDataLoader(DataLoader):
         *,
         persistent_workers: bool = False,
         **kwargs,
-    ):
+    ) -> None:
         batch_sampler = DistributedSequentialBatchSampler(
             dataset,
             batch_size=batch_size,
@@ -201,7 +201,7 @@ class DynamicBatchDataLoader(DataLoader):
         *,
         persistent_workers: bool = False,
         **kwargs,
-    ):
+    ) -> None:
         batch_sampler = DynamicBatchSampler(
             dataset,
             key=key,
@@ -249,7 +249,7 @@ class DistributedDynamicBatchDataLoader(DataLoader):
         *,
         persistent_workers: bool = False,
         **kwargs,
-    ):
+    ) -> None:
         batch_sampler = DistributedDynamicBatchSampler(
             dataset,
             key=key,

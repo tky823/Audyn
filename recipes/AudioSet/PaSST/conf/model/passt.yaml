@@ -1,0 +1,38 @@
+_target_: audyn.models.PaSST
+embedding:
+  _target_: audyn.modules.passt.DisentangledPositionalPatchEmbedding
+  embedding_dim: 768
+  kernel_size:
+    - 16
+    - 16
+  stride:
+    - ???
+    - ???
+  insert_cls_token: true
+  insert_dist_token: true
+  n_bins: ${data.melspectrogram.n_mels}
+  n_frames: ${data.melspectrogram.n_frames}
+dropout:
+  _target_: ???  # unstructured or structured patchout
+backbone:
+  _target_: torch.nn.TransformerEncoder
+  encoder_layer:
+    _target_: torch.nn.TransformerEncoderLayer
+    d_model: ${...embedding.embedding_dim}
+    nhead: 12
+    dim_feedforward: 3072
+    activation:
+      _target_: torch.nn.GELU
+    batch_first: true
+  num_layers: 12
+  norm:
+    _target_: torch.nn.LayerNorm
+    normalized_shape: ${...embedding.embedding_dim}
+aggregator:
+  _target_: audyn.models.ast.HeadTokensAggregator
+  insert_cls_token: ${..embedding.insert_cls_token}
+  insert_dist_token: ${..embedding.insert_dist_token}
+head:
+  _target_: audyn.models.ast.MLPHead
+  in_channels: ${..embedding.embedding_dim}
+  out_channels: ${data.num_tags}

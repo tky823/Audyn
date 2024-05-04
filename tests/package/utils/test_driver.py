@@ -11,6 +11,7 @@ import pytest
 import torch
 import torch.distributed as dist
 import torch.nn as nn
+import torchaudio
 import webdataset as wds
 from dummy import allclose
 from omegaconf import DictConfig, OmegaConf
@@ -22,7 +23,8 @@ from audyn.models.gan import BaseGAN
 from audyn.optim.lr_scheduler import GANLRScheduler
 from audyn.optim.optimizer import GANOptimizer
 from audyn.utils import (
-    convert_dataloader_to_ddp_if_possible,
+    convert_dataset_and_dataloader_format_if_necessary,
+    convert_dataset_and_dataloader_to_ddp_if_possible,
     instantiate,
     instantiate_cascade_text_to_wave,
     instantiate_criterion,
@@ -226,7 +228,8 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
         monkeypatch.undo()
 
 
-def test_base_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
+@pytest.mark.parametrize("train_name", ["dummy", "dummy_ddp"])
+def test_base_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str) -> None:
     """Test BaseTrainer for DDP."""
     DATA_SIZE = 20
     BATCH_SIZE = 2
@@ -251,7 +254,6 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
             job_name="test_driver",
         ):
             system_name = "cpu_ddp"
-            train_name = "dummy"
             model_name = "dummy"
             criterion_name = "dummy"
             lr_scheduler_name = "dummy"
@@ -278,7 +280,8 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
         assert config.system.distributed.enable
         assert config.train.dataloader.train._target_ == "torch.utils.data.DataLoader"
 
-        convert_dataloader_to_ddp_if_possible(config)
+        convert_dataset_and_dataloader_format_if_necessary(config)
+        convert_dataset_and_dataloader_to_ddp_if_possible(config)
 
         dist.init_process_group(
             backend=config.system.distributed.backend,
@@ -295,21 +298,227 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
             == "audyn.utils.data.dataloader.DistributedDataLoader"
         )
 
+        if train_name == "dummy":
+            train_dataset = instantiate(config.train.dataset.train)
+            validation_dataset = instantiate(config.train.dataset.validation)
+            train_loader = instantiate(
+                config.train.dataloader.train,
+                train_dataset,
+                collate_fn=default_collate_fn,
+            )
+            validation_loader = instantiate(
+                config.train.dataloader.validation,
+                validation_dataset,
+                collate_fn=default_collate_fn,
+            )
+            loaders = BaseDataLoaders(train_loader, validation_loader)
+
+            model = instantiate_model(config.model)
+            # NOTE: set_device is unavailable here.
+            model = nn.parallel.DistributedDataParallel(model)
+            optimizer = instantiate_optimizer(config.optimizer, model)
+            lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
+            criterion = instantiate_criterion(config.criterion)
+
+            trainer = BaseTrainer(
+                loaders,
+                model,
+                optimizer,
+                lr_scheduler=lr_scheduler,
+                criterion=criterion,
+                config=config,
+            )
+            trainer.run()
+            trainer.writer.flush()
+        else:
+            assert (
+                config.train.dataloader.train.sampler._target_
+                == "torch.utils.data.distributed.DistributedSampler"
+            )
+
+        dist.destroy_process_group()
+
+        monkeypatch.undo()
+
+
+@pytest.mark.parametrize("dataset_type", [None, "PaSST"])
+@pytest.mark.parametrize("composer_pattern", [1, 2])
+def test_base_trainer_ddp_for_audioset(
+    monkeypatch: MonkeyPatch,
+    audioset_samples: Dict[str, Dict[str, Any]],
+    dataset_type: Optional[str],
+    composer_pattern: int,
+) -> None:
+    """Test BaseTrainer for DDP."""
+    BATCH_SIZE = 3
+    ITERATIONS = 3
+
+    max_shard_count = 4
+
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
+        monkeypatch.chdir(temp_dir)
+
+        # set environmental variables
+        os.environ["LOCAL_RANK"] = "0"
+        os.environ["RANK"] = "0"
+        os.environ["WORLD_SIZE"] = "1"
+        os.environ["MASTER_ADDR"] = "localhost"
+        os.environ["MASTER_PORT"] = str(torch.randint(0, 2**16, ()).item())
+
+        overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
+        exp_dir = "./exp"
+
+        audio_dir = os.path.join(temp_dir, "audio")
+        list_dir = os.path.join(temp_dir, "list")
+        feature_dir = os.path.join(temp_dir, "feature")
+
+        os.makedirs(audio_dir, exist_ok=True)
+        os.makedirs(list_dir, exist_ok=True)
+        os.makedirs(feature_dir, exist_ok=True)
+
+        list_path = os.path.join(list_dir, "dataset.txt")
+        tar_path = os.path.join(feature_dir, "%d.tar")
+
+        with wds.ShardWriter(tar_path, maxcount=max_shard_count) as sink, open(
+            list_path, mode="w"
+        ) as f_list:
+            for ytid in sorted(audioset_samples.keys()):
+                sample = audioset_samples[ytid]
+                sample_rate = sample["sample_rate"]
+                tags = sample["tags"]
+                waveform = torch.randn((2, 10 * sample_rate))
+                amplitude = torch.abs(waveform)
+                waveform = waveform / torch.max(amplitude)
+                waveform = 0.9 * waveform
+                path = os.path.join(audio_dir, f"{ytid}.wav")
+                torchaudio.save(path, waveform, sample_rate)
+
+                with open(path, mode="rb") as f_audio:
+                    audio = f_audio.read()
+
+                feature = {
+                    "__key__": ytid,
+                    "audio.wav": audio,
+                    "tags.json": tags,
+                    "filename.txt": ytid,
+                    "sample_rate.pth": torch.tensor(sample_rate, dtype=torch.long),
+                }
+
+                sink.write(feature)
+                f_list.write(ytid + "\n")
+
+        with hydra.initialize(
+            version_base="1.2",
+            config_path=relpath(config_template_path, dirname(realpath(__file__))),
+            job_name="test_driver",
+        ):
+            system_name = "cpu_ddp"
+            train_name = "dummy_audioset"
+            lr_scheduler_name = "dummy"
+            optimizer_name = "dummy"
+
+            config = hydra.compose(
+                config_name="config",
+                overrides=create_dummy_audioset_override(
+                    overrides_conf_dir=overrides_conf_dir,
+                    exp_dir=exp_dir,
+                    list_path=list_path,
+                    feature_dir=feature_dir,
+                    batch_size=BATCH_SIZE,
+                    iterations=ITERATIONS,
+                    system=system_name,
+                    train=train_name,
+                    optimizer=optimizer_name,
+                    lr_scheduler=lr_scheduler_name,
+                    dataset_type=dataset_type,
+                    composer_pattern=composer_pattern,
+                ),
+                return_hydra_config=True,
+            )
+
+        assert config.system.distributed.enable
+
+        if dataset_type is None:
+            train_dataset_target = "audyn.utils.data.audioset.dataset.WeightedAudioSetWebDataset"
+        elif dataset_type.lower() == "passt":
+            train_dataset_target = "audyn.utils.data.audioset.dataset.PaSSTAudioSetWebDataset"
+        else:
+            raise ValueError(f"Invalid dataset type {dataset_type} is found.")
+
+        if composer_pattern == 1:
+            train_dataset_target += ".instantiate_dataset"
+
+        assert config.train.dataset.train._target_ == train_dataset_target
+        assert (
+            config.train.dataset.validation._target_
+            == "audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset"
+        )
+        assert config.train.dataloader.train._target_ == "torch.utils.data.DataLoader"
+        assert config.train.dataloader.validation._target_ == "torch.utils.data.DataLoader"
+
+        convert_dataset_and_dataloader_format_if_necessary(config)
+        convert_dataset_and_dataloader_to_ddp_if_possible(config)
+
+        dist.init_process_group(
+            backend=config.system.distributed.backend,
+            init_method=config.system.distributed.init_method,
+            rank=int(os.environ["RANK"]),
+            world_size=int(os.environ["WORLD_SIZE"]),
+            timeout=timedelta(minutes=5),
+        )
+        torch.manual_seed(config.system.seed)
+
+        assert config.system.distributed.enable
+
+        if dataset_type is None:
+            train_dataset_target = (
+                "audyn.utils.data.audioset.dataset.DistributedWeightedAudioSetWebDataset"
+            )
+        elif dataset_type.lower() == "passt":
+            train_dataset_target = (
+                "audyn.utils.data.audioset.dataset.DistributedPaSSTAudioSetWebDataset"
+            )
+        else:
+            raise ValueError(f"Invalid dataset type {dataset_type} is found.")
+
+        if composer_pattern == 1:
+            train_dataset_target += ".instantiate_dataset"
+
+        assert config.train.dataset.train._target_ == train_dataset_target
+        assert (
+            config.train.dataset.validation._target_
+            == "audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset"
+        )
+        assert config.train.dataloader.train._target_ == "torch.utils.data.DataLoader"
+        assert config.train.dataloader.validation._target_ == "torch.utils.data.DataLoader"
+
         train_dataset = instantiate(config.train.dataset.train)
         validation_dataset = instantiate(config.train.dataset.validation)
+
+        if composer_pattern == 1:
+            dataloader_kwargs = {
+                "collate_fn": default_collate_fn,
+            }
+        elif composer_pattern == 2:
+            # collator is defined in config
+            dataloader_kwargs = {}
+        else:
+            raise ValueError(f"Invalid composer pattern {composer_pattern} is given.")
+
         train_loader = instantiate(
             config.train.dataloader.train,
             train_dataset,
-            collate_fn=default_collate_fn,
+            **dataloader_kwargs,
         )
         validation_loader = instantiate(
             config.train.dataloader.validation,
             validation_dataset,
-            collate_fn=default_collate_fn,
+            **dataloader_kwargs,
         )
-        loaders = BaseDataLoaders(train_loader, validation_loader)
 
+        loaders = BaseDataLoaders(train_loader, validation_loader)
         model = instantiate_model(config.model)
+        # NOTE: set_device is unavailable here.
         model = nn.parallel.DistributedDataParallel(model)
         optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
@@ -325,6 +534,16 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch) -> None:
         )
         trainer.run()
         trainer.writer.flush()
+
+        if hasattr(trainer.loaders.train.dataset, "close_all") and callable(
+            trainer.loaders.train.dataset.close_all
+        ):
+            trainer.loaders.train.dataset.close_all()
+
+        if hasattr(trainer.loaders.validation.dataset, "close_all") and callable(
+            trainer.loaders.validation.dataset.close_all
+        ):
+            trainer.loaders.validation.dataset.close_all()
 
         dist.destroy_process_group()
 
@@ -1100,7 +1319,8 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str, dataloader_t
                     == "audyn.utils.data.dataloader.DistributedDataLoader"
                 )
 
-        convert_dataloader_to_ddp_if_possible(config)
+        convert_dataset_and_dataloader_format_if_necessary(config)
+        convert_dataset_and_dataloader_to_ddp_if_possible(config)
 
         if dataloader_type == "audyn_sequential":
             assert (
@@ -1952,6 +2172,7 @@ def create_dummy_override(
         f"hydra.searchpath=[{overrides_conf_dir}]",
         "hydra.job.num=1",
         f"hydra.runtime.output_dir={exp_dir}/log",
+        "preprocess.dump_format=torch",
         f"data.audio.sample_rate={sample_rate}",
         f"train.dataset.train.size={data_size}",
         f"train.dataset.validation.size={data_size}",
@@ -2022,6 +2243,7 @@ def create_dummy_gan_override(
         f"hydra.searchpath=[{overrides_conf_dir}]",
         "hydra.job.num=1",
         f"hydra.runtime.output_dir={exp_dir}/log",
+        "preprocess.dump_format=torch",
         f"data.audio.sample_rate={sample_rate}",
         f"train.dataset.train.size={data_size}",
         f"train.dataset.validation.size={data_size}",
@@ -2079,6 +2301,7 @@ def create_dummy_text_to_feat_override(
         f"hydra.searchpath=[{overrides_conf_dir}]",
         "hydra.job.num=1",
         f"hydra.runtime.output_dir={exp_dir}/log",
+        "preprocess.dump_format=torch",
         f"data.audio.sample_rate={sample_rate}",
         f"train.dataset.train.size={data_size}",
         f"train.dataset.validation.size={data_size}",
@@ -2138,6 +2361,7 @@ def create_dummy_feat_to_wave_override(
         f"hydra.searchpath=[{overrides_conf_dir}]",
         "hydra.job.num=1",
         f"hydra.runtime.output_dir={exp_dir}/log",
+        "preprocess.dump_format=torch",
         f"data.audio.sample_rate={sample_rate}",
         f"train.dataset.train.size={data_size}",
         f"train.dataset.validation.size={data_size}",
@@ -2174,6 +2398,7 @@ def create_dummy_text_to_wave_override(
         f"hydra.searchpath=[{overrides_conf_dir}]",
         "hydra.job.num=1",
         f"hydra.runtime.output_dir={exp_dir}/log",
+        "preprocess.dump_format=torch",
         f"data.audio.sample_rate={sample_rate}",
         f"test.dataset.test.size={data_size}",
         f"test.dataset.test.vocab_size={vocab_size}",
@@ -2184,6 +2409,91 @@ def create_dummy_text_to_wave_override(
         f"test.checkpoint.feat_to_wave={feat_to_wave_checkpoint}",
         f"test.output.exp_dir={exp_dir}",
     ]
+
+
+def create_dummy_audioset_override(
+    overrides_conf_dir: str,
+    exp_dir: str,
+    list_path: str,
+    feature_dir: str,
+    batch_size: int = 1,
+    iterations: int = 1,
+    system: str = "defaults",
+    train: str = "dummy_audioset",
+    optimizer: str = "dummy",
+    lr_scheduler: str = "dummy",
+    dataset_type: Optional[str] = None,
+    composer_pattern: int = 1,
+    continue_from: str = "",
+    checkpoint: str = "",
+) -> List[str]:
+    sample_rate = 16000
+
+    model = "dummy_waveform_processor"
+    criterion = "dummy_audioset"
+
+    override_list = [
+        f"system={system}",
+        "preprocess.dump_format=webdataset",
+        f"train={train}",
+        "test=dummy",
+        f"model={model}",
+        f"optimizer={optimizer}",
+        f"lr_scheduler={lr_scheduler}",
+        f"criterion={criterion}",
+        f"hydra.searchpath=[{overrides_conf_dir}]",
+        "hydra.job.num=1",
+        f"hydra.runtime.output_dir={exp_dir}/log",
+        "preprocess.dump_format=webdataset",
+        f"data.audio.sample_rate={sample_rate}",
+        f"train.dataset.train.list_path={list_path}",
+        f"train.dataset.train.feature_dir={feature_dir}",
+        f"train.dataset.validation.list_path={list_path}",
+        f"train.dataset.validation.feature_dir={feature_dir}",
+        f"train.dataloader.train.batch_size={batch_size}",
+        f"train.dataloader.validation.batch_size={batch_size}",
+        f"train.output.exp_dir={exp_dir}",
+        f"train.resume.continue_from={continue_from}",
+        f"train.steps.iterations={iterations}",
+        f"test.checkpoint={checkpoint}",
+    ]
+
+    if dataset_type is None:
+        if composer_pattern == 1:
+            pass
+        elif composer_pattern == 2:
+            override_list += [
+                "train/dataset=dummy_audioset2",
+                "train/dataloader=dummy_audioset2",
+            ]
+        else:
+            raise ValueError(f"Invalid composer pattern {composer_pattern} is given.")
+    elif dataset_type.lower() == "passt":
+        if composer_pattern == 1:
+            override_list += [
+                "train.dataset.train._target_="
+                "audyn.utils.data.audioset.dataset.PaSSTAudioSetWebDataset.instantiate_dataset"
+            ]
+        elif composer_pattern == 2:
+            override_list += [
+                "train/dataset=dummy_audioset2",
+                "train/dataloader=dummy_audioset2",
+                "train.dataset.train._target_="
+                "audyn.utils.data.audioset.dataset.PaSSTAudioSetWebDataset",
+            ]
+        else:
+            raise ValueError(f"Invalid composer pattern {composer_pattern} is given.")
+    else:
+        raise ValueError(f"Invalid dataset type {dataset_type} is found.")
+
+    if lr_scheduler == "none":
+        override_list += ["train.steps.lr_scheduler=''"]
+
+    if system == "cpu_ddp" and IS_WINDOWS:
+        port = os.environ["MASTER_PORT"]
+        override_list += [f"system.distributed.init_method=tcp://localhost:{port}"]
+
+    return override_list
 
 
 def create_dummy_for_dataloader_override(
@@ -2340,3 +2650,58 @@ def _validate_dataset_class_by_dump_format(config: DictConfig, dump_format) -> N
         assert fn_name == "instantiate_dataset"
     else:
         raise NotImplementedError(f"{dump_format} is not supported.")
+
+
+@pytest.fixture
+def audioset_samples() -> Dict[str, Dict[str, Any]]:
+    # TODO: define fixture to share with other tests
+    sample_rate = 44100
+
+    samples = {
+        "example0": {
+            "tags": ["/m/09x0r", "/m/05zppz"],
+            "sample_rate": sample_rate,
+        },
+        "example1": {
+            "tags": ["/m/02zsn"],
+            "sample_rate": sample_rate,
+        },
+        "example2": {
+            "tags": ["/m/05zppz", "/m/0ytgt", "/m/01h8n0", "/m/02qldy"],
+            "sample_rate": sample_rate,
+        },
+        "example3": {
+            "tags": ["/m/0261r1"],
+            "sample_rate": sample_rate,
+        },
+        "example4": {
+            "tags": ["/m/0261r1", "/m/09x0r", "/m/0brhx"],
+            "sample_rate": sample_rate,
+        },
+        "example5": {
+            "tags": ["/m/0261r1", "/m/07p6fty"],
+            "sample_rate": sample_rate,
+        },
+        "example6": {
+            "tags": ["/m/09x0r", "/m/07q4ntr"],
+            "sample_rate": sample_rate,
+        },
+        "example7": {
+            "tags": ["/m/09x0r", "/m/07rwj3x", "/m/07sr1lc"],
+            "sample_rate": sample_rate,
+        },
+        "example8": {
+            "tags": ["/m/04gy_2"],
+            "sample_rate": sample_rate,
+        },
+        "example9": {
+            "tags": ["/t/dd00135", "/m/03qc9zr", "/m/02rtxlg", "/m/01j3sz"],
+            "sample_rate": sample_rate,
+        },
+        "example10": {
+            "tags": ["/m/0261r1", "/m/05zppz", "/t/dd00001"],
+            "sample_rate": sample_rate,
+        },
+    }
+
+    return samples

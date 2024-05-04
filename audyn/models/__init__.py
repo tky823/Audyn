@@ -2,6 +2,7 @@ from .ast import AST, AudioSpectrogramTransformer
 from .encodec import EnCodec
 from .fastspeech import FastSpeech, MultiSpeakerFastSpeech
 from .hifigan import HiFiGANDiscriminator, HiFiGANGenerator
+from .passt import PaSST
 from .roformer import RoFormerDecoder, RoFormerDecoderLayer, RoFormerEncoder, RoFormerEncoderLayer
 from .rvqvae import RVQVAE
 from .soundstream import SoundStream
@@ -42,6 +43,8 @@ __all__ = [
     "SelfSupervisedAudioSpectrogramTransformer",
     "SSASTMPM",
     "SSAST",
+    # PaSST
+    "PaSST",
     # RoFormer
     "RoFormerEncoderLayer",
     "RoFormerDecoderLayer",

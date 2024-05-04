@@ -4,6 +4,7 @@ import torch.nn as nn
 from torch.nn.common_types import _size_2_t
 
 from audyn.models.ast import AudioSpectrogramTransformer as _AST
+from audyn.models.passt import PaSST as _PaSST
 from audyn.models.ssast import (
     MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel as _MultiTaskSSASTMPM,
 )
@@ -100,6 +101,40 @@ def ssast_base_400(
         raise ValueError(f"{token_unit} is not supported as token_unit.")
 
     model = _SSAST.build_from_pretrained(
+        pretrained_model_name,
+        stride=stride,
+        n_bins=n_bins,
+        n_frames=n_frames,
+        aggregator=aggregator,
+        head=head,
+    )
+
+    return model
+
+
+def passt_base(
+    stride: int = 10,
+    patchout: str = "struct",
+    n_bins: Optional[int] = None,
+    n_frames: Optional[int] = None,
+    aggregator: Optional[nn.Module] = None,
+    head: Optional[nn.Module] = None,
+) -> _PaSST:
+    """Build SelfSupervisedAudioSpectrogramTransformer.
+
+    Args:
+        stride (int): Stride of patch.
+        patchout (str): Type of patchout technique.
+        aggregator (nn.Module, optional): Aggregator module.
+        head (nn.Module, optional): Head module.
+
+    """
+    if stride == 10 and patchout == "struct":
+        pretrained_model_name = f"passt-base-stride{stride}-{patchout}-ap0.476-swa"
+    else:
+        raise ValueError(f"Model satisfying stride={stride} and patchout={patchout} is not found.")
+
+    model = _PaSST.build_from_pretrained(
         pretrained_model_name,
         stride=stride,
         n_bins=n_bins,

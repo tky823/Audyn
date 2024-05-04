@@ -1,0 +1,8 @@
+defaults:
+  - passt-struct
+  - _self_
+
+embedding:
+  stride:
+    - 10
+    - 10

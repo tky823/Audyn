@@ -49,3 +49,16 @@
 ...     token_unit=token_unit,
 ... )
 ```
+
+## Patchout faSt Spectrogram Transformer (PaSST)
+
+```python
+>>> import torch
+>>> repo = "tky823/Audyn"
+>>> model = "passt_base"
+>>> passt = torch.hub.load(
+...     repo,
+...     model,
+...     skip_validation=False,
+... )
+```

@@ -1,0 +1,8 @@
+defaults:
+  - passt-unstruct
+  - _self_
+
+embedding:
+  stride:
+    - 10
+    - 10

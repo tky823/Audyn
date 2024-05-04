@@ -1,20 +1,18 @@
 import glob
 import os
-import re
-import tempfile
 import warnings
-from typing import Any, Callable, Dict, Iterable, Optional
+from typing import Any, Callable, Dict, Optional
 
 import torch
-import torchaudio
 import webdataset as wds
 from torch.utils.data import Dataset
+
+from .composer import Composer
 
 __all__ = [
     "TorchObjectDataset",
     "SortableTorchObjectDataset",
     "WebDatasetWrapper",
-    "Composer",
 ]
 
 available_dump_formats = ["torch", "webdataset"]
@@ -106,8 +104,6 @@ class WebDatasetWrapper(wds.WebDataset):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        warnings.warn("WebDatasetWrapper is not fully supported.", UserWarning)
-
     @classmethod
     def instantiate_dataset(
         cls,
@@ -116,6 +112,7 @@ class WebDatasetWrapper(wds.WebDataset):
         *args,
         detshuffle: bool = True,
         shuffle_size: Any = None,
+        nodesplitter: Callable = wds.split_by_node,
         composer: Callable[[Any], Any] = None,
         decode_audio_as_waveform: Optional[bool] = None,
         decode_audio_as_monoral: Optional[bool] = None,
@@ -127,6 +124,7 @@ class WebDatasetWrapper(wds.WebDataset):
             args: Positional arguments given to WebDataset.
             kwargs: Keyword arguments given to WebDataset.
             shuffle_size (any, optional): Shuffle size for training dataset.
+            nodesplitter (callable): Module to split dataset by node.
             decode_audio_as_waveform (bool, optional): If ``True``, audio is decoded as waveform
                 tensor and sampling rate is ignored. Otherwise, audio is decoded as tuple of
                 waveform tensor and sampling rate. This parameter is given to Composer class.
@@ -173,7 +171,14 @@ class WebDatasetWrapper(wds.WebDataset):
         with open(list_path) as f:
             length = sum(1 for _ in f)
 
-        dataset = cls(urls, feature_dir, *args, detshuffle=detshuffle, **kwargs)
+        dataset = cls(
+            urls,
+            feature_dir,
+            *args,
+            detshuffle=detshuffle,
+            nodesplitter=nodesplitter,
+            **kwargs,
+        )
         dataset = dataset.with_epoch(length).with_length(length)
 
         if shuffle_size is not None:
@@ -189,51 +194,3 @@ class WebDatasetWrapper(wds.WebDataset):
         dataset = dataset.compose(composer)
 
         return dataset
-
-
-class Composer:
-    """Composer given to webdataset."""
-
-    def __init__(
-        self,
-        decode_audio_as_waveform: bool = True,
-        decode_audio_as_monoral: bool = True,
-    ) -> None:
-        self.decode_audio_as_waveform = decode_audio_as_waveform
-        self.decode_audio_as_monoral = decode_audio_as_monoral
-
-    def decode(self, sample: Dict[str, Any]) -> Dict[str, Any]:
-        from . import rename_webdataset_keys
-
-        for key in sample.keys():
-            # ported from
-            # https://github.com/webdataset/webdataset/blob/f11fd66c163722c607ec99475a6f3cb880ec35b8/webdataset/autodecode.py#L418-L434
-            ext = re.sub(r".*[.]", "", key)
-
-            if ext in ["flac", "mp3", "sox", "wav", "m4a", "ogg", "wma"]:
-                data = sample[key]
-
-                if isinstance(data, bytes):
-                    with tempfile.TemporaryDirectory() as temp_dir:
-                        path = os.path.join(temp_dir, f"audio.{ext}")
-
-                        with open(path, "wb") as f:
-                            f.write(data)
-
-                        waveform, sample_rate = torchaudio.load(path)
-
-                    if self.decode_audio_as_monoral:
-                        waveform = waveform.mean(dim=0)
-
-                    if self.decode_audio_as_waveform:
-                        sample[key] = waveform
-                    else:
-                        sample[key] = waveform, sample_rate
-
-        sample = rename_webdataset_keys(sample)
-
-        return sample
-
-    def __call__(self, samples: Iterable[Dict[str, Any]]) -> Iterable[Dict[str, Any]]:
-        for sample in samples:
-            yield self.decode(sample)
