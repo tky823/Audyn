@@ -1,9 +1,15 @@
 import re
-from typing import Any, Dict, Iterable
+from typing import Any, Callable, Dict, Iterable
+
+import torch
+import torch.nn as nn
 
 from .webdataset import decode_audio, supported_audio_extensions
 
-__all__ = ["Composer"]
+__all__ = [
+    "Composer",
+    "HuBERTComposer",
+]
 
 
 class Composer:
@@ -58,3 +64,46 @@ class Composer:
             sample = self.process(sample)
 
             yield sample
+
+
+class HuBERTComposer(Composer):
+    """Composer for HuBERT.
+
+    Args:
+        feature_extractor (callable): Feature extractor for HuBERT.
+        audio_key (str): Key of audio to extract feature.
+        feature_key (str): Key of feature.
+
+    """
+
+    def __init__(
+        self,
+        feature_extractor: Callable[[torch.Tensor], Any],
+        audio_key: str,
+        feature_key: str,
+        decode_audio_as_waveform: bool = True,
+        decode_audio_as_monoral: bool = True,
+    ) -> None:
+        super().__init__(
+            decode_audio_as_waveform=decode_audio_as_waveform,
+            decode_audio_as_monoral=decode_audio_as_monoral,
+        )
+
+        self.audio_key = audio_key
+        self.feature_key = feature_key
+        self.feature_extractor = feature_extractor
+
+        if isinstance(self.feature_extractor, nn.Module):
+            self.feature_extractor.eval()
+
+    def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        audio_key = self.audio_key
+        feature_key = self.feature_key
+
+        sample = super().process(sample)
+
+        audio = sample[audio_key]
+        feature = self.feature_extractor(audio)
+        sample[feature_key] = feature
+
+        return sample
