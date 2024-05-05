@@ -3,4 +3,4 @@ defaults:
   - kmeans: mfcc
   - _self_
 
-feature_extraction_dir: ???
+clustering_feature_dir: ???
