@@ -14,6 +14,7 @@ from audyn.utils import instantiate, setup_system
 def main(config: DictConfig) -> None:
     setup_system(config)
 
+    # TODO: parallel processing
     dump_format = config.preprocess.dump_format
     list_path = config.preprocess.list_path
     feature_dir = config.preprocess.feature_dir
