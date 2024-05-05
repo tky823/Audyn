@@ -17,10 +17,13 @@ from omegaconf import DictConfig
 from tqdm import tqdm
 
 import audyn
+from audyn.utils import setup_system
 
 
 @audyn.main()
 def main(config: DictConfig) -> None:
+    setup_system(config)
+
     dump_format = config.preprocess.dump_format
     list_path = config.preprocess.list_path
     feature_dir = config.preprocess.feature_dir
