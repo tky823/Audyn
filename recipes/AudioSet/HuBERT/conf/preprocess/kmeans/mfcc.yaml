@@ -6,4 +6,3 @@ feature_extraction:
   dataset:
     composer:
       feature_extractor: ${data.mfcc}
-      audio_key: audio

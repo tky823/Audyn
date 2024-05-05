@@ -30,6 +30,7 @@ def main(config: DictConfig) -> None:
         raise ValueError("Only webdataset is supported as dump_format.")
 
     feature_extraction_config = config.preprocess.kmeans.feature_extraction
+    clustering_feature_key = config.data.clustering.feature
 
     dataset = instantiate(feature_extraction_config.dataset)
     shards: Dict[str, tarfile.TarFile] = {}
@@ -47,10 +48,10 @@ def main(config: DictConfig) -> None:
             shards[clustering_path] = tarfile.open(clustering_path, mode="w")
 
         binary = io.BytesIO()
-        torch.save(named_input["mfcc"], binary)
+        torch.save(named_input[clustering_feature_key], binary)
         binary.seek(0)
 
-        tarinfo = tarfile.TarInfo(f"{ytid}.mfcc.pth")
+        tarinfo = tarfile.TarInfo(f"{ytid}.{clustering_feature_key}.pth")
         tarinfo.size = len(binary.getvalue())
         shards[clustering_path].addfile(tarinfo, binary)
 

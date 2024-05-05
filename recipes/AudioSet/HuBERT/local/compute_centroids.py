@@ -14,14 +14,10 @@ def main(config: DictConfig) -> None:
 
     # TODO: parallel processing
     dump_format = config.preprocess.dump_format
-    list_path = config.preprocess.list_path
-    clustering_feature_dir = config.preprocess.clustering_feature_dir
     centroids_path = config.preprocess.centroids_path
     centroids_key = config.preprocess.centroids_key
     max_workers = config.preprocess.max_workers
 
-    assert list_path is not None, "Specify preprocess.list_path."
-    assert clustering_feature_dir is not None, "Specify preprocess.clustering_feature_dir."
     assert centroids_path is not None, "Specify preprocess.centroids_path."
     assert centroids_key is not None, "Specify preprocess.centroids_key."
     assert max_workers is not None, "Specify preprocess.max_workers."
@@ -30,6 +26,8 @@ def main(config: DictConfig) -> None:
         raise ValueError("Only webdataset is supported as dump_format.")
 
     clustering_config = config.preprocess.kmeans.clustering
+    num_clusters = config.data.clustering.num_clusters
+    clustering_feature_key = config.data.clustering.feature
 
     # clustering
     dataset = instantiate(clustering_config.dataset)
@@ -43,7 +41,7 @@ def main(config: DictConfig) -> None:
     for named_input in dataloader:
         assert len(named_input["__key__"]) == 1, "Batch size is expected to be 1."
 
-        mfcc = named_input["mfcc"][0]
+        mfcc = named_input[clustering_feature_key][0]
 
         n_frames += mfcc.size(-1)
         batched_mfcc.append(mfcc.squeeze(dim=0))
@@ -55,7 +53,7 @@ def main(config: DictConfig) -> None:
             if centroids is None:
                 centroids = initialize_centroids(
                     batched_mfcc,
-                    num_clusters=config.data.clustering.num_clusters,
+                    num_clusters=num_clusters,
                     seed=config.system.seed,
                 )
 
