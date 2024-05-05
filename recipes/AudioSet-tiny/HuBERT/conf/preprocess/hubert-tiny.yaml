@@ -1,0 +1,20 @@
+defaults:
+  - audioset-tiny
+  - _self_
+
+feature_extraction_dir: ???
+
+kmeans:
+  feature_extraction:
+    dataset:
+      _target_: audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset
+      list_path:
+      feature_dir:
+      composer:
+        _target_: audyn.utils.data.composer.HuBERTComposer
+        feature_extractor:
+          _target_: ${data.mfcc}
+        audio_key: audio
+        feature_key: mfcc
+      decode_audio_as_waveform: true
+      decode_audio_as_monoral: true
