@@ -1,3 +1,10 @@
+"""Save features of samples in AudioSet.
+- audio.m4a: Raw audio.
+- tags.json: List of tags.
+- filename.txt: Filename.
+- sample_rate.pth: Sampling rate.
+"""
+
 import json
 import os
 from multiprocessing import Process, Queue
@@ -10,10 +17,13 @@ from omegaconf import DictConfig
 from tqdm import tqdm
 
 import audyn
+from audyn.utils import setup_system
 
 
 @audyn.main()
 def main(config: DictConfig) -> None:
+    setup_system(config)
+
     dump_format = config.preprocess.dump_format
     list_path = config.preprocess.list_path
     feature_dir = config.preprocess.feature_dir
@@ -23,7 +33,7 @@ def main(config: DictConfig) -> None:
     assert list_path is not None, "Specify preprocess.list_path."
     assert feature_dir is not None, "Specify preprocess.feature_dir."
     assert jsonl_path is not None, "Specify preprocess.jsonl_path."
-    assert max_workers is not None, "Specify preprocess.jsonl_path."
+    assert max_workers is not None, "Specify preprocess.max_workers."
 
     if dump_format != "webdataset":
         raise ValueError("Only webdataset is supported as dump_format.")

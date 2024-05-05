@@ -1,1 +1,1 @@
-../../../AudioSet/SSAST/local/save_features.py
+../../../AudioSet-tiny/_common/local/save_features.py

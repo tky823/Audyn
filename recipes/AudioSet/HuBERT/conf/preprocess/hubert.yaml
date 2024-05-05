@@ -1,0 +1,6 @@
+defaults:
+  - audioset
+  - kmeans: mfcc
+  - _self_
+
+clustering_feature_dir: ???

@@ -79,6 +79,22 @@ def setup_system(config: DictConfig) -> None:
 
     if full_config is not None:
         # for backward compatibility
+        if full_config.preprocess.max_workers is None:
+            cpu_count = os.cpu_count()
+
+            if cpu_count is None:
+                max_workers = 1
+            else:
+                max_workers = max(cpu_count // 2, 1)
+
+            OmegaConf.update(
+                full_config,
+                "preprocess.max_workers",
+                max_workers,
+            )
+
+    if full_config is not None:
+        # for backward compatibility
         if not hasattr(full_config.train, "ddp_kwargs"):
             OmegaConf.update(
                 full_config,
