@@ -23,7 +23,7 @@ def main(config: DictConfig) -> None:
     assert list_path is not None, "Specify preprocess.list_path."
     assert feature_dir is not None, "Specify preprocess.feature_dir."
     assert jsonl_path is not None, "Specify preprocess.jsonl_path."
-    assert max_workers is not None, "Specify preprocess.jsonl_path."
+    assert max_workers is not None, "Specify preprocess.max_workers."
 
     if dump_format != "webdataset":
         raise ValueError("Only webdataset is supported as dump_format.")
