@@ -1,14 +1,14 @@
-  feature_extraction:
-    dataset:
-      _target_: audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset
-      list_path: ${....list_path}
-      feature_dir: ${....feature_dir}
-      composer:
-        _target_: audyn.utils.data.composer.HuBERTComposer
-        feature_extractor: ${data.mfcc}
-        audio_key: audio
-        feature_key: ${data.clustering.feature}
-      decode_audio_as_waveform: true
-      decode_audio_as_monoral: true
-    dataloader:
-      _target_: torch.utils.data.DataLoader
+feature_extraction:
+  dataset:
+    _target_: audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset
+    list_path: ${....list_path}
+    feature_dir: ${....feature_dir}
+    composer:
+      _target_: audyn.utils.data.composer.HuBERTComposer
+      feature_extractor: ${data.mfcc}
+      audio_key: audio
+      feature_key: ${data.clustering.feature}
+    decode_audio_as_waveform: true
+    decode_audio_as_monoral: true
+  dataloader:
+    _target_: torch.utils.data.DataLoader
