@@ -12,4 +12,5 @@ mfcc:
   mfcc_kwargs:
   deltas_kwargs:
 
-feature_key: mfcc
+clustering:
+  feature: mfcc
