@@ -4,4 +4,4 @@ defaults:
   - _self_
 
 clustering_feature_dir: ???
-discrete_feature_dir: ???
+centroids_path: ???
