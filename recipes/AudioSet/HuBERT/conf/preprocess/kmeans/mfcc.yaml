@@ -8,7 +8,5 @@ feature_extraction:
       feature_extractor: ${data.mfcc}
       audio_key: audio
       feature_key: ${data.clustering.feature}
-    decode_audio_as_waveform: true
-    decode_audio_as_monoral: true
-  dataloader:
-    _target_: torch.utils.data.DataLoader
+      decode_audio_as_waveform: true
+      decode_audio_as_monoral: true
