@@ -1,1 +1,1 @@
-../../AudioSet/SSAST/preprocess.sh
+../../AudioSet/HuBERT/preprocess.sh
