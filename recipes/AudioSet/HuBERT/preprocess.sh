@@ -25,6 +25,7 @@ audioset_m4a_root="${audioset_root}/m4a"
 dump_dir="${dump_root}/${data}"
 list_dir="${dump_dir}/list"
 feature_dir="${dump_dir}/feature"
+clustering_feature_dir="${dump_dir}/clustering_feature"
 
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     echo "Preprocess stage 1: Split data into training/validation"
@@ -112,6 +113,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
         data="${data}" \
         preprocess.list_path="${list_path}" \
         preprocess.feature_dir="${subset_feature_dir}" \
-        preprocess.jsonl_path="${jsonl_path}"
+        preprocess.jsonl_path="${jsonl_path}" \
+        preprocess.clustering_feature_dir="${clustering_feature_dir}"
     done
 fi
