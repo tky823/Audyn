@@ -8,7 +8,7 @@ from .webdataset import decode_audio, supported_audio_extensions
 
 __all__ = [
     "Composer",
-    "HuBERTComposer",
+    "AudioFeatureExtractionComposer",
 ]
 
 
@@ -66,11 +66,12 @@ class Composer:
             yield sample
 
 
-class HuBERTComposer(Composer):
-    """Composer for HuBERT.
+class AudioFeatureExtractionComposer(Composer):
+    """Composer for feature extraction from audio.
 
     Args:
-        feature_extractor (callable): Feature extractor for HuBERT.
+        feature_extractor (callable): Feature extractor that takes waveform (torch.Tensor).
+            Returned feature is saved as ``feature_key`` in a dictionary.
         audio_key (str): Key of audio to extract feature.
         feature_key (str): Key of feature.
 
