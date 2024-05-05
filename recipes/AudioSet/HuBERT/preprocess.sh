@@ -26,7 +26,7 @@ dump_dir="${dump_root}/${data}"
 list_dir="${dump_dir}/list"
 feature_dir="${dump_dir}/feature"
 clustering_feature_dir="${dump_dir}/clustering_feature"
-discrete_feature_dir="${dump_dir}/discrete_feature"
+centroids_dir="${dump_dir}/centroids"
 
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     echo "Preprocess stage 1: Split data into training/validation"
@@ -122,7 +122,7 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
     for subset_name in "balanced_train_segments" "unbalanced_train_segments" "full_train"; do
         list_path="${list_dir}/${subset_name}.txt"
         subset_clustering_feature_dir="${clustering_feature_dir}/${subset_name}"
-        subset_centroids_path="${discrete_feature_dir}/${subset_name}/centroids.pth"
+        subset_centroids_path="${centroids_dir}/${subset_name}.pth"
 
         python ./local/compute_centroids.py \
         --config-dir "./conf" \
