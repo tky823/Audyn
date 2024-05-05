@@ -17,11 +17,13 @@ def main(config: DictConfig) -> None:
     list_path = config.preprocess.list_path
     clustering_feature_dir = config.preprocess.clustering_feature_dir
     centroids_path = config.preprocess.centroids_path
+    centroids_key = config.preprocess.centroids_key
     max_workers = config.preprocess.max_workers
 
     assert list_path is not None, "Specify preprocess.list_path."
     assert clustering_feature_dir is not None, "Specify preprocess.clustering_feature_dir."
     assert centroids_path is not None, "Specify preprocess.centroids_path."
+    assert centroids_key is not None, "Specify preprocess.centroids_key."
     assert max_workers is not None, "Specify preprocess.max_workers."
 
     if dump_format != "webdataset":
@@ -69,7 +71,7 @@ def main(config: DictConfig) -> None:
     os.makedirs(centroids_dir, exist_ok=True)
 
     data = {
-        "centroids": centroids,
+        centroids_key: centroids,
     }
     torch.save(data, centroids_path)
 

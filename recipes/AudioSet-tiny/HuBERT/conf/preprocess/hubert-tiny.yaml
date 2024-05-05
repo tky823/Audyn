@@ -5,3 +5,5 @@ defaults:
 
 clustering_feature_dir: ???
 centroids_path: ???
+
+centroids_key: centroids
