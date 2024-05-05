@@ -15,7 +15,7 @@
 ### Stage 0: Preprocessing
 
 ```sh
-data="hubert-tiny"
+data="hubert"
 
 . ./run.sh \
 --stage 0 \
