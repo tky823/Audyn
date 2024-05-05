@@ -2,5 +2,5 @@ dump_format: webdataset
 list_path:
 wav_dir:
 feature_dir:
-max_workers: 16
+max_workers:
 max_shard_size: 100000000
