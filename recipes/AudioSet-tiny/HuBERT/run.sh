@@ -26,8 +26,8 @@ dump_root="dump"
 dump_format="webdataset"
 
 system="defaults"
-preprocess="audioset-tiny"
-data="hubert-tiny"
+preprocess="hubert-tiny"
+data="hubert"
 
 . ../../_common/parse_options.sh || exit 1;
 
@@ -62,7 +62,7 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
     (
         . ./preprocess.sh \
         --stage 0 \
-        --stop-stage 2 \
+        --stop-stage 3 \
         --data-root "${data_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
