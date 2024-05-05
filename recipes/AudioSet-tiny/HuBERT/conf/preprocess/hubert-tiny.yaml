@@ -15,6 +15,6 @@ kmeans:
         feature_extractor:
           _target_: ${data.mfcc}
         audio_key: audio
-        feature_key: mfcc
+        feature_key: ${data.feature_key}
       decode_audio_as_waveform: true
       decode_audio_as_monoral: true
