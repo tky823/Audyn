@@ -17,20 +17,18 @@ def main(config: DictConfig) -> None:
     dump_format = config.preprocess.dump_format
     list_path = config.preprocess.list_path
     feature_dir = config.preprocess.feature_dir
-    jsonl_path = config.preprocess.jsonl_path
+    clustering_feature_dir = config.preprocess.clustering_feature_dir
     max_workers = config.preprocess.max_workers
 
     assert list_path is not None, "Specify preprocess.list_path."
     assert feature_dir is not None, "Specify preprocess.feature_dir."
-    assert jsonl_path is not None, "Specify preprocess.jsonl_path."
+    assert clustering_feature_dir is not None, "Specify preprocess.clustering_feature_dir."
     assert max_workers is not None, "Specify preprocess.max_workers."
 
     if dump_format != "webdataset":
         raise ValueError("Only webdataset is supported as dump_format.")
 
     feature_extraction_config = config.preprocess.kmeans.feature_extraction
-    feature_dir = config.preprocess.feature_dir
-    clustering_feature_dir = config.preprocess.clustering_feature_dir
 
     dataset = instantiate(feature_extraction_config.dataset)
     shards: Dict[str, tarfile.TarFile] = {}
