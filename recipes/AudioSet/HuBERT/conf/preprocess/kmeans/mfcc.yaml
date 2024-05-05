@@ -4,7 +4,7 @@ feature_extraction:
     list_path: ${....list_path}
     feature_dir: ${....feature_dir}
     composer:
-      _target_: audyn.utils.data.composer.HuBERTComposer
+      _target_: audyn.utils.data.composer.AudioFeatureExtractionComposer
       feature_extractor: ${data.mfcc}
       audio_key: audio
       feature_key: ${data.clustering.feature}
