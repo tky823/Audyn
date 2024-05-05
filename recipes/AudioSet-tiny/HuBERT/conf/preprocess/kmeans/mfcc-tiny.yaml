@@ -1,0 +1,6 @@
+defaults:
+  - mfcc
+  - _self_
+
+clustering:
+  batch_size: 1000

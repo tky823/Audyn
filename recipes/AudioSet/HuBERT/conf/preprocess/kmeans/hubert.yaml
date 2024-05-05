@@ -10,3 +10,13 @@ feature_extraction:
       feature_key: ${data.clustering.feature}
       decode_audio_as_waveform: true
       decode_audio_as_monoral: true
+
+clustering:
+  dataset:
+    _target_: audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset
+    list_path: ${....list_path}
+    feature_dir: ${....clustering_feature_dir}
+    shuffle_size: 1000
+  dataloader:
+    _target_: torch.utils.data.DataLoader
+  batch_size: 10000

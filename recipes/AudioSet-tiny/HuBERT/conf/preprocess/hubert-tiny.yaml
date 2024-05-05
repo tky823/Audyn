@@ -1,6 +1,6 @@
 defaults:
   - audioset-tiny
-  - kmeans: mfcc
+  - kmeans: mfcc-tiny
   - _self_
 
 clustering_feature_dir: ???

@@ -14,3 +14,4 @@ mfcc:
 
 clustering:
   feature: mfcc
+  num_clusters: 100
