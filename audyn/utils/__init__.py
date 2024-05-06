@@ -36,6 +36,7 @@ from .logging import get_logger
 __all__ = [
     "audyn_cache_dir",
     "model_cache_dir",
+    "setup_config",
     "setup_system",
     "convert_dataset_and_dataloader_to_ddp_if_possible",
     "convert_dataset_and_dataloader_format_if_necessary",
@@ -59,7 +60,25 @@ model_cache_dir = os.path.join(audyn_cache_dir, "models")
 
 
 def setup_system(config: DictConfig) -> None:
-    """Set up system before training and evaluation.
+    """Set up config before training and evaluation.
+
+    Args:
+        config (DictConfig): Config to set up.
+
+    .. note::
+
+        This function is deprecated. Use ``audyn.utils.setup_config()`` instead.
+
+    """
+    warnings.warn(
+        "audyn.utils.setup_system is deprecated. Use audyn.utils.setup_config instead.",
+        stacklevel=2,
+    )
+    setup_config(config)
+
+
+def setup_config(config: DictConfig) -> None:
+    """Set up config before training and evaluation.
 
     Args:
         config (DictConfig): Config to set up.
