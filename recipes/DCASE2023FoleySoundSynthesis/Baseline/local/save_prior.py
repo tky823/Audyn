@@ -7,14 +7,14 @@ from omegaconf import DictConfig
 from utils.driver import PriorSaver
 
 import audyn
-from audyn.utils import instantiate, instantiate_model, setup_system
+from audyn.utils import instantiate, instantiate_model, setup_config
 from audyn.utils.data import default_collate_fn, take_log_features
 from audyn.utils.model import set_device
 
 
 @audyn.main()
 def main(config: DictConfig) -> None:
-    setup_system(config)
+    setup_config(config)
 
     down_scale = config.model.encoder.stride**config.model.encoder.num_stacks
     n_frames = config.data.audio.length // config.data.melspectrogram.hop_length

@@ -13,7 +13,7 @@ from audyn.utils import (
     instantiate_lr_scheduler,
     instantiate_model,
     instantiate_optimizer,
-    setup_system,
+    setup_config,
 )
 from audyn.utils.data import BaseDataLoaders, default_collate_fn, take_log_features
 from audyn.utils.driver import TextToFeatTrainer
@@ -22,7 +22,7 @@ from audyn.utils.model import set_device
 
 @audyn.main()
 def main(config: DictConfig) -> None:
-    setup_system(config)
+    setup_config(config)
 
     train_dataset = instantiate(config.train.dataset.train)
     validation_dataset = instantiate(config.train.dataset.validation)

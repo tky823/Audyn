@@ -2,13 +2,13 @@ from omegaconf import DictConfig
 from utils.driver import PriorSaver
 
 import audyn
-from audyn.utils import instantiate, instantiate_model, setup_system
+from audyn.utils import instantiate, instantiate_model, setup_config
 from audyn.utils.model import set_device
 
 
 @audyn.main()
 def main(config: DictConfig) -> None:
-    setup_system(config)
+    setup_config(config)
 
     dataset = instantiate(config.train.dataset)
     loader = instantiate(config.train.dataloader, dataset)

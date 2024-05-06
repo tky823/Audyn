@@ -5,14 +5,14 @@ from omegaconf import DictConfig
 from utils.driver import RetrievalTester
 
 import audyn
-from audyn.utils import instantiate, instantiate_metrics, setup_system
+from audyn.utils import instantiate, instantiate_metrics, setup_config
 from audyn.utils.data import default_collate_fn
 from audyn.utils.model import set_device
 
 
 @audyn.main()
 def main(config: DictConfig) -> None:
-    setup_system(config)
+    setup_config(config)
 
     test_dataset = instantiate(config.test.dataset.test)
     test_loader = instantiate(

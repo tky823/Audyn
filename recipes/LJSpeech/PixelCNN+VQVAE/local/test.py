@@ -7,14 +7,14 @@ from utils.driver import Generator
 from utils.utils import instantiate_cascade_model
 
 import audyn
-from audyn.utils import instantiate, setup_system
+from audyn.utils import instantiate, setup_config
 from audyn.utils.data import default_collate_fn, slice_feautures
 from audyn.utils.model import set_device
 
 
 @audyn.main()
 def main(config: DictConfig) -> None:
-    setup_system(config)
+    setup_config(config)
 
     vqvae_state_dict = torch.load(
         config.test.checkpoint.vqvae, map_location=lambda storage, loc: storage

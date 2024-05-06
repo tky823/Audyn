@@ -17,7 +17,7 @@ from audyn.utils import (
     instantiate_grad_clipper,
     instantiate_lr_scheduler,
     instantiate_optimizer,
-    setup_system,
+    setup_config,
 )
 from audyn.utils.clip_grad import GANGradClipper
 from audyn.utils.data import (
@@ -32,7 +32,7 @@ from audyn.utils.model import set_device
 
 @audyn.main()
 def main(config: DictConfig) -> None:
-    setup_system(config)
+    setup_config(config)
 
     train_dataset = instantiate(config.train.dataset.train)
     validation_dataset = instantiate(config.train.dataset.validation)

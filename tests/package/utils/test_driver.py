@@ -32,7 +32,7 @@ from audyn.utils import (
     instantiate_lr_scheduler,
     instantiate_model,
     instantiate_optimizer,
-    setup_system,
+    setup_config,
 )
 from audyn.utils.clip_grad import GANGradClipper
 from audyn.utils.data import BaseDataLoaders, TorchObjectDataset, default_collate_fn, make_noise
@@ -98,7 +98,7 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
                 return_hydra_config=True,
             )
 
-        setup_system(config)
+        setup_config(config)
 
         train_dataset = instantiate(config.train.dataset.train)
         validation_dataset = instantiate(config.train.dataset.validation)
@@ -595,7 +595,7 @@ def test_base_driver_build_from_config(monkeypatch: MonkeyPatch, use_ema: bool) 
                 return_hydra_config=True,
             )
 
-        setup_system(config)
+        setup_config(config)
 
         trainer = BaseTrainer.build_from_config(config)
         trainer.run()
@@ -624,7 +624,7 @@ def test_base_driver_build_from_config(monkeypatch: MonkeyPatch, use_ema: bool) 
                 return_hydra_config=True,
             )
 
-        setup_system(config)
+        setup_config(config)
 
         trainer.build_from_config(config)
         trainer.run()
@@ -717,7 +717,7 @@ def test_text_to_feat_trainer(
             )
             config = OmegaConf.create(config)
 
-        setup_system(config)
+        setup_config(config)
 
         train_dataset = instantiate(config.train.dataset.train)
         validation_dataset = instantiate(config.train.dataset.validation)
@@ -807,7 +807,7 @@ def test_text_to_feat_with_pretrained_feat_to_wave_trainer(monkeypatch: MonkeyPa
                 return_hydra_config=True,
             )
 
-        setup_system(config)
+        setup_config(config)
 
         train_dataset = instantiate(config.train.dataset.train)
         validation_dataset = instantiate(config.train.dataset.validation)
@@ -875,7 +875,7 @@ def test_text_to_feat_with_pretrained_feat_to_wave_trainer(monkeypatch: MonkeyPa
                 return_hydra_config=True,
             )
 
-        setup_system(config)
+        setup_config(config)
 
         train_dataset = instantiate(config.train.dataset.train)
         validation_dataset = instantiate(config.train.dataset.validation)
@@ -1000,7 +1000,7 @@ def test_feat_to_wave_trainer(
             )
             config = OmegaConf.create(config)
 
-        setup_system(config)
+        setup_config(config)
 
         train_dataset = instantiate(config.train.dataset.train)
         validation_dataset = instantiate(config.train.dataset.validation)
@@ -1136,7 +1136,7 @@ def test_gan_trainer(
             )
             config = OmegaConf.create(config)
 
-        setup_system(config)
+        setup_config(config)
 
         train_dataset = instantiate(
             config.train.dataset.train,
@@ -1524,7 +1524,7 @@ def test_cascade_text_to_wave(monkeypatch: MonkeyPatch) -> None:
                 return_hydra_config=True,
             )
 
-        setup_system(config)
+        setup_config(config)
 
         train_dataset = instantiate(config.train.dataset.train)
         validation_dataset = instantiate(config.train.dataset.validation)
@@ -1594,7 +1594,7 @@ def test_cascade_text_to_wave(monkeypatch: MonkeyPatch) -> None:
                 return_hydra_config=True,
             )
 
-        setup_system(config)
+        setup_config(config)
 
         train_dataset = instantiate(config.train.dataset.train)
         validation_dataset = instantiate(config.train.dataset.validation)
@@ -1728,7 +1728,7 @@ def test_trainer_for_dataloader(monkeypatch: MonkeyPatch, dataloader: str) -> No
                 return_hydra_config=True,
             )
 
-        setup_system(config)
+        setup_config(config)
 
         train_dataset = instantiate(config.train.dataset.train)
         validation_dataset = instantiate(config.train.dataset.validation)
@@ -1934,7 +1934,7 @@ def test_trainer_for_dump_format_conversion(
         )
 
         # overwrite config.train.dataset and dataloader
-        setup_system(config)
+        setup_config(config)
 
         _validate_dataset_class_by_dump_format(
             config.train.dataset.train, dump_format=preprocess_dump_format
@@ -2021,7 +2021,7 @@ def test_trainer_for_list_optimizer(monkeypatch: MonkeyPatch) -> None:
                 return_hydra_config=True,
             )
 
-        setup_system(config)
+        setup_config(config)
 
         train_dataset = instantiate(config.train.dataset.train)
         validation_dataset = instantiate(config.train.dataset.validation)
@@ -2098,7 +2098,7 @@ def test_trainer_for_reduce_lr_on_plateau(monkeypatch: MonkeyPatch) -> None:
                 return_hydra_config=True,
             )
 
-        setup_system(config)
+        setup_config(config)
 
         train_dataset = instantiate(config.train.dataset.train)
         validation_dataset = instantiate(config.train.dataset.validation)
