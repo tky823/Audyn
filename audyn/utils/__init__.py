@@ -36,7 +36,9 @@ from .logging import get_logger
 __all__ = [
     "audyn_cache_dir",
     "model_cache_dir",
+    "setup_config",
     "setup_system",
+    "set_seed",
     "convert_dataset_and_dataloader_to_ddp_if_possible",
     "convert_dataset_and_dataloader_format_if_necessary",
     "instantiate",
@@ -59,7 +61,25 @@ model_cache_dir = os.path.join(audyn_cache_dir, "models")
 
 
 def setup_system(config: DictConfig) -> None:
-    """Set up system before training and evaluation.
+    """Set up config before training and evaluation.
+
+    Args:
+        config (DictConfig): Config to set up.
+
+    .. note::
+
+        This function is deprecated. Use ``audyn.utils.setup_config()`` instead.
+
+    """
+    warnings.warn(
+        "audyn.utils.setup_system is deprecated. Use audyn.utils.setup_config instead.",
+        stacklevel=2,
+    )
+    setup_config(config)
+
+
+def setup_config(config: DictConfig) -> None:
+    """Set up config before training and evaluation.
 
     Args:
         config (DictConfig): Config to set up.
@@ -70,7 +90,7 @@ def setup_system(config: DictConfig) -> None:
         system_config = config.system
     else:
         warnings.warn(
-            "System config is given to setup_system. Full configuration is recommended.",
+            "System config is given to setup_config. Full configuration is recommended.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -127,7 +147,7 @@ def setup_system(config: DictConfig) -> None:
     if is_distributed(system_config):
         if full_config is None:
             warnings.warn(
-                "System config is given to setup_system. In that case, "
+                "System config is given to setup_config. In that case, "
                 "training configuration is not converted to DDP.",
                 UserWarning,
                 stacklevel=2,
@@ -139,10 +159,27 @@ def setup_system(config: DictConfig) -> None:
 
         setup_distributed(system_config)
 
-    torch.manual_seed(system_config.seed)
+    set_seed(system_config.seed)
+
+
+def set_seed(seed: int = 0) -> None:
+    """Set random seeds."""
+    import random
+
+    # NOTE: random module is deprecated in Audyn.
+    random.seed(seed)
+    torch.manual_seed(seed)
 
     if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(system_config.seed)
+        torch.cuda.manual_seed_all(seed)
+
+    try:
+        # numpy is NOT a necessary package.
+        import numpy as np
+
+        np.random.seed(seed)
+    except ImportError:
+        pass
 
 
 def convert_dataset_and_dataloader_to_ddp_if_possible(config: DictConfig) -> None:

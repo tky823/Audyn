@@ -6,14 +6,14 @@ from omegaconf import DictConfig
 from utils.driver import QuantizedFeatureSaver
 
 import audyn
-from audyn.utils import instantiate, instantiate_gan_generator, setup_system
+from audyn.utils import instantiate, instantiate_gan_generator, setup_config
 from audyn.utils.data import default_collate_fn
 from audyn.utils.model import set_device
 
 
 @audyn.main()
 def main(config: DictConfig) -> None:
-    setup_system(config)
+    setup_config(config)
 
     dataset = instantiate(config.train.dataset)
 

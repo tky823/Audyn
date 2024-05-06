@@ -14,7 +14,7 @@ from audyn.utils import (
     instantiate_lr_scheduler,
     instantiate_model,
     instantiate_optimizer,
-    setup_system,
+    setup_config,
 )
 from audyn.utils.data import (
     BaseDataLoaders,
@@ -28,7 +28,7 @@ from audyn.utils.model import set_device
 
 @audyn.main()
 def main(config: DictConfig) -> None:
-    setup_system(config)
+    setup_config(config)
 
     dataset_config = config.train.dataset
     dataloader_config = config.train.dataloader

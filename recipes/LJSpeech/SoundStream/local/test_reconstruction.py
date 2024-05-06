@@ -10,7 +10,7 @@ from audyn.utils import (
     instantiate,
     instantiate_gan_discriminator,
     instantiate_gan_generator,
-    setup_system,
+    setup_config,
 )
 from audyn.utils.data import default_collate_fn
 from audyn.utils.driver import GANGenerator
@@ -19,7 +19,7 @@ from audyn.utils.model import set_device
 
 @audyn.main()
 def main(config: DictConfig) -> None:
-    setup_system(config)
+    setup_config(config)
 
     test_dataset = instantiate(config.test.dataset.test)
 

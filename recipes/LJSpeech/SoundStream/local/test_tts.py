@@ -5,7 +5,7 @@ import torch
 from omegaconf import DictConfig
 
 import audyn
-from audyn.utils import instantiate, instantiate_cascade_text_to_wave, setup_system
+from audyn.utils import instantiate, instantiate_cascade_text_to_wave, setup_config
 from audyn.utils.data import default_collate_fn
 from audyn.utils.driver import CascadeTextToWaveGenerator
 from audyn.utils.model import set_device, unwrap
@@ -13,7 +13,7 @@ from audyn.utils.model import set_device, unwrap
 
 @audyn.main()
 def main(config: DictConfig) -> None:
-    setup_system(config)
+    setup_config(config)
 
     model = instantiate_cascade_text_to_wave(
         config.model,

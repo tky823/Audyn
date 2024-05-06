@@ -4,12 +4,12 @@ import torch
 from omegaconf import DictConfig
 
 import audyn
-from audyn.utils import setup_system
+from audyn.utils import setup_config
 
 
 @audyn.main()
 def main(config: DictConfig) -> None:
-    setup_system(config)
+    setup_config(config)
 
     checkpoint = config.train.checkpoint
     save_path = config.train.output.save_path
