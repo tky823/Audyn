@@ -6,6 +6,7 @@ import torch
 from omegaconf import DictConfig
 
 import audyn
+from audyn.utils import setup_config
 
 try:
     import yt_dlp
@@ -16,7 +17,7 @@ except ImportError:
 
 @audyn.main()
 def main(config: DictConfig) -> None:
-    torch.manual_seed(config.system.seed)
+    setup_config(config)
 
     csv_path = config.preprocess.csv_path
     jsonl_path = config.preprocess.jsonl_path
