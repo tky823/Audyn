@@ -5,12 +5,12 @@ from omegaconf import DictConfig
 
 import audyn
 from audyn.functional.clustering import initialize_centroids, online_kmeans_clustering
-from audyn.utils import instantiate, setup_system
+from audyn.utils import instantiate, setup_config
 
 
 @audyn.main()
 def main(config: DictConfig) -> None:
-    setup_system(config)
+    setup_config(config)
 
     # TODO: parallel processing
     dump_format = config.preprocess.dump_format
