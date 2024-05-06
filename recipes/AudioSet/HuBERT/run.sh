@@ -62,7 +62,9 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
     (
         . ./preprocess.sh \
         --stage 0 \
-        --stop-stage 4 \
+        --stop-stage 5 \
+        --train-name "${train_name}" \
+        --validation-name "${validation_name}" \
         --data-root "${data_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \

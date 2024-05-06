@@ -20,3 +20,9 @@ clustering:
   dataloader:
     _target_: torch.utils.data.DataLoader
   batch_size: 10000
+
+discrete_feature:
+  dataset:
+    _target_: audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset
+    list_path: ${....list_path}
+    feature_dir: ${....clustering_feature_dir}
