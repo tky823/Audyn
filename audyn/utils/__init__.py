@@ -38,6 +38,7 @@ __all__ = [
     "model_cache_dir",
     "setup_config",
     "setup_system",
+    "set_seed",
     "convert_dataset_and_dataloader_to_ddp_if_possible",
     "convert_dataset_and_dataloader_format_if_necessary",
     "instantiate",
@@ -158,10 +159,27 @@ def setup_config(config: DictConfig) -> None:
 
         setup_distributed(system_config)
 
-    torch.manual_seed(system_config.seed)
+    set_seed(system_config.seed)
+
+
+def set_seed(seed: int = 0) -> None:
+    """Set random seeds."""
+    import random
+
+    # NOTE: random module is deprecated in Audyn.
+    random.seed(seed)
+    torch.manual_seed(seed)
 
     if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(system_config.seed)
+        torch.cuda.manual_seed_all(seed)
+
+    try:
+        # numpy is NOT a necessary package.
+        import numpy as np
+
+        np.random.seed(seed)
+    except ImportError:
+        pass
 
 
 def convert_dataset_and_dataloader_to_ddp_if_possible(config: DictConfig) -> None:
