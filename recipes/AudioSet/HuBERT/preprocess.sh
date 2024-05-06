@@ -30,6 +30,7 @@ list_dir="${dump_dir}/list"
 feature_dir="${dump_dir}/feature"
 clustering_feature_dir="${dump_dir}/clustering_feature"
 discrete_feature_dir="${dump_dir}/discrete_feature"
+unified_feature_dir="${dump_dir}/unified_feature"
 centroids_dir="${dump_dir}/centroids"
 
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
@@ -155,5 +156,26 @@ if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
         preprocess.feature_dir="${subset_feature_dir}" \
         preprocess.discrete_feature_dir="${subset_discrete_feature_dir}" \
         preprocess.centroids_path="${subset_centroids_path}"
+    done
+fi
+
+if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
+    echo "Preprocess stage 6: Unify all features"
+
+    for subset_name in "balanced_train_segments" "unbalanced_train_segments" "eval_segments" "full_train" "full_validation"; do
+        list_path="${list_dir}/${subset_name}.txt"
+        subset_feature_dir="${feature_dir}/${subset_name}"
+        subset_discrete_feature_dir="${discrete_feature_dir}/${subset_name}"
+        subset_unified_feature_dir="${unified_feature_dir}/${subset_name}"
+
+        python ./local/unify_all_features.py \
+        --config-dir "./conf" \
+        hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
+        preprocess="${preprocess}" \
+        data="${data}" \
+        preprocess.list_path="${list_path}" \
+        preprocess.feature_dir="${subset_feature_dir}" \
+        preprocess.discrete_feature_dir="${subset_discrete_feature_dir}" \
+        preprocess.unified_feature_dir="${subset_unified_feature_dir}"
     done
 fi

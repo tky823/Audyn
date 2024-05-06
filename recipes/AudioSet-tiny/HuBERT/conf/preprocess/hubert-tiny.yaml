@@ -5,6 +5,7 @@ defaults:
 
 clustering_feature_dir: ???
 discrete_feature_dir: ???
+unified_feature_dir: ???
 centroids_path: ???
 
 centroids_key: centroids
