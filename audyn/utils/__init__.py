@@ -89,7 +89,7 @@ def setup_config(config: DictConfig) -> None:
         system_config = config.system
     else:
         warnings.warn(
-            "System config is given to setup_system. Full configuration is recommended.",
+            "System config is given to setup_config. Full configuration is recommended.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -146,7 +146,7 @@ def setup_config(config: DictConfig) -> None:
     if is_distributed(system_config):
         if full_config is None:
             warnings.warn(
-                "System config is given to setup_system. In that case, "
+                "System config is given to setup_config. In that case, "
                 "training configuration is not converted to DDP.",
                 UserWarning,
                 stacklevel=2,
