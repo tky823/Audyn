@@ -14,3 +14,5 @@ mfcc:
 
 clustering:
   feature: mfcc
+  discrete_feature: discrete_idx
+  num_clusters: 100
