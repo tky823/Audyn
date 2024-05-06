@@ -98,15 +98,13 @@ def process(
             feature_mapping[ytid].append(name)
 
         for ytid in ytids:
-            feature_keys = feature_mapping[ytid]
-
-            for name in feature_keys:
+            for name in feature_mapping[ytid]:
                 tarinfo = f.getmember(name)
                 binary = f.extractfile(tarinfo)
                 shard.addfile(tarinfo, binary)
 
             tarinfo = f_discrete.getmember(discrete_mapping[ytid])
-            binary = f.extractfile(tarinfo)
+            binary = f_discrete.extractfile(tarinfo)
             shard.addfile(tarinfo, binary)
 
     shard.close()
