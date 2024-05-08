@@ -40,6 +40,24 @@ pip install -e "."
 pip install -e ".[recipes,dev,tests]"
 ```
 
+## Build Documentation Locally (optional)
+To build the documentation locally, you have to include `docs` when installing `Audyn`.
+```shell
+pip install -e ".[docs]"
+```
+
+When you build the documentation, run the following command.
+```shell
+cd docs/
+make html
+```
+
+Or, you can build the documentation automatically using `sphinx-autobuild`.
+```shell
+# in Audyn/
+sphinx-autobuild docs docs/_build/html
+```
+
 ## Test
 ```shell
 pytest tests/package
