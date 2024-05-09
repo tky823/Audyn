@@ -44,6 +44,17 @@ class BaseAudioSpectrogramTransformer(nn.Module):
         input: torch.Tensor,
         length: Optional[torch.LongTensor] = None,
     ) -> Optional[torch.BoolTensor]:
+        """Compute padding mask.
+
+        Args:
+            input (torch.Tensor): Input feature of shape (batch_size, n_bins, max_frames).
+            length (torch.LongTensor, optional): Length of input of shape (batch_size,).
+
+        Returns:
+            torch.BoolTensor: Padding mask of shape
+                (batch_size, height * max_width + num_head_tokens).
+
+        """
         if length is None:
             padding_mask = None
         else:
