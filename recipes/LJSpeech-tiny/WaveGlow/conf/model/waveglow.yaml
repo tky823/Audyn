@@ -10,7 +10,7 @@ early_size: 2
 kernel_size: 3
 bias: true
 is_causal: false
-conv: gated
+conv_type: gated
 upsample:
   _target_: audyn.models.wavenet.Upsample
   in_channels: ${data.melspectrogram.n_mels}
