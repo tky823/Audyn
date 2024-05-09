@@ -1,6 +1,7 @@
 import os
 import tempfile
 
+import pytest
 import torch
 import torch.nn as nn
 
@@ -116,7 +117,8 @@ def test_official_ast() -> None:
     assert torch.allclose(output, expected_output)
 
 
-def test_ast() -> None:
+@pytest.mark.parametrize("take_length", [True, False])
+def test_ast(take_length: bool) -> None:
     torch.manual_seed(0)
 
     d_model, out_channels = 8, 10
@@ -156,8 +158,13 @@ def test_ast() -> None:
         patch_embedding, transformer, aggregator=aggregator, head=head
     )
 
-    input = torch.randn((batch_size, n_bins, n_frames))
-    output = model(input)
+    if take_length:
+        length = torch.randint(n_frames // 2, n_frames, (batch_size,), dtype=torch.long)
+        input = torch.randn((batch_size, n_bins, n_frames))
+        output = model(input, length=length)
+    else:
+        input = torch.randn((batch_size, n_bins, n_frames))
+        output = model(input)
 
     assert output.size() == (batch_size, out_channels)
 
