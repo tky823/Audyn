@@ -3,6 +3,14 @@ audyn.models
 
 ``audyn.models`` provides several models for audio processing.
 
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 1
+
+   audyn.models.wavenet
+
 Classes
 -------
 
