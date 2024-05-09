@@ -69,7 +69,7 @@ feat_to_wave:
   dilated: true
   bias: true
   is_causal: true
-  conv: "gated"
+  conv_type: "gated"
   upsample:
     _target_: audyn.models.wavenet.Upsample
     in_channels: ${...text_to_feat.decoder.fc_layer.out_features}
