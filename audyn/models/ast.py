@@ -321,6 +321,23 @@ class AudioSpectrogramTransformer(BaseAudioSpectrogramTransformer):
                 - (batch_size, out_channels).
 
         """
+        x = self.embedding(input)
+        padding_mask = self.compute_padding_mask(input, length=length)
+        output = self.transformer_forward(x, padding_mask=padding_mask)
+
+        if self.aggregator is not None:
+            output = self.aggregator(output, padding_mask=padding_mask)
+
+        if self.head is not None:
+            output = self.head(output)
+
+        return output
+
+    def compute_padding_mask(
+        self,
+        input: torch.Tensor,
+        length: Optional[torch.LongTensor] = None,
+    ) -> Optional[torch.BoolTensor]:
         if length is None:
             padding_mask = None
         else:
@@ -353,16 +370,7 @@ class AudioSpectrogramTransformer(BaseAudioSpectrogramTransformer):
 
             padding_mask = F.pad(padding_mask, (num_head_tokens, 0), value=False)
 
-        x = self.embedding(input)
-        output = self.transformer_forward(x, padding_mask=padding_mask)
-
-        if self.aggregator is not None:
-            output = self.aggregator(output, padding_mask=padding_mask)
-
-        if self.head is not None:
-            output = self.head(output)
-
-        return output
+        return padding_mask
 
 
 class Aggregator(nn.Module):
