@@ -39,7 +39,7 @@ def test_waveglow():
         num_stacks=num_stacks,
         num_layers=num_layers,
         upsample=upsample,
-        local_dim=n_mels,
+        local_channels=n_mels,
     )
 
     z = model(input, local_conditioning=local_conditioning)
@@ -107,8 +107,8 @@ def test_multispk_waveglow():
         num_layers=num_layers,
         upsample=upsample,
         speaker_encoder=speaker_encoder,
-        local_dim=n_mels,
-        global_dim=embed_dim,
+        local_channels=n_mels,
+        global_channels=embed_dim,
     )
 
     z = model(
@@ -154,18 +154,18 @@ def test_stacked_waveglow_block():
     torch.manual_seed(0)
 
     in_channels, hidden_channels = 8, 6
-    local_dim = 2
+    local_channels = 2
     num_stacks, num_layers = 2, 3
 
     input = torch.randn((batch_size, in_channels, length))
-    local_conditioning = torch.randn((batch_size, local_dim, length))
+    local_conditioning = torch.randn((batch_size, local_channels, length))
 
     model = StackedWaveGlowBlock(
         in_channels,
         hidden_channels,
         num_stacks=num_stacks,
         num_layers=num_layers,
-        local_dim=local_dim,
+        local_channels=local_channels,
     )
 
     for m in model.backbone:
@@ -204,17 +204,17 @@ def test_waveglow_block():
     torch.manual_seed(0)
 
     in_channels, hidden_channels = 8, 6
-    local_dim = 2
+    local_channels = 2
     num_layers = 3
 
     input = torch.randn((batch_size, in_channels, length))
-    local_conditioning = torch.randn((batch_size, local_dim, length))
+    local_conditioning = torch.randn((batch_size, local_channels, length))
 
     model = WaveGlowBlock(
         in_channels,
         hidden_channels,
         num_layers=num_layers,
-        local_dim=local_dim,
+        local_channels=local_channels,
     )
 
     nn.init.normal_(model.affine_coupling.coupling.bottleneck_conv1d_out.weight.data)

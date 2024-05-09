@@ -83,10 +83,10 @@ def test_residual_conv_block1d_local(dilation: int, is_causal: bool, dual_head: 
 
     in_channels = 4
     hidden_channels = 6
-    local_dim = 3
+    local_channels = 3
 
     input = torch.randn(batch_size, in_channels, num_frames)
-    local_conditioning = torch.randn(batch_size, local_dim, num_frames)
+    local_conditioning = torch.randn(batch_size, local_channels, num_frames)
 
     model = ResidualConvBlock1d(
         in_channels,
@@ -95,7 +95,7 @@ def test_residual_conv_block1d_local(dilation: int, is_causal: bool, dual_head: 
         dilation=dilation,
         is_causal=is_causal,
         dual_head=dual_head,
-        local_dim=local_dim,
+        local_channels=local_channels,
     )
 
     output, skip = model(input, local_conditioning=local_conditioning)
@@ -115,11 +115,11 @@ def test_residual_conv_block1d_local(dilation: int, is_causal: bool, dual_head: 
             stride=1,
             dilation=dilation,
             is_causal=is_causal,
-            local_dim=local_dim,
+            local_channels=local_channels,
         )
 
         zero = torch.zeros((batch_size, in_channels, 1), dtype=torch.float)
-        local_conditioning = torch.randn(batch_size, local_dim, num_frames)
+        local_conditioning = torch.randn(batch_size, local_channels, num_frames)
         buffered_output = zero
 
         for frame_idx in range(num_frames):
@@ -152,10 +152,10 @@ def test_residual_conv_block1d_global(dilation: int, is_causal: bool, dual_head:
 
     in_channels = 4
     hidden_channels = 6
-    global_dim = 3
+    global_channels = 3
 
     input = torch.randn(batch_size, in_channels, num_frames)
-    global_conditioning = torch.randn(batch_size, global_dim)
+    global_conditioning = torch.randn(batch_size, global_channels)
 
     model = ResidualConvBlock1d(
         in_channels,
@@ -164,7 +164,7 @@ def test_residual_conv_block1d_global(dilation: int, is_causal: bool, dual_head:
         dilation=dilation,
         is_causal=is_causal,
         dual_head=dual_head,
-        global_dim=global_dim,
+        global_channels=global_channels,
     )
 
     output, skip = model(input, global_conditioning=global_conditioning)
@@ -184,11 +184,11 @@ def test_residual_conv_block1d_global(dilation: int, is_causal: bool, dual_head:
             stride=1,
             dilation=dilation,
             is_causal=is_causal,
-            global_dim=global_dim,
+            global_channels=global_channels,
         )
 
         zero = torch.zeros((batch_size, in_channels, 1), dtype=torch.float)
-        global_conditioning = torch.randn(batch_size, global_dim)
+        global_conditioning = torch.randn(batch_size, global_channels)
         buffered_output = zero
 
         for _ in range(num_frames):
@@ -287,10 +287,10 @@ def test_gated_conv1d_local(dilation: int, is_causal: bool):
     torch.manual_seed(0)
 
     in_channels, out_channels = 4, 8
-    local_dim = 3
+    local_channels = 3
 
     input = torch.randn(batch_size, in_channels, num_frames)
-    local_conditioning = torch.randn(batch_size, local_dim, num_frames)
+    local_conditioning = torch.randn(batch_size, local_channels, num_frames)
 
     model = GatedConv1d(
         in_channels,
@@ -298,7 +298,7 @@ def test_gated_conv1d_local(dilation: int, is_causal: bool):
         stride=1,
         dilation=dilation,
         is_causal=is_causal,
-        local_dim=local_dim,
+        local_channels=local_channels,
     )
 
     input = _pad(
@@ -342,11 +342,11 @@ def test_gated_conv1d_local(dilation: int, is_causal: bool):
             stride=1,
             dilation=dilation,
             is_causal=is_causal,
-            local_dim=local_dim,
+            local_channels=local_channels,
         )
 
         zero = torch.zeros((batch_size, in_channels, 1), dtype=torch.float)
-        local_conditioning = torch.randn(batch_size, local_dim, num_frames)
+        local_conditioning = torch.randn(batch_size, local_channels, num_frames)
         buffered_output = zero
 
         for frame_idx in range(num_frames):
@@ -375,10 +375,10 @@ def test_gated_conv1d_global(dilation: int, is_causal: bool):
     torch.manual_seed(0)
 
     in_channels, out_channels = 4, 8
-    global_dim = 3
+    global_channels = 3
 
     input = torch.randn(batch_size, in_channels, num_frames)
-    global_conditioning = torch.randn(batch_size, global_dim)
+    global_conditioning = torch.randn(batch_size, global_channels)
 
     # global conditioning
     model = GatedConv1d(
@@ -387,7 +387,7 @@ def test_gated_conv1d_global(dilation: int, is_causal: bool):
         stride=1,
         dilation=dilation,
         is_causal=is_causal,
-        global_dim=global_dim,
+        global_channels=global_channels,
     )
 
     input = _pad(
@@ -435,11 +435,11 @@ def test_gated_conv1d_global(dilation: int, is_causal: bool):
             stride=1,
             dilation=dilation,
             is_causal=is_causal,
-            global_dim=global_dim,
+            global_channels=global_channels,
         )
 
         zero = torch.zeros((batch_size, in_channels, 1), dtype=torch.float)
-        global_conditioning = torch.randn(batch_size, global_dim)
+        global_conditioning = torch.randn(batch_size, global_channels)
         buffered_output = zero
 
         for _ in range(num_frames):

@@ -76,6 +76,6 @@ feat_to_wave:
     out_channels: ${.in_channels}
     kernel_size: 4
     stride: 2
-  local_dim: ${.upsample.out_channels}
+  local_channels: ${.upsample.out_channels}
 transform_middle:
   _target_: audyn.models.text_to_wave.FastSpeechWaveNetBridge

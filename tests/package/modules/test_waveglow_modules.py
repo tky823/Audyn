@@ -15,7 +15,7 @@ def test_waveglow_affine_coupling(scaling: bool, set_scaling_channels: bool) -> 
     torch.manual_seed(0)
 
     coupling_channels, hidden_channels = 4, 6
-    local_dim = 2
+    local_channels = 2
     num_layers = 3
 
     if set_scaling_channels:
@@ -27,13 +27,13 @@ def test_waveglow_affine_coupling(scaling: bool, set_scaling_channels: bool) -> 
         scaling_channels = None
 
     input = torch.randn((batch_size, 2 * coupling_channels, length))
-    local_conditioning = torch.randn((batch_size, local_dim, length))
+    local_conditioning = torch.randn((batch_size, local_channels, length))
 
     model = WaveNetAffineCoupling(
         coupling_channels,
         hidden_channels,
         num_layers=num_layers,
-        local_dim=local_dim,
+        local_channels=local_channels,
         scaling=scaling,
         scaling_channels=scaling_channels,
     )
@@ -73,18 +73,18 @@ def test_stacked_residual_conv_block():
     torch.manual_seed(0)
 
     in_channels, hidden_channels = 4, 6
-    local_dim = 2
+    local_channels = 2
     num_layers = 3
 
     input = torch.randn((batch_size, in_channels, length))
-    local_conditioning = torch.randn((batch_size, local_dim, length))
+    local_conditioning = torch.randn((batch_size, local_channels, length))
 
     model = StackedResidualConvBlock1d(
         in_channels,
         hidden_channels,
-        local_dim,
+        local_channels,
         num_layers=num_layers,
-        local_dim=local_dim,
+        local_channels=local_channels,
     )
 
     log_s, t = model(input, local_conditioning=local_conditioning)
