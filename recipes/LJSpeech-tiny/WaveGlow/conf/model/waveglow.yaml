@@ -17,5 +17,5 @@ upsample:
   out_channels: ${.in_channels}
   kernel_size: ${data.melspectrogram.n_fft}
   stride: ${data.melspectrogram.hop_length}
-local_dim: ${data.melspectrogram.n_mels}
+local_channels: ${data.melspectrogram.n_mels}
 weight_norm: true
