@@ -30,8 +30,8 @@ class WaveNet(nn.Module):
         is_causal (bool): If ``True``, causality is ensured in convolutions.
         conv_type (str): Convolution type.
         upsample (nn.Module): Module to upsample conditional feature.
-        local_dim (int): Number of channels in local conditioning.
-        global_dim (int): Number of channels in global conditioning.
+        local_channels (int): Number of channels in local conditioning.
+        global_channels (int): Number of channels in global conditioning.
         weight_norm (bool): Whether to apply weight normalization.
 
     .. [#van2016wavenet]
@@ -55,8 +55,8 @@ class WaveNet(nn.Module):
         is_causal: bool = True,
         conv_type: str = "gated",
         upsample: Optional[nn.Module] = None,
-        local_dim: Optional[int] = None,
-        global_dim: Optional[int] = None,
+        local_channels: Optional[int] = None,
+        global_channels: Optional[int] = None,
         weight_norm: bool = True,
     ) -> None:
         super().__init__()
@@ -67,7 +67,7 @@ class WaveNet(nn.Module):
         self.in_channels, self.out_channels = in_channels, out_channels
         self.num_stacks = num_stacks
 
-        if local_dim is None:
+        if local_channels is None:
             assert upsample is None, "upsample is expected to None."
         else:
             assert upsample is not None, "upsample is expected to be given."
@@ -98,8 +98,8 @@ class WaveNet(nn.Module):
                     is_causal=is_causal,
                     dual_head=dual_head,
                     conv_type=conv_type,
-                    local_dim=local_dim,
-                    global_dim=global_dim,
+                    local_channels=local_channels,
+                    global_channels=global_channels,
                     weight_norm=weight_norm,
                 )
             )
@@ -134,9 +134,9 @@ class WaveNet(nn.Module):
                 1) discrete long type input (batch_size, num_frames).
                 2) continuous float type input (batch_size, in_channels, num_frames).
             local_conditioning (torch.Tensor, optional): Local conditioning of shape
-                (batch_size, local_dim, num_local_frames).
+                (batch_size, local_channels, num_local_frames).
             global_conditioning (torch.Tensor, optional): Global conditioning of shape
-                (batch_size, global_dim) or (batch_size, global_dim, 1).
+                (batch_size, global_channels) or (batch_size, global_channels, 1).
 
         Returns:
             torch.Tensor: Output of shape (batch_size, out_channels, num_frames).
@@ -183,9 +183,9 @@ class WaveNet(nn.Module):
             initial_state (torch.Tensor): Input tensor of shape
                 (batch_size, in_channels, 1).
             local_conditioning (torch.Tensor, optional): Local conditioning of shape
-                (batch_size, local_dim, local_length).
+                (batch_size, local_channels, local_length).
             global_conditioning (torch.Tensor, optional): Global conditioning of shape
-                (batch_size, global_dim) or (batch_size, global_dim, 1).
+                (batch_size, global_channels) or (batch_size, global_channels, 1).
 
         Returns:
             torch.Tensor: Output of shape (batch_size, out_channels, max_length).
@@ -280,9 +280,9 @@ class WaveNet(nn.Module):
             input (torch.Tensor): Input tensor of shape
                 (batch_size, in_channels, 1).
             local_conditioning (torch.Tensor, optional): Local conditioning of shape
-                (batch_size, local_dim, num_local_frames).
+                (batch_size, local_channels, num_local_frames).
             global_conditioning (torch.Tensor, optional): Global conditioning of shape
-                (batch_size, global_dim) or (batch_size, global_dim, 1).
+                (batch_size, global_channels) or (batch_size, global_channels, 1).
 
         Returns:
             torch.Tensor: Output of shape (batch_size, out_channels, 1).
@@ -425,8 +425,8 @@ class MultiSpeakerWaveNet(WaveNet):
         conv_type: str = "gated",
         upsample: Optional[nn.Module] = None,
         speaker_encoder: nn.Module = None,
-        local_dim: Optional[int] = None,
-        global_dim: Optional[int] = None,
+        local_channels: Optional[int] = None,
+        global_channels: Optional[int] = None,
         weight_norm: bool = True,
     ) -> None:
         # Use nn.Module.__init__ just for readability of
@@ -439,7 +439,7 @@ class MultiSpeakerWaveNet(WaveNet):
         self.in_channels, self.out_channels = in_channels, out_channels
         self.num_stacks = num_stacks
 
-        if local_dim is None:
+        if local_channels is None:
             assert upsample is None, "upsample is expected to None."
         else:
             assert upsample is not None, "upsample is expected to be given."
@@ -476,8 +476,8 @@ class MultiSpeakerWaveNet(WaveNet):
                     is_causal=is_causal,
                     dual_head=dual_head,
                     conv_type=conv_type,
-                    local_dim=local_dim,
-                    global_dim=global_dim,
+                    local_channels=local_channels,
+                    global_channels=global_channels,
                     weight_norm=weight_norm,
                 )
             )
@@ -512,7 +512,7 @@ class MultiSpeakerWaveNet(WaveNet):
                 1) discrete long type input (batch_size, num_frames).
                 2) continuous float type input (batch_size, in_channels, num_frames).
             local_conditioning (torch.Tensor, optional): Local conditioning of shape
-                (batch_size, local_dim, num_local_frames).
+                (batch_size, local_channels, num_local_frames).
             speaker (torch.Tensor): Speaker feature passed to self.speaker_encoder. Usually,
                 this is speaker index of shape (batch_size,), but other shapes supported
                 by self.speaker_encoder can be specified.
@@ -545,7 +545,7 @@ class MultiSpeakerWaveNet(WaveNet):
             initial_state (torch.Tensor): Input tensor of shape
                 (batch_size, in_channels, 1).
             local_conditioning (torch.Tensor, optional): Local conditioning of shape
-                (batch_size, local_dim, local_length).
+                (batch_size, local_channels, local_length).
             speaker (torch.Tensor): Speaker feature passed to self.speaker_encoder. Usually,
                 this is speaker index of shape (batch_size,), but other shapes supported
                 by self.speaker_encoder can be specified.
@@ -625,8 +625,8 @@ class StackedResidualConvBlock1d(nn.Module):
         is_causal: bool = True,
         dual_head: bool = True,
         conv_type: str = "gated",
-        local_dim: Optional[int] = None,
-        global_dim: Optional[int] = None,
+        local_channels: Optional[int] = None,
+        global_channels: Optional[int] = None,
         weight_norm: bool = True,
     ) -> None:
         super().__init__()
@@ -661,8 +661,8 @@ class StackedResidualConvBlock1d(nn.Module):
                     is_causal=is_causal,
                     dual_head=_dual_head,
                     conv_type=conv_type,
-                    local_dim=local_dim,
-                    global_dim=global_dim,
+                    local_channels=local_channels,
+                    global_channels=global_channels,
                     weight_norm=weight_norm,
                 )
             )
@@ -681,9 +681,9 @@ class StackedResidualConvBlock1d(nn.Module):
             input (torch.Tensor): Input tensor of shape
                 (batch_size, in_channels, num_frames).
             local_conditioning (torch.Tensor, optional): Local conditioning of shape
-                (batch_size, local_dim, num_frames).
+                (batch_size, local_channels, num_frames).
             global_conditioning (torch.Tensor, optional): Global conditioning of shape
-                (batch_size, global_dim) or (batch_size, global_dim, 1).
+                (batch_size, global_channels) or (batch_size, global_channels, 1).
 
         Returns:
             Tuple of torch.Tensor containing:

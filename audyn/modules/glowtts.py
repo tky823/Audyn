@@ -591,8 +591,8 @@ class MaskedStackedResidualConvBlock1d(StackedResidualConvBlock1d):
                     dual_head=dual_head,
                     conv=conv,
                     dropout=dropout,
-                    local_dim=None,
-                    global_dim=None,
+                    local_channels=None,
+                    global_channels=None,
                     weight_norm=weight_norm,
                 )
             )
@@ -667,8 +667,8 @@ class ResidualConvBlock1d(BaseResidualConvBlock1d):
         dual_head: bool = True,
         conv: str = "gated",
         dropout: float = 0,
-        local_dim: Optional[int] = None,
-        global_dim: Optional[int] = None,
+        local_channels: Optional[int] = None,
+        global_channels: Optional[int] = None,
         weight_norm: bool = True,
     ) -> None:
         # call nn.Module.__init__()
@@ -694,8 +694,8 @@ class ResidualConvBlock1d(BaseResidualConvBlock1d):
                 dilation=dilation,
                 bias=bias,
                 is_causal=is_causal,
-                local_dim=local_dim,
-                global_dim=global_dim,
+                local_channels=local_channels,
+                global_channels=global_channels,
                 weight_norm=weight_norm,
             )
         else:
@@ -736,9 +736,9 @@ class ResidualConvBlock1d(BaseResidualConvBlock1d):
             input (torch.Tensor): Input tensor of shape
                 (batch_size, in_channels, num_frames).
             local_conditioning (torch.Tensor, optional): Local conditioning of shape
-                (batch_size, local_dim, num_frames).
+                (batch_size, local_channels, num_frames).
             global_conditioning (torch.Tensor, optional): Global conditioning of shape
-                (batch_size, global_dim) or (batch_size, global_dim, 1).
+                (batch_size, global_channels) or (batch_size, global_channels, 1).
 
         Returns:
             Tuple of torch.Tensor containing:

@@ -21,8 +21,8 @@ class ResidualConvBlock1d(nn.Module):
         is_causal: bool = True,
         dual_head: bool = True,
         conv_type: str = "gated",
-        local_dim: Optional[int] = None,
-        global_dim: Optional[int] = None,
+        local_channels: Optional[int] = None,
+        global_channels: Optional[int] = None,
         weight_norm: bool = True,
     ) -> None:
         super().__init__()
@@ -47,8 +47,8 @@ class ResidualConvBlock1d(nn.Module):
                 dilation=dilation,
                 bias=bias,
                 is_causal=is_causal,
-                local_dim=local_dim,
-                global_dim=global_dim,
+                local_channels=local_channels,
+                global_channels=global_channels,
                 weight_norm=weight_norm,
             )
         else:
@@ -84,9 +84,9 @@ class ResidualConvBlock1d(nn.Module):
             input (torch.Tensor): Input tensor of shape
                 (batch_size, in_channels, num_frames).
             local_conditioning (torch.Tensor, optional): Local conditioning of shape
-                (batch_size, local_dim, num_frames).
+                (batch_size, local_channels, num_frames).
             global_conditioning (torch.Tensor, optional): Global conditioning of shape
-                (batch_size, global_dim) or (batch_size, global_dim, 1).
+                (batch_size, global_channels) or (batch_size, global_channels, 1).
 
         Returns:
             Tuple of torch.Tensor containing:
@@ -202,8 +202,8 @@ class GatedConv1d(nn.Module):
         dilation: int = 1,
         bias: bool = True,
         is_causal: bool = True,
-        local_dim: Optional[int] = None,
-        global_dim: Optional[int] = None,
+        local_channels: Optional[int] = None,
+        global_channels: Optional[int] = None,
         weight_norm: bool = True,
     ):
         super().__init__()
@@ -228,38 +228,38 @@ class GatedConv1d(nn.Module):
             bias=bias,
         )
 
-        if local_dim is None:
+        if local_channels is None:
             self.local_conv1d_tanh = None
             self.local_conv1d_sigmoid = None
         else:
             self.local_conv1d_tanh = nn.Conv1d(
-                local_dim,
+                local_channels,
                 out_channels,
                 kernel_size=1,
                 stride=1,
                 bias=bias,
             )
             self.local_conv1d_sigmoid = nn.Conv1d(
-                local_dim,
+                local_channels,
                 out_channels,
                 kernel_size=1,
                 stride=1,
                 bias=bias,
             )
 
-        if global_dim is None:
+        if global_channels is None:
             self.global_conv1d_tanh = None
             self.global_conv1d_sigmoid = None
         else:
             self.global_conv1d_tanh = nn.Conv1d(
-                global_dim,
+                global_channels,
                 out_channels,
                 kernel_size=1,
                 stride=1,
                 bias=bias,
             )
             self.global_conv1d_sigmoid = nn.Conv1d(
-                global_dim,
+                global_channels,
                 out_channels,
                 kernel_size=1,
                 stride=1,
@@ -284,9 +284,9 @@ class GatedConv1d(nn.Module):
             input (torch.Tensor): Input tensor of shape
                 (batch_size, in_channels, num_frames).
             local_conditioning (torch.Tensor, optional): Local conditioning of shape
-                (batch_size, local_dim, num_frames).
+                (batch_size, local_channels, num_frames).
             global_conditioning (torch.Tensor, optional): Global conditioning of shape
-                (batch_size, global_dim) or (batch_size, global_dim, 1).
+                (batch_size, global_channels) or (batch_size, global_channels, 1).
 
         Returns:
             torch.Tensor: Output of shape (batch_size, in_channels, num_frames).
@@ -364,9 +364,9 @@ class GatedConv1d(nn.Module):
             input (torch.Tensor): Input tensor of shape
                 (batch_size, in_channels, 1).
             local_conditioning (torch.Tensor, optional): Local conditioning of shape
-                (batch_size, local_dim, 1).
+                (batch_size, local_channels, 1).
             global_conditioning (torch.Tensor, optional): Global conditioning of shape
-                (batch_size, global_dim) or (batch_size, global_dim, 1).
+                (batch_size, global_channels) or (batch_size, global_channels, 1).
 
         Returns:
             torch.Tensor: Output of shape (batch_size, in_channels, 1).
@@ -422,9 +422,9 @@ class GatedConv1d(nn.Module):
                 self.local_buffer = None
 
             if self.local_buffer is None:
-                batch_size, local_dim, _ = local_conditioning.size()
+                batch_size, local_channels, _ = local_conditioning.size()
                 local_buffer = torch.zeros(
-                    (batch_size, local_dim, 0),
+                    (batch_size, local_channels, 0),
                     dtype=local_conditioning.dtype,
                     device=local_conditioning.device,
                 )
