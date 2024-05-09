@@ -74,8 +74,6 @@ class PositionalPatchEmbedding(nn.Module):
         self.embedding_dim = embedding_dim
         self.kernel_size = kernel_size
         self.stride = stride
-        self.insert_cls_token = insert_cls_token
-        self.insert_dist_token = insert_dist_token
         self.n_bins = n_bins
         self.n_frames = n_frames
 
@@ -125,6 +123,14 @@ class PositionalPatchEmbedding(nn.Module):
 
         if self.dist_token is not None:
             nn.init.trunc_normal_(self.dist_token.data, std=0.02)
+
+    @property
+    def insert_cls_token(self) -> bool:
+        return self.cls_token is not None
+
+    @property
+    def insert_dist_token(self) -> bool:
+        return self.dist_token is not None
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         """Forward pass of PositionalPatchEmbedding.
