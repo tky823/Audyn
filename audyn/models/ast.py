@@ -7,6 +7,7 @@ from typing import Dict, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from omegaconf import OmegaConf
 from torch.nn.common_types import _size_2_t
 
@@ -38,12 +39,17 @@ class BaseAudioSpectrogramTransformer(nn.Module):
         self.embedding = embedding
         self.backbone = backbone
 
-    def patch_transformer_forward(self, input: torch.Tensor) -> torch.Tensor:
+    def patch_transformer_forward(
+        self,
+        input: torch.Tensor,
+        padding_mask: Optional[torch.BoolTensor] = None,
+    ) -> torch.Tensor:
         """Transformer with patch inputs.
 
         Args:
             input (torch.Tensor): Patch feature of shape
                 (batch_size, embedding_dim, height, width).
+            padding_mask (torch.BoolTensor): Padding mask of shape (batch_size, height, width).
 
         Returns:
             torch.Tensor: Estimated patches of shape (batch_size, embedding_dim, height, width).
@@ -52,13 +58,43 @@ class BaseAudioSpectrogramTransformer(nn.Module):
         _, _, height, width = input.size()
 
         x = self.patches_to_sequence(input)
-        x = self.transformer_forward(x)
+
+        if padding_mask is not None:
+            padding_mask = self.patches_to_sequence(padding_mask)
+
+        x = self.transformer_forward(x, padding_mask=padding_mask)
         output = self.sequence_to_patches(x, height=height, width=width)
 
         return output
 
-    def transformer_forward(self, input: torch.Tensor) -> torch.Tensor:
-        output = self.backbone(input)
+    def transformer_forward(
+        self,
+        input: torch.Tensor,
+        padding_mask: Optional[torch.BoolTensor] = None,
+    ) -> torch.Tensor:
+        """Run forward pass of backbone.
+
+        Args:
+            input (torch.Tensor): Sequence of shape (batch_size, length, embedding_dim).
+            padding_mask (torch.BoolTensor, optional): Padding mask of shape (batch_size, length).
+
+        Returns:
+            torch.Tensor: Estimated sequence of shape (batch_size, length, embedding_dim).
+
+        """
+        if padding_mask is None:
+            kwargs = {}
+        else:
+            if isinstance(self.backbone, nn.TransformerEncoder):
+                kwargs = {
+                    "src_key_padding_mask": padding_mask,
+                }
+            else:
+                kwargs = {
+                    "padding_mask": padding_mask,
+                }
+
+        output = self.backbone(input, **kwargs)
 
         return output
 
@@ -266,11 +302,16 @@ class AudioSpectrogramTransformer(BaseAudioSpectrogramTransformer):
         else:
             raise FileNotFoundError(f"{pretrained_model_name_or_path} does not exist.")
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        input: torch.Tensor,
+        length: Optional[torch.LongTensor] = None,
+    ) -> torch.Tensor:
         """Forward pass of AudioSpectrogramTransformer.
 
         Args:
             input (torch.Tensor): Spectrogram of shape (batch_size, n_bins, n_frames).
+            length (torch.LongTensor, optional): Length of input of shape (batch_size,).
 
         Returns:
             torch.Tensor: Estimated patches. The shape is one of
@@ -280,11 +321,43 @@ class AudioSpectrogramTransformer(BaseAudioSpectrogramTransformer):
                 - (batch_size, out_channels).
 
         """
+        if length is None:
+            padding_mask = None
+        else:
+            factory_kwargs = {
+                "dtype": torch.long,
+                "device": length.device,
+            }
+            _, n_bins, max_frames = input.size()
+            width = []
+
+            for _length in length:
+                n_frames = _length.item()
+                _, _width = self.embedding.compute_output_shape(n_bins, n_frames)
+                width.append(_width)
+
+            width = torch.tensor(width, **factory_kwargs)
+            max_height, max_width = self.embedding.compute_output_shape(n_bins, max_frames)
+            padding_mask = torch.arange(max_width, **factory_kwargs) >= width.unsqueeze(dim=-1)
+            padding_mask = padding_mask.unsqueeze(dim=-2)
+            padding_mask = padding_mask.repeat((1, max_height, 1))
+            padding_mask = self.patches_to_sequence(padding_mask)
+
+            num_head_tokens = 0
+
+            if self.embedding.insert_cls_token:
+                num_head_tokens += 1
+
+            if self.embedding.insert_dist_token:
+                num_head_tokens += 1
+
+            padding_mask = F.pad(padding_mask, (num_head_tokens, 0), value=False)
+
         x = self.embedding(input)
-        output = self.transformer_forward(x)
+        output = self.transformer_forward(x, padding_mask=padding_mask)
 
         if self.aggregator is not None:
-            output = self.aggregator(output)
+            output = self.aggregator(output, padding_mask=padding_mask)
 
         if self.head is not None:
             output = self.head(output)
