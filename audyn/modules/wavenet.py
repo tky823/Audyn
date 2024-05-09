@@ -20,7 +20,7 @@ class ResidualConvBlock1d(nn.Module):
         bias: bool = True,
         is_causal: bool = True,
         dual_head: bool = True,
-        conv: str = "gated",
+        conv_type: str = "gated",
         local_dim: Optional[int] = None,
         global_dim: Optional[int] = None,
         weight_norm: bool = True,
@@ -36,7 +36,7 @@ class ResidualConvBlock1d(nn.Module):
         self.is_causal = is_causal
         self.dual_head = dual_head
 
-        if conv == "gated":
+        if conv_type == "gated":
             assert stride == 1, f"stride is expected to 1, but given {stride}."
 
             self.conv1d = GatedConv1d(
@@ -52,7 +52,7 @@ class ResidualConvBlock1d(nn.Module):
                 weight_norm=weight_norm,
             )
         else:
-            raise ValueError("{} is not supported for conv.".format(conv))
+            raise ValueError("{} is not supported for conv.".format(conv_type))
 
         if dual_head:
             self.output_conv1d = nn.Conv1d(

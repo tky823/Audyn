@@ -14,6 +14,32 @@ IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
 
 class WaveNet(nn.Module):
+    """WaveNet proposed in [#van2016wavenet]_.
+
+    Args:
+        in_channels (int): Number of input channels, which is typically same as out_channels.
+        out_channels (int): Number of output channels.
+        hidden_channels (int): Number of hidden channels in backbone.
+        skip_channels (int): Number of channels in skip connection.
+        num_layers (int): Number of layers. Dilation is ranged in [1, 2**(num_layers - 1)].
+        num_stacks (int): Number of stacks.
+        num_post_layers (int): Number of layers in post network.
+        kernel_size (int): Kernel size in convolution.
+        dilated (bool): Whether to apply dilated convolution.
+        bias (bool): If ``True``, ``bias`` is used in convolutions.
+        is_causal (bool): If ``True``, causality is ensured in convolutions.
+        conv_type (str): Convolution type.
+        upsample (nn.Module): Module to upsample conditional feature.
+        local_dim (int): Number of channels in local conditioning.
+        global_dim (int): Number of channels in global conditioning.
+        weight_norm (bool): Whether to apply weight normalization.
+
+    .. [#van2016wavenet]
+        A. Oord et al., "WaveNet: A generative model for raw audio,"
+        *arXiv preprint arXiv:1609.03499*, vol. 568, 2016.
+
+    """
+
     def __init__(
         self,
         in_channels: int,
@@ -27,7 +53,7 @@ class WaveNet(nn.Module):
         dilated: bool = True,
         bias: bool = True,
         is_causal: bool = True,
-        conv: str = "gated",
+        conv_type: str = "gated",
         upsample: Optional[nn.Module] = None,
         local_dim: Optional[int] = None,
         global_dim: Optional[int] = None,
@@ -71,7 +97,7 @@ class WaveNet(nn.Module):
                     bias=bias,
                     is_causal=is_causal,
                     dual_head=dual_head,
-                    conv=conv,
+                    conv_type=conv_type,
                     local_dim=local_dim,
                     global_dim=global_dim,
                     weight_norm=weight_norm,
@@ -598,7 +624,7 @@ class StackedResidualConvBlock1d(nn.Module):
         bias: bool = True,
         is_causal: bool = True,
         dual_head: bool = True,
-        conv: str = "gated",
+        conv_type: str = "gated",
         local_dim: Optional[int] = None,
         global_dim: Optional[int] = None,
         weight_norm: bool = True,
@@ -634,7 +660,7 @@ class StackedResidualConvBlock1d(nn.Module):
                     bias=bias,
                     is_causal=is_causal,
                     dual_head=_dual_head,
-                    conv=conv,
+                    conv_type=conv_type,
                     local_dim=local_dim,
                     global_dim=global_dim,
                     weight_norm=weight_norm,
