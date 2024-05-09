@@ -39,6 +39,45 @@ class BaseAudioSpectrogramTransformer(nn.Module):
         self.embedding = embedding
         self.backbone = backbone
 
+    def compute_padding_mask(
+        self,
+        input: torch.Tensor,
+        length: Optional[torch.LongTensor] = None,
+    ) -> Optional[torch.BoolTensor]:
+        if length is None:
+            padding_mask = None
+        else:
+            factory_kwargs = {
+                "dtype": torch.long,
+                "device": length.device,
+            }
+            _, n_bins, max_frames = input.size()
+            width = []
+
+            for _length in length:
+                n_frames = _length.item()
+                _, _width = self.embedding.compute_output_shape(n_bins, n_frames)
+                width.append(_width)
+
+            width = torch.tensor(width, **factory_kwargs)
+            max_height, max_width = self.embedding.compute_output_shape(n_bins, max_frames)
+            padding_mask = torch.arange(max_width, **factory_kwargs) >= width.unsqueeze(dim=-1)
+            padding_mask = padding_mask.unsqueeze(dim=-2)
+            padding_mask = padding_mask.repeat((1, max_height, 1))
+            padding_mask = self.patches_to_sequence(padding_mask)
+
+            num_head_tokens = 0
+
+            if self.embedding.insert_cls_token:
+                num_head_tokens += 1
+
+            if self.embedding.insert_dist_token:
+                num_head_tokens += 1
+
+            padding_mask = F.pad(padding_mask, (num_head_tokens, 0), value=False)
+
+        return padding_mask
+
     def patch_transformer_forward(
         self,
         input: torch.Tensor,
@@ -332,45 +371,6 @@ class AudioSpectrogramTransformer(BaseAudioSpectrogramTransformer):
             output = self.head(output)
 
         return output
-
-    def compute_padding_mask(
-        self,
-        input: torch.Tensor,
-        length: Optional[torch.LongTensor] = None,
-    ) -> Optional[torch.BoolTensor]:
-        if length is None:
-            padding_mask = None
-        else:
-            factory_kwargs = {
-                "dtype": torch.long,
-                "device": length.device,
-            }
-            _, n_bins, max_frames = input.size()
-            width = []
-
-            for _length in length:
-                n_frames = _length.item()
-                _, _width = self.embedding.compute_output_shape(n_bins, n_frames)
-                width.append(_width)
-
-            width = torch.tensor(width, **factory_kwargs)
-            max_height, max_width = self.embedding.compute_output_shape(n_bins, max_frames)
-            padding_mask = torch.arange(max_width, **factory_kwargs) >= width.unsqueeze(dim=-1)
-            padding_mask = padding_mask.unsqueeze(dim=-2)
-            padding_mask = padding_mask.repeat((1, max_height, 1))
-            padding_mask = self.patches_to_sequence(padding_mask)
-
-            num_head_tokens = 0
-
-            if self.embedding.insert_cls_token:
-                num_head_tokens += 1
-
-            if self.embedding.insert_dist_token:
-                num_head_tokens += 1
-
-            padding_mask = F.pad(padding_mask, (num_head_tokens, 0), value=False)
-
-        return padding_mask
 
 
 class Aggregator(nn.Module):
