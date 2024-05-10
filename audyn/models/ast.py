@@ -209,14 +209,18 @@ class BaseAudioSpectrogramTransformer(nn.Module):
 
         Args:
             sequence (torch.Tensor): Sequence containing head tokens, i.e. class and distillation
-                tokens. The shape is (batch_size, length, embedding_dim).
+                tokens or corresponding mask. If the tokens are given, the shape should be
+                (batch_size, length, embedding_dim). Otherwise (mask is given), the shape should be
+                (batch_size, length).
 
         Returns:
             tuple: Tuple of tensors containing
 
-                - torch.Tensor: Head tokens of shape (batch_size, num_head_tokens, embedding_dim).
+                - torch.Tensor: Head tokens of shape (batch_size, num_head_tokens, embedding_dim)
+                    or (batch_size, num_head_tokens).
                 - torch.Tensor: Sequence of shape
-                    (batch_size, length - num_head_tokens, embedding_dim).
+                    (batch_size, length - num_head_tokens, embedding_dim) or
+                    (batch_size, length - num_head_tokens).
 
         .. note::
 
@@ -224,7 +228,15 @@ class BaseAudioSpectrogramTransformer(nn.Module):
             case, an empty sequnce is returened as the first item of returned tensors.
 
         """
+        n_dims = sequence.dim()
+
+        if n_dims == 2:
+            sequence = sequence.unsqueeze(dim=-1)
+
         head_tokens, sequence = self.embedding.split_sequence(sequence)
+
+        if n_dims == 2:
+            sequence = sequence.squeeze(dim=-1)
 
         return head_tokens, sequence
 
@@ -233,20 +245,28 @@ class BaseAudioSpectrogramTransformer(nn.Module):
     ) -> torch.Tensor:
         """Prepaned tokens to sequence.
 
+        This method is inversion of ``split_sequence``.
+
         Args:
-            sequence (torch.Tensor): Sequence of shape (batch_size, length, embedding_dim).
+            sequence (torch.Tensor): Sequence of shape (batch_size, length, embedding_dim)
+                or (batch_size, length).
             tokens (torch.Tensor, optional): Tokens of shape
-                (batch_size, num_tokens, embedding_dim).
+                (batch_size, num_tokens, embedding_dim) or (batch_size, num_tokens).
 
         Returns:
             torch.Tensor: Concatenated sequence of shape
-                (batch_size, length + num_tokens, embedding_dim).
+                (batch_size, length + num_tokens, embedding_dim)
+                or (batch_size, length + num_tokens).
 
         """
         if tokens is None:
             return sequence
         else:
-            return torch.cat([tokens, sequence], dim=-2)
+            if sequence.dim() == 2:
+                # assume (batch_size, length) and (batch_size, num_tokens)
+                return torch.cat([tokens, sequence], dim=-1)
+            else:
+                return torch.cat([tokens, sequence], dim=-2)
 
 
 class AudioSpectrogramTransformer(BaseAudioSpectrogramTransformer):
