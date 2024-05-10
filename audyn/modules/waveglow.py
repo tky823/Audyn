@@ -21,9 +21,9 @@ class WaveNetAffineCoupling(AffineCoupling):
         dilation_rate: int = 2,
         bias: bool = True,
         is_causal: bool = False,
-        conv: str = "gated",
-        local_dim: Optional[int] = None,
-        global_dim: Optional[int] = None,
+        conv_type: str = "gated",
+        local_channels: Optional[int] = None,
+        global_channels: Optional[int] = None,
         weight_norm: bool = True,
         split: Optional[nn.Module] = None,
         concat: Optional[nn.Module] = None,
@@ -40,9 +40,9 @@ class WaveNetAffineCoupling(AffineCoupling):
             dilation_rate=dilation_rate,
             bias=bias,
             is_causal=is_causal,
-            conv=conv,
-            local_dim=local_dim,
-            global_dim=global_dim,
+            conv_type=conv_type,
+            local_channels=local_channels,
+            global_channels=global_channels,
             weight_norm=weight_norm,
         )
 
@@ -151,9 +151,9 @@ class StackedResidualConvBlock1d(nn.Module):
         dilation_rate: int = 2,
         bias: bool = True,
         is_causal: bool = False,
-        conv: str = "gated",
-        local_dim: Optional[int] = None,
-        global_dim: Optional[int] = None,
+        conv_type: str = "gated",
+        local_channels: Optional[int] = None,
+        global_channels: Optional[int] = None,
         weight_norm: bool = True,
     ) -> None:
         super().__init__()
@@ -201,9 +201,9 @@ class StackedResidualConvBlock1d(nn.Module):
                     bias=bias,
                     is_causal=is_causal,
                     dual_head=dual_head,
-                    conv=conv,
-                    local_dim=local_dim,
-                    global_dim=global_dim,
+                    conv_type=conv_type,
+                    local_channels=local_channels,
+                    global_channels=global_channels,
                     weight_norm=weight_norm,
                 )
             )

@@ -30,10 +30,10 @@ class WaveGlow(BaseFlow):
         dilation_rate: int = 2,
         bias: bool = True,
         is_causal: bool = False,
-        conv: str = "gated",
+        conv_type: str = "gated",
         upsample: Optional[nn.Module] = None,
-        local_dim: Optional[int] = None,
-        global_dim: Optional[int] = None,
+        local_channels: Optional[int] = None,
+        global_channels: Optional[int] = None,
         weight_norm: bool = True,
     ) -> None:
         super().__init__()
@@ -45,13 +45,13 @@ class WaveGlow(BaseFlow):
         self.num_flows = num_flows
         self.num_groups = num_groups
         self.early_size = early_size
-        self.local_dim = local_dim
+        self.local_channels = local_channels
 
-        if local_dim is None:
+        if local_channels is None:
             assert upsample is None, "upsample is expected to None."
         else:
             assert upsample is not None, "upsample is expected to be given."
-            local_dim = local_dim * num_groups
+            local_channels = local_channels * num_groups
 
         self.upsample = upsample
 
@@ -71,9 +71,9 @@ class WaveGlow(BaseFlow):
                     dilation_rate=dilation_rate,
                     bias=bias,
                     is_causal=is_causal,
-                    conv=conv,
-                    local_dim=local_dim,
-                    global_dim=global_dim,
+                    conv_type=conv_type,
+                    local_channels=local_channels,
+                    global_channels=global_channels,
                     weight_norm=weight_norm,
                 )
             )
@@ -93,16 +93,16 @@ class WaveGlow(BaseFlow):
         Args:
             input (torch.Tensor): 3D tensor of shape (batch_size, in_channels, length).
             local_conditioning (torch.Tensor, optional): Local conditioning of shape
-                (batch_size, local_dim, local_length).
+                (batch_size, local_channels, local_length).
             global_conditioning (torch.Tensor, optional): Global conditioning of shape
-                (batch_size, global_dim) or (batch_size, global_dim, 1).
+                (batch_size, global_channels) or (batch_size, global_channels, 1).
 
         Returns:
             tuple of torch.Tensor.
 
         """
         num_groups = self.num_groups
-        local_dim = self.local_dim
+        local_channels = self.local_channels
 
         batch_size, in_channels, length = input.size()
         padding = (num_groups - length % num_groups) % num_groups
@@ -124,11 +124,11 @@ class WaveGlow(BaseFlow):
 
             h_local = F.pad(h_local, (0, length + padding - local_length))
             h_local = h_local.view(
-                batch_size, local_dim, (length + padding) // num_groups, num_groups
+                batch_size, local_channels, (length + padding) // num_groups, num_groups
             )
             h_local = h_local.permute(0, 1, 3, 2).contiguous()
             h_local = h_local.view(
-                batch_size, local_dim * num_groups, (length + padding) // num_groups
+                batch_size, local_channels * num_groups, (length + padding) // num_groups
             )
 
         h_global = global_conditioning
@@ -175,9 +175,9 @@ class WaveGlow(BaseFlow):
         Args:
             input (torch.Tensor): Noise tensor of shape (batch_size, in_channels, length).
             local_conditioning (torch.Tensor, optional): Local conditioning of shape
-                (batch_size, local_dim, local_length).
+                (batch_size, local_channels, local_length).
             global_conditioning (torch.Tensor, optional): Global conditioning of shape
-                (batch_size, global_dim) or (batch_size, global_dim, 1).
+                (batch_size, global_channels) or (batch_size, global_channels, 1).
             std (float or torch.Tensor): Standard deviation to scale input. Default: 1.
 
         Returns:
@@ -209,9 +209,9 @@ class WaveGlow(BaseFlow):
             input (torch.Tensor): 3D tensor of shape
                 (batch_size, in_channels * num_groups, length // num_groups).
             local_conditioning (torch.Tensor, optional): Local conditioning of shape
-                (batch_size, local_dim, length // num_groups)).
+                (batch_size, local_channels, length // num_groups)).
             global_conditioning (torch.Tensor, optional): Global conditioning of shape
-                (batch_size, global_dim) or (batch_size, global_dim, 1).
+                (batch_size, global_channels) or (batch_size, global_channels, 1).
 
         Returns:
             tuple of torch.Tensor.
@@ -270,9 +270,9 @@ class WaveGlow(BaseFlow):
             input (torch.Tensor): 3D tensor of shape
                 (batch_size, in_channels * num_groups, length // num_groups).
             local_conditioning (torch.Tensor, optional): Local conditioning of shape
-                (batch_size, local_dim, length // num_groups)).
+                (batch_size, local_channels, length // num_groups)).
             global_conditioning (torch.Tensor, optional): Global conditioning of shape
-                (batch_size, global_dim) or (batch_size, global_dim, 1).
+                (batch_size, global_channels) or (batch_size, global_channels, 1).
 
         Returns:
             tuple of torch.Tensor.
@@ -340,11 +340,11 @@ class MultiSpeakerWaveGlow(WaveGlow):
         dilation_rate: int = 2,
         bias: bool = True,
         is_causal: bool = False,
-        conv: str = "gated",
+        conv_type: str = "gated",
         upsample: Optional[nn.Module] = None,
         speaker_encoder: nn.Module = None,
-        local_dim: Optional[int] = None,
-        global_dim: Optional[int] = None,
+        local_channels: Optional[int] = None,
+        global_channels: Optional[int] = None,
         weight_norm: bool = True,
     ) -> None:
         # Use nn.Module.__init__ just for readability of
@@ -358,13 +358,13 @@ class MultiSpeakerWaveGlow(WaveGlow):
         self.num_flows = num_flows
         self.num_groups = num_groups
         self.early_size = early_size
-        self.local_dim = local_dim
+        self.local_channels = local_channels
 
-        if local_dim is None:
+        if local_channels is None:
             assert upsample is None, "upsample is expected to None."
         else:
             assert upsample is not None, "upsample is expected to be given."
-            local_dim = local_dim * num_groups
+            local_channels = local_channels * num_groups
 
         self.speaker_encoder = speaker_encoder
         self.upsample = upsample
@@ -385,9 +385,9 @@ class MultiSpeakerWaveGlow(WaveGlow):
                     dilation_rate=dilation_rate,
                     bias=bias,
                     is_causal=is_causal,
-                    conv=conv,
-                    local_dim=local_dim,
-                    global_dim=global_dim,
+                    conv_type=conv_type,
+                    local_channels=local_channels,
+                    global_channels=global_channels,
                     weight_norm=weight_norm,
                 )
             )
@@ -407,7 +407,7 @@ class MultiSpeakerWaveGlow(WaveGlow):
         Args:
             input (torch.Tensor): 3D tensor of shape (batch_size, in_channels, length).
             local_conditioning (torch.Tensor, optional): Local conditioning of shape
-                (batch_size, local_dim, local_length).
+                (batch_size, local_channels, local_length).
             speaker (torch.Tensor): Speaker feature passed to self.speaker_encoder. Usually,
                 this is speaker index of shape (batch_size,), but other shapes supported
                 by self.speaker_encoder can be specified.
@@ -442,7 +442,7 @@ class MultiSpeakerWaveGlow(WaveGlow):
         Args:
             input (torch.Tensor): Noise tensor of shape (batch_size, in_channels, length).
             local_conditioning (torch.Tensor, optional): Local conditioning of shape
-                (batch_size, local_dim, local_length).
+                (batch_size, local_channels, local_length).
             speaker (torch.Tensor): Speaker feature passed to self.speaker_encoder. Usually,
                 this is speaker index of shape (batch_size,), but other shapes supported
                 by self.speaker_encoder can be specified.
@@ -502,9 +502,9 @@ class StackedWaveGlowBlock(BaseFlow):
         dilation_rate: int = 2,
         bias: bool = True,
         is_causal: bool = False,
-        conv: str = "gated",
-        local_dim: Optional[int] = None,
-        global_dim: Optional[int] = None,
+        conv_type: str = "gated",
+        local_channels: Optional[int] = None,
+        global_channels: Optional[int] = None,
         weight_norm: bool = True,
         split: Optional[nn.Module] = None,
         concat: Optional[nn.Module] = None,
@@ -526,9 +526,9 @@ class StackedWaveGlowBlock(BaseFlow):
                 dilation_rate=dilation_rate,
                 bias=bias,
                 is_causal=is_causal,
-                conv=conv,
-                local_dim=local_dim,
-                global_dim=global_dim,
+                conv_type=conv_type,
+                local_channels=local_channels,
+                global_channels=global_channels,
                 weight_norm=weight_norm,
                 split=split,
                 concat=concat,
@@ -596,9 +596,9 @@ class WaveGlowBlock(BaseFlow):
         dilation_rate: int = 2,
         bias: bool = True,
         is_causal: bool = False,
-        conv: str = "gated",
-        local_dim: Optional[int] = None,
-        global_dim: Optional[int] = None,
+        conv_type: str = "gated",
+        local_channels: Optional[int] = None,
+        global_channels: Optional[int] = None,
         weight_norm: bool = True,
         split: Optional[nn.Module] = None,
         concat: Optional[nn.Module] = None,
@@ -624,9 +624,9 @@ class WaveGlowBlock(BaseFlow):
             dilation_rate=dilation_rate,
             bias=bias,
             is_causal=is_causal,
-            conv=conv,
-            local_dim=local_dim,
-            global_dim=global_dim,
+            conv_type=conv_type,
+            local_channels=local_channels,
+            global_channels=global_channels,
             weight_norm=weight_norm,
             split=split,
             concat=concat,

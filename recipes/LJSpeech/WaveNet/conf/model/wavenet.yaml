@@ -10,12 +10,12 @@ kernel_size: 3
 dilated: true
 bias: true
 is_causal: true
-conv: gated
+conv_type: gated
 upsample:
   _target_: audyn.models.wavenet.Upsample
   in_channels: ${data.melspectrogram.n_mels}
   out_channels: ${.in_channels}
   kernel_size: ${data.spectrogram.n_fft}
   stride: ${data.spectrogram.hop_length}
-local_dim: ${.upsample.out_channels}
+local_channels: ${.upsample.out_channels}
 weight_norm: true

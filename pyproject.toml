@@ -42,6 +42,13 @@ dev = [
     "black",
     "isort"
 ]
+docs = [
+    "sphinx",
+    "sphinx-autodoc-typehints",
+    "sphinx-autobuild",
+    "nbsphinx",
+    "furo",
+]
 tests = [
     "pytest",
     "pytest-cov",

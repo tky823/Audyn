@@ -156,7 +156,7 @@ def test_wavenet_local(dilated: bool, is_causal: bool):
         dilated=dilated,
         is_causal=is_causal,
         upsample=upsample,
-        local_dim=n_mels,
+        local_channels=n_mels,
     )
 
     output = model(discrete_input)
@@ -182,7 +182,7 @@ def test_wavenet_local(dilated: bool, is_causal: bool):
             dilated=dilated,
             is_causal=is_causal,
             upsample=upsample,
-            local_dim=n_mels,
+            local_channels=n_mels,
         )
 
         # discrete
@@ -283,7 +283,7 @@ def test_wavenet_global(dilated: bool, is_causal: bool):
         num_stacks=num_stacks,
         dilated=dilated,
         is_causal=is_causal,
-        global_dim=embed_dim,
+        global_channels=embed_dim,
     )
 
     output = model(discrete_input)
@@ -302,7 +302,7 @@ def test_wavenet_global(dilated: bool, is_causal: bool):
             num_stacks=num_stacks,
             dilated=dilated,
             is_causal=is_causal,
-            global_dim=embed_dim,
+            global_channels=embed_dim,
         )
 
         # discrete
@@ -422,8 +422,8 @@ def test_multispk_wavenet(dilated: bool, is_causal: bool):
         is_causal=is_causal,
         upsample=upsample,
         speaker_encoder=speaker_encoder,
-        local_dim=n_mels,
-        global_dim=embed_dim,
+        local_channels=n_mels,
+        global_channels=embed_dim,
     )
 
     output = model(
@@ -463,8 +463,8 @@ def test_multispk_wavenet(dilated: bool, is_causal: bool):
             is_causal=is_causal,
             upsample=upsample,
             speaker_encoder=speaker_encoder,
-            local_dim=n_mels,
-            global_dim=embed_dim,
+            local_channels=n_mels,
+            global_channels=embed_dim,
         )
 
         # discrete
@@ -633,12 +633,12 @@ def test_stacked_residual_conv_block1d_local(dilated: bool, is_causal: bool, dua
 
     in_channels = 4
     hidden_channels = 6
-    local_dim = 3
+    local_channels = 3
 
     num_layers = 3
 
     input = torch.randn(batch_size, in_channels, num_frames)
-    local_conditioning = torch.randn(batch_size, local_dim, num_frames)
+    local_conditioning = torch.randn(batch_size, local_channels, num_frames)
 
     model = StackedResidualConvBlock1d(
         in_channels,
@@ -647,7 +647,7 @@ def test_stacked_residual_conv_block1d_local(dilated: bool, is_causal: bool, dua
         dilated=dilated,
         is_causal=is_causal,
         dual_head=dual_head,
-        local_dim=local_dim,
+        local_channels=local_channels,
     )
 
     output, skip = model(input, local_conditioning=local_conditioning)
@@ -669,11 +669,11 @@ def test_stacked_residual_conv_block1d_local(dilated: bool, is_causal: bool, dua
             dilated=dilated,
             is_causal=is_causal,
             dual_head=dual_head,
-            local_dim=local_dim,
+            local_channels=local_channels,
         )
 
         zero = torch.zeros((batch_size, in_channels, 1), dtype=torch.float)
-        local_conditioning = torch.randn(batch_size, local_dim, num_frames)
+        local_conditioning = torch.randn(batch_size, local_channels, num_frames)
         buffered_skip = zero
 
         for frame_idx in range(num_frames):
@@ -704,12 +704,12 @@ def test_stacked_residual_conv_block1d_global(dilated: bool, is_causal: bool, du
 
     in_channels = 4
     hidden_channels = 6
-    global_dim = 3
+    global_channels = 3
 
     num_layers = 3
 
     input = torch.randn(batch_size, in_channels, num_frames)
-    global_conditioning = torch.randn(batch_size, global_dim)
+    global_conditioning = torch.randn(batch_size, global_channels)
 
     model = StackedResidualConvBlock1d(
         in_channels,
@@ -718,7 +718,7 @@ def test_stacked_residual_conv_block1d_global(dilated: bool, is_causal: bool, du
         dilated=dilated,
         is_causal=is_causal,
         dual_head=dual_head,
-        global_dim=global_dim,
+        global_channels=global_channels,
     )
 
     output, skip = model(input, global_conditioning=global_conditioning)
@@ -740,11 +740,11 @@ def test_stacked_residual_conv_block1d_global(dilated: bool, is_causal: bool, du
             dilated=dilated,
             is_causal=is_causal,
             dual_head=dual_head,
-            global_dim=global_dim,
+            global_channels=global_channels,
         )
 
         zero = torch.zeros((batch_size, in_channels, 1), dtype=torch.float)
-        global_conditioning = torch.randn(batch_size, global_dim)
+        global_conditioning = torch.randn(batch_size, global_channels)
         buffered_skip = zero
 
         for _ in range(num_frames):

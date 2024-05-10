@@ -100,9 +100,9 @@ class FastSpeechWaveNet(CascadeTextToWave):
             initial_state (torch.Tensor): Initial state of shape
                 (batch_size, 1) or (batch_size, in_channels, 1).
             local_conditioning (torch.Tensor, optional): Local conditioning of shape
-                (batch_size, local_dim, local_length).
+                (batch_size, local_channels, local_length).
             global_conditioning (torch.Tensor, optional): Global conditioning of shape
-                (batch_size, global_dim) or (batch_size, global_dim, 1).
+                (batch_size, global_channels) or (batch_size, global_channels, 1).
 
         Returns:
             Tuple of tensors containing:
@@ -191,9 +191,9 @@ class FastSpeechWaveGlow(CascadeTextToWave):
                 (batch_size, in_channels, waveform_length), where in_channels is
                 number channels in input of WaveGlow.
             local_conditioning (torch.Tensor, optional): Local conditioning of shape
-                (batch_size, local_dim, local_length).
+                (batch_size, local_channels, local_length).
             global_conditioning (torch.Tensor, optional): Global conditioning of shape
-                (batch_size, global_dim) or (batch_size, global_dim, 1).
+                (batch_size, global_channels) or (batch_size, global_channels, 1).
             std (float): Standard deviation of noise. Default: 1.
 
         Returns:
