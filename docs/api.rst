@@ -8,3 +8,4 @@ Submodules
    :maxdepth: 1
 
    audyn.models
+   audyn.transforms
