@@ -10,6 +10,12 @@ Submodules
    :maxdepth: 1
 
    audyn.models.wavenet
+   audyn.models.waveglow
+   audyn.models.hifigan
+   audyn.models.ast
+   audyn.models.ssast
+   audyn.models.passt
+   audyn.models.roformer
 
 Classes
 -------
