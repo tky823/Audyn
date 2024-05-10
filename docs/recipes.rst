@@ -1,3 +1,9 @@
+Recipes
+=======
+
+Training
+--------
+
 Template of ``train.py`` for training.
 
 .. code-block:: python
