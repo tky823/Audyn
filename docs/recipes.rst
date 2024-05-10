@@ -25,3 +25,8 @@ Template of ``train.py`` for training.
 
     if __name__ == "__main__":
         main()
+
+.. toctree::
+   :maxdepth: 1
+
+   recipes.tips
