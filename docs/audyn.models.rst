@@ -24,22 +24,36 @@ WaveNet
 ^^^^^^^
 
 .. autoclass:: audyn.models.WaveNet
+   :members: forward
+   
 .. autoclass:: audyn.models.MultiSpeakerWaveNet
+   :members: forward
 
 WaveGlow
 ^^^^^^^^
 
 .. autoclass:: audyn.models.WaveGlow
+   :members: forward
+
 .. autoclass:: audyn.models.MultiSpeakerWaveGlow
+   :members: forward
 
 Audio spectrogram Transformer (AST) and self-supervised AST (SSAST)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: audyn.models.AudioSpectrogramTransformer
+   :members: forward
+
 .. autoclass:: audyn.models.AST
+
 .. autoclass:: audyn.models.MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel
+   :members: forward
+
 .. autoclass:: audyn.models.SelfSupervisedAudioSpectrogramTransformer
+   :members: forward
+
 .. autoclass:: audyn.models.SSASTMPM
+
 .. autoclass:: audyn.models.SSAST
 
 Patchout faSt Spectrogram Transformer (PaSST)

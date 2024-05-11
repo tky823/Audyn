@@ -7,3 +7,4 @@ Classes
 -------
 
 .. autoclass:: audyn.modules.vit.PositionalPatchEmbedding
+   :members: forward
