@@ -355,8 +355,9 @@ def test_ssast_masker(sample_wise: bool) -> None:
         sample_wise=sample_wise,
     )
 
-    # patch-based SSAST-like inputs
+    # patch-based SSAST-like inputs w/o padding_mask
     height, width = 10, 16
+    num_paddings = 12
     input = torch.randn((batch_size, d_model, height, width))
     output, masking_mask = model(input)
 
@@ -365,14 +366,64 @@ def test_ssast_masker(sample_wise: bool) -> None:
     assert masking_mask.size()[1:] == input.size()[2:]
     assert torch.all(masking_mask.sum(dim=(-2, -1)) == num_masks)
 
-    # frame-based SSAST-like inputs
+    # patch-based SSAST-like inputs w/ padding_mask
+    if sample_wise:
+        padding_indices = torch.randperm(batch_size * height * width, dtype=torch.long)
+        padding_indices = padding_indices[: batch_size * num_paddings]
+        padding_mask = torch.zeros((batch_size * height * width,), dtype=torch.bool)
+        padding_mask.scatter_(0, padding_indices, True)
+        padding_mask = padding_mask.view(batch_size, height, width)
+    else:
+        padding_indices = torch.randperm(height * width, dtype=torch.long)
+        padding_indices = padding_indices[:num_paddings]
+        padding_mask = torch.zeros((height * width,), dtype=torch.bool)
+        padding_mask.scatter_(0, padding_indices, True)
+        padding_mask = padding_mask.view(height, width)
+        padding_mask = padding_mask.expand((batch_size, -1, -1))
+
+    output, masking_mask = model(input, padding_mask=padding_mask)
+
+    assert output.size() == input.size()
+    assert masking_mask.size(0) == input.size(0)
+    assert masking_mask.size()[1:] == input.size()[2:]
+    assert torch.all(masking_mask.sum(dim=(-2, -1)) == num_masks)
+
+    masking_and_padding = torch.logical_and(masking_mask, padding_mask)
+    assert not torch.any(masking_and_padding)
+
+    # frame-based SSAST-like inputs w/o padding_mask
     height, width = 1, 100
+    num_paddings = 10
     input = torch.randn((batch_size, d_model, height, width))
     output, masking_mask = model(input)
 
     assert output.size() == input.size()
     assert masking_mask.size(0) == input.size(0)
     assert masking_mask.size()[1:] == input.size()[2:]
+
+    # frame-based SSAST-like inputs w/ padding_mask
+    if sample_wise:
+        padding_indices = torch.randperm(batch_size * height * width, dtype=torch.long)
+        padding_indices = padding_indices[: batch_size * num_paddings]
+        padding_mask = torch.zeros((batch_size * height * width,), dtype=torch.bool)
+        padding_mask.scatter_(0, padding_indices, True)
+        padding_mask = padding_mask.view(batch_size, height, width)
+    else:
+        padding_indices = torch.randperm(height * width, dtype=torch.long)
+        padding_indices = padding_indices[:num_paddings]
+        padding_mask = torch.zeros((height * width,), dtype=torch.bool)
+        padding_mask.scatter_(0, padding_indices, True)
+        padding_mask = padding_mask.view(height, width)
+        padding_mask = padding_mask.expand((batch_size, -1, -1))
+
+    output, masking_mask = model(input, padding_mask=padding_mask)
+
+    assert output.size() == input.size()
+    assert masking_mask.size(0) == input.size(0)
+    assert masking_mask.size()[1:] == input.size()[2:]
+
+    masking_and_padding = torch.logical_and(masking_mask, padding_mask)
+    assert not torch.any(masking_and_padding)
 
 
 @pytest.mark.parametrize("sample_wise", [True, False])
