@@ -6,7 +6,7 @@ import torch.nn as nn
 from omegaconf import OmegaConf
 from torch.optim import SGD
 
-from audyn.criterion.base import MultiCriteria
+from audyn.criterion import MultiCriteria
 from audyn.modules.vqvae import VectorQuantizer
 from audyn.utils.hydra.utils import (
     instantiate_criterion,

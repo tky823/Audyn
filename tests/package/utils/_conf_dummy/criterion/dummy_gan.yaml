@@ -1,7 +1,7 @@
 generator:
-  _target_: audyn.criterion.base.MultiCriteria
+  _target_: audyn.criterion.MultiCriteria
   bce_generator:
-    _target_: audyn.criterion.base.BaseCriterionWrapper
+    _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
       _target_: torch.nn.BCELoss
       reduction: mean
@@ -12,9 +12,9 @@ generator:
       target:
         target: fake_target
 discriminator:
-  _target_: audyn.criterion.base.MultiCriteria
+  _target_: audyn.criterion.MultiCriteria
   bce_discriminator_fake:
-    _target_: audyn.criterion.base.BaseCriterionWrapper
+    _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
       _target_: torch.nn.BCELoss
       reduction: mean
@@ -25,7 +25,7 @@ discriminator:
       target:
         target: fake_label
   bce_discriminator_real:
-    _target_: audyn.criterion.base.BaseCriterionWrapper
+    _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
       _target_: torch.nn.BCELoss
       reduction: mean
