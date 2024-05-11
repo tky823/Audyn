@@ -19,6 +19,7 @@ Create dataset
     >>> f = open(list_path, mode="w")
     >>> for idx in range(num_samples):
     ...     length = idx + 1
+    ...     # NOTE: Last dimension is treated as length.
     ...     data = {
     ...         "index": torch.tensor(idx, dtype=torch.long),
     ...         "value": torch.randn((num_features, length)),
@@ -28,21 +29,31 @@ Create dataset
     ...     torch.save(data, path)
     ...     f.write(f"{idx}\n")
     ...
+    2
+    2
+    2
+    2
+    2
+    2
+    2
+    2
+    2
+    2
     >>> f.close()
     >>> dataset = TorchObjectDataset(list_path=list_path, feature_dir=feature_dir)
     >>> for sample in dataset:
-    ...     print(sample["index"].size(), sample["value"].size())
+    ...     print(sample["index"].size(), sample["value"].size(), sample["filename"])
     ... 
-    torch.Size([]) torch.Size([3])
-    torch.Size([]) torch.Size([3])
-    torch.Size([]) torch.Size([3])
-    torch.Size([]) torch.Size([3])
-    torch.Size([]) torch.Size([3])
-    torch.Size([]) torch.Size([3])
-    torch.Size([]) torch.Size([3])
-    torch.Size([]) torch.Size([3])
-    torch.Size([]) torch.Size([3])
-    torch.Size([]) torch.Size([3])
+    torch.Size([]) torch.Size([3, 1]) 0
+    torch.Size([]) torch.Size([3, 2]) 1
+    torch.Size([]) torch.Size([3, 3]) 2
+    torch.Size([]) torch.Size([3, 4]) 3
+    torch.Size([]) torch.Size([3, 5]) 4
+    torch.Size([]) torch.Size([3, 6]) 5
+    torch.Size([]) torch.Size([3, 7]) 6
+    torch.Size([]) torch.Size([3, 8]) 7
+    torch.Size([]) torch.Size([3, 9]) 8
+    torch.Size([]) torch.Size([3, 10]) 9
 
 Classes
 -------
