@@ -10,13 +10,13 @@ from ..utils.data.audioset.ast import std as _audioset_std
 from .kaldi import KaldiMelSpectrogram
 
 __all__ = [
-    "SelfSupervisedAudioSpectrogramTransformerMelSpectrogram",
-    "SSASTMelSpectrogram",
+    "AudioSpectrogramTransformerMelSpectrogram",
+    "ASTMelSpectrogram",
 ]
 
 
-class SelfSupervisedAudioSpectrogramTransformerMelSpectrogram(nn.Module):
-    """Mel-spectrogram transform for self-supervised audio spectrogram transformer (SSAST).
+class AudioSpectrogramTransformerMelSpectrogram(nn.Module):
+    """Mel-spectrogram transform for audio spectrogram transformer (SSAST).
 
     Args:
         sample_rate (int): Sampling rate called as sample_frequency in
@@ -130,9 +130,8 @@ class SelfSupervisedAudioSpectrogramTransformerMelSpectrogram(nn.Module):
         mean: Optional[float] = None,
         std: Optional[float] = None,
         take_log: bool = True,
-    ) -> "SelfSupervisedAudioSpectrogramTransformerMelSpectrogram":
-        """Dataset-aware factory method for
-        SelfSupervisedAudioSpectrogramTransformerMelSpectrogram.
+    ) -> "AudioSpectrogramTransformerMelSpectrogram":
+        """Dataset-aware factory method for AudioSpectrogramTransformerMelSpectrogram.
 
         Args:
             dataset (str): Dataset name. Now, ``audioset`` is available.
@@ -141,7 +140,7 @@ class SelfSupervisedAudioSpectrogramTransformerMelSpectrogram(nn.Module):
                 but we use ``100`` by default.
 
         Returns:
-            SelfSupervisedAudioSpectrogramTransformerMelSpectrogram: Mel-spectrogram transform.
+            AudioSpectrogramTransformerMelSpectrogram: Mel-spectrogram transform.
 
         """
         if dataset.lower() == "audioset":
@@ -182,5 +181,5 @@ class SelfSupervisedAudioSpectrogramTransformerMelSpectrogram(nn.Module):
         return transform
 
 
-class SSASTMelSpectrogram(SelfSupervisedAudioSpectrogramTransformerMelSpectrogram):
-    """Alias of SelfSupervisedAudioSpectrogramTransformerMelSpectrogram."""
+class ASTMelSpectrogram(AudioSpectrogramTransformerMelSpectrogram):
+    """Alias of AudioSpectrogramTransformerMelSpectrogram."""
