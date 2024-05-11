@@ -405,6 +405,8 @@ class AudioSpectrogramTransformer(BaseAudioSpectrogramTransformer):
 
 
 class Aggregator(nn.Module):
+    """Base class of module to aggregate features."""
+
     @abstractmethod
     def forward(
         self,
@@ -545,6 +547,8 @@ class HeadTokensAggregator(Aggregator):
 
 
 class Head(nn.Module):
+    """Base class of Head module to transform aggregated feature."""
+
     @abstractmethod
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         pass
