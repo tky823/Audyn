@@ -7,6 +7,7 @@ from typing import Dict, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from omegaconf import OmegaConf
 from torch.nn.common_types import _size_2_t
 
@@ -38,12 +39,67 @@ class BaseAudioSpectrogramTransformer(nn.Module):
         self.embedding = embedding
         self.backbone = backbone
 
-    def patch_transformer_forward(self, input: torch.Tensor) -> torch.Tensor:
+    def compute_padding_mask(
+        self,
+        input: torch.Tensor,
+        length: Optional[torch.LongTensor] = None,
+    ) -> Optional[torch.BoolTensor]:
+        """Compute padding mask.
+
+        Args:
+            input (torch.Tensor): Input feature of shape (batch_size, n_bins, max_frames).
+            length (torch.LongTensor, optional): Length of input of shape (batch_size,).
+
+        Returns:
+            torch.BoolTensor: Padding mask of shape
+                (batch_size, height * max_width + num_head_tokens).
+
+        """
+        if length is None:
+            padding_mask = None
+        else:
+            factory_kwargs = {
+                "dtype": torch.long,
+                "device": length.device,
+            }
+            _, n_bins, max_frames = input.size()
+            width = []
+
+            for _length in length:
+                n_frames = _length.item()
+                _, _width = self.embedding.compute_output_shape(n_bins, n_frames)
+                width.append(_width)
+
+            width = torch.tensor(width, **factory_kwargs)
+            max_height, max_width = self.embedding.compute_output_shape(n_bins, max_frames)
+            padding_mask = torch.arange(max_width, **factory_kwargs) >= width.unsqueeze(dim=-1)
+            padding_mask = padding_mask.unsqueeze(dim=-2)
+            padding_mask = padding_mask.repeat((1, max_height, 1))
+            padding_mask = self.patches_to_sequence(padding_mask)
+
+            num_head_tokens = 0
+
+            if self.embedding.insert_cls_token:
+                num_head_tokens += 1
+
+            if self.embedding.insert_dist_token:
+                num_head_tokens += 1
+
+            padding_mask = F.pad(padding_mask, (num_head_tokens, 0), value=False)
+
+        return padding_mask
+
+    def patch_transformer_forward(
+        self,
+        input: torch.Tensor,
+        padding_mask: Optional[torch.BoolTensor] = None,
+    ) -> torch.Tensor:
         """Transformer with patch inputs.
 
         Args:
             input (torch.Tensor): Patch feature of shape
                 (batch_size, embedding_dim, height, width).
+            padding_mask (torch.BoolTensor): Padding mask of shape (batch_size, height, width).
 
         Returns:
             torch.Tensor: Estimated patches of shape (batch_size, embedding_dim, height, width).
@@ -52,13 +108,43 @@ class BaseAudioSpectrogramTransformer(nn.Module):
         _, _, height, width = input.size()
 
         x = self.patches_to_sequence(input)
-        x = self.transformer_forward(x)
+
+        if padding_mask is not None:
+            padding_mask = self.patches_to_sequence(padding_mask)
+
+        x = self.transformer_forward(x, padding_mask=padding_mask)
         output = self.sequence_to_patches(x, height=height, width=width)
 
         return output
 
-    def transformer_forward(self, input: torch.Tensor) -> torch.Tensor:
-        output = self.backbone(input)
+    def transformer_forward(
+        self,
+        input: torch.Tensor,
+        padding_mask: Optional[torch.BoolTensor] = None,
+    ) -> torch.Tensor:
+        """Run forward pass of backbone.
+
+        Args:
+            input (torch.Tensor): Sequence of shape (batch_size, length, embedding_dim).
+            padding_mask (torch.BoolTensor, optional): Padding mask of shape (batch_size, length).
+
+        Returns:
+            torch.Tensor: Estimated sequence of shape (batch_size, length, embedding_dim).
+
+        """
+        if padding_mask is None:
+            kwargs = {}
+        else:
+            if isinstance(self.backbone, nn.TransformerEncoder):
+                kwargs = {
+                    "src_key_padding_mask": padding_mask,
+                }
+            else:
+                kwargs = {
+                    "padding_mask": padding_mask,
+                }
+
+        output = self.backbone(input, **kwargs)
 
         return output
 
@@ -71,8 +157,8 @@ class BaseAudioSpectrogramTransformer(nn.Module):
         return self.embedding.spectrogram_to_patches(input)
 
     def patches_to_sequence(self, input: Union[torch.Tensor, torch.BoolTensor]) -> torch.Tensor:
-        """Convert 3D (batch_size, height, width) or 4D (batch_size, embedding_dim, height, width)
-        tensor to shape (batch_size, length, *) for input of Transformer.
+        r"""Convert 3D (batch_size, height, width) or 4D (batch_size, embedding_dim, height, width)
+        tensor to shape (batch_size, length, \*) for input of Transformer.
 
         Args:
             input (torch.Tensor): Patches of shape (batch_size, height, width) or
@@ -100,7 +186,7 @@ class BaseAudioSpectrogramTransformer(nn.Module):
     def sequence_to_patches(
         self, input: Union[torch.Tensor, torch.BoolTensor], height: int, width: int
     ) -> torch.Tensor:
-        """Convert (batch_size, max_length, *) tensor to 3D (batch_size, height, width)
+        r"""Convert (batch_size, max_length, \*) tensor to 3D (batch_size, height, width)
         or 4D (batch_size, embedding_dim, height, width) one.
         This method corresponds to inversion of ``patches_to_sequence``.
         """
@@ -123,14 +209,18 @@ class BaseAudioSpectrogramTransformer(nn.Module):
 
         Args:
             sequence (torch.Tensor): Sequence containing head tokens, i.e. class and distillation
-                tokens. The shape is (batch_size, length, embedding_dim).
+                tokens or corresponding mask. If the tokens are given, the shape should be
+                (batch_size, length, embedding_dim). Otherwise (mask is given), the shape should be
+                (batch_size, length).
 
         Returns:
             tuple: Tuple of tensors containing
 
-                - torch.Tensor: Head tokens of shape (batch_size, num_head_tokens, embedding_dim).
+                - torch.Tensor: Head tokens of shape (batch_size, num_head_tokens, embedding_dim)
+                    or (batch_size, num_head_tokens).
                 - torch.Tensor: Sequence of shape
-                    (batch_size, length - num_head_tokens, embedding_dim).
+                    (batch_size, length - num_head_tokens, embedding_dim) or
+                    (batch_size, length - num_head_tokens).
 
         .. note::
 
@@ -138,7 +228,15 @@ class BaseAudioSpectrogramTransformer(nn.Module):
             case, an empty sequnce is returened as the first item of returned tensors.
 
         """
+        n_dims = sequence.dim()
+
+        if n_dims == 2:
+            sequence = sequence.unsqueeze(dim=-1)
+
         head_tokens, sequence = self.embedding.split_sequence(sequence)
+
+        if n_dims == 2:
+            sequence = sequence.squeeze(dim=-1)
 
         return head_tokens, sequence
 
@@ -147,20 +245,28 @@ class BaseAudioSpectrogramTransformer(nn.Module):
     ) -> torch.Tensor:
         """Prepaned tokens to sequence.
 
+        This method is inversion of ``split_sequence``.
+
         Args:
-            sequence (torch.Tensor): Sequence of shape (batch_size, length, embedding_dim).
+            sequence (torch.Tensor): Sequence of shape (batch_size, length, embedding_dim)
+                or (batch_size, length).
             tokens (torch.Tensor, optional): Tokens of shape
-                (batch_size, num_tokens, embedding_dim).
+                (batch_size, num_tokens, embedding_dim) or (batch_size, num_tokens).
 
         Returns:
             torch.Tensor: Concatenated sequence of shape
-                (batch_size, length + num_tokens, embedding_dim).
+                (batch_size, length + num_tokens, embedding_dim)
+                or (batch_size, length + num_tokens).
 
         """
         if tokens is None:
             return sequence
         else:
-            return torch.cat([tokens, sequence], dim=-2)
+            if sequence.dim() == 2:
+                # assume (batch_size, length) and (batch_size, num_tokens)
+                return torch.cat([tokens, sequence], dim=-1)
+            else:
+                return torch.cat([tokens, sequence], dim=-2)
 
 
 class AudioSpectrogramTransformer(BaseAudioSpectrogramTransformer):
@@ -266,11 +372,16 @@ class AudioSpectrogramTransformer(BaseAudioSpectrogramTransformer):
         else:
             raise FileNotFoundError(f"{pretrained_model_name_or_path} does not exist.")
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        input: torch.Tensor,
+        length: Optional[torch.LongTensor] = None,
+    ) -> torch.Tensor:
         """Forward pass of AudioSpectrogramTransformer.
 
         Args:
             input (torch.Tensor): Spectrogram of shape (batch_size, n_bins, n_frames).
+            length (torch.LongTensor, optional): Length of input of shape (batch_size,).
 
         Returns:
             torch.Tensor: Estimated patches. The shape is one of
@@ -281,10 +392,11 @@ class AudioSpectrogramTransformer(BaseAudioSpectrogramTransformer):
 
         """
         x = self.embedding(input)
-        output = self.transformer_forward(x)
+        padding_mask = self.compute_padding_mask(input, length=length)
+        output = self.transformer_forward(x, padding_mask=padding_mask)
 
         if self.aggregator is not None:
-            output = self.aggregator(output)
+            output = self.aggregator(output, padding_mask=padding_mask)
 
         if self.head is not None:
             output = self.head(output)
@@ -293,6 +405,8 @@ class AudioSpectrogramTransformer(BaseAudioSpectrogramTransformer):
 
 
 class Aggregator(nn.Module):
+    """Base class of module to aggregate features."""
+
     @abstractmethod
     def forward(
         self,
@@ -313,13 +427,20 @@ class Aggregator(nn.Module):
 
 
 class AverageAggregator(Aggregator):
-    def __init__(self, insert_cls_token: bool = True, insert_dist_token: bool = True) -> None:
-        super().__init__()
+    """Module of aggregation by average operation.
 
-        if not insert_cls_token and not insert_dist_token:
-            raise ValueError(
-                "At least one of insert_cls_token and insert_dist_token should be True."
-            )
+    Args:
+        insert_cls_token (bool): Given sequence is assumed to contain [CLS] token.
+        insert_dist_token (bool): Given sequence is assumed to contain [DIST] token.
+
+    """
+
+    def __init__(
+        self,
+        insert_cls_token: bool = True,
+        insert_dist_token: bool = True,
+    ) -> None:
+        super().__init__()
 
         self.insert_cls_token = insert_cls_token
         self.insert_dist_token = insert_dist_token
@@ -367,7 +488,19 @@ class AverageAggregator(Aggregator):
 
 
 class HeadTokensAggregator(Aggregator):
-    def __init__(self, insert_cls_token: bool = True, insert_dist_token: bool = True) -> None:
+    """Module of aggregation by extraction of head tokens.
+
+    Args:
+        insert_cls_token (bool): Given sequence is assumed to contain [CLS] token.
+        insert_dist_token (bool): Given sequence is assumed to contain [DIST] token.
+
+    """
+
+    def __init__(
+        self,
+        insert_cls_token: bool = True,
+        insert_dist_token: bool = True,
+    ) -> None:
         super().__init__()
 
         if not insert_cls_token and not insert_dist_token:
@@ -414,6 +547,8 @@ class HeadTokensAggregator(Aggregator):
 
 
 class Head(nn.Module):
+    """Base class of Head module to transform aggregated feature."""
+
     @abstractmethod
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         pass

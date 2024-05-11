@@ -36,7 +36,7 @@ class SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(BaseAudioSpectro
     """Masked patch model for self-supervised audio spectrogram transformer.
 
     Args:
-        embedding (audyn.models.ssast.PositionalPatchEmbedding): Patch embedding
+        embedding (audyn.modules.vit.PositionalPatchEmbedding): Patch embedding
             followed by positional embedding.
         masker (audyn.models.ssast.Masker): Masking module that replaces some patches
             with mask tokens.
@@ -60,23 +60,29 @@ class SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(BaseAudioSpectro
         raise NotImplementedError("Forward pass is not implemented.")
 
     @torch.no_grad()
-    def inference(self, input: torch.Tensor) -> torch.Tensor:
+    def inference(
+        self,
+        input: torch.Tensor,
+        length: Optional[torch.LongTensor] = None,
+    ) -> torch.Tensor:
         """Inference by Transformer backbone.
 
         Args:
             input (torch.Tensor): Spectrogram of shape (batch_size, n_bins, n_frames).
+            length (torch.LongTensor, optional): Length of input of shape (batch_size,).
 
         Returns:
             torch.Tensor: Estimated patches of shape (batch_size, embedding_dim, height, width).
 
         """
         x = self.embedding(input)
+        padding_mask = self.compute_padding_mask(input, length=length)
 
         # just to compute height and width
         target = self.spectrogram_to_patches(input)
         _, _, height, width = target.size()
 
-        x = self.transformer_forward(x)
+        x = self.transformer_forward(x, padding_mask=padding_mask)
         _, x = self.split_sequence(x)
         output = self.sequence_to_patches(x, height=height, width=width)
 
@@ -125,7 +131,7 @@ class SelfSupervisedAudioSpectrogramTransformer(BaseAudioSpectrogramTransformer)
     """Self-supervised audio spectrogram transformer.
 
     Args:
-        embedding (audyn.models.ssast.PositionalPatchEmbedding): Patch embedding
+        embedding (audyn.modules.vit.PositionalPatchEmbedding): Patch embedding
             followed by positional embedding.
         backbone (nn.TransformerEncoder): Transformer (encoder).
 
@@ -247,11 +253,16 @@ class SelfSupervisedAudioSpectrogramTransformer(BaseAudioSpectrogramTransformer)
         else:
             raise FileNotFoundError(f"{pretrained_model_name_or_path} does not exist.")
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        input: torch.Tensor,
+        length: Optional[torch.LongTensor] = None,
+    ) -> torch.Tensor:
         """Forward pass of SelfSupervisedAudioSpectrogramTransformer.
 
         Args:
             input (torch.Tensor): Spectrogram of shape (batch_size, n_bins, n_frames).
+            length (torch.LongTensor, optional): Length of input of shape (batch_size,).
 
         Returns:
             torch.Tensor: Estimated patches. The shape is one of
@@ -262,10 +273,14 @@ class SelfSupervisedAudioSpectrogramTransformer(BaseAudioSpectrogramTransformer)
 
         """
         x = self.embedding(input)
-        output = self.transformer_forward(x)
+        padding_mask = self.compute_padding_mask(input, length=length)
+        output = self.transformer_forward(x, padding_mask=padding_mask)
 
         if self.aggregator is not None:
-            output = self.aggregator(output)
+            if padding_mask is not None:
+                _, padding_mask = self.split_sequence(padding_mask)
+
+            output = self.aggregator(output, padding_mask=padding_mask)
 
         if self.head is not None:
             output = self.head(output)
@@ -280,7 +295,7 @@ class MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
     that processes reconstruction and classification.
 
     Args:
-        embedding (audyn.models.ssast.PositionalPatchEmbedding): Patch embedding
+        embedding (audyn.modules.vit.PositionalPatchEmbedding): Patch embedding
             followed by positional embedding.
         masker (audyn.models.ssast.Masker): Masking module that replaces some patches
             with mask tokens.
@@ -378,7 +393,11 @@ class MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
         else:
             raise FileNotFoundError(f"{pretrained_model_name_or_path} does not exist.")
 
-    def forward(self, input: torch.Tensor) -> Tuple[
+    def forward(
+        self,
+        input: torch.Tensor,
+        length: Optional[torch.LongTensor] = None,
+    ) -> Tuple[
         Tuple[torch.Tensor, torch.Tensor, torch.LongTensor],
         Tuple[torch.Tensor, torch.Tensor, torch.LongTensor],
     ]:
@@ -386,6 +405,7 @@ class MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
 
         Args:
             input (torch.Tensor): Spectrogram of shape (batch_size, n_bins, n_frames).
+            length (torch.LongTensor, optional): Length of input of shape (batch_size,).
 
         Returns:
             tuple: Tuple containing
@@ -402,17 +422,26 @@ class MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
         """
         x = self.embedding(input)
         target = self.spectrogram_to_patches(input)
+        padding_mask = self.compute_padding_mask(input, length=length)
 
         _, _, height, width = target.size()
 
         head_tokens, x = self.split_sequence(x)
         x_patch = self.sequence_to_patches(x, height=height, width=width)
 
+        if padding_mask is None:
+            patch_padding_mask = None
+        else:
+            _, sequence_padding_mask = self.split_sequence(padding_mask)
+            patch_padding_mask = self.sequence_to_patches(
+                sequence_padding_mask, height=height, width=width
+            )
+
         # for reconstruction
-        x, masking_mask = self.masker(x_patch)
+        x, masking_mask = self.masker(x_patch, padding_mask=patch_padding_mask)
         x = self.patches_to_sequence(x)
         x = self.prepend_tokens(x, tokens=head_tokens)
-        x = self.transformer_forward(x)
+        x = self.transformer_forward(x, padding_mask=padding_mask)
         _, x = self.split_sequence(x)
         x = self.sequence_to_patches(x, height=height, width=width)
         reconstruction_output, reconstruction_length = self.select_masked_patches(
@@ -425,10 +454,10 @@ class MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
         reconstruction_output = self.reconstructor(reconstruction_output)
 
         # for classification
-        x, masking_mask = self.masker(x_patch)
+        x, masking_mask = self.masker(x_patch, padding_mask=patch_padding_mask)
         x = self.patches_to_sequence(x)
         x = self.prepend_tokens(x, tokens=head_tokens)
-        x = self.transformer_forward(x)
+        x = self.transformer_forward(x, padding_mask=padding_mask)
         _, x = self.split_sequence(x)
         x = self.sequence_to_patches(x, height=height, width=width)
         classification_output, classification_length = self.select_masked_patches(
@@ -451,18 +480,25 @@ class _Masker(nn.Module):
 
     Args:
         embedding_dim (int): Embedding dimension.
-        num_masks (int): Number of mask tokens.
+        num_masks (int, optional): Number of mask tokens.
+        mask_ratio (float, optional): Ratio of mask tokens. When numer of patches is
+            ``P``, then number of masks is ``int(P * mask_ratio)``.
         min_cluster (int): Minimum cluster size. Default: ``3``.
         max_cluster (int, optional): Maximum cluster size. Default: ``min_cluster + 3``.
         trainable (bool): If ``True``, embedding of mask token is trainable.
         sample_wise (bool): If ``True``, masking is applied per sample.
+
+    .. note::
+
+        Either ``num_masks`` or ``mask_ratio`` should be specified.
 
     """
 
     def __init__(
         self,
         embedding_dim: int,
-        num_masks: int,
+        num_masks: Optional[int] = None,
+        mask_ratio: Optional[float] = None,
         min_cluster: int = 3,
         max_cluster: Optional[int] = None,
         trainable: bool = True,
@@ -476,11 +512,18 @@ class _Masker(nn.Module):
         }
         super().__init__()
 
+        if num_masks is None and mask_ratio is None:
+            raise ValueError("Either num_masks or mask_ratio should be given.")
+
+        if num_masks is not None and mask_ratio is not None:
+            raise ValueError("Either num_masks or mask_ratio should be None.")
+
         if max_cluster is None:
             max_cluster = min_cluster + 3
 
         self.embedding_dim = embedding_dim
         self.num_masks = num_masks
+        self.mask_ratio = mask_ratio
         self.min_cluster = min_cluster
         self.max_cluster = max_cluster
         self.trainable = trainable
@@ -496,7 +539,11 @@ class _Masker(nn.Module):
 
         self._reset_parameters()
 
-    def forward(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.BoolTensor]:
+    def forward(
+        self,
+        input: torch.Tensor,
+        padding_mask: Optional[torch.BoolTensor] = None,
+    ) -> Tuple[torch.Tensor, torch.BoolTensor]:
         """Replace some patches with mask tokens.
 
         .. note::
@@ -505,6 +552,8 @@ class _Masker(nn.Module):
 
         Args:
             input (torch.Tensor): Patches of shape (batch_size, embedding_dim, height, width).
+            padding_mask (torch.Tensor, optional): Padding mask of shape
+                (batch_size, height, width).
 
         Returns:
             Tuple: Tuple of tensors containing:
@@ -513,7 +562,7 @@ class _Masker(nn.Module):
                 - torch.BoolTensor: Masking mask of shape (batch_size, height, width).
 
         """
-        masking_mask = self.create_masking_mask(input)
+        masking_mask = self.create_masking_mask(input, padding_mask=padding_mask)
 
         if self.mask_embedding is None:
             embedding_dim = self.embedding_dim
@@ -542,11 +591,17 @@ class _Masker(nn.Module):
             nn.init.xavier_normal_(mask_embedding)
 
     @abstractmethod
-    def create_masking_mask(self, input: torch.Tensor) -> torch.BoolTensor:
+    def create_masking_mask(
+        self,
+        input: torch.Tensor,
+        padding_mask: Optional[torch.BoolTensor] = None,
+    ) -> torch.BoolTensor:
         """Create masking mask from given batched input.
 
         Args:
             input (torch.Tensor): Patches of shape (batch_size, embedding_dim, height, width).
+            padding_mask (torch.Tensor, optional): Padding mask of shape
+                (batch_size, height, width).
 
         Returns:
             torch.BoolTensor: Mask of shape (batch_size, height, width), where `True` represents
@@ -556,7 +611,23 @@ class _Masker(nn.Module):
 
 
 class Masker(_Masker):
-    def create_masking_mask(self, input: torch.Tensor) -> torch.BoolTensor:
+    def create_masking_mask(
+        self,
+        input: torch.Tensor,
+        padding_mask: Optional[torch.BoolTensor] = None,
+    ) -> torch.BoolTensor:
+        """Create masking mask from given batched input.
+
+        Args:
+            input (torch.Tensor): Patches of shape (batch_size, embedding_dim, height, width).
+            padding_mask (torch.Tensor, optional): Padding mask of shape
+                (batch_size, height, width).
+
+        Returns:
+            torch.BoolTensor: Mask of shape (batch_size, height, width), where `True` represents
+                position of mask token in tensor.
+
+        """
         cluster_size = torch.randint(self.min_cluster, self.max_cluster, ()).item()
         batch_size, _, height, width = input.size()
         mask_height = min(height, cluster_size)
@@ -565,22 +636,53 @@ class Masker(_Masker):
         if self.sample_wise:
             masking_mask = []
 
-            for unbatched_input in input:
+            for sample_idx, unbatched_input in enumerate(input):
+                if padding_mask is None:
+                    _padding_mask = None
+                else:
+                    _padding_mask = padding_mask[sample_idx]
+
                 _masking_mask = self._create_unbatched_masking_mask(
                     unbatched_input,
                     mask_height=mask_height,
                     mask_width=mask_width,
                     num_masks=self.num_masks,
+                    mask_ratio=self.mask_ratio,
+                    padding_mask=_padding_mask,
                 )
                 masking_mask.append(_masking_mask)
 
             masking_mask = torch.stack(masking_mask, dim=0)
         else:
+            unbatched_input = input[0]
+
+            if padding_mask is None:
+                _padding_mask = None
+            else:
+                warnings.warn(
+                    "padding_mask is deprecated when sample_wise=False.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
+                _padding_mask = padding_mask[0]
+
+                if batch_size > 1:
+                    _padding_mask0 = _padding_mask
+
+                    if not torch.all(padding_mask == _padding_mask0):
+                        raise ValueError(
+                            "When sample_wise=False, padding_mask should be None "
+                            "or shared among samples."
+                        )
+
             masking_mask = self._create_unbatched_masking_mask(
-                input[0],
+                unbatched_input,
                 mask_height=mask_height,
                 mask_width=mask_width,
                 num_masks=self.num_masks,
+                mask_ratio=self.mask_ratio,
+                padding_mask=_padding_mask,
             )
             masking_mask = masking_mask.expand((batch_size, -1, -1))
 
@@ -594,11 +696,20 @@ class Masker(_Masker):
         mask_height: int,
         mask_width: int,
         num_masks: Optional[int] = None,
+        mask_ratio: Optional[float] = None,
+        padding_mask: Optional[torch.BoolTensor] = None,
     ) -> torch.BoolTensor:
         """Create masking mask for unbatched input.
 
         Args:
             input (torch.Tensor): Unbatched feature of shape (embedding_dim, height, width).
+            mask_height (int): Actual height of clustered mask.
+            mask_width (int): Actual width of clustered mask.
+            num_masks (int, optional): Number of mask tokens.
+            mask_ratio (float, optional): Ratio of mask tokens. When numer of patches is
+                ``P``, then number of masks is ``int(P * mask_ratio)``.
+            padding_mask (torch.BoolTensor, optional): Unbatched padding mask of
+                shape (height, width).
 
         Returns:
             torch.BoolTensor: Unbatched masking mask of shape (height, width).
@@ -607,16 +718,44 @@ class Masker(_Masker):
         if num_masks is None:
             num_masks = self.num_masks
 
+        if mask_ratio is None:
+            mask_ratio = self.mask_ratio
+
+        if num_masks is None and mask_ratio is None:
+            raise ValueError("Either num_masks or mask_ratio should be given.")
+
+        if num_masks is not None and mask_ratio is not None:
+            raise ValueError("Either num_masks or mask_ratio should be None.")
+
         _, height, width = input.size()
         indices = torch.randperm(height * width).tolist()
+
+        if padding_mask is None:
+            padding_indices = []
+        else:
+            padding_mask = padding_mask.view(-1)
+            (padding_indices,) = torch.nonzero(padding_mask, as_tuple=True)
+            padding_indices = padding_indices.tolist()
+
+        non_padding_indices = []
+
+        for idx in indices:
+            if idx not in padding_indices:
+                non_padding_indices.append(idx)
+
+        num_patches = len(non_padding_indices)
+
+        if num_masks is None:
+            num_masks = int(mask_ratio * num_patches)
+
         mask_indices = []
 
         # When number of patches is less than num_masks, set appropriate value.
-        num_masks = min(num_masks, len(indices))
+        num_masks = min(num_masks, num_patches - 1)
         is_finished = False
 
         while not is_finished:
-            idx = indices[0]
+            idx = non_padding_indices[0]
             _mask_height = min(mask_height, height - idx // width)
             _mask_width = min(mask_width, width - idx % width)
 
@@ -629,8 +768,11 @@ class Masker(_Masker):
                         # duplicated index
                         continue
 
+                    if mask_idx not in non_padding_indices:
+                        continue
+
                     mask_indices.append(mask_idx)
-                    indices.remove(mask_idx)
+                    non_padding_indices.remove(mask_idx)
 
                     if len(mask_indices) >= num_masks:
                         is_finished = True
@@ -667,7 +809,23 @@ class FastMasker(_Masker):
 
     """
 
-    def create_masking_mask(self, input: torch.Tensor) -> torch.BoolTensor:
+    def create_masking_mask(
+        self,
+        input: torch.Tensor,
+        padding_mask: Optional[torch.BoolTensor] = None,
+    ) -> torch.BoolTensor:
+        """Create masking mask from given batched input.
+
+        Args:
+            input (torch.Tensor): Patches of shape (batch_size, embedding_dim, height, width).
+            padding_mask (torch.Tensor, optional): Padding mask of shape
+                (batch_size, height, width).
+
+        Returns:
+            torch.BoolTensor: Mask of shape (batch_size, height, width), where `True` represents
+                position of mask token in tensor.
+
+        """
         num_masks = self.num_masks
 
         cluster_size = torch.randint(self.min_cluster, self.max_cluster, ()).item()
@@ -681,16 +839,47 @@ class FastMasker(_Masker):
         if self.sample_wise:
             masking_mask = []
 
-            for unbatched_input in input:
+            for sample_idx, unbatched_input in enumerate(input):
+                if padding_mask is None:
+                    _padding_mask = None
+                else:
+                    _padding_mask = padding_mask[sample_idx]
+
                 _masking_mask = self._create_unbatched_masking_mask(
-                    unbatched_input, num_selections=num_selections
+                    unbatched_input,
+                    num_selections=num_selections,
+                    padding_mask=_padding_mask,
                 )
                 masking_mask.append(_masking_mask)
 
             masking_mask = torch.stack(masking_mask, dim=0)
         else:
+            unbatched_input = input[0]
+
+            if padding_mask is None:
+                _padding_mask = None
+            else:
+                warnings.warn(
+                    "padding_mask is deprecated when sample_wise=False.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
+                _padding_mask = padding_mask[0]
+
+                if batch_size > 1:
+                    _padding_mask0 = _padding_mask
+
+                    if not torch.all(padding_mask == _padding_mask0):
+                        raise ValueError(
+                            "When sample_wise=False, padding_mask should be None "
+                            "or shared among samples."
+                        )
+
             masking_mask = self._create_unbatched_masking_mask(
-                input[0], num_selections=num_selections
+                unbatched_input,
+                num_selections=num_selections,
+                padding_mask=_padding_mask,
             )
             masking_mask = masking_mask.expand((batch_size, -1))
 
@@ -711,12 +900,16 @@ class FastMasker(_Masker):
         masking_mask = masking_mask > 0
         masking_mask = masking_mask.to(input.device)
 
+        if padding_mask is not None:
+            masking_mask = masking_mask.masked_fill(padding_mask, False)
+
         return masking_mask
 
     def _create_unbatched_masking_mask(
         self,
         input: torch.Tensor,
         num_selections: int,
+        padding_mask: Optional[torch.BoolTensor] = None,
     ) -> torch.BoolTensor:
         """Create masking mask for unbatched input.
 
@@ -724,6 +917,8 @@ class FastMasker(_Masker):
             input (torch.Tensor): Unbatched feature of shape (embedding_dim, height, width).
             num_selections (int): Number of selections for masking. The value may be different
                 from ``self.num_masks``.
+            padding_mask (torch.BoolTensor, optional): Unbatched padding mask of
+                shape (height, width).
 
         Returns:
             torch.BoolTensor: Unbatched masking mask of shape (height * width).
@@ -731,7 +926,13 @@ class FastMasker(_Masker):
         """
         _, height, width = input.size()
 
-        indices = torch.randperm(height * width)
+        if padding_mask is None:
+            indices = torch.randperm(height * width)
+        else:
+            padding_mask = padding_mask.view(-1)
+            non_padding_mask = torch.logical_not(padding_mask)
+            (indices,) = torch.nonzero(non_padding_mask, as_tuple=True)
+
         indices = indices[:num_selections]
         masking_mask = torch.zeros((height * width,), dtype=input.dtype)
         masking_mask.scatter_(0, indices, 1)
