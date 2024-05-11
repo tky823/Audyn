@@ -653,10 +653,9 @@ class Masker(_Masker):
                 _padding_mask = padding_mask[0]
 
                 if batch_size > 1:
-                    num_padding_masks = _padding_mask.sum(dim=(-2, -1))
-                    num_padding_masks = num_padding_masks.item()
+                    _padding_mask0 = _padding_mask
 
-                    if torch.all(padding_mask.sum(dim=(-2, -1)) != num_padding_masks):
+                    if not torch.all(padding_mask == _padding_mask0):
                         raise ValueError(
                             "When sample_wise=False, padding_mask should be None "
                             "or shared among samples."
@@ -694,7 +693,8 @@ class Masker(_Masker):
             num_masks (int, optional): Number of mask tokens.
             mask_ratio (float, optional): Ratio of mask tokens. When numer of patches is
                 ``P``, then number of masks is ``int(P * mask_ratio)``.
-            padding_mask (torch.BoolTensor): Unbatched padding mask of shape (height, width).
+            padding_mask (torch.BoolTensor, optional): Unbatched padding mask of
+                shape (height, width).
 
         Returns:
             torch.BoolTensor: Unbatched masking mask of shape (height, width).
@@ -794,7 +794,23 @@ class FastMasker(_Masker):
 
     """
 
-    def create_masking_mask(self, input: torch.Tensor) -> torch.BoolTensor:
+    def create_masking_mask(
+        self,
+        input: torch.Tensor,
+        padding_mask: Optional[torch.BoolTensor] = None,
+    ) -> torch.BoolTensor:
+        """Create masking mask from given batched input.
+
+        Args:
+            input (torch.Tensor): Patches of shape (batch_size, embedding_dim, height, width).
+            padding_mask (torch.Tensor, optional): Padding mask of shape
+                (batch_size, height, width).
+
+        Returns:
+            torch.BoolTensor: Mask of shape (batch_size, height, width), where `True` represents
+                position of mask token in tensor.
+
+        """
         num_masks = self.num_masks
 
         cluster_size = torch.randint(self.min_cluster, self.max_cluster, ()).item()
@@ -808,16 +824,47 @@ class FastMasker(_Masker):
         if self.sample_wise:
             masking_mask = []
 
-            for unbatched_input in input:
+            for sample_idx, unbatched_input in enumerate(input):
+                if padding_mask is None:
+                    _padding_mask = None
+                else:
+                    _padding_mask = padding_mask[sample_idx]
+
                 _masking_mask = self._create_unbatched_masking_mask(
-                    unbatched_input, num_selections=num_selections
+                    unbatched_input,
+                    num_selections=num_selections,
+                    padding_mask=_padding_mask,
                 )
                 masking_mask.append(_masking_mask)
 
             masking_mask = torch.stack(masking_mask, dim=0)
         else:
+            unbatched_input = input[0]
+
+            if padding_mask is None:
+                _padding_mask = None
+            else:
+                warnings.warn(
+                    "padding_mask is deprecated when sample_wise=False.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
+                _padding_mask = padding_mask[0]
+
+                if batch_size > 1:
+                    _padding_mask0 = _padding_mask
+
+                    if not torch.all(padding_mask == _padding_mask0):
+                        raise ValueError(
+                            "When sample_wise=False, padding_mask should be None "
+                            "or shared among samples."
+                        )
+
             masking_mask = self._create_unbatched_masking_mask(
-                input[0], num_selections=num_selections
+                unbatched_input,
+                num_selections=num_selections,
+                padding_mask=_padding_mask,
             )
             masking_mask = masking_mask.expand((batch_size, -1))
 
@@ -838,12 +885,16 @@ class FastMasker(_Masker):
         masking_mask = masking_mask > 0
         masking_mask = masking_mask.to(input.device)
 
+        if padding_mask is not None:
+            masking_mask = masking_mask.masked_fill(padding_mask, False)
+
         return masking_mask
 
     def _create_unbatched_masking_mask(
         self,
         input: torch.Tensor,
         num_selections: int,
+        padding_mask: Optional[torch.BoolTensor] = None,
     ) -> torch.BoolTensor:
         """Create masking mask for unbatched input.
 
@@ -851,6 +902,8 @@ class FastMasker(_Masker):
             input (torch.Tensor): Unbatched feature of shape (embedding_dim, height, width).
             num_selections (int): Number of selections for masking. The value may be different
                 from ``self.num_masks``.
+            padding_mask (torch.BoolTensor, optional): Unbatched padding mask of
+                shape (height, width).
 
         Returns:
             torch.BoolTensor: Unbatched masking mask of shape (height * width).
@@ -858,7 +911,13 @@ class FastMasker(_Masker):
         """
         _, height, width = input.size()
 
-        indices = torch.randperm(height * width)
+        if padding_mask is None:
+            indices = torch.randperm(height * width)
+        else:
+            padding_mask = padding_mask.view(-1)
+            non_padding_mask = torch.logical_not(padding_mask)
+            (indices,) = torch.nonzero(non_padding_mask, as_tuple=True)
+
         indices = indices[:num_selections]
         masking_mask = torch.zeros((height * width,), dtype=input.dtype)
         masking_mask.scatter_(0, indices, 1)
