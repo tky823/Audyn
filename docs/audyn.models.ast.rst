@@ -6,13 +6,22 @@ audyn.models.ast
 Classes
 -------
 
+AST
+^^^
+
+Base class of AST
+
+.. autoclass:: audyn.models.ast.BaseAudioSpectrogramTransformer
+   :members: compute_padding_mask, patch_transformer_forward, transformer_forward
+      spectrogram_to_patches, patches_to_sequence, sequence_to_patches, split_sequence, prepend_tokens
+
 Aggregator
 ^^^^^^^^^^
 
 Module to aggregate features
 
 .. autoclass:: audyn.models.ast.Aggregator
-    :members: forward
+   :members: forward
 
 .. autoclass:: audyn.models.ast.AverageAggregator
    :members: forward
