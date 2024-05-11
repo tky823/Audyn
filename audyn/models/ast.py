@@ -425,13 +425,20 @@ class Aggregator(nn.Module):
 
 
 class AverageAggregator(Aggregator):
-    def __init__(self, insert_cls_token: bool = True, insert_dist_token: bool = True) -> None:
-        super().__init__()
+    """Module of aggregation by average operation.
 
-        if not insert_cls_token and not insert_dist_token:
-            raise ValueError(
-                "At least one of insert_cls_token and insert_dist_token should be True."
-            )
+    Args:
+        insert_cls_token (bool): Given sequence is assumed to contain [CLS] token.
+        insert_dist_token (bool): Given sequence is assumed to contain [DIST] token.
+
+    """
+
+    def __init__(
+        self,
+        insert_cls_token: bool = True,
+        insert_dist_token: bool = True,
+    ) -> None:
+        super().__init__()
 
         self.insert_cls_token = insert_cls_token
         self.insert_dist_token = insert_dist_token
@@ -479,7 +486,19 @@ class AverageAggregator(Aggregator):
 
 
 class HeadTokensAggregator(Aggregator):
-    def __init__(self, insert_cls_token: bool = True, insert_dist_token: bool = True) -> None:
+    """Module of aggregation by extraction of head tokens.
+
+    Args:
+        insert_cls_token (bool): Given sequence is assumed to contain [CLS] token.
+        insert_dist_token (bool): Given sequence is assumed to contain [DIST] token.
+
+    """
+
+    def __init__(
+        self,
+        insert_cls_token: bool = True,
+        insert_dist_token: bool = True,
+    ) -> None:
         super().__init__()
 
         if not insert_cls_token and not insert_dist_token:
