@@ -157,8 +157,8 @@ class BaseAudioSpectrogramTransformer(nn.Module):
         return self.embedding.spectrogram_to_patches(input)
 
     def patches_to_sequence(self, input: Union[torch.Tensor, torch.BoolTensor]) -> torch.Tensor:
-        """Convert 3D (batch_size, height, width) or 4D (batch_size, embedding_dim, height, width)
-        tensor to shape (batch_size, length, *) for input of Transformer.
+        r"""Convert 3D (batch_size, height, width) or 4D (batch_size, embedding_dim, height, width)
+        tensor to shape (batch_size, length, \*) for input of Transformer.
 
         Args:
             input (torch.Tensor): Patches of shape (batch_size, height, width) or
@@ -186,7 +186,7 @@ class BaseAudioSpectrogramTransformer(nn.Module):
     def sequence_to_patches(
         self, input: Union[torch.Tensor, torch.BoolTensor], height: int, width: int
     ) -> torch.Tensor:
-        """Convert (batch_size, max_length, *) tensor to 3D (batch_size, height, width)
+        r"""Convert (batch_size, max_length, \*) tensor to 3D (batch_size, height, width)
         or 4D (batch_size, embedding_dim, height, width) one.
         This method corresponds to inversion of ``patches_to_sequence``.
         """
