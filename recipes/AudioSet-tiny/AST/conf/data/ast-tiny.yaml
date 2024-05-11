@@ -1,0 +1,12 @@
+defaults:
+  - ast
+  - _self_
+
+audio:
+  duration: 5
+
+melspectrogram:
+  n_mels: 64
+  n_frames: 100
+  freq_mask_param: 16
+  time_mask_param: 40
