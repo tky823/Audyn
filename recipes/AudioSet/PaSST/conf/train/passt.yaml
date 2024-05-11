@@ -14,7 +14,7 @@ dataloader:
   train:
     batch_size: 24
     collate_fn:
-      _target_: audyn.utils.data.collator.Collator
+      _target_: audyn.utils.data.Collator
       composer:
         _target_: audyn.utils.data.audioset.composer.ASTAudioSetMultiLabelComposer
         melspectrogram_transform: ${data.melspectrogram}
