@@ -60,23 +60,29 @@ class SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(BaseAudioSpectro
         raise NotImplementedError("Forward pass is not implemented.")
 
     @torch.no_grad()
-    def inference(self, input: torch.Tensor) -> torch.Tensor:
+    def inference(
+        self,
+        input: torch.Tensor,
+        length: Optional[torch.LongTensor] = None,
+    ) -> torch.Tensor:
         """Inference by Transformer backbone.
 
         Args:
             input (torch.Tensor): Spectrogram of shape (batch_size, n_bins, n_frames).
+            length (torch.LongTensor, optional): Length of input of shape (batch_size,).
 
         Returns:
             torch.Tensor: Estimated patches of shape (batch_size, embedding_dim, height, width).
 
         """
         x = self.embedding(input)
+        padding_mask = self.compute_padding_mask(input, length=length)
 
         # just to compute height and width
         target = self.spectrogram_to_patches(input)
         _, _, height, width = target.size()
 
-        x = self.transformer_forward(x)
+        x = self.transformer_forward(x, padding_mask=padding_mask)
         _, x = self.split_sequence(x)
         output = self.sequence_to_patches(x, height=height, width=width)
 
@@ -247,11 +253,16 @@ class SelfSupervisedAudioSpectrogramTransformer(BaseAudioSpectrogramTransformer)
         else:
             raise FileNotFoundError(f"{pretrained_model_name_or_path} does not exist.")
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        input: torch.Tensor,
+        length: Optional[torch.LongTensor] = None,
+    ) -> torch.Tensor:
         """Forward pass of SelfSupervisedAudioSpectrogramTransformer.
 
         Args:
             input (torch.Tensor): Spectrogram of shape (batch_size, n_bins, n_frames).
+            length (torch.LongTensor, optional): Length of input of shape (batch_size,).
 
         Returns:
             torch.Tensor: Estimated patches. The shape is one of
@@ -262,10 +273,14 @@ class SelfSupervisedAudioSpectrogramTransformer(BaseAudioSpectrogramTransformer)
 
         """
         x = self.embedding(input)
-        output = self.transformer_forward(x)
+        padding_mask = self.compute_padding_mask(input, length=length)
+        output = self.transformer_forward(x, padding_mask=padding_mask)
 
         if self.aggregator is not None:
-            output = self.aggregator(output)
+            if padding_mask is not None:
+                _, padding_mask = self.split_sequence(padding_mask)
+
+            output = self.aggregator(output, padding_mask=padding_mask)
 
         if self.head is not None:
             output = self.head(output)
