@@ -34,9 +34,9 @@ class MultiCriteria(nn.ModuleDict):
         >>> import torch
         >>> torch.manual_seed(0)
         >>> config = {
-        ...     "_target_": "audyn.criterion.base.MultiCriteria",
+        ...     "_target_": "audyn.criterion.MultiCriteria",
         ...     "mse": {
-        ...         "_target_": "audyn.criterion.base.BaseCriterionWrapper",
+        ...         "_target_": "audyn.criterion.BaseCriterionWrapper",
         ...         "criterion": {
         ...             "_target_": "torch.nn.MSELoss",
         ...             "reduction": "mean",
@@ -52,7 +52,7 @@ class MultiCriteria(nn.ModuleDict):
         ...         }
         ...     },
         ...     "mae": {
-        ...         "_target_": "audyn.criterion.base.BaseCriterionWrapper",
+        ...         "_target_": "audyn.criterion.BaseCriterionWrapper",
         ...         "criterion": {
         ...             "_target_": "torch.nn.L1Loss",
         ...             "reduction": "mean",
