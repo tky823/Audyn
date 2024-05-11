@@ -7,7 +7,7 @@ audio:
   duration: 10
 
 melspectrogram:
-  _target_: audyn.transforms.ast.SelfSupervisedAudioSpectrogramTransformerMelSpectrogram
+  _target_: audyn.transforms.ast.AudioSpectrogramTransformerMelSpectrogram
   sample_rate: ${..audio.sample_rate}
   n_mels: 128
   n_frames: 1024
