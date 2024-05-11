@@ -1,5 +1,5 @@
 generator:
-  _target_: audyn.criterioni.MultiCriteria
+  _target_: audyn.criterion.MultiCriteria
   waveform_fm:
     _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
@@ -71,7 +71,7 @@ generator:
         quantized: quantized
       target:
 discriminator:
-  _target_: audyn.criterioni.MultiCriteria
+  _target_: audyn.criterion.MultiCriteria
   waveform_discriminator_fake:
     _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
