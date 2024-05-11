@@ -432,6 +432,7 @@ def test_ssast_fast_masker(sample_wise: bool) -> None:
 
     d_model = 8
     height, width = 10, 16
+    num_paddings = 12
     batch_size = 4
 
     num_masks = 50
@@ -446,8 +447,34 @@ def test_ssast_fast_masker(sample_wise: bool) -> None:
     )
 
     input = torch.randn((batch_size, d_model, height, width))
+
+    # w/o padding_mask
     output, masking_mask = model(input)
 
     assert output.size() == input.size()
     assert masking_mask.size(0) == input.size(0)
     assert masking_mask.size()[1:] == input.size()[2:]
+
+    # w/ padding_mask
+    if sample_wise:
+        padding_indices = torch.randperm(batch_size * height * width, dtype=torch.long)
+        padding_indices = padding_indices[: batch_size * num_paddings]
+        padding_mask = torch.zeros((batch_size * height * width,), dtype=torch.bool)
+        padding_mask.scatter_(0, padding_indices, True)
+        padding_mask = padding_mask.view(batch_size, height, width)
+    else:
+        padding_indices = torch.randperm(height * width, dtype=torch.long)
+        padding_indices = padding_indices[:num_paddings]
+        padding_mask = torch.zeros((height * width,), dtype=torch.bool)
+        padding_mask.scatter_(0, padding_indices, True)
+        padding_mask = padding_mask.view(height, width)
+        padding_mask = padding_mask.expand((batch_size, -1, -1))
+
+    output, masking_mask = model(input, padding_mask=padding_mask)
+
+    assert output.size() == input.size()
+    assert masking_mask.size(0) == input.size(0)
+    assert masking_mask.size()[1:] == input.size()[2:]
+
+    masking_and_padding = torch.logical_and(masking_mask, padding_mask)
+    assert not torch.any(masking_and_padding)
