@@ -36,7 +36,7 @@ class SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(BaseAudioSpectro
     """Masked patch model for self-supervised audio spectrogram transformer.
 
     Args:
-        embedding (audyn.models.ssast.PositionalPatchEmbedding): Patch embedding
+        embedding (audyn.modules.vit.PositionalPatchEmbedding): Patch embedding
             followed by positional embedding.
         masker (audyn.models.ssast.Masker): Masking module that replaces some patches
             with mask tokens.
@@ -131,7 +131,7 @@ class SelfSupervisedAudioSpectrogramTransformer(BaseAudioSpectrogramTransformer)
     """Self-supervised audio spectrogram transformer.
 
     Args:
-        embedding (audyn.models.ssast.PositionalPatchEmbedding): Patch embedding
+        embedding (audyn.modules.vit.PositionalPatchEmbedding): Patch embedding
             followed by positional embedding.
         backbone (nn.TransformerEncoder): Transformer (encoder).
 
@@ -295,7 +295,7 @@ class MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
     that processes reconstruction and classification.
 
     Args:
-        embedding (audyn.models.ssast.PositionalPatchEmbedding): Patch embedding
+        embedding (audyn.modules.vit.PositionalPatchEmbedding): Patch embedding
             followed by positional embedding.
         masker (audyn.models.ssast.Masker): Masking module that replaces some patches
             with mask tokens.
