@@ -7,6 +7,7 @@ import torch.nn as nn
 from dummy import allclose
 
 from audyn.models.ast import AverageAggregator
+from audyn.models.lextransformer import LEXTransformerEncoderLayer
 from audyn.models.ssast import (
     MLP,
     FastMasker,
@@ -285,7 +286,63 @@ def test_ssast_multi_task_mpm(sample_wise: bool) -> None:
     )
 
     input = torch.randn((batch_size, n_bins, n_frames))
+
+    # w/o length
     reconstruction, classification = model(input)
+    reconstruction_output, reconstruction_target, reconstruction_length = reconstruction
+    classification_output, classification_target, classification_length = classification
+
+    assert reconstruction_output.size(0) == input.size(0)
+    assert reconstruction_output.size(0) == classification_output.size(0)
+    assert reconstruction_output.size(-1) == classification_output.size(-1)
+    assert reconstruction_target.size(0) == classification_target.size(0)
+    assert reconstruction_target.size(-1) == classification_target.size(-1)
+    assert reconstruction_length.size() == classification_length.size()
+
+    # w/ fixed length
+    length = torch.randint(n_frames // 2, n_frames, ())
+    length = torch.full((batch_size,), fill_value=length)
+
+    reconstruction, classification = model(input, length=length)
+    reconstruction_output, reconstruction_target, reconstruction_length = reconstruction
+    classification_output, classification_target, classification_length = classification
+
+    assert reconstruction_output.size(0) == input.size(0)
+    assert reconstruction_output.size(0) == classification_output.size(0)
+    assert reconstruction_output.size(-1) == classification_output.size(-1)
+    assert reconstruction_target.size(0) == classification_target.size(0)
+    assert reconstruction_target.size(-1) == classification_target.size(-1)
+    assert reconstruction_length.size() == classification_length.size()
+
+    # w/ variable length
+    sample_wise = True
+
+    masker = FastMasker(
+        d_model,
+        num_masks=num_masks,
+        min_cluster=min_cluster,
+        max_cluster=max_cluster,
+        sample_wise=sample_wise,
+    )
+    encoder_layer = LEXTransformerEncoderLayer(
+        d_model, nhead, dim_feedforward=dim_feedforward, batch_first=True
+    )
+    transformer = nn.TransformerEncoder(
+        encoder_layer,
+        num_layers=num_layers,
+        norm=norm,
+    )
+    model = MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
+        patch_embedding,
+        masker,
+        transformer,
+        reconstructor=reconstructor,
+        classifier=classifier,
+    )
+
+    length = torch.randint(n_frames // 2, n_frames, (batch_size,))
+
+    reconstruction, classification = model(input, length=length)
     reconstruction_output, reconstruction_target, reconstruction_length = reconstruction
     classification_output, classification_target, classification_length = classification
 
@@ -309,9 +366,14 @@ def test_ssast() -> None:
     dim_feedforward = 5
     num_layers = 2
 
+    insert_cls_token = False
+    insert_dist_token = False
+
     patch_embedding = PositionalPatchEmbedding(
         d_model,
         kernel_size=kernel_size,
+        insert_cls_token=insert_cls_token,
+        insert_dist_token=insert_dist_token,
         n_bins=n_bins,
         n_frames=n_frames,
     )
@@ -324,7 +386,10 @@ def test_ssast() -> None:
         num_layers=num_layers,
         norm=norm,
     )
-    aggregator = AverageAggregator()
+    aggregator = AverageAggregator(
+        insert_cls_token=insert_cls_token,
+        insert_dist_token=insert_dist_token,
+    )
     head = MLPHead(d_model, out_channels)
 
     model = SelfSupervisedAudioSpectrogramTransformer(
@@ -332,7 +397,15 @@ def test_ssast() -> None:
     )
 
     input = torch.randn((batch_size, n_bins, n_frames))
+
+    # w/o length
     output = model(input)
+
+    assert output.size() == (batch_size, out_channels)
+
+    # w/ length
+    length = torch.randint(n_frames // 2, n_frames, (batch_size,))
+    output = model(input, length=length)
 
     assert output.size() == (batch_size, out_channels)
 
