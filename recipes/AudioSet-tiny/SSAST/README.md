@@ -25,7 +25,7 @@ data="ssast-tiny"
 
 ### Stage 1: Training SSAST
 
-To train SSAST using structured patchout, run the following command:
+To train SSAST, run the following command:
 
 ```sh
 tag=<TAG>
