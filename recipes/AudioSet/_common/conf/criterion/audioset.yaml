@@ -1,6 +1,6 @@
 # Binary cross entropy for multi-label estimation
 
-_target_: audyn.criterion
+_target_: audyn.criterion.MultiCriteria
 cross_entropy:
   _target_: audyn.criterion.BaseCriterionWrapper
   criterion:
