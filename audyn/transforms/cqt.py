@@ -275,13 +275,13 @@ class ConstantQTransform(nn.Module):
         self.n_fft = n_fft
 
     def forward(self, waveform: torch.Tensor) -> torch.Tensor:
-        """Forward pass of CQT.
+        r"""Forward pass of CQT.
 
         Args:
-            waveform (torch.Tensor): Input waveform of shape (*, length).
+            waveform (torch.Tensor): Input waveform of shape (\*, length).
 
         Returns:
-            torch.Tensor: Spectrogram of CQT of shape (*, n_bins, num_frames),
+            torch.Tensor: Spectrogram of CQT of shape (\*, n_bins, num_frames),
                 where num_frames is determined by input length and ``hop_length``.
 
         """
