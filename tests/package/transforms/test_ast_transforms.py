@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from audyn.transforms.ast import SelfSupervisedAudioSpectrogramTransformerMelSpectrogram
+from audyn.transforms.ast import AudioSpectrogramTransformerMelSpectrogram
 
 
 @pytest.mark.parametrize("duration", [2.0, 4.0])
@@ -18,7 +18,7 @@ def test_ssast_melspectrogram(duration: float, n_frames: int, take_log: bool) ->
     batch_size = 8
     timesteps = int(duration * sample_rate)
 
-    melspectrogram_transform = SelfSupervisedAudioSpectrogramTransformerMelSpectrogram(
+    melspectrogram_transform = AudioSpectrogramTransformerMelSpectrogram(
         sample_rate,
         n_mels=n_mels,
         n_frames=n_frames,
@@ -48,8 +48,8 @@ def test_ssast_melspectrogram_build_from_config() -> None:
     batch_size = 8
     timesteps = int(duration * sample_rate)
 
-    melspectrogram_transform = (
-        SelfSupervisedAudioSpectrogramTransformerMelSpectrogram.build_from_default_config(dataset)
+    melspectrogram_transform = AudioSpectrogramTransformerMelSpectrogram.build_from_default_config(
+        dataset
     )
 
     waveform = torch.randn((batch_size, timesteps))
