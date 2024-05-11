@@ -1,4 +1,4 @@
-_target_: audyn.criterionMultiCriteria
+_target_: audyn.criterion.MultiCriteria
 info_nce:
   _target_: audyn.criterion.BaseCriterionWrapper
   criterion:
