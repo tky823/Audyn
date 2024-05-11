@@ -1,6 +1,6 @@
-_target_: audyn.criterion.base.MultiCriteria
+_target_: audyn.criterioni.MultiCriteria
 nll:
-  _target_: audyn.criterion.base.BaseCriterionWrapper
+  _target_: audyn.criterion.BaseCriterionWrapper
   criterion:
     _target_: audyn.criterion.glowtts.GlowTTSNLLLoss
     reduction: mean
@@ -12,7 +12,7 @@ nll:
     target:
       tgt: log_melspectrogram
 duration:
-  _target_: audyn.criterion.base.BaseCriterionWrapper
+  _target_: audyn.criterion.BaseCriterionWrapper
   criterion:
     _target_: audyn.criterion.glowtts.GlowTTSDurationLoss
     take_log:

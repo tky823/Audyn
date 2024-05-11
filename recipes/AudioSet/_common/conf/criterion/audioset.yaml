@@ -1,8 +1,8 @@
 # Binary cross entropy for multi-label estimation
 
-_target_: audyn.criterion.base.MultiCriteria
+_target_: audyn.criterion
 cross_entropy:
-  _target_: audyn.criterion.base.BaseCriterionWrapper
+  _target_: audyn.criterion.BaseCriterionWrapper
   criterion:
     _target_: torch.nn.BCEWithLogitsLoss
     reduction: mean

@@ -1,6 +1,6 @@
-_target_: audyn.criterion.base.MultiCriteria
+_target_: audyn.criterioni.MultiCriteria
 classification:
-  _target_: audyn.criterion.base.BaseCriterionWrapper
+  _target_: audyn.criterion.BaseCriterionWrapper
   criterion:
     _target_: utils.criterion.IntraInfoNCELoss
     dim: 1
@@ -13,7 +13,7 @@ classification:
       length: patch_length
     target:
 reconstruction:
-  _target_: audyn.criterion.base.BaseCriterionWrapper
+  _target_: audyn.criterion.BaseCriterionWrapper
   criterion:
     _target_: utils.criterion.ReconstructionLoss
     reduction: mean
