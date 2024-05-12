@@ -478,6 +478,10 @@ class AverageAggregator(Aggregator):
                 dtype=torch.bool,
                 device=x.device,
             )
+        else:
+            _, padding_mask = torch.split(
+                padding_mask, [num_head_tokens, padding_mask.size(-1) - num_head_tokens], dim=-1
+            )
 
         x = x.masked_fill(padding_mask.unsqueeze(dim=-1), 0)
         non_padding_mask = torch.logical_not(padding_mask)
