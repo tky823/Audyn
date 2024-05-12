@@ -279,9 +279,6 @@ class SelfSupervisedAudioSpectrogramTransformer(BaseAudioSpectrogramTransformer)
         output = self.transformer_forward(x, padding_mask=padding_mask)
 
         if self.aggregator is not None:
-            if padding_mask is not None:
-                _, padding_mask = self.split_sequence(padding_mask)
-
             output = self.aggregator(output, padding_mask=padding_mask)
 
         if self.head is not None:
@@ -520,6 +517,9 @@ class _Masker(nn.Module):
 
         if num_masks is not None and mask_ratio is not None:
             raise ValueError("Either num_masks or mask_ratio should be None.")
+
+        if num_masks is not None:
+            assert num_masks > 0, "num_masks should be positive."
 
         if max_cluster is None:
             max_cluster = min_cluster + 3
