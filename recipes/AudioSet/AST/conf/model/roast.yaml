@@ -1,0 +1,6 @@
+defaults:
+  - ast
+
+backbone:
+  encoder_layer:
+    _target_: audyn.models.roformer.RoFormerEncoderLayer
