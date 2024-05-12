@@ -1,0 +1,6 @@
+defaults:
+  - multitask_ssast_frame-tiny
+  - _self_
+
+masker:
+  num_masks: 40
