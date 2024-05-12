@@ -4,6 +4,7 @@ import tempfile
 import pytest
 import torch
 import torch.nn as nn
+from dummy import allclose
 
 from audyn.models.ast import (
     AudioSpectrogramTransformer,
@@ -117,7 +118,7 @@ def test_official_ast() -> None:
     with torch.no_grad():
         output = model(input)
 
-    assert torch.allclose(output, expected_output)
+    allclose(output, expected_output)
 
 
 def test_ast() -> None:
@@ -238,7 +239,7 @@ def test_ast_length(backbone: str, aggregation: str) -> None:
         input, _ = torch.split(longer_input, [n_frames, n_frames], dim=-1)
         output = model(input, length=length)
 
-    assert torch.allclose(output, longer_output)
+    allclose(output, longer_output)
 
 
 def test_ast_positional_patch_embedding() -> None:
