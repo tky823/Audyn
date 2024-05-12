@@ -300,7 +300,7 @@ class AudioSpectrogramTransformer(BaseAudioSpectrogramTransformer):
     """Audio spectrogram transformer.
 
     Args:
-        embedding (audyn.models.ast.PositionalPatchEmbedding): Patch embedding
+        embedding (audyn.modules.vit.PositionalPatchEmbedding): Patch embedding
             followed by positional embedding.
         backbone (nn.TransformerEncoder): Transformer (encoder).
 

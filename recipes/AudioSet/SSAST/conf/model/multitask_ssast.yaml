@@ -1,6 +1,6 @@
 _target_: audyn.models.ssast.MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel
 embedding:
-  _target_: audyn.models.ast.PositionalPatchEmbedding
+  _target_: audyn.modules.vit.PositionalPatchEmbedding
   embedding_dim: 768
   kernel_size:
     - ???
