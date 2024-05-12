@@ -16,7 +16,7 @@ __all__ = [
 
 
 class AudioSpectrogramTransformerMelSpectrogram(nn.Module):
-    """Mel-spectrogram transform for audio spectrogram transformer (SSAST).
+    """Mel-spectrogram transform for Audio Spectrogram Transformer (AST).
 
     Args:
         sample_rate (int): Sampling rate called as sample_frequency in
