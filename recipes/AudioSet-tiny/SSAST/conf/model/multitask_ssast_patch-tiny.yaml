@@ -4,5 +4,5 @@ defaults:
 
 embedding:
   kernel_size:
-    - 64
+    - ${data.melspectrogram.n_mels}
     - 2
