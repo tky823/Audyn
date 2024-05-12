@@ -13,8 +13,9 @@ class LibrosaMelSpectrogram(aT.MelSpectrogram):
 
     Args:
         sample_rate (int): Sampling rate. Default: ``22050``.
+        n_fft (int): Number of FFT bins. Default: ``2048``.
         win_length (int): Window length. By default, ``n_fft`` is used.
-        hop_length (int): Hop length. By default, ``win_length // 4`` is used.
+        hop_length (int): Hop length. By default, ``512`` is used.
         f_min (float): Minimum frequency of Mel-spectrogram.
         f_max (float, optional): Maximum frequency of Mel-spectrogram.
         n_mels (int): Number of mel filterbanks. Default: ``128``.
