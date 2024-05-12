@@ -1,7 +1,7 @@
 generator:
-  _target_: audyn.criterion.base.MultiCriteria
+  _target_: audyn.criterion.MultiCriteria
   mse_period_generator:
-    _target_: audyn.criterion.base.BaseCriterionWrapper
+    _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.hifigan.MSELoss
       target: 1
@@ -12,7 +12,7 @@ generator:
         input: period_fake_prob
       target:
   mse_scale_generator:
-    _target_: audyn.criterion.base.BaseCriterionWrapper
+    _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.hifigan.MSELoss
       target: 1
@@ -23,7 +23,7 @@ generator:
         input: scale_fake_prob
       target:
   fm_period:
-    _target_: audyn.criterion.base.BaseCriterionWrapper
+    _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.hifigan.FeatureMatchingLoss
     weight: 2
@@ -33,7 +33,7 @@ generator:
         target: period_real_feature_map
       target:
   fm_scale:
-    _target_: audyn.criterion.base.BaseCriterionWrapper
+    _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.hifigan.FeatureMatchingLoss
     weight: 2
@@ -43,7 +43,7 @@ generator:
         target: scale_real_feature_map
       target:
   melspectrogram:
-    _target_: audyn.criterion.base.BaseCriterionWrapper
+    _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.melspectrogram.MelSpectrogramL1Loss
       sample_rate: ${data.audio.sample_rate}
@@ -61,9 +61,9 @@ generator:
       target:
         target: waveform_slice
 discriminator:
-  _target_: audyn.criterion.base.MultiCriteria
+  _target_: audyn.criterion.MultiCriteria
   mse_period_discriminator_fake:
-    _target_: audyn.criterion.base.BaseCriterionWrapper
+    _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.hifigan.MSELoss
       target: 0
@@ -74,7 +74,7 @@ discriminator:
         input: period_fake_prob
       target:
   mse_scale_discriminator_fake:
-    _target_: audyn.criterion.base.BaseCriterionWrapper
+    _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.hifigan.MSELoss
       target: 0
@@ -85,7 +85,7 @@ discriminator:
         input: scale_fake_prob
       target:
   mse_period_discriminator_real:
-    _target_: audyn.criterion.base.BaseCriterionWrapper
+    _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.hifigan.MSELoss
       target: 1
@@ -96,7 +96,7 @@ discriminator:
         input: period_real_prob
       target:
   mse_scale_discriminator_real:
-    _target_: audyn.criterion.base.BaseCriterionWrapper
+    _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.hifigan.MSELoss
       target: 1

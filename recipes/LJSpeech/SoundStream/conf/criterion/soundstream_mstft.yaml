@@ -1,7 +1,7 @@
 generator:
-  _target_: audyn.criterion.base.MultiCriteria
+  _target_: audyn.criterion.MultiCriteria
   waveform_fm:
-    _target_: audyn.criterion.base.BaseCriterionWrapper
+    _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.hifigan.FeatureMatchingLoss
     weight: 100
@@ -11,7 +11,7 @@ generator:
         target: waveform_real_feature_map
       target:
   waveform_adversarial:
-    _target_: audyn.criterion.base.BaseCriterionWrapper
+    _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.hifigan.MSELoss
       target: 1
@@ -22,7 +22,7 @@ generator:
         input: waveform_fake_prob
       target:
   reconstruction:
-    _target_: audyn.criterion.base.BaseCriterionWrapper
+    _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.distance.MultiScaleSpectralLoss
       n_fft:
@@ -80,7 +80,7 @@ generator:
       target:
         target: waveform_slice
   codebook_entropy:
-    _target_: audyn.criterion.base.BaseCriterionWrapper
+    _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.rvqvae.CodebookEntropyLoss
       codebook_size: ${data.codebook.size}
@@ -90,7 +90,7 @@ generator:
         input: codebook_indices
       target:
   codebook_loss:
-    _target_: audyn.criterion.base.BaseCriterionWrapper
+    _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.rvqvae.CodebookLoss
     weight: 0  # monitoring
@@ -100,7 +100,7 @@ generator:
         quantized: quantized
       target:
   commitment_loss:
-    _target_: audyn.criterion.base.BaseCriterionWrapper
+    _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.rvqvae.CommitmentLoss
       reduction: mean
@@ -111,9 +111,9 @@ generator:
         quantized: quantized
       target:
 discriminator:
-  _target_: audyn.criterion.base.MultiCriteria
+  _target_: audyn.criterion.MultiCriteria
   waveform_discriminator_fake:
-    _target_: audyn.criterion.base.BaseCriterionWrapper
+    _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.hifigan.MSELoss
       target: 0
@@ -124,7 +124,7 @@ discriminator:
         input: waveform_fake_prob
       target:
   waveform_discriminator_real:
-    _target_: audyn.criterion.base.BaseCriterionWrapper
+    _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
       _target_: audyn.criterion.hifigan.MSELoss
       target: 1

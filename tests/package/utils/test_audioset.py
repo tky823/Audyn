@@ -13,7 +13,7 @@ from dummy.utils import select_random_port
 from dummy.utils.ddp import set_ddp_environment
 from torch.utils.data import DataLoader
 
-from audyn.transforms.ast import SelfSupervisedAudioSpectrogramTransformerMelSpectrogram
+from audyn.transforms.ast import AudioSpectrogramTransformerMelSpectrogram
 from audyn.utils.data.audioset.composer import (
     ASTAudioSetMultiLabelComposer,
     AudioSetMultiLabelComposer,
@@ -100,7 +100,7 @@ def test_weighted_audioset_webdataset(
             composer = AudioSetMultiLabelComposer(tags_key, multilabel_key)
         elif dataset_type.lower() == "passt":
             dataset_cls = PaSSTAudioSetWebDataset
-            melspectrogram_transform = SelfSupervisedAudioSpectrogramTransformerMelSpectrogram(
+            melspectrogram_transform = AudioSpectrogramTransformerMelSpectrogram(
                 sample_rate,
                 n_mels=n_mels,
                 n_frames=n_frames,

@@ -1,6 +1,6 @@
-_target_: audyn.criterion.base.MultiCriteria
+_target_: audyn.criterion.MultiCriteria
 loss1:
-  _target_: audyn.criterion.base.BaseCriterionWrapper
+  _target_: audyn.criterion.BaseCriterionWrapper
   criterion:
     _target_: dummy.criterion.CustomCriterion
   weight: 1
@@ -10,7 +10,7 @@ loss1:
     target:
       target: target
 loss2:
-  _target_: audyn.criterion.base.BaseCriterionWrapper
+  _target_: audyn.criterion.BaseCriterionWrapper
   criterion:
     _target_: dummy.criterion.CustomCriterion
   weight: 1

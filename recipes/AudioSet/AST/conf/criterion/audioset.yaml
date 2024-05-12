@@ -1,0 +1,10 @@
+defaults:
+  - _audioset
+  - _self_
+
+cross_entropy:
+  key_mapping:
+    estimated:
+      input: logit
+    target:
+      target: ${train.dataloader.train.collate_fn.composer.multilabel_key}

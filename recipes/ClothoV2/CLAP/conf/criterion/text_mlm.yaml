@@ -1,6 +1,6 @@
-_target_: audyn.criterion.base.MultiCriteria
+_target_: audyn.criterion.MultiCriteria
 cross_entropy:
-  _target_: audyn.criterion.base.BaseCriterionWrapper
+  _target_: audyn.criterion.BaseCriterionWrapper
   criterion:
     _target_: utils.criterion.MaskedLaguageModelCrossEntropyLoss
     ignore_index: ${data.text.ignore_index}

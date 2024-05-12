@@ -75,6 +75,7 @@ class SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(BaseAudioSpectro
             torch.Tensor: Estimated patches of shape (batch_size, embedding_dim, height, width).
 
         """
+        input = self.pad_by_length(input, length=length)
         x = self.embedding(input)
         padding_mask = self.compute_padding_mask(input, length=length)
 
@@ -272,14 +273,12 @@ class SelfSupervisedAudioSpectrogramTransformer(BaseAudioSpectrogramTransformer)
                 - (batch_size, out_channels).
 
         """
+        input = self.pad_by_length(input, length=length)
         x = self.embedding(input)
         padding_mask = self.compute_padding_mask(input, length=length)
         output = self.transformer_forward(x, padding_mask=padding_mask)
 
         if self.aggregator is not None:
-            if padding_mask is not None:
-                _, padding_mask = self.split_sequence(padding_mask)
-
             output = self.aggregator(output, padding_mask=padding_mask)
 
         if self.head is not None:
@@ -420,6 +419,7 @@ class MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
                     (batch_size,).
 
         """
+        input = self.pad_by_length(input, length=length)
         x = self.embedding(input)
         target = self.spectrogram_to_patches(input)
         padding_mask = self.compute_padding_mask(input, length=length)
@@ -517,6 +517,9 @@ class _Masker(nn.Module):
 
         if num_masks is not None and mask_ratio is not None:
             raise ValueError("Either num_masks or mask_ratio should be None.")
+
+        if num_masks is not None:
+            assert num_masks > 0, "num_masks should be positive."
 
         if max_cluster is None:
             max_cluster = min_cluster + 3

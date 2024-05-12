@@ -26,10 +26,10 @@ Constant-Q transform
 AST-related modules
 ^^^^^^^^^^^^^^^^^^^
 
-.. autoclass:: audyn.transforms.SelfSupervisedAudioSpectrogramTransformerMelSpectrogram
+.. autoclass:: audyn.transforms.AudioSpectrogramTransformerMelSpectrogram
    :members: forward
 
-.. autoclass:: audyn.transforms.SSASTMelSpectrogram
+.. autoclass:: audyn.transforms.ASTMelSpectrogram
 
 HuBERT-related modules
 ^^^^^^^^^^^^^^^^^^^^^^

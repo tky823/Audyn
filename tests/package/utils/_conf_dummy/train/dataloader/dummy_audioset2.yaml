@@ -3,7 +3,7 @@ train:
   batch_size:
   shuffle: true
   collate_fn:
-    _target_: audyn.utils.data.collator.Collator
+    _target_: audyn.utils.data.Collator
     composer:
       _target_: audyn.utils.data.audioset.composer.AudioSetMultiLabelComposer
       tags_key: tags  # should be compatible with definition in dump files

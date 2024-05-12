@@ -39,6 +39,33 @@ class BaseAudioSpectrogramTransformer(nn.Module):
         self.embedding = embedding
         self.backbone = backbone
 
+    def pad_by_length(
+        self, input: torch.Tensor, length: Optional[torch.LongTensor] = None
+    ) -> torch.Tensor:
+        """Pad feature by length.
+
+        Args:
+            input (torch.Tensor): Spectrogram-like feature of shape (batch_size, n_bins, n_frames).
+            length (torch.LongTensor, optional): Length of each sample in batch of
+                shape (batch_size,).
+
+        Returns:
+            torch.Tensor: Padded feature of shape (batch_size, n_bins, n_frames).
+
+        """
+        if length is None:
+            output = input
+        else:
+            factory_kwargs = {
+                "device": input.device,
+                "dtype": torch.long,
+            }
+            max_length = input.size(-1)
+            padding_mask = torch.arange(max_length, **factory_kwargs) >= length.unsqueeze(dim=-1)
+            output = input.masked_fill(padding_mask.unsqueeze(dim=-2), 0)
+
+        return output
+
     def compute_padding_mask(
         self,
         input: torch.Tensor,
@@ -391,6 +418,7 @@ class AudioSpectrogramTransformer(BaseAudioSpectrogramTransformer):
                 - (batch_size, out_channels).
 
         """
+        input = self.pad_by_length(input, length=length)
         x = self.embedding(input)
         padding_mask = self.compute_padding_mask(input, length=length)
         output = self.transformer_forward(x, padding_mask=padding_mask)
@@ -477,6 +505,10 @@ class AverageAggregator(Aggregator):
                 fill_value=False,
                 dtype=torch.bool,
                 device=x.device,
+            )
+        else:
+            _, padding_mask = torch.split(
+                padding_mask, [num_head_tokens, padding_mask.size(-1) - num_head_tokens], dim=-1
             )
 
         x = x.masked_fill(padding_mask.unsqueeze(dim=-1), 0)

@@ -1,6 +1,6 @@
-_target_: audyn.criterion.base.MultiCriteria
+_target_: audyn.criterion.MultiCriteria
 reconstruction_loss:
-  _target_: audyn.criterion.base.BaseCriterionWrapper
+  _target_: audyn.criterion.BaseCriterionWrapper
   criterion:
     _target_: torch.nn.MSELoss
     reduction: mean
@@ -11,7 +11,7 @@ reconstruction_loss:
     target:
       target: log_melspectrogram
 codebook_loss:
-  _target_: audyn.criterion.base.BaseCriterionWrapper
+  _target_: audyn.criterion.BaseCriterionWrapper
   criterion:
     _target_: audyn.criterion.rvqvae.CodebookLoss
     stage_wise: true
@@ -23,7 +23,7 @@ codebook_loss:
       quantized: quantized
     target:
 commitment_loss:
-  _target_: audyn.criterion.base.BaseCriterionWrapper
+  _target_: audyn.criterion.BaseCriterionWrapper
   criterion:
     _target_: audyn.criterion.rvqvae.CommitmentLoss
     stage_wise: true

@@ -1,0 +1,38 @@
+defaults:
+  - ast
+  - _self_
+
+dataset:
+  train:
+    length: 10
+
+dataloader:
+  train:
+    batch_size: 4
+  validation:
+    batch_size: 4
+
+ddp_kwargs:
+
+resume:
+  continue_from:
+
+output:
+  exp_dir: "./exp"
+  tensorboard_dir: "./tensorboard"
+  save_checkpoint:
+    iteration:
+      every: 10
+      path: ${...exp_dir}/model/iteration{iteration}.pth
+    epoch:
+      every: 4
+      path: ${...exp_dir}/model/epoch{epoch}.pth
+    last:
+      path: ${...exp_dir}/model/last.pth
+    best_epoch:
+      path: ${...exp_dir}/model/best_epoch.pth
+
+steps:
+  epochs: 10
+  iterations:
+  lr_scheduler: iteration

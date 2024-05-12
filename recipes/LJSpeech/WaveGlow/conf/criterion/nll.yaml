@@ -1,6 +1,6 @@
-_target_: audyn.criterion.base.MultiCriteria
+_target_: audyn.criterion.MultiCriteria
 nll:
-  _target_: audyn.criterion.base.BaseCriterionWrapper
+  _target_: audyn.criterion.BaseCriterionWrapper
   criterion:
     _target_: audyn.criterion.flow.GaussFlowLoss
     std: ${data.noise_std.train}
