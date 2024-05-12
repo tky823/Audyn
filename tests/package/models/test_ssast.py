@@ -6,17 +6,17 @@ import torch
 import torch.nn as nn
 from dummy import allclose
 
-from audyn.models.ast import AverageAggregator
+from audyn.models.ast import AverageAggregator, HeadTokensAggregator, MLPHead
 from audyn.models.lextransformer import LEXTransformerEncoderLayer
+from audyn.models.roformer import RoFormerEncoderLayer
 from audyn.models.ssast import (
     MLP,
     FastMasker,
     Masker,
-    MLPHead,
     MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel,
-    PositionalPatchEmbedding,
     SelfSupervisedAudioSpectrogramTransformer,
 )
+from audyn.modules.vit import PatchEmbedding, PositionalPatchEmbedding
 from audyn.utils.github import download_file_from_github_release
 
 
@@ -408,6 +408,83 @@ def test_ssast() -> None:
     output = model(input, length=length)
 
     assert output.size() == (batch_size, out_channels)
+
+
+@pytest.mark.parametrize("backbone", ["roformer", "lextransformer"])
+@pytest.mark.parametrize("aggregation", ["head_tokens", "average"])
+def test_ssast_length(backbone: str, aggregation: str) -> None:
+    torch.manual_seed(0)
+
+    d_model, out_channels = 8, 10
+    n_bins, n_frames = 8, 20
+    kernel_size = (n_bins, 4)
+    insert_cls_token, insert_dist_token = True, True
+    batch_size = 4
+
+    nhead = 2
+    dim_feedforward = 5
+    num_layers = 2
+
+    patch_embedding = PatchEmbedding(
+        d_model,
+        kernel_size=kernel_size,
+        insert_cls_token=insert_cls_token,
+        insert_dist_token=insert_dist_token,
+        n_bins=n_bins,
+        n_frames=n_frames,
+    )
+    norm = nn.LayerNorm(d_model)
+
+    if backbone == "roformer":
+        encoder_layer = RoFormerEncoderLayer(
+            d_model, nhead, dim_feedforward=dim_feedforward, batch_first=True
+        )
+    elif backbone == "lextransformer":
+        encoder_layer = LEXTransformerEncoderLayer(
+            d_model, nhead, dim_feedforward=dim_feedforward, batch_first=True
+        )
+    else:
+        raise ValueError(f"{backbone} is not supported as backbone.")
+
+    transformer = nn.TransformerEncoder(
+        encoder_layer,
+        num_layers=num_layers,
+        norm=norm,
+    )
+
+    if aggregation == "head_tokens":
+        aggregator = HeadTokensAggregator(
+            insert_cls_token=insert_cls_token,
+            insert_dist_token=insert_dist_token,
+        )
+    elif aggregation == "average":
+        aggregator = AverageAggregator(
+            insert_cls_token=insert_cls_token,
+            insert_dist_token=insert_dist_token,
+        )
+    else:
+        raise ValueError(f"{aggregation} is not supported as aggregation.")
+
+    head = MLPHead(d_model, out_channels)
+
+    model = SelfSupervisedAudioSpectrogramTransformer(
+        patch_embedding, transformer, aggregator=aggregator, head=head
+    )
+    model.eval()
+
+    # ensure invariance of padding
+    with torch.no_grad():
+        length = torch.randint(n_frames // 2, n_frames, (batch_size,), dtype=torch.long)
+        longer_input = torch.randn((batch_size, n_bins, 2 * n_frames))
+
+        padding_mask = torch.arange(2 * n_frames) >= length.unsqueeze(dim=-1)
+        longer_input = longer_input.masked_fill(padding_mask.unsqueeze(dim=-2), 0)
+        longer_output = model(longer_input, length=length)
+
+        input, _ = torch.split(longer_input, [n_frames, n_frames], dim=-1)
+        output = model(input, length=length)
+
+    assert torch.allclose(output, longer_output)
 
 
 @pytest.mark.parametrize("sample_wise", [True, False])
