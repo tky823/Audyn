@@ -75,6 +75,7 @@ class SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(BaseAudioSpectro
             torch.Tensor: Estimated patches of shape (batch_size, embedding_dim, height, width).
 
         """
+        input = self.pad_by_length(input, length=length)
         x = self.embedding(input)
         padding_mask = self.compute_padding_mask(input, length=length)
 
@@ -272,6 +273,7 @@ class SelfSupervisedAudioSpectrogramTransformer(BaseAudioSpectrogramTransformer)
                 - (batch_size, out_channels).
 
         """
+        input = self.pad_by_length(input, length=length)
         x = self.embedding(input)
         padding_mask = self.compute_padding_mask(input, length=length)
         output = self.transformer_forward(x, padding_mask=padding_mask)
@@ -420,6 +422,7 @@ class MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
                     (batch_size,).
 
         """
+        input = self.pad_by_length(input, length=length)
         x = self.embedding(input)
         target = self.spectrogram_to_patches(input)
         padding_mask = self.compute_padding_mask(input, length=length)
