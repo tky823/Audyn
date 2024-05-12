@@ -40,7 +40,7 @@ class LibrosaMelSpectrogram(aT.MelSpectrogram):
         sample_rate: int = 22050,
         n_fft: int = 2048,
         win_length: Optional[int] = None,
-        hop_length: Optional[int] = None,
+        hop_length: int = 512,
         f_min: float = 0.0,
         f_max: Optional[float] = None,
         pad: int = 0,
@@ -57,9 +57,6 @@ class LibrosaMelSpectrogram(aT.MelSpectrogram):
     ) -> None:
         if win_length is None:
             win_length = n_fft
-
-        if hop_length is None:
-            hop_length = win_length // 4
 
         if f_max is None:
             f_max = sample_rate / 2
