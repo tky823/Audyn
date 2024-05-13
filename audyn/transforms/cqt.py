@@ -260,7 +260,7 @@ class ConstantQTransform(nn.Module):
             start_bin, end_bin = 0, kernel.size(0)
             n_fft = None
 
-        self.kernel = kernel
+        self.register_buffer("kernel", kernel)
         self.downsample = downsample
 
         self.hop_length = hop_length
