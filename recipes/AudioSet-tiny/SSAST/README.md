@@ -32,7 +32,7 @@ tag=<TAG>
 
 data="ssast-tiny"
 train="ssast-tiny"
-model="multitask_ssast_patch_mask40-tiny"
+model="multitask_ssast_patch_mask40-tiny"  # or model="multitask_ssast_frame_mask40-tiny"
 optimizer="adam"
 lr_scheduler="ssast"
 criterion="ssast"

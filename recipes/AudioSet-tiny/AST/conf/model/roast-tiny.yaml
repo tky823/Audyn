@@ -1,0 +1,14 @@
+defaults:
+  - ast-tiny
+
+embedding:
+  _target_: audyn.modules.vit.PatchEmbedding
+  kernel_size:
+    - ${data.melspectrogram.n_mels}
+    - 4
+  stride:
+    - ${..kernel_size.0}
+    - 2
+backbone:
+  encoder_layer:
+    _target_: audyn.models.roformer.RoFormerEncoderLayer

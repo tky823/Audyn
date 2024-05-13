@@ -21,7 +21,7 @@ class PaSST(BaseAudioSpectrogramTransformer):
     """Patchout faSt Spectrogram Transformer (PaSST).
 
     Args:
-        embedding (audyn.models.passt.DisentangledPositionalPatchEmbedding): Patch embedding
+        embedding (audyn.modules.passt.DisentangledPositionalPatchEmbedding): Patch embedding
             followed by positional embeddings disentangled by frequency and time ones.
         dropout (audyn.models.passt.PatchDropout): Patch dropout module. The expected input
             is 4D feature (batch_size, embedding_dim, height, width). The expected output is
