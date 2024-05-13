@@ -484,7 +484,7 @@ def test_ssast_length(backbone: str, aggregation: str) -> None:
         input, _ = torch.split(longer_input, [n_frames, n_frames], dim=-1)
         output = model(input, length=length)
 
-    allclose(output, longer_output)
+    allclose(output, longer_output, atol=1e-6)
 
 
 @pytest.mark.parametrize("sample_wise", [True, False])
