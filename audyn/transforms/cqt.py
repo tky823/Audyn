@@ -573,7 +573,7 @@ def build_temporal_kernel(
 
     Args:
         sample_rate (int): Sampling rate.
-        f_min (float): Minimum frequency. Default: ``veuth.utils.music.note_to_hz("C1")``.
+        f_min (float): Minimum frequency. Default: ``audyn.utils.music.note_to_hz("C1")``.
         f_max (float, optional): Maximum frequency.
         n_bins (int): Number of bins. Default: ``84``.
         bins_per_octave (float, optional): Number of bins per octave.
@@ -700,6 +700,6 @@ def _set_f_max_and_bins_per_octave(
     elif f_max is None:
         f_max = f_min * (2 ** ((n_bins - 1) / bins_per_octave))
     else:
-        raise ValueError("Set either of f_max and bins_per_octave.")
+        raise ValueError("Set either f_max or bins_per_octave.")
 
     return f_max, bins_per_octave
