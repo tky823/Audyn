@@ -34,7 +34,7 @@ class LibrosaMelSpectrogram(aT.MelSpectrogram):
 
     """
 
-    # TODO: imptove precision
+    # TODO: improve precision
 
     def __init__(
         self,
