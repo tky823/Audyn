@@ -175,7 +175,6 @@ def test_build_temporal_kernel() -> None:
         n_bins=n_bins,
         bins_per_octave=None,
     )
-
     kernel_by_bins_per_octave = build_temporal_kernel(
         sample_rate,
         f_min,
@@ -183,7 +182,6 @@ def test_build_temporal_kernel() -> None:
         n_bins=n_bins,
         bins_per_octave=bins_per_octave,
     )
-
     kernel_by_default = build_temporal_kernel(
         sample_rate,
         f_min,
@@ -204,7 +202,7 @@ def test_build_temporal_kernel() -> None:
             bins_per_octave=bins_per_octave,
         )
 
-    assert str(e.value) == "Set either of f_max and bins_per_octave."
+    assert str(e.value) == "Set either f_max or bins_per_octave."
 
 
 @pytest.mark.parametrize("_type", [int, list, torch.Tensor])

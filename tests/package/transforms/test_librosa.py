@@ -1,6 +1,5 @@
 import os
 import tempfile
-from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 import torch
