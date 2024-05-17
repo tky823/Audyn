@@ -6,6 +6,12 @@ audyn.transforms
 Classes
 -------
 
+Librosa-related modules
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: audyn.transforms.LibrosaMelSpectrogram
+   :members: forward
+
 Kaldi-related transforms
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -22,6 +28,12 @@ Constant-Q transform
    :members: forward
 
 .. autoclass:: audyn.transforms.CQT
+
+HiFi-GAN-related modules
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: audyn.transforms.HiFiGANMelSpectrogram
+   :members: forward
 
 AST-related modules
 ^^^^^^^^^^^^^^^^^^^
