@@ -19,3 +19,14 @@ BirdCLEF2024/
         |- test_soundscapes/
         |- unlabeled_soundscapes/
 ```
+
+### Stage 0: Preprocessing
+
+```sh
+data="birdclef2024"
+
+. ./run.sh \
+--stage 0 \
+--stop-stage 0 \
+--data "${data}"
+```
