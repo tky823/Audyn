@@ -1,7 +1,6 @@
 from typing import Any, Dict, List, Optional, Union
 
 from torch.optim import Optimizer
-from torch.optim.lr_scheduler import LambdaLR
 
 try:
     from torch.optim.lr_scheduler import LRScheduler as _LRScheduler
@@ -15,19 +14,20 @@ __all__ = [
 ]
 
 
-class _DummyLRScheduler(LambdaLR):
-    """Dummy Learning rate scheduler which does not change learning rate."""
+class _DummyLRScheduler:
+    """Dummy learning rate scheduler which does not change learning rate."""
 
-    def __init__(
-        self,
-        optimizer: Optimizer,
-        last_epoch: int = -1,
-        verbose: bool = False,
-    ) -> None:
-        def _lr_lambda(step: int) -> float:
-            return 1.0
+    def __init__(self, optimizer: Optimizer, *args, **kwargs) -> None:
+        self.optimizer = optimizer
 
-        super().__init__(optimizer, _lr_lambda, last_epoch=last_epoch, verbose=verbose)
+    def step(self, *args, **kwargs) -> None:
+        pass
+
+    def state_dict(self, *args, **kwargs) -> Dict[str, Any]:
+        return {}
+
+    def load_state_dict(self, state_dict: Dict[str, Any]) -> None:
+        assert len(state_dict) == 0
 
 
 class TransformerLRScheduler(_LRScheduler):
