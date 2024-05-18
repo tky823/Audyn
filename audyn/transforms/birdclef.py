@@ -113,6 +113,7 @@ class BirdCLEF2024BaselineMelSpectrogram(LibrosaMelSpectrogram):
 
         # normalization by min-max
         *batch_shape, n_bins, n_frames = specgram.size()
+        specgram = specgram.contiguous()
         specgram = specgram.view(*batch_shape, n_bins * n_frames)
         vmin, _ = torch.min(specgram, dim=-1, keepdim=True)
         vmax, _ = torch.max(specgram, dim=-1, keepdim=True)
