@@ -79,12 +79,6 @@ fi
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     echo "Stage 1: Train SSAST"
 
-    set +u
-
-    export PYTHONPATH="./:${PYTHONPATH}"
-
-    set -u
-
     (
         . ./train.sh \
         --tag "${tag}" \
