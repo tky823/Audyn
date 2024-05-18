@@ -10,6 +10,7 @@ except ImportError:
 __all__ = [
     "_DummyLRScheduler",
     "TransformerLRScheduler",
+    "NoamScheduler",
     "MultiLRSchedulers",
     "GANLRScheduler",
 ]
@@ -53,6 +54,10 @@ class TransformerLRScheduler(_LRScheduler):
 
         lr = (d_model ** (-0.5)) * min(step_count ** (-0.5), step_count * warmup_steps ** (-1.5))
         return [lr for _ in self.optimizer.param_groups]
+
+
+class NoamScheduler(TransformerLRScheduler):
+    """Alias of TransformerLRScheduler."""
 
 
 class MultiLRSchedulers:
