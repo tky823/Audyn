@@ -1,3 +1,4 @@
+import csv
 from typing import List, Tuple
 
 import torch
@@ -218,12 +219,13 @@ def stratified_split(path: str, train_ratio: float, seed: int = 0) -> Tuple[List
     validation_filenames = []
 
     with open(path) as f:
-        for idx, line in enumerate(f):
+        reader = csv.reader(f)
+
+        for idx, line in enumerate(reader):
             if idx < 1:
                 continue
 
-            line = line.strip()
-            primary_label, *_, filename = line.split(",")
+            primary_label, *_, filename = line
             filenames[primary_label].append(filename)
 
     # split dataset
