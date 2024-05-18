@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 from audyn.utils.data import WebDatasetWrapper
 from audyn.utils.data.birdclef.birdclef2024.composer import BirdCLEF2024PrimaryLabelComposer
 from audyn.utils.data.collator import Collator
+from audyn.utils.github import download_file_from_github_release
 
 
 @pytest.mark.parametrize("composer_pattern", [1, 2])
@@ -22,20 +23,18 @@ def test_birdclef2024_primary_label_composer(
     max_shard_count = 4
     audio_key, sample_rate_key, filename_key = "audio", "sample_rate", "filename"
     label_name_key, label_index_key = "primary_label", "label_index"
+    url = "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev4/piano-48k.ogg"
 
     batch_size = 3
 
     with tempfile.TemporaryDirectory(dir=".") as temp_dir:
+        # save dummy audio to check usage of .ogg file.
+        audio_dir = os.path.join(temp_dir, "audio")
+        path = os.path.join(audio_dir, "audio.ogg")
+        download_file_from_github_release(url, path)
+
         try:
-            # save dummy audio to check usage of .ogg file.
-            audio_dir = os.path.join(temp_dir, "audio")
-            dummy_sample_rate = 16000
-            waveform = torch.randn((2, 10 * dummy_sample_rate))
-            amplitude = torch.abs(waveform)
-            waveform = waveform / torch.max(amplitude)
-            waveform = 0.9 * waveform
-            path = os.path.join(audio_dir, "audio.ogg")
-            torchaudio.save(path, waveform, dummy_sample_rate)
+            waveform, sample_rate = torchaudio.load(path)
             is_ogg_supported = True
         except RuntimeError:
             is_ogg_supported = False
@@ -55,6 +54,10 @@ def test_birdclef2024_primary_label_composer(
         list_path = os.path.join(list_dir, "train.txt")
         tar_path = os.path.join(feature_dir, "%d.tar")
 
+        audio_dir = os.path.join(temp_dir, "audio")
+        path = os.path.join(audio_dir, "audio.ogg")
+        download_file_from_github_release(url, path)
+
         with wds.ShardWriter(tar_path, maxcount=max_shard_count) as sink, open(
             list_path, mode="w"
         ) as f_list:
@@ -62,12 +65,6 @@ def test_birdclef2024_primary_label_composer(
                 sample = birdclef2024_samples[filename]
                 sample_rate = sample["sample_rate"]
                 primary_label = sample["primary_label"]
-                waveform = torch.randn((2, 10 * sample_rate))
-                amplitude = torch.abs(waveform)
-                waveform = waveform / torch.max(amplitude)
-                waveform = 0.9 * waveform
-                path = os.path.join(audio_dir, f"{filename}.ogg")
-                torchaudio.save(path, waveform, sample_rate)
 
                 with open(path, mode="rb") as f_audio:
                     audio = f_audio.read()
