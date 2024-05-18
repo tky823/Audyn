@@ -8,6 +8,7 @@ except ImportError:
     from torch.optim.lr_scheduler import _LRScheduler
 
 __all__ = [
+    "_DummyLRScheduler",
     "TransformerLRScheduler",
     "MultiLRSchedulers",
     "GANLRScheduler",
