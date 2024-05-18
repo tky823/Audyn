@@ -9,6 +9,7 @@ import torchaudio
 import webdataset as wds
 from torch.utils.data import DataLoader
 
+from audyn.transforms.birdclef import BirdCLEF2024BaselineMelSpectrogram
 from audyn.utils.data import WebDatasetWrapper
 from audyn.utils.data.birdclef.birdclef2024.composer import BirdCLEF2024PrimaryLabelComposer
 from audyn.utils.data.collator import Collator
@@ -27,6 +28,8 @@ def test_birdclef2024_primary_label_composer(
     audio_key, sample_rate_key, filename_key = "audio", "sample_rate", "filename"
     label_name_key, label_index_key = "primary_label", "label_index"
     url = "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev4/piano-48k.ogg"
+
+    melspectrogram_transform = BirdCLEF2024BaselineMelSpectrogram()
 
     batch_size = 3
 
@@ -91,6 +94,9 @@ def test_birdclef2024_primary_label_composer(
         )
 
         composer = BirdCLEF2024PrimaryLabelComposer(
+            melspectrogram_transform,
+            audio_key=audio_key,
+            sample_rate_key=sample_rate_key,
             label_name_key=label_name_key,
             label_index_key=label_index_key,
         )
