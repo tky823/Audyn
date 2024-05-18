@@ -23,6 +23,7 @@ audio_root="${birdclef2024_dataroot}/train_audio"
 
 dump_dir="${dump_root}/${data}"
 list_dir="${dump_dir}/list"
+feature_dir="${dump_dir}/features"
 
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     echo "Preprocess stage 1: Split data into training/validation"
@@ -41,5 +42,24 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         preprocess.csv_path="${csv_path}" \
         preprocess.audio_root="${audio_root}" \
         preprocess.subset="${subset}"
+    done
+fi
+
+if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
+    echo "Preprocess stage 2: Save features"
+
+    for subset in "train" "validation"; do
+        subset_list_path="${list_dir}/${subset}.txt"
+        subset_feature_dir="${feature_dir}/${subset}"
+
+        python ./local/save_features.py \
+        --config-dir "./conf" \
+        hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
+        preprocess="${preprocess}" \
+        data="${data}" \
+        preprocess.list_path="${subset_list_path}" \
+        preprocess.feature_dir="${subset_feature_dir}" \
+        preprocess.audio_root="${audio_root}" \
+        preprocess.csv_path="${csv_path}"
     done
 fi
