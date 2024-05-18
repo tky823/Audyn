@@ -1,6 +1,11 @@
+from typing import List, Tuple
+
+import torch
+
 __all__ = [
     "primary_labels",
     "num_primary_labels",
+    "stratified_split",
 ]
 
 primary_labels = [
@@ -188,3 +193,48 @@ primary_labels = [
     "zitcis1",
 ]
 num_primary_labels = len(primary_labels)
+
+
+def stratified_split(path: str, train_ratio: float, seed: int = 0) -> Tuple[List[str], List[str]]:
+    """Split dataset into training and validation.
+
+    Args:
+        path (str): Path to csv file.
+        train_ratio (float): Ratio of training set.
+        seed (int): Random seed.
+
+    Returns:
+        tuple: Splits of filenames.
+
+            - list: List of training filenames.
+            - list: List of validation filenames.
+
+    """
+    g = torch.Generator()
+    g.manual_seed(seed)
+
+    filenames = {primary_label: [] for primary_label in primary_labels}
+    train_filenames = []
+    validation_filenames = []
+
+    with open(path) as f:
+        for idx, line in enumerate(f):
+            if idx < 1:
+                continue
+
+            line = line.strip()
+            primary_label, *_, filename = line.split(",")
+            filenames[primary_label].append(filename)
+
+    # split dataset
+    for primary_label, _filenames in filenames.items():
+        num_files = len(_filenames)
+        indices = torch.randperm(num_files).tolist()
+
+        for idx in indices[: int(train_ratio * num_files)]:
+            train_filenames.append(_filenames[idx])
+
+        for idx in indices[int(train_ratio * num_files) :]:
+            validation_filenames.append(_filenames[idx])
+
+    return train_filenames, validation_filenames
