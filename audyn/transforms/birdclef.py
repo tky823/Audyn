@@ -1,6 +1,7 @@
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Optional, Tuple
 
 import torch
+import torchaudio.functional as aF
 
 from .librosa import LibrosaMelSpectrogram
 
@@ -58,6 +59,8 @@ class BirdCLEF2024BaselineMelSpectrogram(LibrosaMelSpectrogram):
         norm: Optional[str] = "slaney",
         mel_scale: str = "slaney",
         take_log: bool = True,
+        freq_mask_param: Tuple[float, float] = (0.06, 0.1),
+        time_mask_param: Tuple[float, float] = (0.06, 0.1),
         eps: Optional[float] = None,
     ) -> None:
         super().__init__(
@@ -81,6 +84,13 @@ class BirdCLEF2024BaselineMelSpectrogram(LibrosaMelSpectrogram):
         )
 
         self.take_log = take_log
+        self.freq_mask_param = freq_mask_param
+        self.time_mask_param = time_mask_param
+
+        assert 0 <= freq_mask_param[0] <= 1
+        assert 0 <= freq_mask_param[1] <= 1
+        assert 0 <= time_mask_param[0] <= 1
+        assert 0 <= time_mask_param[1] <= 1
 
         if take_log and eps is None:
             eps = 1e-10
@@ -107,5 +117,29 @@ class BirdCLEF2024BaselineMelSpectrogram(LibrosaMelSpectrogram):
         vrange = vmax - vmin
         vrange = vrange.masked_fill(vrange, 1)
         specgram = (specgram - vmin) / vrange
+
+        if self.training:
+            freq_mask_param_min, freq_mask_param_max = self.freq_mask_param
+            time_mask_param_min, time_mask_param_max = self.time_mask_param
+
+            *_, n_bins, n_frames = specgram.size()
+
+            freq_mask_param_min = int(n_bins * freq_mask_param_min)
+            freq_mask_param_max = int(n_bins * freq_mask_param_max)
+            time_mask_param_min = int(n_frames * time_mask_param_min)
+            time_mask_param_max = int(n_frames * time_mask_param_max)
+
+            freq_mask_param = torch.randint(freq_mask_param_min, freq_mask_param_max + 1)
+            time_mask_param = torch.randint(time_mask_param_min, time_mask_param_max + 1)
+
+            # frequency mask
+            specgram = aF.mask_along_axis_iid(
+                specgram, mask_param=freq_mask_param, mask_value=0, axis=-2
+            )
+
+            # time mask
+            specgram = aF.mask_along_axis_iid(
+                specgram, mask_param=time_mask_param, mask_value=0, axis=-2
+            )
 
         return specgram
