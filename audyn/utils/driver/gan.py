@@ -129,6 +129,7 @@ class GANTrainer(BaseTrainer):
         criterion_config = self.config.criterion
         generator_key_mapping = self.config.train.key_mapping.train.generator
         discriminator_key_mapping = self.config.train.key_mapping.train.discriminator
+        lr_scheduler_step_config = self.config.train.steps.lr_scheduler
         train_key = "train"
         generator_key, discriminator_key = "generator", "discriminator"
 
@@ -253,7 +254,7 @@ class GANTrainer(BaseTrainer):
 
             self.optimizer_step(self.optimizer.discriminator)
 
-            if self.config.train.steps.lr_scheduler.discriminator == "iteration":
+            if lr_scheduler_step_config and lr_scheduler_step_config.discriminator == "iteration":
                 self.lr_scheduler_step(self.lr_scheduler.discriminator, loss=discriminator_loss)
 
             prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}"
@@ -366,7 +367,7 @@ class GANTrainer(BaseTrainer):
             self.optimizer_step(self.optimizer.generator)
             self.scaler.update()
 
-            if self.config.train.steps.lr_scheduler.generator == "iteration":
+            if lr_scheduler_step_config and lr_scheduler_step_config.generator == "iteration":
                 self.lr_scheduler_step(self.lr_scheduler.generator, loss=generator_loss)
 
             prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}"
@@ -410,10 +411,10 @@ class GANTrainer(BaseTrainer):
             loss = discriminator_mean_metrics[criterion_name].compute()
             train_loss[discriminator_key][criterion_name] = loss.item()
 
-        if self.config.train.steps.lr_scheduler.generator == "epoch":
+        if lr_scheduler_step_config and lr_scheduler_step_config.generator == "epoch":
             self.lr_scheduler_step(self.lr_scheduler.generator, loss=train_loss[generator_key])
 
-        if self.config.train.steps.lr_scheduler.discriminator == "epoch":
+        if lr_scheduler_step_config and lr_scheduler_step_config.discriminator == "epoch":
             self.lr_scheduler_step(
                 self.lr_scheduler.discriminator, loss=train_loss[discriminator_key]
             )
