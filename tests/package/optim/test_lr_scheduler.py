@@ -4,6 +4,7 @@ import torch.nn as nn
 from torch.optim import SGD, Adam
 from torch.optim.lr_scheduler import LinearLR, StepLR
 
+from audyn.optim.lr_scheduler import ExponentialWarmupLinearCooldownLRScheduler as PaSSTLRScheduler
 from audyn.optim.lr_scheduler import MultiLRSchedulers, TransformerLRScheduler
 from audyn.optim.optimizer import MultiOptimizers
 
@@ -56,7 +57,6 @@ def test_transformer_lr_scheduler() -> None:
     ],
 )
 def test_multi_optimizers(optim_type: str) -> None:
-    """Confirm moving average works correctly."""
     torch.manual_seed(0)
 
     class CustomModel(nn.Module):
@@ -148,3 +148,33 @@ def test_multi_optimizers(optim_type: str) -> None:
 
         optimizer.load_state_dict(optimizer_state_dict)
         lr_scheduler.load_state_dict(lr_scheduler_state_dict)
+
+
+def test_passt_lr_scheduler() -> None:
+    torch.manual_seed(0)
+
+    batch_size = 2
+    in_channels, out_channels = 3, 5
+    iterations = 10  # update twice
+
+    model = nn.Linear(in_channels, out_channels)
+    optimizer = SGD(model.parameters(), lr=0.1)
+    lr_scheduler = PaSSTLRScheduler(optimizer, warmup_steps=2, constant_steps=1, cooldown_steps=3)
+
+    for _ in range(iterations):
+        input = torch.randn((batch_size, in_channels))
+        output = model(input)
+        loss = torch.mean(output)
+
+        model.zero_grad()
+        loss.backward()
+        optimizer.step()
+        lr_scheduler.step()
+
+    state_dict = {
+        "optimizer": optimizer.state_dict(),
+        "lr_scheduler": lr_scheduler.state_dict(),
+    }
+
+    optimizer.load_state_dict(state_dict["optimizer"])
+    lr_scheduler.load_state_dict(state_dict["lr_scheduler"])
