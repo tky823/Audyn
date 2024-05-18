@@ -112,34 +112,42 @@ class BirdCLEF2024BaselineMelSpectrogram(LibrosaMelSpectrogram):
         specgram = (specgram - mean) / std
 
         # normalization by min-max
-        vmin, _ = torch.min(specgram, dim=(-2, -1), keepdim=True)
-        vmax, _ = torch.max(specgram, dim=(-2, -1), keepdim=True)
+        *batch_shape, n_bins, n_frames = specgram.size()
+        specgram = specgram.view(*batch_shape, n_bins * n_frames)
+        vmin, _ = torch.min(specgram, dim=-1, keepdim=True)
+        vmax, _ = torch.max(specgram, dim=-1, keepdim=True)
         vrange = vmax - vmin
-        vrange = vrange.masked_fill(vrange, 1)
+        vrange = vrange.masked_fill(vrange == 0, 1)
         specgram = (specgram - vmin) / vrange
+        specgram = specgram.view(*batch_shape, n_bins, n_frames)
 
         if self.training:
             freq_mask_param_min, freq_mask_param_max = self.freq_mask_param
             time_mask_param_min, time_mask_param_max = self.time_mask_param
-
-            *_, n_bins, n_frames = specgram.size()
 
             freq_mask_param_min = int(n_bins * freq_mask_param_min)
             freq_mask_param_max = int(n_bins * freq_mask_param_max)
             time_mask_param_min = int(n_frames * time_mask_param_min)
             time_mask_param_max = int(n_frames * time_mask_param_max)
 
-            freq_mask_param = torch.randint(freq_mask_param_min, freq_mask_param_max + 1)
-            time_mask_param = torch.randint(time_mask_param_min, time_mask_param_max + 1)
+            freq_mask_param = torch.randint(freq_mask_param_min, freq_mask_param_max + 1, ())
+            time_mask_param = torch.randint(time_mask_param_min, time_mask_param_max + 1, ())
+            freq_mask_param = freq_mask_param.item()
+            time_mask_param = time_mask_param.item()
+
+            # 3D is required.
+            specgram = specgram.view(-1, n_bins, n_frames)
 
             # frequency mask
             specgram = aF.mask_along_axis_iid(
-                specgram, mask_param=freq_mask_param, mask_value=0, axis=-2
+                specgram, mask_param=freq_mask_param, mask_value=0, axis=1
             )
 
             # time mask
             specgram = aF.mask_along_axis_iid(
-                specgram, mask_param=time_mask_param, mask_value=0, axis=-2
+                specgram, mask_param=time_mask_param, mask_value=0, axis=2
             )
+
+            specgram = specgram.view(*batch_shape, n_bins, n_frames)
 
         return specgram
