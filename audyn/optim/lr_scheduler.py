@@ -1,3 +1,4 @@
+import math
 from typing import Any, Dict, List, Optional, Union
 
 from torch.optim import Optimizer
@@ -12,6 +13,7 @@ __all__ = [
     "_DummyLRScheduler",
     "TransformerLRScheduler",
     "NoamScheduler",
+    "ExponentialWarmupLinearCooldownLRScheduler",
     "MultiLRSchedulers",
     "GANLRScheduler",
 ]
@@ -59,6 +61,54 @@ class TransformerLRScheduler(_LRScheduler):
 
 class NoamScheduler(TransformerLRScheduler):
     """Alias of TransformerLRScheduler."""
+
+
+class ExponentialWarmupLinearCooldownLRScheduler(LambdaLR):
+    """Exponential warm-up + linear cool-down of learning rate.
+
+    This learning rate schduler is used to train PaSST.
+
+    Args:
+        optimizer (Optimizer): Optimizer to adjust learning rate.
+        warmup_steps (int): Number of exponential warm-up steps.
+        constant_steps (int): Number of constant learning rate steps between warm-up and cool-down.
+        cooldown_steps (int): Number of linear cool-down steps after constant learning rate.
+        last_factor (float): Scale factor of learning rate at last step.
+
+    """
+
+    def __init__(
+        self,
+        optimizer: Optimizer,
+        warmup_steps: int,
+        constant_steps: int,
+        cooldown_steps: int,
+        last_factor: float = 1,
+        last_epoch: int = -1,
+        verbose: bool = False,
+    ) -> None:
+        def _lr_scheduler_lambda(step: int) -> float:
+            if step < warmup_steps:
+                step = min(step, warmup_steps)
+                normalized_step = 1 - step / warmup_steps
+                factor = math.exp(-5.0 * normalized_step**2)
+            elif step < warmup_steps + constant_steps:
+                factor = 1
+            elif step < warmup_steps + constant_steps + cooldown_steps:
+                step_after_constant = step - (warmup_steps + constant_steps)
+                normalized_step = step_after_constant / cooldown_steps
+                factor = last_factor + (1 - last_factor) * normalized_step
+            else:
+                factor = last_factor
+
+            return factor
+
+        super().__init__(
+            optimizer,
+            lr_lambda=_lr_scheduler_lambda,
+            last_epoch=last_epoch,
+            verbose=verbose,
+        )
 
 
 class MultiLRSchedulers:
