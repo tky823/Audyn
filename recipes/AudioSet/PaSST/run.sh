@@ -36,8 +36,6 @@ criterion="audioset"
 
 . ../../_common/parse_options.sh || exit 1;
 
-audioset_root="${data_root}/AudioSet"
-
 if [ ${stage} -le -1 ] && [ ${stop_stage} -ge -1 ]; then
     echo "Stage -1: Download dataset"
 
