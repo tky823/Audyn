@@ -953,13 +953,20 @@ class BaseTrainer(BaseDriver):
     def load_checkpoint(self, path: str) -> None:
         state_dict = torch.load(path, map_location=self.device)
 
+        # model
         self.unwrapped_model.load_state_dict(state_dict["model"])
+
+        # optimizer
         self.optimizer.load_state_dict(state_dict["optimizer"])
 
+        # learning rate scheduler
         if self.lr_scheduler is None:
             assert state_dict["lr_scheduler"] is None
         else:
             self.lr_scheduler.load_state_dict(state_dict["lr_scheduler"])
+
+        # gradient scaler
+        self.scaler.load_state_dict(state_dict["scaler"])
 
         self.iteration_idx = state_dict["iteration_idx"]
         self.best_loss = state_dict["best_loss"]
@@ -974,13 +981,21 @@ class BaseTrainer(BaseDriver):
         os.makedirs(save_dir, exist_ok=True)
 
         state_dict = {}
+
+        # model
         state_dict["model"] = self.unwrapped_model.state_dict()
+
+        # optimizer
         state_dict["optimizer"] = self.optimizer.state_dict()
 
+        # learning rate scheduler
         if self.lr_scheduler is None:
             state_dict["lr_scheduler"] = None
         else:
             state_dict["lr_scheduler"] = self.lr_scheduler.state_dict()
+
+        # gradient scaler
+        state_dict["scaler"] = self.scaler.state_dict()
 
         state_dict["iteration_idx"] = self.iteration_idx
         state_dict["best_loss"] = self.best_loss
