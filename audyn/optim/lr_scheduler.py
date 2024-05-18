@@ -14,9 +14,20 @@ __all__ = [
 ]
 
 
-class _DummyLRScheduler(_LRScheduler):
-    def __init__(self, optimizer: Optimizer, last_epoch: int = -1, verbose: bool = False) -> None:
-        super().__init__(optimizer, last_epoch=last_epoch, verbose=verbose)
+class _DummyLRScheduler:
+    """Dummy learning rate scheduler which does not change learning rate."""
+
+    def __init__(self, optimizer: Optimizer, *args, **kwargs) -> None:
+        self.optimizer = optimizer
+
+    def step(self, *args, **kwargs) -> None:
+        pass
+
+    def state_dict(self, *args, **kwargs) -> Dict[str, Any]:
+        return {}
+
+    def load_state_dict(self, state_dict: Dict[str, Any]) -> None:
+        assert len(state_dict) == 0
 
 
 class TransformerLRScheduler(_LRScheduler):

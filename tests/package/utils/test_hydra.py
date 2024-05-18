@@ -8,6 +8,7 @@ from torch.optim import SGD
 
 from audyn.criterion import MultiCriteria
 from audyn.modules.vqvae import VectorQuantizer
+from audyn.optim.lr_scheduler import _DummyLRScheduler
 from audyn.utils.hydra.utils import (
     instantiate_criterion,
     instantiate_lr_scheduler,
@@ -102,7 +103,7 @@ def test_instantiate_lr_scheduler(is_null: bool) -> None:
     lr_scheduler = instantiate_lr_scheduler(config, optimizer)
 
     if is_null:
-        assert lr_scheduler is None
+        assert isinstance(lr_scheduler, _DummyLRScheduler)
     else:
         assert lr_scheduler is not None
 

@@ -129,6 +129,7 @@ class GANTrainer(BaseTrainer):
         criterion_config = self.config.criterion
         generator_key_mapping = self.config.train.key_mapping.train.generator
         discriminator_key_mapping = self.config.train.key_mapping.train.discriminator
+        lr_scheduler_step_config = self.config.train.steps.lr_scheduler
         train_key = "train"
         generator_key, discriminator_key = "generator", "discriminator"
 
@@ -253,7 +254,7 @@ class GANTrainer(BaseTrainer):
 
             self.optimizer_step(self.optimizer.discriminator)
 
-            if self.config.train.steps.lr_scheduler.discriminator == "iteration":
+            if lr_scheduler_step_config and lr_scheduler_step_config.discriminator == "iteration":
                 self.lr_scheduler_step(self.lr_scheduler.discriminator, loss=discriminator_loss)
 
             prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}"
@@ -366,7 +367,7 @@ class GANTrainer(BaseTrainer):
             self.optimizer_step(self.optimizer.generator)
             self.scaler.update()
 
-            if self.config.train.steps.lr_scheduler.generator == "iteration":
+            if lr_scheduler_step_config and lr_scheduler_step_config.generator == "iteration":
                 self.lr_scheduler_step(self.lr_scheduler.generator, loss=generator_loss)
 
             prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}"
@@ -410,10 +411,10 @@ class GANTrainer(BaseTrainer):
             loss = discriminator_mean_metrics[criterion_name].compute()
             train_loss[discriminator_key][criterion_name] = loss.item()
 
-        if self.config.train.steps.lr_scheduler.generator == "epoch":
+        if lr_scheduler_step_config and lr_scheduler_step_config.generator == "epoch":
             self.lr_scheduler_step(self.lr_scheduler.generator, loss=train_loss[generator_key])
 
-        if self.config.train.steps.lr_scheduler.discriminator == "epoch":
+        if lr_scheduler_step_config and lr_scheduler_step_config.discriminator == "epoch":
             self.lr_scheduler_step(
                 self.lr_scheduler.discriminator, loss=train_loss[discriminator_key]
             )
@@ -844,22 +845,38 @@ class GANTrainer(BaseTrainer):
 
         state_dict = torch.load(path, map_location=self.device)
 
+        # model
         unwrapped_generator = unwrap(self.unwrapped_model.generator)
         unwrapped_generator.load_state_dict(state_dict["model"][generator_key])
         unwrapped_discriminator = unwrap(self.unwrapped_model.discriminator)
         unwrapped_discriminator.load_state_dict(state_dict["model"][discriminator_key])
+
+        # optimizer
         self.optimizer.generator.load_state_dict(
             state_dict["optimizer"][generator_key],
         )
         self.optimizer.discriminator.load_state_dict(
             state_dict["optimizer"][discriminator_key],
         )
-        self.lr_scheduler.generator.load_state_dict(
-            state_dict["lr_scheduler"][generator_key],
-        )
-        self.lr_scheduler.discriminator.load_state_dict(
-            state_dict["lr_scheduler"][discriminator_key]
-        )
+
+        # learning rate scheduler
+        if self.lr_scheduler.generator is None:
+            assert state_dict["lr_scheduler"][generator_key] is None
+        else:
+            self.lr_scheduler.generator.load_state_dict(
+                state_dict["lr_scheduler"][generator_key],
+            )
+
+        if self.lr_scheduler.discriminator is None:
+            assert state_dict["lr_scheduler"][discriminator_key] is None
+        else:
+            self.lr_scheduler.discriminator.load_state_dict(
+                state_dict["lr_scheduler"][discriminator_key]
+            )
+
+        # gradient scaler
+        self.scaler.load_state_dict(state_dict["scaler"])
+
         self.iteration_idx = state_dict["iteration_idx"]
         self.best_loss = state_dict["best_loss"]
         self.epoch_idx = self.iteration_idx // len(self.loaders.train)
@@ -871,35 +888,44 @@ class GANTrainer(BaseTrainer):
         os.makedirs(save_dir, exist_ok=True)
 
         state_dict = {}
+
+        # model
         unwrapped_generator = unwrap(self.unwrapped_model.generator)
         unwrapped_discriminator = unwrap(self.unwrapped_model.discriminator)
         state_dict["model"] = {
             generator_key: unwrapped_generator.state_dict(),
             discriminator_key: unwrapped_discriminator.state_dict(),
         }
+
+        # optimizer
         state_dict["optimizer"] = {
             generator_key: self.optimizer.generator.state_dict(),
             discriminator_key: self.optimizer.discriminator.state_dict(),
         }
+
+        # learning rate scheduler
+        lr_scheduler = self.lr_scheduler
         state_dict_key = "lr_scheduler"
         state_dict[state_dict_key] = {}
 
         if self.lr_scheduler.generator is None:
             state_dict[state_dict_key][generator_key] = None
         else:
-            state_dict[state_dict_key][generator_key] = self.lr_scheduler.generator.state_dict()
+            state_dict[state_dict_key][generator_key] = lr_scheduler.generator.state_dict()
 
-        if self.lr_scheduler.discriminator is None:
+        if lr_scheduler.discriminator is None:
             state_dict[state_dict_key][discriminator_key] = None
         else:
-            state_dict[state_dict_key][
-                discriminator_key
-            ] = self.lr_scheduler.discriminator.state_dict()
+            state_dict[state_dict_key][discriminator_key] = lr_scheduler.discriminator.state_dict()
+
+        # gradient scaler
+        state_dict["scaler"] = self.scaler.state_dict()
 
         state_dict["iteration_idx"] = self.iteration_idx
         state_dict["best_loss"] = self.best_loss
         state_dict["resolved_config"] = OmegaConf.to_container(self.config, resolve=True)
 
+        # moving average model
         if isinstance(self.optimizer.generator, MovingAverageWrapper) or isinstance(
             self.optimizer.discriminator, MovingAverageWrapper
         ):

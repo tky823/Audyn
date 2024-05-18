@@ -424,8 +424,8 @@ def instantiate_lr_scheduler(
             _optimizer = optimizer.optimizers[optim_name]
             _lr_scheduler = instantiate(_config, _optimizer, *args, **kwargs)
 
-            if isinstance(_lr_scheduler, DictConfig):
-                _lr_scheduler = _DummyLRScheduler()
+            if _lr_scheduler is None or isinstance(_lr_scheduler, DictConfig):
+                _lr_scheduler = _DummyLRScheduler(_optimizer)
 
             lr_schedulers.append({"name": optim_name, "lr_scheduler": _lr_scheduler})
 
@@ -435,8 +435,8 @@ def instantiate_lr_scheduler(
     else:
         lr_scheduler = instantiate(config, optimizer, *args, **kwargs)
 
-    if isinstance(lr_scheduler, DictConfig):
-        lr_scheduler = None
+        if lr_scheduler is None or isinstance(lr_scheduler, DictConfig):
+            lr_scheduler = _DummyLRScheduler(optimizer)
 
     return lr_scheduler
 

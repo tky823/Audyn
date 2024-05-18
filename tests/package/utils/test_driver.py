@@ -1055,6 +1055,7 @@ def test_feat_to_wave_trainer(
 
 @pytest.mark.parametrize("use_ema_generator", [True, False])
 @pytest.mark.parametrize("use_ema_discriminator", [True, False])
+@pytest.mark.parametrize("lr_scheduler_name", ["dummy_gan", "none"])
 @pytest.mark.parametrize(
     "is_legacy_grad_clipper, is_legacy_grad_clipper_recipe",
     [(True, True), (True, False), (False, False)],
@@ -1063,6 +1064,7 @@ def test_gan_trainer(
     monkeypatch: MonkeyPatch,
     use_ema_generator: bool,
     use_ema_discriminator: bool,
+    lr_scheduler_name: str,
     is_legacy_grad_clipper: bool,
     is_legacy_grad_clipper_recipe: bool,
 ):
@@ -1096,6 +1098,7 @@ def test_gan_trainer(
                     train=train_name,
                     model=model_name,
                     criterion=criterion_name,
+                    lr_scheduler=lr_scheduler_name,
                     use_ema_generator=use_ema_generator,
                     use_ema_discriminator=use_ema_discriminator,
                 ),
@@ -1176,11 +1179,22 @@ def test_gan_trainer(
         discriminator_optimizer = instantiate_optimizer(
             config.optimizer.discriminator, discriminator.parameters()
         )
+
+        if len(config.lr_scheduler) == 0:
+            lr_scheduler_config = OmegaConf.create(
+                {
+                    "generator": None,
+                    "discriminator": None,
+                }
+            )
+        else:
+            lr_scheduler_config = config.lr_scheduler
+
         generator_lr_scheduler = instantiate_lr_scheduler(
-            config.lr_scheduler.generator, generator_optimizer
+            lr_scheduler_config.generator, generator_optimizer
         )
         discriminator_lr_scheduler = instantiate_lr_scheduler(
-            config.lr_scheduler.discriminator, discriminator_optimizer
+            lr_scheduler_config.discriminator, discriminator_optimizer
         )
 
         if is_legacy_grad_clipper and is_legacy_grad_clipper_recipe:
@@ -2205,6 +2219,7 @@ def create_dummy_gan_override(
     train: str = "dummy_gan",
     model: str = "dummy_gan",
     criterion: str = "dummy_gan",
+    lr_scheduler: str = "dummy_gan",
     use_ema_generator: bool = False,
     use_ema_discriminator: bool = False,
     continue_from: str = "",
@@ -2232,13 +2247,13 @@ def create_dummy_gan_override(
             "+optimizer.discriminator._target_=torch.optim.Adam",
         ]
 
-    overridden_config = [
+    override_list = [
         f"system={system}",
         f"train={train}",
         "test=dummy",
         f"model={model}",
         "optimizer=gan",
-        "lr_scheduler=dummy_gan",
+        f"lr_scheduler={lr_scheduler}",
         f"criterion={criterion}",
         f"hydra.searchpath=[{overrides_conf_dir}]",
         "hydra.job.num=1",
@@ -2253,15 +2268,16 @@ def create_dummy_gan_override(
         f"train.resume.continue_from={continue_from}",
         f"train.steps.iterations={iterations}",
     ]
-    overridden_config = (
-        overridden_config + generator_optimizer_config + generator_discriminator_config
-    )
+    override_list = override_list + generator_optimizer_config + generator_discriminator_config
 
     if system == "cpu_ddp" and IS_WINDOWS:
         port = os.environ["MASTER_PORT"]
-        overridden_config += [f"system.distributed.init_method=tcp://localhost:{port}"]
+        override_list += [f"system.distributed.init_method=tcp://localhost:{port}"]
 
-    return overridden_config
+    if lr_scheduler == "none":
+        override_list += ["train.steps.lr_scheduler=''"]
+
+    return override_list
 
 
 def create_dummy_text_to_feat_override(
