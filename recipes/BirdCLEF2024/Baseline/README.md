@@ -1,5 +1,7 @@
 # BirdCLEF2024
 
+[Baseline recipe](https://www.kaggle.com/code/awsaf49/birdclef24-kerascv-starter-train) of [BirdCLEF2024](https://www.kaggle.com/competitions/birdclef-2024) challenge.
+
 ## Stages
 
 ### Stage -1: Downloading dataset
