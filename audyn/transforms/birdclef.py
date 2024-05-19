@@ -1,6 +1,7 @@
 from typing import Callable, Dict, Optional, Tuple
 
 import torch
+import torchaudio
 import torchaudio.functional as aF
 from packaging import version
 
@@ -10,7 +11,7 @@ __all__ = [
     "BirdCLEF2024BaselineMelSpectrogram",
 ]
 
-IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
+IS_TORCHAUDIO_LT_2_1 = version.parse(torchaudio.__version__) < version.parse("2.1")
 
 
 class BirdCLEF2024BaselineMelSpectrogram(LibrosaMelSpectrogram):
@@ -139,7 +140,7 @@ class BirdCLEF2024BaselineMelSpectrogram(LibrosaMelSpectrogram):
             freq_mask_param = freq_mask_param.item()
             time_mask_param = time_mask_param.item()
 
-            if IS_TORCH_LT_2_1:
+            if IS_TORCHAUDIO_LT_2_1:
                 # 4D is required.
                 specgram = specgram.view(-1, 1, n_bins, n_frames)
                 freq_axis = 2
