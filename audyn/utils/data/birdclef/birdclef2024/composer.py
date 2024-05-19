@@ -17,6 +17,9 @@ class BirdCLEF2024PrimaryLabelComposer(Composer):
         audio_key (str): Key of audio.
         sample_rate_key (str): Key of sampling rate.
         label_name_key (str): Key of prmary label name in given sample.
+        filename_key (str): Key of filename in given sample.
+        waveform_key (str): Key of waveform to add to given sample.
+        melspectrogram_key (str): Key of Mel-spectrogram to add to given sample.
         label_index_key (str): Key of prmary label index to add to given sample.
         sample_rate (int): Target sampling rate. Default: ``32000``.
         duration (float, optional): Duration of audio to trim or pad. Default: ``15``.
@@ -41,6 +44,8 @@ class BirdCLEF2024PrimaryLabelComposer(Composer):
         audio_key: str,
         sample_rate_key: str,
         label_name_key: str,
+        filename_key: str = "filename",
+        waveform_key: str = "waveform",
         melspectrogram_key: str = "melspectrogram",
         label_index_key: str = "label_index",
         sample_rate: int = 32000,
@@ -59,6 +64,8 @@ class BirdCLEF2024PrimaryLabelComposer(Composer):
         self.audio_key = audio_key
         self.sample_rate_key = sample_rate_key
         self.label_name_key = label_name_key
+        self.filename_key = filename_key
+        self.waveform_key = waveform_key
         self.melspectrogram_key = melspectrogram_key
         self.label_index_key = label_index_key
 
@@ -81,6 +88,8 @@ class BirdCLEF2024PrimaryLabelComposer(Composer):
         audio_key = self.audio_key
         sample_rate_key = self.sample_rate_key
         label_name_key = self.label_name_key
+        filename_key = self.filename_key
+        waveform_key = self.waveform_key
         melspectrogram_key = self.melspectrogram_key
         label_index_key = self.label_index_key
         target_sample_rate = self.sample_rate
@@ -100,7 +109,6 @@ class BirdCLEF2024PrimaryLabelComposer(Composer):
             sample[sample_rate_key] = torch.full(
                 (), fill_value=sample_rate, dtype=sample_rate_dtype
             )
-            sample[audio_key] = audio
 
         if duration is not None:
             length = int(target_sample_rate * duration)
@@ -123,9 +131,15 @@ class BirdCLEF2024PrimaryLabelComposer(Composer):
 
         label_name = sample[label_name_key]
         label_index = self.primary_labels.index(label_name)
-        sample[label_index_key] = torch.full((), fill_value=label_index, dtype=torch.long)
+        label_index = torch.full((), fill_value=label_index, dtype=torch.long)
 
         melspectrogram = self.melspectrogram_transform(audio)
-        sample[melspectrogram_key] = melspectrogram
 
-        return sample
+        output = {
+            waveform_key: audio,
+            melspectrogram_key: melspectrogram,
+            label_index_key: label_index,
+            filename_key: sample[filename_key],
+        }
+
+        return output
