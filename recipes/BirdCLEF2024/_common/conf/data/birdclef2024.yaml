@@ -1,0 +1,10 @@
+defaults:
+  - defaults
+  - _self_
+
+audio:
+  sample_rate: 32000
+  duration: 15
+
+melspectrogram:
+  _target_: audyn.utils.data.birdclef.birdclef2024.transforms.BirdCLEF2024BaselineMelSpectrogram

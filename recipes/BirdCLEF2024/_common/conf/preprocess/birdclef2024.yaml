@@ -1,0 +1,10 @@
+defaults:
+  - defaults
+  - _self_
+
+csv_path: ???
+audio_root: ???
+subset: ???
+
+# https://www.kaggle.com/code/awsaf49/birdclef24-kerascv-starter-train
+train_ratio: 0.8

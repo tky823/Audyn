@@ -29,6 +29,7 @@ def main(config: DictConfig) -> None:
     feature_dir = config.preprocess.feature_dir
     jsonl_path = config.preprocess.jsonl_path
     max_workers = config.preprocess.max_workers
+    max_shard_size = config.preprocess.max_shard_size
 
     assert list_path is not None, "Specify preprocess.list_path."
     assert feature_dir is not None, "Specify preprocess.feature_dir."
@@ -40,8 +41,6 @@ def main(config: DictConfig) -> None:
 
     os.makedirs(feature_dir, exist_ok=True)
     template_path = os.path.join(feature_dir, "%d.tar")
-
-    max_shard_size = config.preprocess.max_shard_size
 
     videos = {}
 
