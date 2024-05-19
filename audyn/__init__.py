@@ -45,7 +45,17 @@ def _resolve(full_var_name: str) -> Any:
     full_var_name = full_var_name.strip()
     mod_name, var_name = full_var_name.rsplit(".", maxsplit=1)
 
-    return getattr(importlib.import_module(mod_name), var_name)
+    try:
+        resolved = getattr(importlib.import_module(mod_name), var_name)
+    except ModuleNotFoundError:
+        # TODO: generalize
+        attr_name = var_name
+        mod_name, var_name = mod_name.rsplit(".", maxsplit=1)
+        imported_module = importlib.import_module(mod_name)
+        cls = getattr(imported_module, var_name)
+        resolved = getattr(cls, attr_name)
+
+    return resolved
 
 
 OmegaConf.register_new_resolver("const", _constant_resolver)
