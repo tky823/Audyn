@@ -23,7 +23,7 @@ audio_root="${birdclef2024_dataroot}/train_audio"
 
 dump_dir="${dump_root}/${data}"
 list_dir="${dump_dir}/list"
-feature_dir="${dump_dir}/features"
+feature_dir="${dump_dir}/feature"
 
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     echo "Preprocess stage 1: Split data into training/validation"
