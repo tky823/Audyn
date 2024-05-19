@@ -10,7 +10,7 @@ Download dataset and place it as `../data/birdclef-2024.zip`.
 Then, unzip the file.
 
 ```sh
-BirdCLEF2024/
+recipes/BirdCLEF2024/
 |- data/
     |- birdclef-2024.zip
     |- birdclef-2024/
