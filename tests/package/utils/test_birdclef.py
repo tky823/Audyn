@@ -1,4 +1,5 @@
 import os
+import sys
 import tempfile
 from typing import Any, Dict
 
@@ -13,6 +14,8 @@ from audyn.utils.data.birdclef.birdclef2024.composer import BirdCLEF2024PrimaryL
 from audyn.utils.data.collator import Collator
 from audyn.utils.github import download_file_from_github_release
 
+IS_WINDOWS = sys.platform == "win32"
+
 
 @pytest.mark.parametrize("composer_pattern", [1, 2])
 def test_birdclef2024_primary_label_composer(
@@ -26,6 +29,9 @@ def test_birdclef2024_primary_label_composer(
     url = "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev4/piano-48k.ogg"
 
     batch_size = 3
+
+    if IS_WINDOWS:
+        pytest.skip(".ogg file is not supported by Windows.")
 
     with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         # save dummy audio to check usage of .ogg file.
