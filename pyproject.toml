@@ -62,7 +62,7 @@ include = [
     "audyn",
 ]
 
-[tool.setuptools.packages.package-data]
+[tool.setuptools.package-data]
 # to include config of drivers
 audyn = [
     "*yaml",
