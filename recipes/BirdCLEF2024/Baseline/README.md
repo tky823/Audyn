@@ -33,9 +33,9 @@ data="birdclef2024"
 --data "${data}"
 ```
 
-### Stage 1: Training SSAST
+### Stage 1: Training baseline model
 
-To train SSAST, run the following command:
+To train baseline model, run the following command:
 
 ```sh
 tag=<TAG>
