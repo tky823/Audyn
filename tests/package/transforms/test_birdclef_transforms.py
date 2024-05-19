@@ -8,6 +8,7 @@ def test_birdclef2024_baseline_melspectrogram() -> None:
 
     batch_size = 4
     sample_rate = 32000
+    n_mels, n_frames = 128, 384
     duration = 15
 
     transform = BirdCLEF2024BaselineMelSpectrogram(sample_rate=sample_rate)
@@ -15,4 +16,4 @@ def test_birdclef2024_baseline_melspectrogram() -> None:
 
     melspectrogram = transform(waveform)
 
-    assert melspectrogram.size()[:2] == (batch_size, 256)
+    assert melspectrogram.size() == (batch_size, n_mels, n_frames)
