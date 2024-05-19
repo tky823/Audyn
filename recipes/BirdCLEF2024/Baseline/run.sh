@@ -20,6 +20,11 @@ dump_format="webdataset"
 system="defaults"
 preprocess="birdclef2024"
 data="birdclef2024"
+train="birdclef2024baseline"
+model="birdclef2024baseline"
+optimizer="adam"
+lr_scheduler="none"
+criterion="birdclef2024"
 
 . ../../_common/parse_options.sh || exit 1;
 
@@ -41,5 +46,28 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
         --dump-format "${dump_format}" \
         --preprocess "${preprocess}" \
         --data "${data}"
+    )
+fi
+
+
+if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
+    echo "Stage 1: Train EfficientNet"
+
+    (
+        . ./train.sh \
+        --tag "${tag}" \
+        --continue-from "${continue_from}" \
+        --exp-root "${exp_root}" \
+        --tensorboard-root "${tensorboard_root}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
+        --system "${system}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --train "${train}" \
+        --model "${model}" \
+        --optimizer "${optimizer}" \
+        --lr-scheduler "${lr_scheduler}" \
+        --criterion "${criterion}"
     )
 fi
