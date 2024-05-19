@@ -1,0 +1,15 @@
+# Cross entropy for multi-class estimation.
+# Both hard and soft label are supported.
+
+_target_: audyn.criterion.MultiCriteria
+cross_entropy:
+  _target_: audyn.criterion.BaseCriterionWrapper
+  criterion:
+    _target_: torch.nn.CrossEntropyLoss
+    reduction: mean
+  weight: 1
+  key_mapping:
+    estimated:
+      input: ???
+    target:
+      target: ???
