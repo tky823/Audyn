@@ -148,14 +148,10 @@ def test_birdclef2024_primary_label_composer(
 
         for batch in dataloader:
             assert set(batch.keys()) == {
-                "__key__",
-                "__url__",
-                audio_key,
-                sample_rate_key,
-                label_name_key,
-                filename_key,
+                waveform_key,
                 melspectrogram_key,
                 label_index_key,
+                filename_key,
             }
 
             assert batch[label_index_key].size(-1) == num_birdclef2024_primary_labels
