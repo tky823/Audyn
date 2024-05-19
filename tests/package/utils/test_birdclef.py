@@ -27,6 +27,13 @@ def test_birdclef2024_primary_label_composer(
 ) -> None:
     torch.manual_seed(0)
 
+    try:
+        from torchvision.transforms.v2 import MixUp  # noqa: F401
+    except ImportError:
+        import torchvision
+
+        pytest.skip(f"MixUp is not supported by torchvision={torchvision.__version__}.")
+
     max_shard_count = 4
     audio_key, sample_rate_key, filename_key = "audio", "sample_rate", "filename"
     waveform_key, melspectrogram_key = "waveform", "melspectrogram"
