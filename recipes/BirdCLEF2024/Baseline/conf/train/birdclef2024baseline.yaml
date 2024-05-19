@@ -1,0 +1,82 @@
+defaults:
+  - defaults
+  - override dataset: webdataset
+  - _self_
+
+trainer:
+  _target_: audyn.utils.driver.BaseTrainer
+
+dataloader:
+  train:
+    batch_size: 64
+    collate_fn:
+      _target_: audyn.utils.data.birdclef.birdclef2024.collator.BirdCLEF2024BaselineCollator
+      composer:
+        _target_: audyn.utils.data.birdclef.birdclef2024.composer.BirdCLEF2024PrimaryLabelComposer
+        melspectrogram_transform: ${data.melspectrogram}
+        audio_key: audio
+        sample_rate_key: sample_rate
+        label_name_key: primary_label
+        melspectrogram_key: log_melspectrogram
+        label_index_key: label_index
+        sample_rate: ${data.audio.sample_rate}
+        duration: ${data.audio.duration}
+        decode_audio_as_waveform: true
+        decode_audio_as_monoral: true
+        training: true
+      melspectrogram_key: ${.composer.melspectrogram_key}
+      label_index_key: ${.composer.label_index_key}
+      alpha: 0.4
+  validation:
+    batch_size: 64
+    collate_fn:
+      _target_: ${...train.collate_fn._target_}
+      composer:
+        _target_: ${....train.collate_fn.composer._target_}
+        melspectrogram_transform: ${....train.collate_fn.composer.melspectrogram_transform}
+        audio_key: ${....train.collate_fn.composer.audio_key}
+        sample_rate_key: ${....train.collate_fn.composer.sample_rate_key}
+        label_name_key: ${....train.collate_fn.composer.label_name_key}
+        melspectrogram_key: ${....train.collate_fn.composer.melspectrogram_key}
+        label_index_key: ${....train.collate_fn.composer.label_index_key}
+        sample_rate: ${....train.collate_fn.composer.sample_rate}
+        duration: ${....train.collate_fn.composer.duration}
+        decode_audio_as_waveform: ${....train.collate_fn.composer.decode_audio_as_waveform}
+        decode_audio_as_monoral: ${....train.collate_fn.composer.decode_audio_as_monoral}
+        training: false
+      melspectrogram_key: ${...train.collate_fn.composer.melspectrogram_key}
+      label_index_key: ${...train.collate_fn.composer.label_index_key}
+      alpha: ${...train.collate_fn.alpha}
+
+key_mapping:
+  train:
+    input:
+      input: ${....dataloader.train.collate_fn.composer.melspectrogram_key}
+    output: logit
+  validation: ${.train}
+  inference: ${.validation}
+
+ddp_kwargs:
+
+resume:
+  continue_from:
+
+output:
+  exp_dir: "./exp"
+  tensorboard_dir: "./tensorboard"
+  save_checkpoint:
+    iteration:
+      every: 100000
+      path: ${...exp_dir}/model/iteration{iteration}.pth
+    epoch:
+      every: 1
+      path: ${...exp_dir}/model/epoch{epoch}.pth
+    last:
+      path: ${...exp_dir}/model/last.pth
+    best_epoch:
+      path: ${...exp_dir}/model/best_epoch.pth
+
+steps:
+  epochs: 10
+  iterations:
+  lr_scheduler:
