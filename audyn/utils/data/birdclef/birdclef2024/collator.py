@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional
 
-import torchvision.transforms.v2 as vT
+import torchvision
 
 from ...collator import Collator
 from ...composer import Composer
@@ -24,7 +24,12 @@ class BirdCLEF2024BaselineCollator(Collator):
         self.melspectrogram_key = melspectrogram_key
         self.label_index_key = label_index_key
 
-        self.mixup = vT.MixUp(
+        try:
+            from torchvision.transforms.v2 import MixUp
+        except ImportError:
+            raise ImportError(f"MixUp is not supported by torchvision=={torchvision.__version__}")
+
+        self.mixup = MixUp(
             alpha=alpha,
             num_classes=num_birdclef2024_primary_labels,
         )
