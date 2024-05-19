@@ -62,6 +62,12 @@ include = [
     "audyn",
 ]
 
+[tool.setuptools.package-data]
+# to include config of drivers
+audyn = [
+    "*yaml",
+]
+
 [tool.black]
 line-length = 99
 

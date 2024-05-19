@@ -1,6 +1,6 @@
 exclude .gitignore
-exclude *.yaml
 recursive-include audyn *.py
+recursive-include audyn *.yaml
 prune .github
 prune docs
 prune tests
