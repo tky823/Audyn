@@ -2,12 +2,15 @@ from typing import Callable, Dict, Optional, Tuple
 
 import torch
 import torchaudio.functional as aF
+from packaging import version
 
 from .librosa import LibrosaMelSpectrogram
 
 __all__ = [
     "BirdCLEF2024BaselineMelSpectrogram",
 ]
+
+IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
 
 class BirdCLEF2024BaselineMelSpectrogram(LibrosaMelSpectrogram):
@@ -136,17 +139,25 @@ class BirdCLEF2024BaselineMelSpectrogram(LibrosaMelSpectrogram):
             freq_mask_param = freq_mask_param.item()
             time_mask_param = time_mask_param.item()
 
-            # 3D is required.
-            specgram = specgram.view(-1, n_bins, n_frames)
+            if IS_TORCH_LT_2_1:
+                # 4D is required.
+                specgram = specgram.view(-1, 1, n_bins, n_frames)
+                freq_axis = 2
+                time_axis = 3
+            else:
+                # 3D is required.
+                specgram = specgram.view(-1, n_bins, n_frames)
+                freq_axis = 1
+                time_axis = 2
 
             # frequency mask
             specgram = aF.mask_along_axis_iid(
-                specgram, mask_param=freq_mask_param, mask_value=0, axis=1
+                specgram, mask_param=freq_mask_param, mask_value=0, axis=freq_axis
             )
 
             # time mask
             specgram = aF.mask_along_axis_iid(
-                specgram, mask_param=time_mask_param, mask_value=0, axis=2
+                specgram, mask_param=time_mask_param, mask_value=0, axis=time_axis
             )
 
             specgram = specgram.view(*batch_shape, n_bins, n_frames)
