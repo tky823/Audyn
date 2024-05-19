@@ -32,3 +32,29 @@ data="birdclef2024"
 --stop-stage 0 \
 --data "${data}"
 ```
+
+### Stage 1: Training SSAST
+
+To train SSAST, run the following command:
+
+```sh
+tag=<TAG>
+
+data="birdclef2024"
+train="birdclef2024baseline"
+model="birdclef2024baseline"
+optimizer="adam"
+lr_scheduler="none"
+criterion="birdclef2024"
+
+. ./run.sh \
+--stage 1 \
+--stop-stage 1 \
+--tag "${tag}" \
+--data "${data}" \
+--train "${train}" \
+--model "${model}" \
+--optimizer "${optimizer}" \
+--lr-scheduler "${lr_scheduler}" \
+--criterion "${criterion}"
+```
