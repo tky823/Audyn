@@ -46,7 +46,7 @@ def main(config: DictConfig) -> None:
     template_path = os.path.join(feature_dir, "%d.tar")
 
     filenames = []
-    files = []
+    files = {}
 
     with open(list_path) as f:
         for line in f:
@@ -106,12 +106,14 @@ def main(config: DictConfig) -> None:
                     "audio_root": audio_root,
                     "audio_path": audio_path,
                 }
-                files.append(data)
+                files[filename] = data
 
+    # reflect order of filenames
+    sorted_files = [files[filename] for filename in filenames]
     subsets = [[] for _ in range(max_workers)]
 
     with open(list_path) as f:
-        for idx, file in tqdm(enumerate(files)):
+        for idx, file in tqdm(enumerate(sorted_files)):
             subsets[idx % max_workers].append(file)
 
     queue = Queue()

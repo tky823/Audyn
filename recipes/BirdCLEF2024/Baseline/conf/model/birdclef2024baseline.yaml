@@ -1,0 +1,3 @@
+_target_: audyn.utils.data.birdclef.birdclef2024.models.baseline.BaselineModel
+weights: ${const:torchvision.models.EfficientNet_B2_Weights.IMAGENET1K_V1}
+num_classes: ${const:audyn.utils.data.birdclef.birdclef2024.num_primary_labels}

@@ -15,7 +15,13 @@ primary_labels = download_birdclef2024_primary_labels()
 num_primary_labels = len(primary_labels)
 
 
-def stratified_split(path: str, train_ratio: float, seed: int = 0) -> Tuple[List[str], List[str]]:
+def stratified_split(
+    path: str,
+    train_ratio: float,
+    seed: int = 0,
+    shuffle_train: bool = True,
+    shuffle_validation: bool = False,
+) -> Tuple[List[str], List[str]]:
     """Split dataset into training and validation.
 
     Args:
@@ -57,5 +63,16 @@ def stratified_split(path: str, train_ratio: float, seed: int = 0) -> Tuple[List
 
         for idx in indices[int(train_ratio * num_files) :]:
             validation_filenames.append(_filenames[idx])
+
+    num_train_files = len(train_filenames)
+    num_validation_files = len(validation_filenames)
+    train_indices = torch.randperm(num_train_files, generator=g).tolist()
+    validation_indices = torch.randperm(num_validation_files, generator=g).tolist()
+
+    if shuffle_train:
+        train_filenames = [train_filenames[idx] for idx in train_indices]
+
+    if shuffle_validation:
+        validation_filenames = [validation_filenames[idx] for idx in validation_indices]
 
     return train_filenames, validation_filenames

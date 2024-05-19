@@ -7,4 +7,4 @@ audio:
   duration: 15
 
 melspectrogram:
-  _target_: audyn.utils.data.birdclef.birdclef2024.transforms.BirdCLEF2024BaselineMelSpectrogram
+  _target_: audyn.transforms.birdclef.BirdCLEF2024BaselineMelSpectrogram

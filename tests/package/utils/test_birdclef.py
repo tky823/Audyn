@@ -9,9 +9,13 @@ import torchaudio
 import webdataset as wds
 from torch.utils.data import DataLoader
 
+from audyn.transforms.birdclef import BirdCLEF2024BaselineMelSpectrogram
 from audyn.utils.data import WebDatasetWrapper
+from audyn.utils.data.birdclef.birdclef2024 import (
+    num_primary_labels as num_birdclef2024_primary_labels,
+)
+from audyn.utils.data.birdclef.birdclef2024.collator import BirdCLEF2024BaselineCollator
 from audyn.utils.data.birdclef.birdclef2024.composer import BirdCLEF2024PrimaryLabelComposer
-from audyn.utils.data.collator import Collator
 from audyn.utils.github import download_file_from_github_release
 
 IS_WINDOWS = sys.platform == "win32"
@@ -23,10 +27,20 @@ def test_birdclef2024_primary_label_composer(
 ) -> None:
     torch.manual_seed(0)
 
+    try:
+        from torchvision.transforms.v2 import MixUp  # noqa: F401
+    except ImportError:
+        import torchvision
+
+        pytest.skip(f"MixUp is not supported by torchvision={torchvision.__version__}.")
+
     max_shard_count = 4
     audio_key, sample_rate_key, filename_key = "audio", "sample_rate", "filename"
+    waveform_key, melspectrogram_key = "waveform", "melspectrogram"
     label_name_key, label_index_key = "primary_label", "label_index"
     url = "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev4/piano-48k.ogg"
+
+    melspectrogram_transform = BirdCLEF2024BaselineMelSpectrogram()
 
     batch_size = 3
 
@@ -91,13 +105,22 @@ def test_birdclef2024_primary_label_composer(
         )
 
         composer = BirdCLEF2024PrimaryLabelComposer(
+            melspectrogram_transform,
+            audio_key=audio_key,
+            sample_rate_key=sample_rate_key,
             label_name_key=label_name_key,
+            filename_key=filename_key,
+            waveform_key=waveform_key,
+            melspectrogram_key=melspectrogram_key,
             label_index_key=label_index_key,
         )
 
         if composer_pattern == 1:
             # pattern 1: set composer to dataset
-            collator = Collator()
+            collator = BirdCLEF2024BaselineCollator(
+                melspectrogram_key=melspectrogram_key,
+                label_index_key=label_index_key,
+            )
             dataset = WebDatasetWrapper.instantiate_dataset(
                 list_path,
                 feature_dir,
@@ -105,7 +128,11 @@ def test_birdclef2024_primary_label_composer(
             )
         elif composer_pattern == 2:
             # pattern 2: set composer to collator
-            collator = Collator(composer=composer)
+            collator = BirdCLEF2024BaselineCollator(
+                composer=composer,
+                melspectrogram_key=melspectrogram_key,
+                label_index_key=label_index_key,
+            )
             dataset = WebDatasetWrapper.instantiate_dataset(
                 list_path,
                 feature_dir,
@@ -121,14 +148,13 @@ def test_birdclef2024_primary_label_composer(
 
         for batch in dataloader:
             assert set(batch.keys()) == {
-                "__key__",
-                "__url__",
-                "audio",
-                "sample_rate",
-                "primary_label",
-                "filename",
-                "label_index",
+                waveform_key,
+                melspectrogram_key,
+                label_index_key,
+                filename_key,
             }
+
+            assert batch[label_index_key].size(-1) == num_birdclef2024_primary_labels
 
 
 @pytest.fixture
