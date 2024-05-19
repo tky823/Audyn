@@ -22,7 +22,11 @@ def main(config: DictConfig) -> None:
     assert train_ratio is not None, "Specify preprocess.train_ratio."
 
     train_filenames, validation_filenames = stratified_split(
-        csv_path, train_ratio=train_ratio, seed=config.system.seed
+        csv_path,
+        train_ratio=train_ratio,
+        seed=config.system.seed,
+        shuffle_train=True,
+        shuffle_validation=False,
     )
 
     if subset == "train":
