@@ -42,7 +42,7 @@ class BirdCLEF2024PrimaryLabelComposer(Composer):
         sample_rate_key: str,
         label_name_key: str,
         melspectrogram_key: str = "melspectrogram",
-        label_index_key: str = "label_indx",
+        label_index_key: str = "label_index",
         sample_rate: int = 32000,
         duration: Optional[float] = 15,
         decode_audio_as_waveform: bool = True,
