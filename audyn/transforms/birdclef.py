@@ -14,7 +14,7 @@ IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
 
 class BirdCLEF2024BaselineMelSpectrogram(LibrosaMelSpectrogram):
-    """Mel-spectrogram transform cfor BirdCLEF2024.
+    """Mel-spectrogram transform for BirdCLEF2024.
 
     Args:
         sample_rate (int): Sampling rate. Default: ``32000``.
