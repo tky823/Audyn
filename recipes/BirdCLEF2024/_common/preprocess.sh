@@ -52,7 +52,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         subset_list_path="${list_dir}/${subset}.txt"
         subset_feature_dir="${feature_dir}/${subset}"
 
-        python ./local/save_features.py \
+        python ../_common/local/save_features.py \
         --config-dir "./conf" \
         hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
         preprocess="${preprocess}" \
