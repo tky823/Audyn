@@ -10,4 +10,4 @@ cross_entropy:
     estimated:
       input: logit
     target:
-      target: ${train.dataloader.train.collate_fn.composer.multilabel_key}
+      target: ${train.dataloader.train.collate_fn.composer.label_index_key}
