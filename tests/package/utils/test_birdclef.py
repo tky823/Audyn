@@ -29,7 +29,7 @@ def test_birdclef2024_primary_label_composer(
 
     max_shard_count = 4
     audio_key, sample_rate_key, filename_key = "audio", "sample_rate", "filename"
-    melspectrogram_key = "melspectrogram"
+    waveform_key, melspectrogram_key = "waveform", "melspectrogram"
     label_name_key, label_index_key = "primary_label", "label_index"
     url = "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev4/piano-48k.ogg"
 
@@ -102,6 +102,8 @@ def test_birdclef2024_primary_label_composer(
             audio_key=audio_key,
             sample_rate_key=sample_rate_key,
             label_name_key=label_name_key,
+            filename_key=filename_key,
+            waveform_key=waveform_key,
             melspectrogram_key=melspectrogram_key,
             label_index_key=label_index_key,
         )
