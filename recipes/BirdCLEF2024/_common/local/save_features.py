@@ -5,7 +5,6 @@
 - sample_rate.pth: Sampling rate.
 """
 
-import ast
 import csv
 import os
 from multiprocessing import Process, Queue
@@ -19,6 +18,7 @@ from tqdm import tqdm
 
 import audyn
 from audyn.utils import setup_config
+from audyn.utils.data.birdclef.birdclef2024 import decode_csv_line
 
 
 @audyn.main()
@@ -30,6 +30,7 @@ def main(config: DictConfig) -> None:
     feature_dir = config.preprocess.feature_dir
     audio_root = config.preprocess.audio_root
     csv_path = config.preprocess.csv_path
+    subset = config.preprocess.subset
     max_workers = config.preprocess.max_workers
     max_shard_size = config.preprocess.max_shard_size
 
@@ -37,6 +38,7 @@ def main(config: DictConfig) -> None:
     assert feature_dir is not None, "Specify preprocess.feature_dir."
     assert audio_root is not None, "Specify preprocess.audio_root."
     assert csv_path is not None, "Specify preprocess.csv_path."
+    assert subset is not None, "Specify preprocess.subset."
     assert max_workers is not None, "Specify preprocess.max_workers."
 
     if dump_format != "webdataset":
@@ -60,53 +62,20 @@ def main(config: DictConfig) -> None:
             if idx < 1:
                 continue
 
-            (
-                primary_label,
-                secondary_labels,
-                chirp_types,
-                latitude,
-                longitude,
-                scientific_name,
-                common_name,
-                _,
-                _,
-                rating,
-                _,
-                audio_path,
-            ) = line
-
-            secondary_labels = ast.literal_eval(secondary_labels)
-            chirp_types = ast.literal_eval(chirp_types)
-            secondary_labels = [secondary_label.lower() for secondary_label in secondary_labels]
-            chirp_types = [chirp_type.lower() for chirp_type in chirp_types]
-
-            filename, _ = os.path.splitext(audio_path)
+            data = decode_csv_line(line)
+            filename = data["filename"]
 
             if filename in filenames:
-                if len(latitude) > 0:
-                    latitude = float(latitude)
-                else:
-                    latitude = None
-
-                if len(longitude) > 0:
-                    longitude = float(longitude)
-                else:
-                    longitude = None
-
-                data = {
-                    "filename": filename,
-                    "primary_label": primary_label,
-                    "secondary_label": secondary_labels,
-                    "type": chirp_types,
-                    "latitude": latitude,
-                    "longitude": longitude,
-                    "scientific_name": scientific_name,
-                    "common_name": common_name,
-                    "rating": float(rating),
-                    "audio_root": audio_root,
-                    "audio_path": audio_path,
-                }
+                data["root"] = audio_root
                 files[filename] = data
+
+    if subset == "train":
+        indices = torch.randperm(len(filenames)).tolist()
+        filenames = [filenames[idx] for idx in indices]
+    elif subset == "validation":
+        pass
+    else:
+        raise ValueError(f"{subset} is not supported.")
 
     # reflect order of filenames
     sorted_files = [files[filename] for filename in filenames]
@@ -165,8 +134,8 @@ def process_webdataset(
 
             filename = data["filename"]
             primary_label = data["primary_label"]
-            audio_root = data["audio_root"]
-            audio_path = data["audio_path"]
+            audio_root = data["root"]
+            audio_path = data["path"]
 
             m4a_path = os.path.join(audio_root, audio_path)
             metadata = torchaudio.info(m4a_path)

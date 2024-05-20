@@ -25,8 +25,6 @@ def main(config: DictConfig) -> None:
         csv_path,
         train_ratio=train_ratio,
         seed=config.system.seed,
-        shuffle_train=True,
-        shuffle_validation=False,
     )
 
     if subset == "train":
