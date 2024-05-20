@@ -1,6 +1,6 @@
 defaults:
   - defaults
-  - override dataset: webdataset
+  - override dataset: torch
   - _self_
 
 trainer:
