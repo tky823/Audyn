@@ -1,4 +1,4 @@
-"""Save features of samples in BirdCLEF2024.
+"""Save features of training/validation samples in BirdCLEF2024.
 - audio.ogg: Raw audio.
 - primary_label.txt: Primary label.
 - filename.txt: Filename w/o .ogg.
@@ -151,7 +151,7 @@ def main(config: DictConfig) -> None:
 
         writing_process.join()
     else:
-        raise ValueError
+        raise ValueError(f"Invalid dump_format={dump_format} is detected.")
 
 
 def process_torch(
