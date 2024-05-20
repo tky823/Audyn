@@ -38,6 +38,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
         preprocess="${preprocess}" \
         data="${data}" \
+        preprocess.dump_format="${dump_format}" \
         preprocess.list_path="${list_path}" \
         preprocess.csv_path="${csv_path}" \
         preprocess.audio_root="${audio_root}" \
@@ -57,6 +58,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
         preprocess="${preprocess}" \
         data="${data}" \
+        preprocess.dump_format="${dump_format}" \
         preprocess.list_path="${subset_list_path}" \
         preprocess.feature_dir="${subset_feature_dir}" \
         preprocess.csv_path="${csv_path}" \
