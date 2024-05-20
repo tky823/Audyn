@@ -59,7 +59,8 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         data="${data}" \
         preprocess.list_path="${subset_list_path}" \
         preprocess.feature_dir="${subset_feature_dir}" \
+        preprocess.csv_path="${csv_path}" \
         preprocess.audio_root="${audio_root}" \
-        preprocess.csv_path="${csv_path}"
+        preprocess.subset="${subset}"
     done
 fi
