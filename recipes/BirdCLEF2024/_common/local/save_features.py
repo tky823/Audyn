@@ -7,6 +7,7 @@
 
 import csv
 import os
+from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import Process, Queue
 from typing import Any, Dict, List
 
@@ -41,11 +42,7 @@ def main(config: DictConfig) -> None:
     assert subset is not None, "Specify preprocess.subset."
     assert max_workers is not None, "Specify preprocess.max_workers."
 
-    if dump_format != "webdataset":
-        raise ValueError("Only webdataset is supported as dump_format.")
-
     os.makedirs(feature_dir, exist_ok=True)
-    template_path = os.path.join(feature_dir, "%d.tar")
 
     filenames = []
     files = {}
@@ -69,59 +66,122 @@ def main(config: DictConfig) -> None:
                 data["root"] = audio_root
                 files[filename] = data
 
-    if subset == "train":
-        indices = torch.randperm(len(filenames)).tolist()
-        filenames = [filenames[idx] for idx in indices]
-    elif subset == "validation":
-        pass
-    else:
-        raise ValueError(f"{subset} is not supported.")
+    if dump_format == "torch":
+        sorted_files = [files[filename] for filename in filenames]
 
-    # reflect order of filenames
-    sorted_files = [files[filename] for filename in filenames]
-    subsets = [[] for _ in range(max_workers)]
+        if max_workers > 1:
+            with ProcessPoolExecutor(max_workers=max_workers) as executor:
+                futures = []
 
-    with open(list_path) as f:
-        for idx, file in tqdm(enumerate(sorted_files)):
-            subsets[idx % max_workers].append(file)
+                for data in sorted_files:
+                    filename = data["filename"]
+                    feature_path = os.path.join(feature_dir, f"{filename}.pth")
+                    future = executor.submit(
+                        process_torch,
+                        data,
+                        feature_path=feature_path,
+                    )
+                    futures.append(future)
 
-    queue = Queue()
+                for future in tqdm(futures):
+                    future.result()
+        else:
+            for data in tqdm(sorted_files):
+                filename = data["filename"]
+                feature_path = os.path.join(feature_dir, f"{filename}.pth")
+                process_torch(
+                    data,
+                    feature_path=feature_path,
+                )
 
-    # load
-    loading_processes: List[Process] = []
+    elif dump_format == "webdataset":
+        template_path = os.path.join(feature_dir, "%d.tar")
 
-    for files in subsets:
-        p = Process(
-            target=process_webdataset,
+        if subset == "train":
+            indices = torch.randperm(len(filenames)).tolist()
+            filenames = [filenames[idx] for idx in indices]
+        elif subset == "validation":
+            pass
+        else:
+            raise ValueError(f"{subset} is not supported.")
+
+        # reflect order of filenames
+        sorted_files = [files[filename] for filename in filenames]
+        subsets = [[] for _ in range(max_workers)]
+
+        with open(list_path) as f:
+            for idx, file in tqdm(enumerate(sorted_files)):
+                subsets[idx % max_workers].append(file)
+
+        queue = Queue()
+
+        # load
+        loading_processes: List[Process] = []
+
+        for files in subsets:
+            p = Process(
+                target=process_webdataset,
+                args=(queue,),
+                kwargs={
+                    "files": files,
+                },
+            )
+            loading_processes.append(p)
+
+        # write
+        writing_process = Process(
+            target=write_to_shards,
             args=(queue,),
             kwargs={
-                "files": files,
+                "num_workers": max_workers,
+                "tar_path": template_path,
+                "max_shard_size": max_shard_size,
             },
         )
-        loading_processes.append(p)
 
-    # write
-    writing_process = Process(
-        target=write_to_shards,
-        args=(queue,),
-        kwargs={
-            "num_workers": max_workers,
-            "tar_path": template_path,
-            "max_shard_size": max_shard_size,
-        },
+        # start multiprocessing
+        for p in loading_processes:
+            p.start()
+
+        writing_process.start()
+
+        # finish multiprocessing
+        for p in loading_processes:
+            p.join()
+
+        writing_process.join()
+    else:
+        raise ValueError
+
+
+def process_torch(
+    data: Dict[str, Any],
+    feature_path: str,
+) -> None:
+    feature = {}
+
+    filename = data["filename"]
+    primary_label = data["primary_label"]
+    audio_root = data["root"]
+    audio_path = data["path"]
+
+    m4a_path = os.path.join(audio_root, audio_path)
+    metadata = torchaudio.info(m4a_path)
+
+    with open(m4a_path, mode="rb") as f:
+        audio = f.read()
+
+    feature["audio.ogg"] = audio
+    feature["primary_label"] = primary_label
+    feature["filename"] = filename
+    feature["sample_rate"] = torch.tensor(
+        metadata.sample_rate,
+        dtype=torch.long,
     )
 
-    # start multiprocessing
-    for p in loading_processes:
-        p.start()
-
-    writing_process.start()
-
-    # finish multiprocessing
-    for p in loading_processes:
-        p.join()
-
-    writing_process.join()
+    feature_dir = os.path.dirname(feature_path)
+    os.makedirs(feature_dir, exist_ok=True)
+    torch.save(feature, feature_path)
 
 
 def process_webdataset(
