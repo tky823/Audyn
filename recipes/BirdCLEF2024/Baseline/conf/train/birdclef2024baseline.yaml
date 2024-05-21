@@ -17,6 +17,8 @@ dataloader:
         audio_key: audio
         sample_rate_key: sample_rate
         label_name_key: primary_label
+        filename_key: filename
+        waveform_key: waveform
         melspectrogram_key: log_melspectrogram
         label_index_key: label_index
         sample_rate: ${data.audio.sample_rate}
@@ -37,6 +39,8 @@ dataloader:
         audio_key: ${....train.collate_fn.composer.audio_key}
         sample_rate_key: ${....train.collate_fn.composer.sample_rate_key}
         label_name_key: ${....train.collate_fn.composer.label_name_key}
+        filename_key: ${....train.collate_fn.composer.filename_key}
+        waveform_key: ${....train.collate_fn.composer.waveform_key}
         melspectrogram_key: ${....train.collate_fn.composer.melspectrogram_key}
         label_index_key: ${....train.collate_fn.composer.label_index_key}
         sample_rate: ${....train.collate_fn.composer.sample_rate}
