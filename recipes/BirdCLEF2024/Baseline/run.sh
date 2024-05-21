@@ -8,6 +8,7 @@ stop_stage=-1
 
 tag=""
 continue_from=""
+checkpoint=""
 
 exp_root="./exp"
 tensorboard_root="./tensorboard"
@@ -21,6 +22,7 @@ system="defaults"
 preprocess="birdclef2024"
 data="birdclef2024"
 train="birdclef2024baseline"
+test="birdclef2024baseline"
 model="birdclef2024baseline"
 optimizer="adam"
 lr_scheduler="none"
@@ -69,5 +71,24 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         --optimizer "${optimizer}" \
         --lr-scheduler "${lr_scheduler}" \
         --criterion "${criterion}"
+    )
+fi
+
+if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
+    echo "Stage 2: Infer by EfficientNet"
+
+    (
+        . ./test.sh \
+        --tag "${tag}" \
+        --checkpoint "${checkpoint}" \
+        --exp-root "${exp_root}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
+        --system "${system}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --train "${train}" \
+        --test "${test}" \
+        --model "${model}"
     )
 fi
