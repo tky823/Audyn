@@ -2127,43 +2127,82 @@ class BaseGenerator(BaseDriver):
 
     @torch.no_grad()
     def run(self) -> None:
+        test_config = self.config.test
+        key_mapping = test_config.key_mapping.inference
+
         self.model.eval()
 
         for named_data in self.loader:
             named_data = self.move_data_to_device(named_data, self.device)
-            named_input = self.map_to_named_input(
-                named_data, key_mapping=self.config.test.key_mapping.inference
-            )
-            named_identifier = self.map_to_named_identifier(
-                named_data, key_mapping=self.config.test.key_mapping.inference
-            )
+            named_input = self.map_to_named_input(named_data, key_mapping=key_mapping)
+            named_identifier = self.map_to_named_identifier(named_data, key_mapping=key_mapping)
 
             if hasattr(self.unwrapped_model, "inference"):
                 output = self.unwrapped_model.inference(**named_input)
             else:
                 output = self.unwrapped_model(**named_input)
 
-            named_output = self.map_to_named_output(
-                output, key_mapping=self.config.test.key_mapping.inference
-            )
+            named_output = self.map_to_named_output(output, key_mapping=key_mapping)
 
+            self.save_inference_torch_dump_if_necessary(
+                named_output,
+                named_data,
+                named_identifier,
+                config=test_config.output,
+            )
             self.save_inference_audio_if_necessary(
                 named_output,
                 named_data,
                 named_identifier,
-                config=self.config.test.output,
+                config=test_config.output,
             )
             self.save_inference_spectrogram_if_necessary(
                 named_output,
                 named_data,
                 named_identifier,
-                config=self.config.test.output,
+                config=test_config.output,
             )
 
     def load_checkpoint(self, path: str) -> None:
         state_dict = torch.load(path, map_location=self.device)
 
         self.unwrapped_model.load_state_dict(state_dict["model"])
+
+    def save_inference_torch_dump_if_necessary(
+        self,
+        named_output: Dict[str, torch.Tensor],
+        named_reference: Dict[str, torch.Tensor],
+        named_identifier: Dict[str, List[str]],
+        config: DictConfig = None,
+    ) -> None:
+        if config is None:
+            config = config.test.output
+
+        if hasattr(config, "torch_dump"):
+            torch_dump_config = config.torch_dump
+
+            if torch_dump_config is not None:
+                if hasattr(torch_dump_config.key_mapping, "inference"):
+                    key_mapping = torch_dump_config.key_mapping.inference
+                elif hasattr(torch_dump_config.key_mapping, "test"):
+                    key_mapping = torch_dump_config.key_mapping.test
+                else:
+                    key_mapping = torch_dump_config.key_mapping
+
+                if hasattr(torch_dump_config.key_mapping, "inference"):
+                    transforms = torch_dump_config.transforms.inference
+                elif hasattr(torch_dump_config.key_mapping, "test"):
+                    transforms = torch_dump_config.transforms.test
+                else:
+                    transforms = torch_dump_config.transforms
+
+                self.save_torch_dump_if_necessary(
+                    named_output,
+                    named_reference,
+                    named_identifier,
+                    key_mapping=key_mapping,
+                    transforms=transforms,
+                )
 
     def save_inference_audio_if_necessary(
         self,
@@ -2239,6 +2278,75 @@ class BaseGenerator(BaseDriver):
                 )
 
     @run_only_master_rank()
+    def save_torch_dump_if_necessary(
+        self,
+        named_output: Dict[str, torch.Tensor],
+        named_reference: Dict[str, torch.Tensor],
+        named_identifier: Dict[str, List[str]],
+        key_mapping: DictConfig = None,
+        transforms: DictConfig = None,
+    ) -> None:
+        identifier_keys = named_identifier.keys()
+
+        if hasattr(key_mapping, "output") and key_mapping.output is not None:
+            if named_output is None:
+                raise ValueError("named_output is not specified.")
+
+            for key, filename in key_mapping.output.items():
+                for sample_idx, output in enumerate(named_output[key]):
+                    if transforms is not None and transforms.output is not None:
+                        if key in transforms.output.keys():
+                            transform = instantiate(transforms.output[key])
+                            output = transform(output)
+
+                    identifier_mapping = {
+                        identifier_key: named_identifier[identifier_key][sample_idx]
+                        for identifier_key in identifier_keys
+                    }
+                    path = os.path.join(self.inference_dir, filename)
+                    path = path.format(**identifier_mapping)
+                    self.save_torch_dump(output, path)
+
+        if hasattr(key_mapping, "reference") and key_mapping.reference is not None:
+            if named_reference is None:
+                raise ValueError("named_reference is not specified.")
+
+            for key, filename in key_mapping.reference.items():
+                for sample_idx, output in enumerate(named_reference[key]):
+                    if transforms is not None and transforms.reference is not None:
+                        if key in transforms.reference.keys():
+                            transform = instantiate(transforms.reference[key])
+                            output = transform(output)
+
+                    identifier_mapping = {
+                        identifier_key: named_identifier[identifier_key][sample_idx]
+                        for identifier_key in identifier_keys
+                    }
+                    path = os.path.join(self.inference_dir, filename)
+                    path = path.format(**identifier_mapping)
+                    self.save_torch_dump(output, path)
+
+    def save_torch_dump(
+        self,
+        obj: Any,
+        path: str,
+    ) -> None:
+        """Save torch dump object via torch.save.
+
+        Args:
+            kwargs: Keyword arguments given to ``torch.save``.
+
+        .. note::
+
+            If ``obj`` is instance of ``torch.Tensor``, ``.detach().cpu()`` is called.
+
+        """
+        save_dir = os.path.dirname(path)
+        os.makedirs(save_dir, exist_ok=True)
+
+        torch.save(obj, path)
+
+    @run_only_master_rank()
     def save_audio_if_necessary(
         self,
         named_output: Dict[str, torch.Tensor],
@@ -2255,14 +2363,14 @@ class BaseGenerator(BaseDriver):
                 raise ValueError("named_output is not specified.")
 
             for key, filename in key_mapping.output.items():
-                for idx, waveform in enumerate(named_output[key]):
+                for sample_idx, waveform in enumerate(named_output[key]):
                     if transforms is not None and transforms.output is not None:
                         if key in transforms.output.keys():
                             transform = instantiate(transforms.output[key])
                             waveform = transform(waveform)
 
                     identifier_mapping = {
-                        identifier_key: named_identifier[identifier_key][idx]
+                        identifier_key: named_identifier[identifier_key][sample_idx]
                         for identifier_key in identifier_keys
                     }
                     path = os.path.join(self.inference_dir, filename)
@@ -2274,14 +2382,14 @@ class BaseGenerator(BaseDriver):
                 raise ValueError("named_reference is not specified.")
 
             for key, filename in key_mapping.reference.items():
-                for waveform in named_reference[key]:
+                for sample_idx, waveform in enumerate(named_reference[key]):
                     if transforms is not None and transforms.reference is not None:
                         if key in transforms.reference.keys():
                             transform = instantiate(transforms.reference[key])
                             waveform = transform(waveform)
 
                     identifier_mapping = {
-                        identifier_key: named_identifier[identifier_key][idx]
+                        identifier_key: named_identifier[identifier_key][sample_idx]
                         for identifier_key in identifier_keys
                     }
                     path = os.path.join(self.inference_dir, filename)
@@ -2388,14 +2496,14 @@ class BaseGenerator(BaseDriver):
 
         if hasattr(key_mapping, "output") and key_mapping.output is not None:
             for key, filename in key_mapping.output.items():
-                for idx, image in enumerate(named_output[key]):
+                for sample_idx, image in enumerate(named_output[key]):
                     if transforms is not None and transforms.output is not None:
                         if key in transforms.output.keys():
                             transform = instantiate(transforms.output[key])
                             image = transform(image)
 
                     identifier_mapping = {
-                        identifier_key: named_identifier[identifier_key][idx]
+                        identifier_key: named_identifier[identifier_key][sample_idx]
                         for identifier_key in identifier_keys
                     }
                     path = os.path.join(self.inference_dir, filename)
@@ -2407,14 +2515,14 @@ class BaseGenerator(BaseDriver):
                 raise ValueError("named_reference is not specified.")
 
             for key, filename in key_mapping.reference.items():
-                for image in named_reference[key]:
+                for sample_idx, image in enumerate(named_reference[key]):
                     if transforms is not None and transforms.reference is not None:
                         if key in transforms.reference.keys():
                             transform = instantiate(transforms.reference[key])
                             image = transform(image)
 
                     identifier_mapping = {
-                        identifier_key: named_identifier[identifier_key][idx]
+                        identifier_key: named_identifier[identifier_key][sample_idx]
                         for identifier_key in identifier_keys
                     }
                     path = os.path.join(self.inference_dir, filename)
