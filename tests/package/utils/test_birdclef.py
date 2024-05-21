@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 
 from audyn.transforms.birdclef import BirdCLEF2024BaselineMelSpectrogram
 from audyn.utils.data import WebDatasetWrapper
+from audyn.utils.data.birdclef.birdclef2024 import decode_csv_line
 from audyn.utils.data.birdclef.birdclef2024 import (
     num_primary_labels as num_birdclef2024_primary_labels,
 )
@@ -19,6 +20,37 @@ from audyn.utils.data.birdclef.birdclef2024.composer import BirdCLEF2024PrimaryL
 from audyn.utils.github import download_file_from_github_release
 
 IS_WINDOWS = sys.platform == "win32"
+
+
+def test_decode_csv_line() -> None:
+    line = (
+        "primary",
+        "[]",
+        "['call']",
+        "1.1",
+        "2.2",
+        "scientific name",
+        "common name",
+        "author",
+        "license",
+        "1.5",
+        "https://example.com/001",
+        "primary/example.ogg",
+    )
+    data = decode_csv_line(line)
+
+    assert set(data.keys()) == {
+        "filename",
+        "primary_label",
+        "secondary_label",
+        "type",
+        "latitude",
+        "longitude",
+        "scientific_name",
+        "common_name",
+        "rating",
+        "path",
+    }
 
 
 @pytest.mark.parametrize("composer_pattern", [1, 2])
