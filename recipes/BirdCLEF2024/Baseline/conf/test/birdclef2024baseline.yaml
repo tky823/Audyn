@@ -1,0 +1,53 @@
+defaults:
+  - defaults
+  - override dataset: torch
+  - _self_
+
+dataloader:
+  test:
+    batch_size: 1
+    collate_fn:
+      _target_: audyn.utils.data.Collator
+      composer:
+        _target_: audyn.utils.data.birdclef.birdclef2024.composer.BirdCLEF2024AudioComposer
+        melspectrogram_transform: ${data.melspectrogram}
+        audio_key: audio
+        sample_rate_key: sample_rate
+        filename_key: filename
+        waveform_key: waveform
+        melspectrogram_key: log_melspectrogram
+        sample_rate: ${data.audio.sample_rate}
+        duration:
+        decode_audio_as_waveform: true
+        decode_audio_as_monoral: true
+        training: false
+
+key_mapping:
+  inference:
+    input:
+      input: ${....dataloader.test.collate_fn.composer.melspectrogram_key}
+    output: logit
+    identifier:
+      filename: filename
+
+checkpoint:
+
+remove_weight_norm:
+
+output:
+  exp_dir: "./exp"
+  inference_dir: ${.exp_dir}/inference
+  torch_dump:
+    key_mapping:
+      inference:
+        output:
+          logit: "{filename}.pth"
+        reference:
+    transforms:
+      inference:
+        output:
+          logit:
+            _target_: torch.softmax
+            _partial_: true
+            dim: -1
+        reference:

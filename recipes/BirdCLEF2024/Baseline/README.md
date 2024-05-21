@@ -58,3 +58,28 @@ criterion="birdclef2024"
 --lr-scheduler "${lr_scheduler}" \
 --criterion "${criterion}"
 ```
+
+### Stage 2: Inference by baseline model
+
+To infer by baseline model, run the following command:
+
+```sh
+tag=<TAG>
+
+checkpoint=<PATH/TO/TRAINED/MODEL>
+
+data="birdclef2024"
+train="birdclef2024baseline"
+test="birdclef2024baseline"
+model="birdclef2024baseline"
+
+. ./run.sh \
+--stage 2 \
+--stop-stage 2 \
+--tag "${tag}" \
+--checkpoint "${checkpoint}" \
+--data "${data}" \
+--train "${train}" \
+--test "${test}" \
+--model "${model}"
+```
