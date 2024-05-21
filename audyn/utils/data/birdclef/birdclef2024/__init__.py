@@ -57,7 +57,7 @@ def stratified_split(
     # split dataset
     for primary_label, _filenames in filenames.items():
         num_files = len(_filenames)
-        indices = torch.randperm(num_files).tolist()
+        indices = torch.randperm(num_files, generator=g).tolist()
 
         for idx in indices[: int(train_ratio * num_files)]:
             train_filenames.append(_filenames[idx])
