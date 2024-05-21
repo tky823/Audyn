@@ -120,11 +120,20 @@ class BirdCLEF2024PrimaryLabelComposer(Composer):
             padding = length - audio.size(-1)
 
             if padding > 0:
-                padding_left = torch.randint(0, padding, ()).item()
+                if self.training:
+                    padding_left = torch.randint(0, padding, ()).item()
+                else:
+                    padding_left = padding // 2
+
                 padding_right = padding - padding_left
             elif padding < 0:
                 padding = -padding
-                padding_left = torch.randint(0, padding, ()).item()
+
+                if self.training:
+                    padding_left = torch.randint(0, padding, ()).item()
+                else:
+                    padding_left = padding // 2
+
                 padding_right = padding - padding_left
                 padding_left = -padding_left
                 padding_right = -padding_right
@@ -247,11 +256,20 @@ class BirdCLEF2024AudioComposer(Composer):
             padding = length - audio.size(-1)
 
             if padding > 0:
-                padding_left = torch.randint(0, padding, ()).item()
+                if self.training:
+                    padding_left = torch.randint(0, padding, ()).item()
+                else:
+                    padding_left = padding // 2
+
                 padding_right = padding - padding_left
             elif padding < 0:
                 padding = -padding
-                padding_left = torch.randint(0, padding, ()).item()
+
+                if self.training:
+                    padding_left = torch.randint(0, padding, ()).item()
+                else:
+                    padding_left = padding // 2
+
                 padding_right = padding - padding_left
                 padding_left = -padding_left
                 padding_right = -padding_right
