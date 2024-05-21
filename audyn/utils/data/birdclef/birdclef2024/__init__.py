@@ -68,11 +68,11 @@ def stratified_split(
     return train_filenames, validation_filenames
 
 
-def decode_csv_line(line: str) -> Dict[str, Any]:
+def decode_csv_line(line: List[str]) -> Dict[str, Any]:
     """Decode line of train_metadata.csv.
 
     Args:
-        line (str): One line of train_metadata.csv.
+        line (list): One line of train_metadata.csv split by comma (,).
 
     Returns:
         dict: Dictionary containing metadata of given line.
