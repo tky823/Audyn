@@ -55,8 +55,8 @@ __all__ = [
     "GANGradClipper",
 ]
 
-
-audyn_cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "audyn")
+_home_dir = os.path.expanduser("~")
+audyn_cache_dir = os.getenv("AUDYN_CACHE_DIR") or os.path.join(_home_dir, ".cache", "audyn")
 model_cache_dir = os.path.join(audyn_cache_dir, "models")
 
 
