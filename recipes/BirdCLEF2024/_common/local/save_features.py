@@ -165,10 +165,10 @@ def process_torch(
     audio_root = data["root"]
     audio_path = data["path"]
 
-    m4a_path = os.path.join(audio_root, audio_path)
-    metadata = torchaudio.info(m4a_path)
+    audio_path = os.path.join(audio_root, audio_path)
+    metadata = torchaudio.info(audio_path)
 
-    with open(m4a_path, mode="rb") as f:
+    with open(audio_path, mode="rb") as f:
         audio = f.read()
 
     feature["audio.ogg"] = audio
