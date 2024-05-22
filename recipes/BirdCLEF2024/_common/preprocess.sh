@@ -46,18 +46,19 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         preprocess.subset="${subset}"
     done
 
-    subset="test"
-    list_path="${list_dir}/${subset}.txt"
+    for subset in "unlabeled_train" "unlabeled_validation"; do
+        list_path="${list_dir}/${subset}.txt"
 
-    python ../_common/local/save_test_list.py \
-    --config-dir "./conf" \
-    hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
-    preprocess="${preprocess}" \
-    data="${data}" \
-    preprocess.dump_format="${dump_format}" \
-    preprocess.list_path="${list_path}" \
-    preprocess.audio_root="${test_audio_root}" \
-    preprocess.subset="${subset}"
+        python ../_common/local/save_unlabeled_list.py \
+        --config-dir "./conf" \
+        hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
+        preprocess="${preprocess}" \
+        data="${data}" \
+        preprocess.dump_format="${dump_format}" \
+        preprocess.list_path="${list_path}" \
+        preprocess.audio_root="${test_audio_root}" \
+        preprocess.subset="${subset}"
+    done
 fi
 
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
