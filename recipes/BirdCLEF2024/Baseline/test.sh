@@ -6,7 +6,7 @@ exp_root="./exp"
 tag=""
 checkpoint=""
 
-dump_format="torch"
+dump_format="birdclef2024"
 
 system="defaults"
 preprocess="birdclef2024"

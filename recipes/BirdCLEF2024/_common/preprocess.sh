@@ -10,7 +10,7 @@ data_root="../data"
 dump_root="./dump"
 log_dir="./log"
 
-dump_format="torch"
+dump_format="birdclef2024"
 
 preprocess="birdclef2024"
 data="birdclef2024"
@@ -81,18 +81,19 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         preprocess.subset="${subset}"
     done
 
-    subset="test"
-    subset_list_path="${list_dir}/${subset}.txt"
-    subset_feature_dir="${feature_dir}/${subset}"
+    for subset in "unlabeled_train" "unlabeled_validation"; do
+        subset_list_path="${list_dir}/${subset}.txt"
+        subset_feature_dir="${feature_dir}/${subset}"
 
-    python ../_common/local/save_test_features.py \
-    --config-dir "./conf" \
-    hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
-    preprocess="${preprocess}" \
-    data="${data}" \
-    preprocess.dump_format="${dump_format}" \
-    preprocess.list_path="${subset_list_path}" \
-    preprocess.feature_dir="${subset_feature_dir}" \
-    preprocess.audio_root="${test_audio_root}" \
-    preprocess.subset="${subset}"
+        python ../_common/local/save_unlabeled_features.py \
+        --config-dir "./conf" \
+        hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
+        preprocess="${preprocess}" \
+        data="${data}" \
+        preprocess.dump_format="${dump_format}" \
+        preprocess.list_path="${subset_list_path}" \
+        preprocess.feature_dir="${subset_feature_dir}" \
+        preprocess.audio_root="${test_audio_root}" \
+        preprocess.subset="${subset}"
+    done
 fi

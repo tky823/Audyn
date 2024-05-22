@@ -16,7 +16,7 @@ tensorboard_root="./tensorboard"
 data_root="../data"
 dump_root="dump"
 
-dump_format="torch"
+dump_format="birdclef2024"
 
 system="defaults"
 preprocess="birdclef2024"

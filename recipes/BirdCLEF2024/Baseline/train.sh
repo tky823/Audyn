@@ -7,7 +7,7 @@ tensorboard_root="./tensorboard"
 tag=""
 continue_from=""
 
-dump_format="torch"
+dump_format="birdclef2024"
 
 system="defaults"
 preprocess="birdclef2024"
