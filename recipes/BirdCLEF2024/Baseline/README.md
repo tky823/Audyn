@@ -25,6 +25,11 @@ recipes/BirdCLEF2024/
 ### Stage 0: Preprocessing
 
 ```sh
+# "../data" is used by default
+# In kaggle, "/kaggle/input"
+data_root=<PATH/TO/ROOT/OF/DATA>
+
+# "torch", "webdataset", or "birdclef2024"
 dump_format="birdclef2024"
 
 data="birdclef2024"
@@ -32,6 +37,7 @@ data="birdclef2024"
 . ./run.sh \
 --stage 0 \
 --stop-stage 0 \
+--data-root "${data_root}" \
 --dump-format "${dump_format}" \
 --data "${data}"
 ```
@@ -43,6 +49,11 @@ To train baseline model, run the following command:
 ```sh
 tag=<TAG>
 
+# "../data" is used by default
+# In kaggle, "/kaggle/input"
+data_root=<PATH/TO/ROOT/OF/DATA>
+
+# "torch", "webdataset", or "birdclef2024"
 dump_format="birdclef2024"
 
 data="birdclef2024"
@@ -56,6 +67,7 @@ criterion="birdclef2024"
 --stage 1 \
 --stop-stage 1 \
 --tag "${tag}" \
+--data-root "${data_root}" \
 --dump-format "${dump_format}" \
 --data "${data}" \
 --train "${train}" \
@@ -74,6 +86,11 @@ tag=<TAG>
 
 checkpoint=<PATH/TO/TRAINED/MODEL>
 
+# "../data" is used by default
+# In kaggle, "/kaggle/input"
+data_root=<PATH/TO/ROOT/OF/DATA>
+
+# "torch", "webdataset", or "birdclef2024"
 dump_format="birdclef2024"
 
 data="birdclef2024"
@@ -86,6 +103,7 @@ model="birdclef2024baseline"
 --stop-stage 2 \
 --tag "${tag}" \
 --checkpoint "${checkpoint}" \
+--data-root "${data_root}" \
 --dump-format "${dump_format}" \
 --data "${data}" \
 --train "${train}" \
