@@ -25,11 +25,14 @@ recipes/BirdCLEF2024/
 ### Stage 0: Preprocessing
 
 ```sh
+dump_format="birdclef2024"
+
 data="birdclef2024"
 
 . ./run.sh \
 --stage 0 \
 --stop-stage 0 \
+--dump-format "${dump_format}" \
 --data "${data}"
 ```
 
@@ -39,6 +42,8 @@ To train baseline model, run the following command:
 
 ```sh
 tag=<TAG>
+
+dump_format="birdclef2024"
 
 data="birdclef2024"
 train="birdclef2024baseline"
@@ -51,6 +56,7 @@ criterion="birdclef2024"
 --stage 1 \
 --stop-stage 1 \
 --tag "${tag}" \
+--dump-format "${dump_format}" \
 --data "${data}" \
 --train "${train}" \
 --model "${model}" \
@@ -68,6 +74,8 @@ tag=<TAG>
 
 checkpoint=<PATH/TO/TRAINED/MODEL>
 
+dump_format="birdclef2024"
+
 data="birdclef2024"
 train="birdclef2024baseline"
 test="birdclef2024baseline"
@@ -78,6 +86,7 @@ model="birdclef2024baseline"
 --stop-stage 2 \
 --tag "${tag}" \
 --checkpoint "${checkpoint}" \
+--dump-format "${dump_format}" \
 --data "${data}" \
 --train "${train}" \
 --test "${test}" \
