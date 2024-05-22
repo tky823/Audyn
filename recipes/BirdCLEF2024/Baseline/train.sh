@@ -1,5 +1,6 @@
 #!/bin/bash
 
+data_root="../data"
 dump_root="./dump"
 exp_root="./exp"
 tensorboard_root="./tensorboard"
@@ -39,9 +40,15 @@ cmd=$(
 )
 
 train_list_path="${list_dir}/train.txt"
-train_feature_dir="${feature_dir}/train"
 validation_list_path="${list_dir}/validation.txt"
-validation_feature_dir="${feature_dir}/validation"
+
+if [ "${dump_format}" = "birdclef2024" ]; then
+    train_feature_dir="${data_root}/birdclef-2024"
+    validation_feature_dir="${data_root}/birdclef-2024"
+else
+    train_feature_dir="${feature_dir}/train"
+    validation_feature_dir="${feature_dir}/validation"
+fi
 
 ${cmd} ./local/train.py \
 --config-dir "./conf" \

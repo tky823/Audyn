@@ -61,6 +61,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         --continue-from "${continue_from}" \
         --exp-root "${exp_root}" \
         --tensorboard-root "${tensorboard_root}" \
+        --data-root "${data_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \
         --system "${system}" \
