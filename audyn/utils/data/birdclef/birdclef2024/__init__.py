@@ -1,5 +1,6 @@
 import ast
 import csv
+import glob
 import os
 from typing import Any, Dict, List, Tuple
 
@@ -11,6 +12,7 @@ __all__ = [
     "primary_labels",
     "num_primary_labels",
     "stratified_split",
+    "split",
     "decode_csv_line",
 ]
 
@@ -64,6 +66,58 @@ def stratified_split(
 
         for idx in indices[int(train_ratio * num_files) :]:
             validation_filenames.append(_filenames[idx])
+
+    return train_filenames, validation_filenames
+
+
+def split(
+    path: str,
+    train_ratio: float,
+    seed: int = 0,
+) -> Tuple[List[str], List[str]]:
+    """Split dataset into training and validation.
+
+    Unlike ``stratified_split``, ``split`` is available for unlabeled data.
+
+    Args:
+        path (str): Path to csv file (for labeled data) or audio directory (for unlabeled data).
+        train_ratio (float): Ratio of training set.
+        seed (int): Random seed.
+
+    Returns:
+        tuple: Splits of filenames.
+
+            - list: List of training filenames.
+            - list: List of validation filenames.
+
+    """
+    g = torch.Generator()
+    g.manual_seed(seed)
+
+    train_filenames = []
+    validation_filenames = []
+    filenames = []
+
+    if path.endswith(".csv") and os.path.isfile(path):
+        with open(path) as f:
+            reader = csv.reader(f)
+
+            for idx, line in enumerate(reader):
+                if idx < 1:
+                    continue
+
+                *_, filename = line
+                filenames.append(filename)
+    else:
+        root = path
+        filenames = sorted(glob.glob(os.path.join(root, "*.ogg")))
+        filenames = [os.path.relpath(filename, root) for filename in filenames]
+
+    num_files = len(filenames)
+    indices = torch.randperm(num_files, generator=g)
+    indices = indices.tolist()
+    train_filenames = [filenames[idx] for idx in indices[: int(num_files * train_ratio)]]
+    validation_filenames = [filenames[idx] for idx in indices[int(num_files * train_ratio) :]]
 
     return train_filenames, validation_filenames
 
