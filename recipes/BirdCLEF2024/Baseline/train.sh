@@ -61,6 +61,7 @@ model="${model}" \
 optimizer="${optimizer}" \
 lr_scheduler="${lr_scheduler}" \
 criterion="${criterion}" \
+train/dataset="${dump_format}" \
 preprocess.dump_format="${dump_format}" \
 train.dataset.train.list_path="${train_list_path}" \
 train.dataset.train.feature_dir="${train_feature_dir}" \
