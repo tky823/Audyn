@@ -1,11 +1,9 @@
-"""Save features of training/validation samples in BirdCLEF2024.
+"""Save features of test samples in BirdCLEF2024.
 - audio.ogg: Raw audio.
-- primary_label.txt: Primary label.
 - filename.txt: Filename w/o .ogg.
 - sample_rate.pth: Sampling rate.
 """
 
-import csv
 import os
 from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import Process, Queue
@@ -19,7 +17,6 @@ from tqdm import tqdm
 
 import audyn
 from audyn.utils import setup_config
-from audyn.utils.data.birdclef.birdclef2024 import decode_csv_line
 
 
 @audyn.main()
@@ -30,7 +27,6 @@ def main(config: DictConfig) -> None:
     list_path = config.preprocess.list_path
     feature_dir = config.preprocess.feature_dir
     audio_root = config.preprocess.audio_root
-    csv_path = config.preprocess.csv_path
     subset = config.preprocess.subset
     max_workers = config.preprocess.max_workers
     max_shard_size = config.preprocess.max_shard_size
@@ -38,7 +34,6 @@ def main(config: DictConfig) -> None:
     assert list_path is not None, "Specify preprocess.list_path."
     assert feature_dir is not None, "Specify preprocess.feature_dir."
     assert audio_root is not None, "Specify preprocess.audio_root."
-    assert csv_path is not None, "Specify preprocess.csv_path."
     assert subset is not None, "Specify preprocess.subset."
     assert max_workers is not None, "Specify preprocess.max_workers."
 
@@ -52,19 +47,13 @@ def main(config: DictConfig) -> None:
             filename = line.strip()
             filenames.append(filename)
 
-    with open(csv_path) as f:
-        reader = csv.reader(f)
-
-        for idx, line in enumerate(reader):
-            if idx < 1:
-                continue
-
-            data = decode_csv_line(line)
-            filename = data["filename"]
-
-            if filename in filenames:
-                data["root"] = audio_root
-                files[filename] = data
+    for filename in filenames:
+        data = {
+            "filename": filename,
+            "root": audio_root,
+            "path": f"{filename}.ogg",
+        }
+        files[filename] = data
 
     if dump_format == "torch":
         sorted_files = [files[filename] for filename in filenames]
@@ -93,16 +82,9 @@ def main(config: DictConfig) -> None:
                     data,
                     feature_path=feature_path,
                 )
+
     elif dump_format == "webdataset":
         template_path = os.path.join(feature_dir, "%d.tar")
-
-        if subset == "train":
-            indices = torch.randperm(len(filenames)).tolist()
-            filenames = [filenames[idx] for idx in indices]
-        elif subset == "validation":
-            pass
-        else:
-            raise ValueError(f"{subset} is not supported.")
 
         # reflect order of filenames
         sorted_files = [files[filename] for filename in filenames]
@@ -162,18 +144,16 @@ def process_torch(
     feature = {}
 
     filename = data["filename"]
-    primary_label = data["primary_label"]
     audio_root = data["root"]
     audio_path = data["path"]
 
-    audio_path = os.path.join(audio_root, audio_path)
-    metadata = torchaudio.info(audio_path)
+    m4a_path = os.path.join(audio_root, audio_path)
+    metadata = torchaudio.info(m4a_path)
 
-    with open(audio_path, mode="rb") as f:
+    with open(m4a_path, mode="rb") as f:
         audio = f.read()
 
     feature["audio.ogg"] = audio
-    feature["primary_label"] = primary_label
     feature["filename"] = filename
     feature["sample_rate"] = torch.tensor(
         metadata.sample_rate,
@@ -194,7 +174,6 @@ def process_webdataset(
             feature = {}
 
             filename = data["filename"]
-            primary_label = data["primary_label"]
             audio_root = data["root"]
             audio_path = data["path"]
 
@@ -206,7 +185,6 @@ def process_webdataset(
 
             feature["__key__"] = filename
             feature["audio.ogg"] = audio
-            feature["primary_label.txt"] = primary_label
             feature["filename.txt"] = filename
             feature["sample_rate.pth"] = torch.tensor(
                 metadata.sample_rate,
