@@ -25,6 +25,14 @@ if [ -z "${tag}" ]; then
     tag=$(date +"%Y%m%d-%H%M%S")
 fi
 
+test_list_path="${list_dir}/test.txt"
+
+if [ "${dump_format}" = "birdclef2024" ]; then
+    test_feature_dir="${data_root}/birdclef-2024"
+else
+    test_feature_dir="${feature_dir}/test"
+fi
+
 exp_dir="${exp_root}/${tag}"
 
 python ./local/test.py \
@@ -36,8 +44,9 @@ data="${data}" \
 train="${train}" \
 test="${test}" \
 model="${model}" \
+test/dataset="${dump_format}" \
 preprocess.dump_format="${dump_format}" \
-test.dataset.test.list_path="${list_dir}/test.txt" \
-test.dataset.test.feature_dir="${feature_dir}/test" \
+test.dataset.test.list_path="${test_list_path}" \
+test.dataset.test.feature_dir="${test_feature_dir}" \
 test.checkpoint="${checkpoint}" \
 test.output.exp_dir="${exp_root}/${tag}"
