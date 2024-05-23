@@ -21,10 +21,10 @@ class BirdCLEF2024BaselineMelSpectrogram(LibrosaMelSpectrogram):
         sample_rate (int): Sampling rate. Default: ``32000``.
         n_fft (int): Number of FFT bins. Default: ``2048``.
         win_length (int): Window length. By default, ``n_fft`` is used.
-        hop_length (int): Hop length. By default, ``512`` is used.
+        hop_length (int): Hop length. By default, ``1253`` is used.
         f_min (float): Minimum frequency of Mel-spectrogram. Default: ``20``.
         f_max (float, optional): Maximum frequency of Mel-spectrogram.
-        n_mels (int): Number of mel filterbanks. Default: ``256``.
+        n_mels (int): Number of mel filterbanks. Default: ``128``.
         window_fn (callable): Window function called as ``window``
             in ``librosa.feature.melspectrogram``.
         power (float, optional): Exponent for the magnitude spectrogram. Default: ``1``.
@@ -38,6 +38,8 @@ class BirdCLEF2024BaselineMelSpectrogram(LibrosaMelSpectrogram):
         mel_scale (bool): Scale to use ``htk`` or ``slaney``. Unlike
             ``torchaudio.transforms.MelSpectrogram``, defaults to ``slaney``.
         take_log (bool): Whether to return log-melspectrogram or melspectrogram.
+        freq_mask_param (tuple): Parameter of frequency masking. Default: ``(0.06, 0.1)``.
+        time_mask_param (tuple): Parameter of time masking. Default: ``(0.06, 0.12)``.
         eps (float, optional): Epsilon to avoid log-zero. If ``take_log=True``,
             ``eps`` defaults to ``1e-10``.
 
@@ -48,11 +50,11 @@ class BirdCLEF2024BaselineMelSpectrogram(LibrosaMelSpectrogram):
         sample_rate: int = 32000,
         n_fft: int = 2048,
         win_length: Optional[int] = None,
-        hop_length: int = 512,
+        hop_length: int = 1253,
         f_min: float = 20.0,
         f_max: Optional[float] = None,
         pad: int = 0,
-        n_mels: int = 256,
+        n_mels: int = 128,
         window_fn: Callable = torch.hann_window,
         power: float = 1.0,
         normalized: bool = False,
@@ -64,7 +66,7 @@ class BirdCLEF2024BaselineMelSpectrogram(LibrosaMelSpectrogram):
         mel_scale: str = "slaney",
         take_log: bool = True,
         freq_mask_param: Tuple[float, float] = (0.06, 0.1),
-        time_mask_param: Tuple[float, float] = (0.06, 0.1),
+        time_mask_param: Tuple[float, float] = (0.06, 0.12),
         eps: Optional[float] = None,
     ) -> None:
         super().__init__(

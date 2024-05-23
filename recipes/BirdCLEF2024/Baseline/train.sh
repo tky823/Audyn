@@ -1,5 +1,6 @@
 #!/bin/bash
 
+data_root="../data"
 dump_root="./dump"
 exp_root="./exp"
 tensorboard_root="./tensorboard"
@@ -7,7 +8,7 @@ tensorboard_root="./tensorboard"
 tag=""
 continue_from=""
 
-dump_format="webdataset"
+dump_format="birdclef2024"
 
 system="defaults"
 preprocess="birdclef2024"
@@ -39,9 +40,15 @@ cmd=$(
 )
 
 train_list_path="${list_dir}/train.txt"
-train_feature_dir="${feature_dir}/train"
 validation_list_path="${list_dir}/validation.txt"
-validation_feature_dir="${feature_dir}/validation"
+
+if [ "${dump_format}" = "birdclef2024" ]; then
+    train_feature_dir="${data_root}/birdclef-2024"
+    validation_feature_dir="${data_root}/birdclef-2024"
+else
+    train_feature_dir="${feature_dir}/train"
+    validation_feature_dir="${feature_dir}/validation"
+fi
 
 ${cmd} ./local/train.py \
 --config-dir "./conf" \
@@ -54,6 +61,7 @@ model="${model}" \
 optimizer="${optimizer}" \
 lr_scheduler="${lr_scheduler}" \
 criterion="${criterion}" \
+train/dataset="${dump_format}" \
 preprocess.dump_format="${dump_format}" \
 train.dataset.train.list_path="${train_list_path}" \
 train.dataset.train.feature_dir="${train_feature_dir}" \

@@ -8,3 +8,27 @@ audio:
 
 melspectrogram:
   _target_: audyn.transforms.birdclef.BirdCLEF2024BaselineMelSpectrogram
+  hop_length: 1253
+  f_min: 20
+  f_max: 16000
+  pad: 0
+  n_mels: 128
+  window_fn:
+    _target_: torch.hann_window
+    _partial_: true
+  power: 1.0
+  normalized: false
+  wkwargs:
+  center: true
+  pad_mode: constant
+  onesided:
+  norm: slaney
+  mel_scale: slaney
+  take_log: true
+  freq_mask_param:
+    - 0.06
+    - 0.1
+  time_mask_param:
+    - 0.06
+    - 0.12
+  eps:

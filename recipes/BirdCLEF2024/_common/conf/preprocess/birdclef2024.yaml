@@ -2,7 +2,10 @@ defaults:
   - defaults
   - _self_
 
+dump_format: birdclef2024
+
 csv_path: ???
+submission_path: ???
 audio_root: ???
 subset: ???
 

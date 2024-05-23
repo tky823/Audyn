@@ -1,0 +1,16 @@
+train:
+  _target_: audyn.utils.data.birdclef.birdclef2024.dataset.BirdCLEF2024PrimaryLabelDataset
+  list_path:
+  feature_dir:
+  audio_key: audio
+  sample_rate_key: sample_rate
+  label_name_key: primary_label
+  filename_key: filename
+validation:
+  _target_: audyn.utils.data.birdclef.birdclef2024.dataset.BirdCLEF2024PrimaryLabelDataset
+  list_path:
+  feature_dir:
+  audio_key: ${..train.audio_key}
+  sample_rate_key: ${..train.sample_rate_key}
+  label_name_key: ${..train.label_name_key}
+  filename_key: ${..train.filename_key}
