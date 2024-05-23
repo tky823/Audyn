@@ -30,6 +30,10 @@ test_list_path="${list_dir}/test.txt"
 exp_dir="${exp_root}/${tag}"
 test_inference_dir="${exp_dir}/inference"
 
+if [ -z "${submission_path}" ]; then
+    submission_path="${exp_dir}/submission/submission.csv"
+fi
+
 python local/submit.py \
 --config-dir "./conf" \
 hydra.run.dir="${exp_dir}/log/$(date +"%Y%m%d-%H%M%S")" \

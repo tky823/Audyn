@@ -9,7 +9,7 @@ stop_stage=-1
 tag=""
 continue_from=""
 checkpoint=""
-submission_path="./submission.csv"
+submission_path=""
 
 exp_root="./exp"
 tensorboard_root="./tensorboard"
