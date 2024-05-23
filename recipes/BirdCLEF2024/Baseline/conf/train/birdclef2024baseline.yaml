@@ -81,6 +81,6 @@ output:
       path: ${...exp_dir}/model/best_epoch.pth
 
 steps:
-  epochs:
-  iterations: 10
+  epochs: 10
+  iterations:
   lr_scheduler:
