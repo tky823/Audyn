@@ -9,6 +9,7 @@ stop_stage=-1
 tag=""
 continue_from=""
 checkpoint=""
+submission_path="./submission.csv"
 
 exp_root="./exp"
 tensorboard_root="./tensorboard"
@@ -97,6 +98,26 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
         . ./test.sh \
         --tag "${tag}" \
         --checkpoint "${checkpoint}" \
+        --exp-root "${exp_root}" \
+        --data-root "${data_root}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
+        --system "${system}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --train "${train}" \
+        --test "${test}" \
+        --model "${model}"
+    )
+fi
+
+if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
+    echo "Stage 4: Submit estimation."
+
+    (
+        . ./submit.sh \
+        --tag "${tag}" \
+        --submission-path "${submission_path}" \
         --exp-root "${exp_root}" \
         --dump-root "${dump_root}" \
         --dump-format "${dump_format}" \

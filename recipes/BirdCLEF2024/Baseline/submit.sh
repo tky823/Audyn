@@ -19,7 +19,6 @@ model="birdclef2024baseline"
 
 dump_dir="${dump_root}/${data}"
 list_dir="${dump_dir}/list"
-feature_dir="${dump_dir}/feature"
 
 if [ -z "${tag}" ]; then
     echo "Set tag in submit.sh."
@@ -28,13 +27,8 @@ fi
 
 test_list_path="${list_dir}/test.txt"
 
-if [ "${dump_format}" = "birdclef2024" ]; then
-    test_feature_dir="${data_root}/birdclef-2024"
-else
-    test_feature_dir="${feature_dir}/test"
-fi
-
 exp_dir="${exp_root}/${tag}"
+test_inference_dir="${exp_dir}/inference"
 
 python local/submit.py \
 --config-dir "./conf" \
@@ -46,5 +40,5 @@ train="${train}" \
 test="${test}" \
 model="${model}" \
 preprocess.list_path="${test_list_path}" \
-preprocess.feature_dir="${test_feature_dir}" \
+preprocess.feature_dir="${test_inference_dir}" \
 preprocess.submission_path="${submission_path}"
