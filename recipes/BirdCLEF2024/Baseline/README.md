@@ -132,3 +132,33 @@ model="birdclef2024baseline"
 --test "${test}" \
 --model "${model}"
 ```
+
+### Stage 4: Submit estimation
+
+To submit estimation, run the following command:
+
+```sh
+# Tag is required in this stage.
+tag=<TAG>
+
+submission_path=<PATH/TO/SAVE/SUBMISSION.CSV>
+
+# "torch", "webdataset", or "birdclef2024"
+dump_format="birdclef2024"
+
+data="birdclef2024"
+train="birdclef2024baseline"
+test="birdclef2024baseline"
+model="birdclef2024baseline"
+
+. ./run.sh \
+--stage 4 \
+--stop-stage 4 \
+--tag "${tag}" \
+--submission-path "${submission_path}" \
+--dump-format "${dump_format}" \
+--data "${data}" \
+--train "${train}" \
+--test "${test}" \
+--model "${model}"
+```
