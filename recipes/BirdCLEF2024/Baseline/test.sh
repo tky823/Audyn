@@ -1,5 +1,6 @@
 #!/bin/bash
 
+data_root="../data"
 dump_root="./dump"
 exp_root="./exp"
 
