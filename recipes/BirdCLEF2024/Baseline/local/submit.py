@@ -27,6 +27,11 @@ def main(config: DictConfig) -> None:
             filename = line.strip()
             filenames.append(filename)
 
+    submission_dir = os.path.dirname(submission_path)
+
+    if submission_dir:
+        os.makedirs(submission_dir, exist_ok=True)
+
     with open(submission_path, mode="w") as f:
         line = "row_id,"
         f.write(line)
