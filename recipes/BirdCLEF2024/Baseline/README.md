@@ -26,7 +26,7 @@ recipes/BirdCLEF2024/
 
 ```sh
 # "../data" is used by default
-# In kaggle, "/kaggle/input"
+# On kaggle environment, "/kaggle/input"
 data_root=<PATH/TO/ROOT/OF/DATA>
 
 # "torch", "webdataset", or "birdclef2024"
@@ -42,6 +42,8 @@ data="birdclef2024"
 --data "${data}"
 ```
 
+**NOTE**: `${data}/feature/train`, `${data}/feature/validation`, `${data}/feature/unlabeled_train`, and `${data}/feature/unlabeled_validation` directories are empty when `dump_format=birdclef2024`.
+
 ### Stage 1: Training baseline model
 
 To train baseline model, run the following command:
@@ -50,7 +52,7 @@ To train baseline model, run the following command:
 tag=<TAG>
 
 # "../data" is used by default
-# In kaggle, "/kaggle/input"
+# On kaggle environment, "/kaggle/input"
 data_root=<PATH/TO/ROOT/OF/DATA>
 
 # "torch", "webdataset", or "birdclef2024"
@@ -77,7 +79,27 @@ criterion="birdclef2024"
 --criterion "${criterion}"
 ```
 
-### Stage 2: Inference by baseline model
+### Stage 2: Preprocessing test dataset
+
+```sh
+# "../data" is used by default
+# On kaggle environment, "/kaggle/input"
+data_root=<PATH/TO/ROOT/OF/DATA>
+
+# "torch", "webdataset", or "birdclef2024"
+dump_format="birdclef2024"
+
+data="birdclef2024"
+
+. ./run.sh \
+--stage 2 \
+--stop-stage 2 \
+--data-root "${data_root}" \
+--dump-format "${dump_format}" \
+--data "${data}"
+```
+
+### Stage 3: Inference by baseline model
 
 To infer by baseline model, run the following command:
 
@@ -87,7 +109,7 @@ tag=<TAG>
 checkpoint=<PATH/TO/TRAINED/MODEL>
 
 # "../data" is used by default
-# In kaggle, "/kaggle/input"
+# On kaggle environment, "/kaggle/input"
 data_root=<PATH/TO/ROOT/OF/DATA>
 
 # "torch", "webdataset", or "birdclef2024"
@@ -99,8 +121,8 @@ test="birdclef2024baseline"
 model="birdclef2024baseline"
 
 . ./run.sh \
---stage 2 \
---stop-stage 2 \
+--stage 3 \
+--stop-stage 3 \
 --tag "${tag}" \
 --checkpoint "${checkpoint}" \
 --data-root "${data_root}" \
