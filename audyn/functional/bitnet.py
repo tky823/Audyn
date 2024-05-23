@@ -4,6 +4,7 @@ import torch
 
 __all__ = [
     "round_clip",
+    "round_clamp",
 ]
 
 
@@ -35,3 +36,12 @@ def round_clip(
     output = torch.detach(x - input) + input
 
     return output
+
+
+def round_clamp(
+    input: torch.Tensor,
+    min: Optional[float] = None,
+    max: Optional[float] = None,
+) -> torch.Tensor:
+    """Alias of audyn.functional.bitnet.round_clip."""
+    return round_clip(input, min=min, max=max)
