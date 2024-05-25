@@ -107,7 +107,6 @@ class ExponentialWarmupLinearCooldownLRScheduler(LambdaLR):
     ) -> None:
         def _lr_scheduler_lambda(step: int) -> float:
             if step < warmup_steps:
-                step = min(step, warmup_steps)
                 normalized_step = 1 - step / warmup_steps
                 factor = math.exp(-5.0 * normalized_step**2)
             elif step < warmup_steps + constant_steps:
