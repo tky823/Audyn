@@ -159,7 +159,7 @@ def test_passt_lr_scheduler() -> None:
 
     model = nn.Linear(in_channels, out_channels)
     optimizer = SGD(model.parameters(), lr=0.1)
-    lr_scheduler = PaSSTLRScheduler(optimizer, warmup_steps=2, constant_steps=1, cooldown_steps=3)
+    lr_scheduler = PaSSTLRScheduler(optimizer, warmup_steps=2, suspend_steps=1, cooldown_steps=3)
 
     for _ in range(iterations):
         input = torch.randn((batch_size, in_channels))
