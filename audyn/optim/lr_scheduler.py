@@ -35,6 +35,10 @@ class _DummyLRScheduler:
         assert len(state_dict) == 0
 
 
+class _DummyLR(_DummyLRScheduler):
+    """Alias of _DummyLRScheduler."""
+
+
 class TransformerLRScheduler(_LRScheduler):
     def __init__(
         self,
@@ -61,6 +65,14 @@ class TransformerLRScheduler(_LRScheduler):
 
 class NoamScheduler(TransformerLRScheduler):
     """Alias of TransformerLRScheduler."""
+
+
+class TransformerLR(TransformerLRScheduler):
+    """Alias of TransformerLRScheduler."""
+
+
+class NoamLR(NoamScheduler):
+    """Alias of NoamLR."""
 
 
 class ExponentialWarmupLinearCooldownLRScheduler(LambdaLR):
@@ -109,6 +121,10 @@ class ExponentialWarmupLinearCooldownLRScheduler(LambdaLR):
             last_epoch=last_epoch,
             verbose=verbose,
         )
+
+
+class ExponentialWarmupLinearCooldownLR(ExponentialWarmupLinearCooldownLRScheduler):
+    """Alias of ExponentialWarmupLinearCooldownLRScheduler."""
 
 
 class MultiLRSchedulers:
@@ -172,6 +188,10 @@ class MultiLRSchedulers:
                 lr_scheduler.load_state_dict(state_dict[name])
 
 
+class MultiLR(MultiLRSchedulers):
+    """Alias of MultiLRSchedulers."""
+
+
 class GANLRScheduler:
     def __init__(self, generator: _LRScheduler, discriminator: _LRScheduler) -> None:
         self.generator = generator
@@ -180,3 +200,7 @@ class GANLRScheduler:
     def step(self, *args, **kwargs) -> None:
         self.generator.step(*args, **kwargs)
         self.discriminator.step(*args, **kwargs)
+
+
+class GANLR(GANLRScheduler):
+    """Alias of GANLRScheduler."""
