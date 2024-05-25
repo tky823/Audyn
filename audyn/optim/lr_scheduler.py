@@ -11,11 +11,17 @@ except ImportError:
 
 __all__ = [
     "_DummyLRScheduler",
+    "_DummyLR",
     "TransformerLRScheduler",
     "NoamScheduler",
+    "TransformerLR",
+    "NoamLR",
     "ExponentialWarmupLinearCooldownLRScheduler",
+    "ExponentialWarmupLinearCooldownLR",
     "MultiLRSchedulers",
+    "MultiLR",
     "GANLRScheduler",
+    "GANLR",
 ]
 
 
