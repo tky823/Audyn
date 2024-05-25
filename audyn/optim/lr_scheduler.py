@@ -89,7 +89,7 @@ class ExponentialWarmupLinearCooldownLRScheduler(LambdaLR):
     Args:
         optimizer (Optimizer): Optimizer to adjust learning rate.
         warmup_steps (int): Number of exponential warm-up steps.
-        constant_steps (int): Number of constant learning rate steps between warm-up and cool-down.
+        suspend_steps (int): Number of constant learning rate steps between warm-up and cool-down.
         cooldown_steps (int): Number of linear cool-down steps after constant learning rate.
         last_factor (float): Scale factor of learning rate at last step.
 
@@ -99,7 +99,7 @@ class ExponentialWarmupLinearCooldownLRScheduler(LambdaLR):
         self,
         optimizer: Optimizer,
         warmup_steps: int,
-        constant_steps: int,
+        suspend_steps: int,
         cooldown_steps: int,
         last_factor: float = 1,
         last_epoch: int = -1,
@@ -109,11 +109,11 @@ class ExponentialWarmupLinearCooldownLRScheduler(LambdaLR):
             if step < warmup_steps:
                 normalized_step = 1 - step / warmup_steps
                 factor = math.exp(-5.0 * normalized_step**2)
-            elif step < warmup_steps + constant_steps:
+            elif step < warmup_steps + suspend_steps:
                 factor = 1
-            elif step < warmup_steps + constant_steps + cooldown_steps:
-                step_after_constant = step - (warmup_steps + constant_steps)
-                normalized_step = step_after_constant / cooldown_steps
+            elif step < warmup_steps + suspend_steps + cooldown_steps:
+                step_after_suspend = step - (warmup_steps + suspend_steps)
+                normalized_step = step_after_suspend / cooldown_steps
                 factor = last_factor + (1 - last_factor) * normalized_step
             else:
                 factor = last_factor

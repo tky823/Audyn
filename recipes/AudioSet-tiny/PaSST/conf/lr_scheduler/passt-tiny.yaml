@@ -2,6 +2,6 @@ defaults:
   - passt
 
 warmup_steps: 5
-constant_steps: 15
+suspend_steps: 15
 cooldown_steps: 20
 last_factor: 1.0e-2
