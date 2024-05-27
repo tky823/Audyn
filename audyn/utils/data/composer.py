@@ -125,7 +125,7 @@ class SequentialComposer(Composer):
             decode_audio_as_monoral=decode_audio_as_monoral,
         )
 
-        self.composers: List[Composer] = list(*composers)
+        self.composers: List[Composer] = list(composers)
 
     def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
         """Process to edit each sample."""
