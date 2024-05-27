@@ -3,12 +3,14 @@ from typing import List, Tuple
 
 import torch
 
+from .._common import decode_csv_line
 from ._download import download_birdclef2022_primary_labels
 
 __all__ = [
     "primary_labels",
     "num_primary_labels",
     "stratified_split",
+    "decode_csv_line",  # for compatibility with birdclef2024
 ]
 
 primary_labels = download_birdclef2022_primary_labels()
