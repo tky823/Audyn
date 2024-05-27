@@ -1,5 +1,5 @@
 _target_: audyn.optim.lr_scheduler.ExponentialWarmupLinearCooldownLRScheduler
 warmup_steps: 5
-constant_steps: 45
+suspend_steps: 45
 cooldown_steps: 50
 last_factor: 1.0e-2

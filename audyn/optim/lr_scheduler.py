@@ -11,11 +11,17 @@ except ImportError:
 
 __all__ = [
     "_DummyLRScheduler",
+    "_DummyLR",
     "TransformerLRScheduler",
     "NoamScheduler",
+    "TransformerLR",
+    "NoamLR",
     "ExponentialWarmupLinearCooldownLRScheduler",
+    "ExponentialWarmupLinearCooldownLR",
     "MultiLRSchedulers",
+    "MultiLR",
     "GANLRScheduler",
+    "GANLR",
 ]
 
 
@@ -33,6 +39,10 @@ class _DummyLRScheduler:
 
     def load_state_dict(self, state_dict: Dict[str, Any]) -> None:
         assert len(state_dict) == 0
+
+
+class _DummyLR(_DummyLRScheduler):
+    """Alias of _DummyLRScheduler."""
 
 
 class TransformerLRScheduler(_LRScheduler):
@@ -63,6 +73,14 @@ class NoamScheduler(TransformerLRScheduler):
     """Alias of TransformerLRScheduler."""
 
 
+class TransformerLR(TransformerLRScheduler):
+    """Alias of TransformerLRScheduler."""
+
+
+class NoamLR(NoamScheduler):
+    """Alias of NoamLR."""
+
+
 class ExponentialWarmupLinearCooldownLRScheduler(LambdaLR):
     """Exponential warm-up + linear cool-down of learning rate.
 
@@ -71,7 +89,7 @@ class ExponentialWarmupLinearCooldownLRScheduler(LambdaLR):
     Args:
         optimizer (Optimizer): Optimizer to adjust learning rate.
         warmup_steps (int): Number of exponential warm-up steps.
-        constant_steps (int): Number of constant learning rate steps between warm-up and cool-down.
+        suspend_steps (int): Number of constant learning rate steps between warm-up and cool-down.
         cooldown_steps (int): Number of linear cool-down steps after constant learning rate.
         last_factor (float): Scale factor of learning rate at last step.
 
@@ -81,7 +99,7 @@ class ExponentialWarmupLinearCooldownLRScheduler(LambdaLR):
         self,
         optimizer: Optimizer,
         warmup_steps: int,
-        constant_steps: int,
+        suspend_steps: int,
         cooldown_steps: int,
         last_factor: float = 1,
         last_epoch: int = -1,
@@ -89,14 +107,13 @@ class ExponentialWarmupLinearCooldownLRScheduler(LambdaLR):
     ) -> None:
         def _lr_scheduler_lambda(step: int) -> float:
             if step < warmup_steps:
-                step = min(step, warmup_steps)
                 normalized_step = 1 - step / warmup_steps
                 factor = math.exp(-5.0 * normalized_step**2)
-            elif step < warmup_steps + constant_steps:
+            elif step < warmup_steps + suspend_steps:
                 factor = 1
-            elif step < warmup_steps + constant_steps + cooldown_steps:
-                step_after_constant = step - (warmup_steps + constant_steps)
-                normalized_step = step_after_constant / cooldown_steps
+            elif step < warmup_steps + suspend_steps + cooldown_steps:
+                step_after_suspend = step - (warmup_steps + suspend_steps)
+                normalized_step = step_after_suspend / cooldown_steps
                 factor = last_factor + (1 - last_factor) * normalized_step
             else:
                 factor = last_factor
@@ -109,6 +126,10 @@ class ExponentialWarmupLinearCooldownLRScheduler(LambdaLR):
             last_epoch=last_epoch,
             verbose=verbose,
         )
+
+
+class ExponentialWarmupLinearCooldownLR(ExponentialWarmupLinearCooldownLRScheduler):
+    """Alias of ExponentialWarmupLinearCooldownLRScheduler."""
 
 
 class MultiLRSchedulers:
@@ -172,6 +193,10 @@ class MultiLRSchedulers:
                 lr_scheduler.load_state_dict(state_dict[name])
 
 
+class MultiLR(MultiLRSchedulers):
+    """Alias of MultiLRSchedulers."""
+
+
 class GANLRScheduler:
     def __init__(self, generator: _LRScheduler, discriminator: _LRScheduler) -> None:
         self.generator = generator
@@ -180,3 +205,7 @@ class GANLRScheduler:
     def step(self, *args, **kwargs) -> None:
         self.generator.step(*args, **kwargs)
         self.discriminator.step(*args, **kwargs)
+
+
+class GANLR(GANLRScheduler):
+    """Alias of GANLRScheduler."""
