@@ -2,9 +2,10 @@ from typing import Any, Dict
 
 import pytest
 import torch
+import torchaudio.transforms as aT
 
 from audyn.transforms.hubert import HuBERTMFCC
-from audyn.utils.data.composer import AudioFeatureExtractionComposer
+from audyn.utils.data.composer import AudioFeatureExtractionComposer, SequentialComposer
 
 
 def test_hubert_composer(audioset_samples: Dict[str, Dict[str, Any]]) -> None:
@@ -20,6 +21,33 @@ def test_hubert_composer(audioset_samples: Dict[str, Dict[str, Any]]) -> None:
         audio_key="audio",
         feature_key="mfcc",
     )
+    list_batch = composer(list_batch)
+
+    for sample in list_batch:
+        # HuBERTMFCC returns 39-dim feature per each frame.
+        assert sample["mfcc"].size(0) == 39
+
+
+def test_sequential_composer(audioset_samples: Dict[str, Dict[str, Any]]) -> None:
+    sample_rate = 16000
+    list_batch = []
+
+    for key, sample in audioset_samples.items():
+        sample["__key__"] = key
+        list_batch.append(sample)
+
+    hubert_mfcc_composer = AudioFeatureExtractionComposer(
+        feature_extractor=HuBERTMFCC(sample_rate),
+        audio_key="audio",
+        feature_key="mfcc",
+    )
+    melspectrogram_composer = AudioFeatureExtractionComposer(
+        feature_extractor=aT.MelSpectrogram(sample_rate=sample_rate),
+        audio_key="audio",
+        feature_key="melspec",
+    )
+    composer = SequentialComposer(hubert_mfcc_composer, melspectrogram_composer)
+
     list_batch = composer(list_batch)
 
     for sample in list_batch:
