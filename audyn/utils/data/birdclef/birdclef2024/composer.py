@@ -247,12 +247,13 @@ class BirdCLEF2024AudioComposer(Composer):
 
         if sample_rate != target_sample_rate:
             audio = aF.resample(audio, sample_rate, target_sample_rate)
+            sample_rate = target_sample_rate
             sample[sample_rate_key] = torch.full(
                 (), fill_value=sample_rate, dtype=sample_rate_dtype
             )
 
         if duration is not None:
-            length = int(target_sample_rate * duration)
+            length = int(sample_rate * duration)
             padding = length - audio.size(-1)
 
             if padding > 0:
@@ -284,6 +285,7 @@ class BirdCLEF2024AudioComposer(Composer):
         output = {
             waveform_key: audio,
             melspectrogram_key: melspectrogram,
+            sample_rate_key: sample[sample_rate_key],
             filename_key: sample[filename_key],
         }
 
