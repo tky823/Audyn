@@ -1,5 +1,5 @@
 import re
-from typing import Any, Callable, Dict, Iterable
+from typing import Any, Callable, Dict, Iterable, List
 
 import torch
 import torch.nn as nn
@@ -9,6 +9,7 @@ from .webdataset import decode_audio, supported_audio_extensions
 __all__ = [
     "Composer",
     "AudioFeatureExtractionComposer",
+    "SequentialComposer",
 ]
 
 
@@ -106,5 +107,29 @@ class AudioFeatureExtractionComposer(Composer):
         audio = sample[audio_key]
         feature = self.feature_extractor(audio)
         sample[feature_key] = feature
+
+        return sample
+
+
+class SequentialComposer(Composer):
+    """Module to apply multiple composers."""
+
+    def __init__(
+        self,
+        *composers,
+        decode_audio_as_waveform: bool = True,
+        decode_audio_as_monoral: bool = True,
+    ) -> None:
+        super().__init__(
+            decode_audio_as_waveform=decode_audio_as_waveform,
+            decode_audio_as_monoral=decode_audio_as_monoral,
+        )
+
+        self.composers: List[Composer] = list(*composers)
+
+    def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        """Process to edit each sample."""
+        for composer in self.composers:
+            sample = composer.process(sample)
 
         return sample
