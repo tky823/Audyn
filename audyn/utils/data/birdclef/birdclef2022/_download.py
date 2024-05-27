@@ -4,6 +4,10 @@ from typing import List, Optional
 from .....utils import audyn_cache_dir
 from ....github import download_file_from_github_release
 
+__all__ = [
+    "download_birdclef2022_primary_labels",
+]
+
 
 def download_birdclef2022_primary_labels(
     root: Optional[str] = None, url: Optional[str] = None
