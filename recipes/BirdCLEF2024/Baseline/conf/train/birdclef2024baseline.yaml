@@ -10,9 +10,9 @@ dataloader:
   train:
     batch_size: 64
     collate_fn:
-      _target_: audyn.utils.data.birdclef.birdclef2024.collator.BirdCLEF2024BaselineCollator
+      _target_: audyn.utils.data.birdclef.BirdCLEF2024BaselineCollator
       composer:
-        _target_: audyn.utils.data.birdclef.birdclef2024.composer.BirdCLEF2024PrimaryLabelComposer
+        _target_: audyn.utils.data.birdclef.BirdCLEF2024PrimaryLabelComposer
         melspectrogram_transform: ${data.melspectrogram}
         audio_key: audio
         sample_rate_key: sample_rate
