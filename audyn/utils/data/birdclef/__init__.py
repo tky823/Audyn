@@ -2,6 +2,7 @@ from .birdclef2022 import num_primary_labels as num_birdclef2022_primary_labels
 from .birdclef2022 import primary_labels as birdclef2022_primary_labels
 from .birdclef2023 import num_primary_labels as num_birdclef2023_primary_labels
 from .birdclef2023 import primary_labels as birdclef2023_primary_labels
+from .birdclef2023.composer import BirdCLEF2023PrimaryLabelComposer
 from .birdclef2023.dataset import BirdCLEF2023PrimaryLabelDataset
 from .birdclef2024 import num_primary_labels as num_birdclef2024_primary_labels
 from .birdclef2024 import primary_labels as birdclef2024_primary_labels
@@ -17,6 +18,7 @@ __all__ = [
     "birdclef2023_primary_labels",
     "num_birdclef2023_primary_labels",
     "BirdCLEF2023PrimaryLabelDataset",
+    "BirdCLEF2023PrimaryLabelComposer",
     # for BirdCLEF2024
     "birdclef2024_primary_labels",
     "num_birdclef2024_primary_labels",
