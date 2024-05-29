@@ -3,6 +3,14 @@ audyn.utils.data
 
 ``audyn.utils.data`` provides utilities to process data.
 
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 1
+
+   audyn.utils.data.birdclef
+
 Create dataset
 --------------
 
