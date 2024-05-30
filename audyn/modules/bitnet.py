@@ -18,7 +18,8 @@ class BitLinearB158(nn.Module):
         self,
         in_features: int,
         out_features: int,
-        bits: int,
+        bits: int = 8,
+        bias: bool = True,
         eps: float = 1e-5,
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
@@ -36,6 +37,16 @@ class BitLinearB158(nn.Module):
         weight = nn.Parameter(weight, requires_grad=True)
         self.register_parameter("weight", weight)
 
+        if bias:
+            bias = torch.empty(
+                (out_features,),
+                **factory_kwargs,
+            )
+            bias = nn.Parameter(bias, requires_grad=True)
+            self.register_parameter("bias", None)
+        else:
+            self.register_parameter("bias", None)
+
         self.bits = bits
         self.eps = eps
 
@@ -46,7 +57,7 @@ class BitLinearB158(nn.Module):
         eps = self.eps
 
         # quantize input
-        q = 2**bits
+        q = 2 ** (bits - 1)
         abs_input = torch.abs(input)
         gamma = torch.max(abs_input)
         gamma = torch.clamp(gamma, min=eps)
@@ -60,13 +71,19 @@ class BitLinearB158(nn.Module):
         weight = abs_weight / beta
         quantized_weight = round_clip(weight, min=-1, max=1)
 
-        x = F.linear(x, quantized_weight)
+        x = F.linear(x, quantized_weight, bias=self.bias)
         output = x * (beta * gamma) / q
 
         return output
 
     def _reset_parameters(self) -> None:
+        # ported from https://github.com/pytorch/pytorch/blob/main/torch/nn/modules/linear.py#L105-L113  # noqa: E501
         nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+
+        if self.bias is not None:
+            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.weight)
+            bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+            nn.init.uniform_(self.bias, -bound, bound)
 
 
 class RoundClip(nn.Module):
