@@ -1,17 +1,21 @@
 import ast
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Union
 
 __all__ = [
     "decode_csv_line",
 ]
 
 
-def decode_csv_line(line: List[str]) -> Dict[str, Any]:
+def decode_csv_line(
+    line: List[str],
+    version: Optional[Union[str, int]] = None,
+) -> Dict[str, Any]:
     """Decode line of train_metadata.csv.
 
     Args:
         line (list): One line of train_metadata.csv split by comma (,).
+        version (str or int, optional): Version information.
 
     Returns:
         dict: Dictionary containing metadata of given line.
@@ -33,20 +37,49 @@ def decode_csv_line(line: List[str]) -> Dict[str, Any]:
                 e.g. ``asbfly/XC134896.ogg``.
 
     """
-    (
-        primary_label,
-        secondary_labels,
-        chirp_types,
-        latitude,
-        longitude,
-        scientific_name,
-        common_name,
-        _,
-        _,
-        rating,
-        _,
-        path,
-    ) = line
+    if version is None:
+        if len(line) == 13:
+            version = 2021
+        elif len(line) == 12:
+            version = 2023
+        else:
+            raise ValueError("Invalid format of line is detected.")
+
+    version = int(version)
+
+    if version in [2021, 2022]:
+        (
+            primary_label,
+            secondary_labels,
+            chirp_types,
+            latitude,
+            longitude,
+            scientific_name,
+            common_name,
+            _,
+            _,
+            rating,
+            _,
+            _,
+            path,
+        ) = line
+    elif version in [2023, 2024]:
+        (
+            primary_label,
+            secondary_labels,
+            chirp_types,
+            latitude,
+            longitude,
+            scientific_name,
+            common_name,
+            _,
+            _,
+            rating,
+            _,
+            path,
+        ) = line
+    else:
+        raise ValueError("Invalid format of line is detected.")
 
     secondary_labels = ast.literal_eval(secondary_labels)
     chirp_types = ast.literal_eval(chirp_types)

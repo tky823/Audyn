@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Tuple
 import torch
 
 from .._common import decode_csv_line as _decode_csv_line
-from ._download import download_birdclef2022_primary_labels
+from ._download import download_birdclef2021_primary_labels
 
 __all__ = [
     "primary_labels",
@@ -13,7 +13,7 @@ __all__ = [
     "decode_csv_line",
 ]
 
-primary_labels = download_birdclef2022_primary_labels()
+primary_labels = download_birdclef2021_primary_labels()
 num_primary_labels = len(primary_labels)
 
 
@@ -68,7 +68,7 @@ def stratified_split(
 
 
 def decode_csv_line(line: List[str]) -> Dict[str, Any]:
-    """Decode line of train_metadata.csv in BirdCLEF2022.
+    """Decode line of train_metadata.csv in BirdCLEF2021.
 
     Args:
         line (list): One line of train_metadata.csv split by comma (,).
@@ -80,7 +80,7 @@ def decode_csv_line(line: List[str]) -> Dict[str, Any]:
 
         Returned dictionary contains following values.
 
-            - filename (str): Filename with out extension. e.g. ``afrsil1/XC125458``.
+            - filename (str): Filename with out extension. e.g. ``abethr1/XC128013``.
             - primary_label (str): Primary label of bird species.
             - secondary_label (list): Secondary labels of bird species.
             - type (list): Chirp types.
@@ -90,7 +90,7 @@ def decode_csv_line(line: List[str]) -> Dict[str, Any]:
             - common_name (str): Common name of bird.
             - rating (float): Rating.
             - path (str): Path to audio file equivalent to ``filename`` + ``.ogg``.
-                e.g. ``afrsil1/XC125458.ogg``.
+                e.g. ``abethr1/XC128013.ogg``.
 
     """
-    return _decode_csv_line(line, version=2022)
+    return _decode_csv_line(line, version=2021)

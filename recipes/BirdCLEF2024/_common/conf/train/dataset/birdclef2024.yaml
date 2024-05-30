@@ -1,5 +1,5 @@
 train:
-  _target_: audyn.utils.data.birdclef.birdclef2024.dataset.BirdCLEF2024PrimaryLabelDataset
+  _target_: audyn.utils.data.birdclef.BirdCLEF2024PrimaryLabelDataset
   list_path:
   feature_dir:
   audio_key: audio
@@ -7,7 +7,7 @@ train:
   label_name_key: primary_label
   filename_key: filename
 validation:
-  _target_: audyn.utils.data.birdclef.birdclef2024.dataset.BirdCLEF2024PrimaryLabelDataset
+  _target_: audyn.utils.data.birdclef.BirdCLEF2024PrimaryLabelDataset
   list_path:
   feature_dir:
   audio_key: ${..train.audio_key}
