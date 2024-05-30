@@ -57,7 +57,7 @@ def convert_linear_to_bit_linear_158(
     )
     converted.weight.data.copy_(module.weight.data)
 
-    if module.bias is not None:
+    if bias:
         converted.bias.data.copy_(module.bias.data)
 
     return converted
