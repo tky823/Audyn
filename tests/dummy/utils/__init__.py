@@ -1,5 +1,5 @@
 import os
-import uuid
+import socket
 from urllib.request import Request, urlopen
 
 import pytest
@@ -10,14 +10,11 @@ def select_random_port() -> int:
 
 
 def reset_random_port() -> None:
-    max_number = 2**16
-    min_number = 1024
+    sock = socket.socket()
+    sock.bind(("", 0))
+    _, port = sock.getsockname()
 
-    seed = str(uuid.uuid4())
-    seed = seed.replace("-", "")
-    seed = int(seed, 16)
-
-    pytest.random_port = seed % (max_number - min_number) + min_number
+    pytest.random_port = port
 
     return pytest.random_port
 
