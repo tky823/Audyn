@@ -10,7 +10,7 @@ __all__ = [
 
 def convert_to_bit_linear_158(
     module: nn.Module,
-    bits: int,
+    bits: int = 8,
     eps: float = 1e-5,
 ) -> nn.Module:
     """Convert nn.Linear to BitLinearB158 in given module."""
@@ -30,27 +30,34 @@ def convert_to_bit_linear_158(
 
 def convert_linear_to_bit_linear_158(
     module: nn.Linear,
-    bits: int,
+    bits: int = 8,
     eps: float = 1e-5,
 ) -> BitLinearB158:
     """Convert nn.Linear to BitLinearB158."""
-    if module.bias is None:
-        factory_kwargs = {
-            "device": module.weight.device,
-            "dtype": module.weight.dtype,
-        }
-        in_features = module.in_features
-        out_features = module.out_features
+    factory_kwargs = {
+        "device": module.weight.device,
+        "dtype": module.weight.dtype,
+    }
 
-        converted = BitLinearB158(
-            in_features,
-            out_features,
-            bits,
-            eps=eps,
-            **factory_kwargs,
-        )
-        converted.weight.data.copy_(module.weight.data)
+    if module.bias is None:
+        bias = False
     else:
-        converted = module
+        bias = True
+
+    in_features = module.in_features
+    out_features = module.out_features
+
+    converted = BitLinearB158(
+        in_features,
+        out_features,
+        bits=bits,
+        bias=bias,
+        eps=eps,
+        **factory_kwargs,
+    )
+    converted.weight.data.copy_(module.weight.data)
+
+    if module.bias is not None:
+        converted.bias.data.copy_(module.bias.data)
 
     return converted
