@@ -47,6 +47,8 @@ class BitLinearB158(nn.Module):
         else:
             self.register_parameter("bias", None)
 
+        self.in_features = in_features
+        self.out_features = out_features
         self.bits = bits
         self.eps = eps
 
@@ -84,6 +86,14 @@ class BitLinearB158(nn.Module):
             fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.weight)
             bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
             nn.init.uniform_(self.bias, -bound, bound)
+
+    def extra_repr(self) -> str:
+        in_features = self.in_features
+        out_features = self.out_features
+        bits = self.bits
+        bias = self.bias is not None
+
+        return f"in_features={in_features}, out_features={out_features}, bits={bits}, bias={bias}"
 
 
 class RoundClip(nn.Module):

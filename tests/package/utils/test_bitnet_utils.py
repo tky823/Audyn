@@ -27,5 +27,8 @@ def test_convert_to_bit_linear_158() -> None:
 
     model = convert_to_bit_linear_158(model, bits=8)
 
+    # for extra_repr
+    print(model)
+
     for p, p_expected in zip(model.parameters(), expected_model.parameters()):
         assert p.size() == p_expected.size()
