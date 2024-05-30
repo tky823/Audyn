@@ -43,7 +43,7 @@ class BitLinearB158(nn.Module):
                 **factory_kwargs,
             )
             bias = nn.Parameter(bias, requires_grad=True)
-            self.register_parameter("bias", None)
+            self.register_parameter("bias", bias)
         else:
             self.register_parameter("bias", None)
 
