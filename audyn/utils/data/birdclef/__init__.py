@@ -1,3 +1,8 @@
+from .birdclef2021 import num_primary_labels as num_birdclef2021_primary_labels
+from .birdclef2021 import primary_labels as birdclef2021_primary_labels
+from .birdclef2021.collator import BirdCLEF2021BaselineCollator
+from .birdclef2021.composer import BirdCLEF2021PrimaryLabelComposer
+from .birdclef2021.dataset import BirdCLEF2021PrimaryLabelDataset
 from .birdclef2022 import num_primary_labels as num_birdclef2022_primary_labels
 from .birdclef2022 import primary_labels as birdclef2022_primary_labels
 from .birdclef2022.collator import BirdCLEF2022BaselineCollator
@@ -15,6 +20,12 @@ from .birdclef2024.composer import BirdCLEF2024AudioComposer, BirdCLEF2024Primar
 from .birdclef2024.dataset import BirdCLEF2024AudioDataset, BirdCLEF2024PrimaryLabelDataset
 
 __all__ = [
+    # for BirdCLEF2021
+    "birdclef2021_primary_labels",
+    "num_birdclef2021_primary_labels",
+    "BirdCLEF2021PrimaryLabelDataset",
+    "BirdCLEF2021PrimaryLabelComposer",
+    "BirdCLEF2021BaselineCollator",
     # for BirdCLEF2022
     "birdclef2022_primary_labels",
     "num_birdclef2022_primary_labels",

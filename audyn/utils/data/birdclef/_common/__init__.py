@@ -38,16 +38,16 @@ def decode_csv_line(
 
     """
     if version is None:
-        if len(line) == 12:
+        if len(line) == 13:
+            version = 2021
+        elif len(line) == 12:
             version = 2023
-        elif len(line) == 13:
-            version = 2022
         else:
             raise ValueError("Invalid format of line is detected.")
 
     version = int(version)
 
-    if version == 2022:
+    if version in [2021, 2022]:
         (
             primary_label,
             secondary_labels,
