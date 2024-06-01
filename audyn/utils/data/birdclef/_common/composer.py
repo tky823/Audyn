@@ -111,6 +111,7 @@ class BirdCLEFPrimaryLabelComposer(Composer):
 
         if sample_rate != target_sample_rate:
             audio = aF.resample(audio, sample_rate, target_sample_rate)
+            sample_rate = target_sample_rate
             sample[sample_rate_key] = torch.full(
                 (), fill_value=sample_rate, dtype=sample_rate_dtype
             )
