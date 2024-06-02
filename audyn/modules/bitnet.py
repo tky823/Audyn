@@ -267,7 +267,7 @@ class BitMultiheadAttention158(_MultiheadAttention):
         return output, attn_weights
 
 
-class BitLinear158Inference(BitLinear158):
+class BitLinear158Inference(nn.Module):
     """BitLinear158 for inference.
 
     Unlike ``BitLinear158``, quantization is performed during initialization.
@@ -279,41 +279,24 @@ class BitLinear158Inference(BitLinear158):
         bits: int = 8,
         bias: Optional[Union[nn.Parameter, torch.Tensor]] = None,
         eps: float = 1e-5,
-        device: Optional[torch.device] = None,
-        dtype: Optional[torch.dtype] = None,
     ) -> None:
-        factory_kwargs = {
-            "device": device,
-            "dtype": dtype,
-        }
+        super().__init__()
 
-        weight = weight.data
+        quantized_weight, beta = quantize_weight(weight.data)
 
         if bias is not None:
             bias = bias.data
 
-        out_features, in_features = weight.size()
-
-        super().__init__(
-            in_features,
-            out_features,
-            bits=bits,
-            bias=bias is not None,
-            eps=eps,
-            **factory_kwargs,
-        )
-
-        quantized_weight, beta = quantize_weight(weight, eps=self.eps)
-
-        # remove weight parameter set quantized weight and beta buffers instead
-        del self._parameters["weight"]
         self.register_buffer("quantized_weight", quantized_weight)
         self.register_buffer("beta", beta)
 
-        if bias is not None:
-            # remove bias parameter set bias buffer instead
-            del self._parameters["bias"]
+        if bias is None:
+            self.register_buffer("bias", None)
+        else:
             self.register_buffer("bias", bias)
+
+        self.bits = bits
+        self.eps = eps
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         output = bitlinear158_inference(
@@ -329,24 +312,11 @@ class BitLinear158Inference(BitLinear158):
 
     @classmethod
     def build_from_bitlinear158(cls, module: BitLinear158) -> "BitLinear158Inference":
-        weight = module.weight.data
-
-        if module.bias is None:
-            bias = None
-        else:
-            bias = module.bias.data
-
-        factory_kwargs = {
-            "device": weight.device,
-            "dtype": weight.dtype,
-        }
-
         converted = cls(
-            weight,
+            module.weight,
             bits=module.bits,
-            bias=bias,
+            bias=module.bias,
             eps=module.eps,
-            **factory_kwargs,
         )
 
         return converted
