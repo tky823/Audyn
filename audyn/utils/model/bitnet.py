@@ -15,7 +15,8 @@ def convert_to_bitlinear158(
     eps: float = 1e-5,
     remove_bias: bool = False,
 ) -> nn.Module:
-    """Convert nn.Linear to BitLinear158 in given module.
+    """Convert nn.Linear and nn.MultiheadAttention to BitLinear158 and BitMultiheadAttention158,
+    respectively in given module.
 
     Args:
         module (nn.Module): Module to be converted.
