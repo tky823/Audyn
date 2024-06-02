@@ -1,4 +1,3 @@
-import math
 from typing import Optional, Tuple, Union
 
 import torch
@@ -17,7 +16,7 @@ __all__ = [
 ]
 
 
-class BitLinear158(nn.Module):
+class BitLinear158(nn.Linear):
     def __init__(
         self,
         in_features: int,
@@ -28,35 +27,20 @@ class BitLinear158(nn.Module):
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
     ) -> None:
-        super().__init__()
         factory_kwargs = {
             "device": device,
             "dtype": dtype,
         }
 
-        weight = torch.empty(
-            (out_features, in_features),
+        super().__init__(
+            in_features,
+            out_features,
+            bias=bias,
             **factory_kwargs,
         )
-        weight = nn.Parameter(weight, requires_grad=True)
-        self.register_parameter("weight", weight)
 
-        if bias:
-            bias = torch.empty(
-                (out_features,),
-                **factory_kwargs,
-            )
-            bias = nn.Parameter(bias, requires_grad=True)
-            self.register_parameter("bias", bias)
-        else:
-            self.register_parameter("bias", None)
-
-        self.in_features = in_features
-        self.out_features = out_features
         self.bits = bits
         self.eps = eps
-
-        self._reset_parameters()
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         output = bitlinear158(
@@ -68,15 +52,6 @@ class BitLinear158(nn.Module):
         )
 
         return output
-
-    def _reset_parameters(self) -> None:
-        # ported from https://github.com/pytorch/pytorch/blob/main/torch/nn/modules/linear.py#L105-L113  # noqa: E501
-        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
-
-        if self.bias is not None:
-            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.weight)
-            bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
-            nn.init.uniform_(self.bias, -bound, bound)
 
     def extra_repr(self) -> str:
         in_features = self.in_features
