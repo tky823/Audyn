@@ -5,6 +5,7 @@ import torch.nn.functional as F
 
 __all__ = [
     "bitlinear158",
+    "bitlinear158_inference",
     "round_clip",
     "round_clamp",
 ]
@@ -32,6 +33,32 @@ def bitlinear158(
     beta = torch.clamp(beta, min=eps)
     weight = weight / beta
     quantized_weight = round_clip(weight, min=-1, max=1)
+
+    x = F.linear(x, quantized_weight, bias=bias)
+    output = x * (beta * gamma) / q
+
+    return output
+
+
+def bitlinear158_inference(
+    input: torch.Tensor,
+    quantized_weight: torch.Tensor,
+    beta: torch.Tensor,
+    bias: Optional[torch.Tensor] = None,
+    bits: int = 8,
+    eps: float = 1e-5,
+) -> torch.Tensor:
+    """BitLinear158 function for inference.
+
+    Unlike ``bitlinear158``, ``bitlinear158_inference`` takes
+    input, quantized weight, beta, and optional bias.
+    """
+    q = 2 ** (bits - 1)
+    abs_input = torch.abs(input)
+    gamma = torch.max(abs_input)
+    gamma = torch.clamp(gamma, min=eps)
+    x = input * q / gamma
+    x = round_clip(x, min=-q, max=q - 1)
 
     x = F.linear(x, quantized_weight, bias=bias)
     output = x * (beta * gamma) / q
