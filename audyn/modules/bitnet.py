@@ -267,14 +267,15 @@ class BitMultiheadAttention158(_MultiheadAttention):
 
 
 class RoundClip(nn.Module):
+    """Apply min-max clipping after rounding.
+
+    .. note::
+
+        Gradient backpropagation is realized by straight through estimator.
+
+    """
+
     def __init__(self, min: float = -1, max: float = 1) -> None:
-        """Apply min-max clipping after rounding.
-
-        .. note::
-
-            Gradient backpropagation is realized by straight through estimator.
-
-        """
         super().__init__()
 
         self.min = min

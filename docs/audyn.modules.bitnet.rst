@@ -11,4 +11,3 @@ Classes
 .. autoclass:: audyn.modules.bitnet.BitMultiheadAttention158
 
 .. autoclass:: audyn.modules.bitnet.RoundClip
-   :members: forward
