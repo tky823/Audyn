@@ -120,9 +120,9 @@ class BitMultiheadAttention158(_MultiheadAttention):
             **kwargs,
         )
 
-        from ..utils.model.bitnet import convert_linear_to_bitlinear_158
+        from ..utils.model.bitnet import convert_linear_to_bitlinear158
 
-        self.out_proj = convert_linear_to_bitlinear_158(
+        self.out_proj = convert_linear_to_bitlinear158(
             self.out_proj,
             bits=bits,
             eps=eps,

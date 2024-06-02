@@ -3,12 +3,12 @@ import torch.nn as nn
 from ...modules.bitnet import BitLinear158, BitMultiheadAttention158
 
 __all__ = [
-    "convert_to_bitlinear_158",
-    "convert_linear_to_bitlinear_158",
+    "convert_to_bitlinear158",
+    "convert_linear_to_bitlinear158",
 ]
 
 
-def convert_to_bitlinear_158(
+def convert_to_bitlinear158(
     module: nn.Module,
     bits: int = 8,
     eps: float = 1e-5,
@@ -27,7 +27,7 @@ def convert_to_bitlinear_158(
 
     """
     if isinstance(module, nn.Linear):
-        module = convert_linear_to_bitlinear_158(
+        module = convert_linear_to_bitlinear158(
             module,
             bits,
             eps=eps,
@@ -36,21 +36,21 @@ def convert_to_bitlinear_158(
     else:
         for name, child_module in module.named_children():
             if isinstance(child_module, nn.Linear):
-                converted = convert_linear_to_bitlinear_158(
+                converted = convert_linear_to_bitlinear158(
                     child_module,
                     bits=bits,
                     eps=eps,
                     remove_bias=remove_bias,
                 )
             elif isinstance(child_module, nn.MultiheadAttention):
-                converted = convert_multihead_attention_to_bit_multihead_attention_158(
+                converted = convert_multihead_attention_to_bit_multihead_attention158(
                     child_module,
                     bits=bits,
                     eps=eps,
                     remove_bias=remove_bias,
                 )
             else:
-                converted = convert_to_bitlinear_158(
+                converted = convert_to_bitlinear158(
                     child_module, bits=bits, eps=eps, remove_bias=remove_bias
                 )
 
@@ -59,7 +59,7 @@ def convert_to_bitlinear_158(
     return module
 
 
-def convert_linear_to_bitlinear_158(
+def convert_linear_to_bitlinear158(
     module: nn.Linear,
     bits: int = 8,
     eps: float = 1e-5,
@@ -95,7 +95,7 @@ def convert_linear_to_bitlinear_158(
     return converted
 
 
-def convert_multihead_attention_to_bit_multihead_attention_158(
+def convert_multihead_attention_to_bit_multihead_attention158(
     module: nn.MultiheadAttention,
     bits: int = 8,
     eps: float = 1e-5,
