@@ -5,6 +5,7 @@ from ...modules.bitnet import BitLinear158, BitMultiheadAttention158
 __all__ = [
     "convert_to_bitlinear158",
     "convert_linear_to_bitlinear158",
+    "convert_mha_to_bitmha158",
 ]
 
 
@@ -43,7 +44,7 @@ def convert_to_bitlinear158(
                     remove_bias=remove_bias,
                 )
             elif isinstance(child_module, nn.MultiheadAttention):
-                converted = convert_multihead_attention_to_bit_multihead_attention158(
+                converted = convert_mha_to_bitmha158(
                     child_module,
                     bits=bits,
                     eps=eps,
@@ -95,7 +96,7 @@ def convert_linear_to_bitlinear158(
     return converted
 
 
-def convert_multihead_attention_to_bit_multihead_attention158(
+def convert_mha_to_bitmha158(
     module: nn.MultiheadAttention,
     bits: int = 8,
     eps: float = 1e-5,
