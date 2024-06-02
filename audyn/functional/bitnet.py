@@ -4,20 +4,20 @@ import torch
 import torch.nn.functional as F
 
 __all__ = [
-    "bitlinear_b158",
+    "bitlinear158",
     "round_clip",
     "round_clamp",
 ]
 
 
-def bitlinear_b158(
+def bitlinear158(
     input: torch.Tensor,
     weight: torch.Tensor,
     bias: Optional[torch.Tensor] = None,
     bits: int = 8,
     eps: float = 1e-5,
 ) -> torch.Tensor:
-    """BitLinearB158 function."""
+    """BitLinear158 function."""
     # quantize input
     q = 2 ** (bits - 1)
     abs_input = torch.abs(input)

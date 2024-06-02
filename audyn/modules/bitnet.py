@@ -6,17 +6,17 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from ..functional.activation import scaled_dot_product_attention
-from ..functional.bitnet import bitlinear_b158
+from ..functional.bitnet import bitlinear158
 from .activation import _MultiheadAttention
 
 __all__ = [
-    "BitLinearB158",
-    "BitMultiheadAttentionB158",
+    "BitLinear158",
+    "BitMultiheadAttention158",
     "RoundClip",
 ]
 
 
-class BitLinearB158(nn.Module):
+class BitLinear158(nn.Module):
     def __init__(
         self,
         in_features: int,
@@ -58,7 +58,7 @@ class BitLinearB158(nn.Module):
         self._reset_parameters()
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        output = bitlinear_b158(
+        output = bitlinear158(
             input,
             self.weight,
             bias=self.bias,
@@ -86,8 +86,8 @@ class BitLinearB158(nn.Module):
         return f"in_features={in_features}, out_features={out_features}, bits={bits}, bias={bias}"
 
 
-class BitMultiheadAttentionB158(_MultiheadAttention):
-    """Multihead attention using BitLinearB158.
+class BitMultiheadAttention158(_MultiheadAttention):
+    """Multihead attention using BitLinear158.
 
     For parameters, see details of nn.MultiheadAttention.
     """
@@ -206,21 +206,21 @@ class BitMultiheadAttentionB158(_MultiheadAttention):
                 in_proj_bias, [embed_dim] * 3, dim=0
             )
 
-        q = bitlinear_b158(
+        q = bitlinear158(
             query,
             q_proj_weight,
             bias=q_proj_bias,
             bits=bits,
             eps=eps,
         )
-        k = bitlinear_b158(
+        k = bitlinear158(
             key,
             k_proj_weight,
             bias=k_proj_bias,
             bits=bits,
             eps=eps,
         )
-        v = bitlinear_b158(
+        v = bitlinear158(
             value,
             v_proj_weight,
             bias=v_proj_bias,

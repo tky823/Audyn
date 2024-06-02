@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from audyn.modules.bitnet import BitLinearB158, BitMultiheadAttentionB158
+from audyn.modules.bitnet import BitLinear158, BitMultiheadAttention158
 from audyn.utils.model.bitnet import convert_to_bitlinear_158
 
 
@@ -17,11 +17,11 @@ def test_convert_to_bitlinear_158() -> None:
         ),
     )
     expected_model = nn.Sequential(
-        BitLinearB158(10, 12, bias=True),
-        BitLinearB158(12, 5, bias=False),
+        BitLinear158(10, 12, bias=True),
+        BitLinear158(12, 5, bias=False),
         nn.Sequential(
-            BitLinearB158(5, 3, bias=True),
-            BitLinearB158(3, 2, bias=False),
+            BitLinear158(5, 3, bias=True),
+            BitLinear158(3, 2, bias=False),
         ),
     )
 
@@ -42,11 +42,11 @@ def test_convert_to_bitlinear_158() -> None:
         ),
     )
     expected_model = nn.Sequential(
-        BitLinearB158(10, 12, bias=True),
-        BitMultiheadAttentionB158(12, 4, bias=False),
+        BitLinear158(10, 12, bias=True),
+        BitMultiheadAttention158(12, 4, bias=False),
         nn.Sequential(
-            BitMultiheadAttentionB158(12, 3, bias=True),
-            BitLinearB158(3, 2, bias=False),
+            BitMultiheadAttention158(12, 3, bias=True),
+            BitLinear158(3, 2, bias=False),
         ),
     )
 

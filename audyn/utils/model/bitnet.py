@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-from ...modules.bitnet import BitLinearB158, BitMultiheadAttentionB158
+from ...modules.bitnet import BitLinear158, BitMultiheadAttention158
 
 __all__ = [
     "convert_to_bitlinear_158",
@@ -14,7 +14,7 @@ def convert_to_bitlinear_158(
     eps: float = 1e-5,
     remove_bias: bool = False,
 ) -> nn.Module:
-    """Convert nn.Linear to BitLinearB158 in given module.
+    """Convert nn.Linear to BitLinear158 in given module.
 
     Args:
         module (nn.Module): Module to be converted.
@@ -64,8 +64,8 @@ def convert_linear_to_bitlinear_158(
     bits: int = 8,
     eps: float = 1e-5,
     remove_bias: bool = False,
-) -> BitLinearB158:
-    """Convert nn.Linear to BitLinearB158."""
+) -> BitLinear158:
+    """Convert nn.Linear to BitLinear158."""
     factory_kwargs = {
         "device": module.weight.device,
         "dtype": module.weight.dtype,
@@ -79,7 +79,7 @@ def convert_linear_to_bitlinear_158(
     in_features = module.in_features
     out_features = module.out_features
 
-    converted = BitLinearB158(
+    converted = BitLinear158(
         in_features,
         out_features,
         bits=bits,
@@ -100,8 +100,8 @@ def convert_multihead_attention_to_bit_multihead_attention_158(
     bits: int = 8,
     eps: float = 1e-5,
     remove_bias: bool = False,
-) -> BitMultiheadAttentionB158:
-    """Convert nn.MultiheadAttention to BitMultiheadAttentionB158."""
+) -> BitMultiheadAttention158:
+    """Convert nn.MultiheadAttention to BitMultiheadAttention158."""
     # device and dtype is determined by out_proj
     factory_kwargs = {
         "device": module.out_proj.weight.device,
@@ -123,7 +123,7 @@ def convert_multihead_attention_to_bit_multihead_attention_158(
     else:
         assert module.bias_v is None
 
-    converted = BitMultiheadAttentionB158(
+    converted = BitMultiheadAttention158(
         embed_dim,
         num_heads,
         dropout=dropout,

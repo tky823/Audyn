@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from audyn.modules.bitnet import BitLinearB158, BitMultiheadAttentionB158
+from audyn.modules.bitnet import BitLinear158, BitMultiheadAttention158
 
 
 @pytest.mark.parametrize("bias", [True, False])
@@ -12,7 +12,7 @@ def test_bitlinear158(bias: bool) -> None:
     in_features, out_features = 4, 2
     length = 9
 
-    module = BitLinearB158(in_features, out_features, bias=bias)
+    module = BitLinear158(in_features, out_features, bias=bias)
 
     input = torch.randn((batch_size, length, in_features))
     output = module(input)
@@ -29,7 +29,7 @@ def test_bitmha158(bias: bool, batch_first: bool) -> None:
     embed_dim, num_heads = 8, 4
     query_length, key_length = 7, 9
 
-    module = BitMultiheadAttentionB158(
+    module = BitMultiheadAttention158(
         embed_dim,
         num_heads,
         bias=bias,
