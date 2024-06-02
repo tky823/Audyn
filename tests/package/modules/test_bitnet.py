@@ -16,8 +16,14 @@ def test_bitlinear158(bias: bool) -> None:
 
     input = torch.randn((batch_size, length, in_features))
     output = module(input)
+    loss = torch.mean(output**2)
+    loss.backward()
 
     assert output.size() == (batch_size, length, out_features)
+
+    for p in module.parameters():
+        if p.requires_grad:
+            assert p.grad is not None
 
 
 @pytest.mark.parametrize("bias", [True, False])
@@ -46,6 +52,8 @@ def test_bitmha158(bias: bool, batch_first: bool) -> None:
         value = value.transpose(1, 0)
 
     output, attn_weights = module(query, key, value)
+    loss = torch.mean(output**2)
+    loss.backward()
 
     if batch_first:
         assert output.size() == (batch_size, query_length, embed_dim)
@@ -53,3 +61,7 @@ def test_bitmha158(bias: bool, batch_first: bool) -> None:
         assert output.size() == (query_length, batch_size, embed_dim)
 
     assert attn_weights.size() == (batch_size, query_length, key_length)
+
+    for p in module.parameters():
+        if p.requires_grad:
+            assert p.grad is not None
