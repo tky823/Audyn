@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-from ...modules.bitnet import BitLinearB158
+from ...modules.bitnet import BitLinearB158, BitMultiheadAttentionB158
 
 __all__ = [
     "convert_to_bit_linear_158",
@@ -37,6 +37,13 @@ def convert_to_bit_linear_158(
         for name, child_module in module.named_children():
             if isinstance(child_module, nn.Linear):
                 converted = convert_linear_to_bit_linear_158(
+                    child_module,
+                    bits=bits,
+                    eps=eps,
+                    remove_bias=remove_bias,
+                )
+            elif isinstance(child_module, nn.MultiheadAttention):
+                converted = convert_multihead_attention_to_bit_multihead_attention_158(
                     child_module,
                     bits=bits,
                     eps=eps,
@@ -84,5 +91,72 @@ def convert_linear_to_bit_linear_158(
 
     if bias and not remove_bias:
         converted.bias.data.copy_(module.bias.data)
+
+    return converted
+
+
+def convert_multihead_attention_to_bit_multihead_attention_158(
+    module: nn.MultiheadAttention,
+    bits: int = 8,
+    eps: float = 1e-5,
+    remove_bias: bool = False,
+) -> BitMultiheadAttentionB158:
+    """Convert nn.MultiheadAttention to BitMultiheadAttentionB158."""
+    # device and dtype is determined by out_proj
+    factory_kwargs = {
+        "device": module.out_proj.weight.device,
+        "dtype": module.out_proj.weight.dtype,
+    }
+
+    embed_dim = module.embed_dim
+    num_heads = module.num_heads
+    dropout = module.dropout
+    bias = module.in_proj_bias is not None
+    add_bias_kv = module.bias_k is not None
+    add_zero_attn = module.add_zero_attn
+    kdim = module.kdim
+    vdim = module.vdim
+    batch_first = module.batch_first
+
+    if add_bias_kv:
+        assert module.bias_v is not None
+    else:
+        assert module.bias_v is None
+
+    converted = BitMultiheadAttentionB158(
+        embed_dim,
+        num_heads,
+        dropout=dropout,
+        bias=bias,
+        add_bias_kv=add_bias_kv,
+        add_zero_attn=add_zero_attn,
+        kdim=kdim,
+        vdim=vdim,
+        batch_first=batch_first,
+        bits=bits,
+        eps=eps,
+        **factory_kwargs,
+    )
+
+    if module.in_proj_weight is None:
+        converted.q_proj_weight.data.copy_(module.q_proj_weight.data)
+        converted.k_proj_weight.data.copy_(module.k_proj_weight.data)
+        converted.v_proj_weight.data.copy_(module.v_proj_weight.data)
+    else:
+        converted.in_proj_weight.data.copy_(module.in_proj_weight.data)
+
+    if module.in_proj_bias is not None and not remove_bias:
+        converted.in_proj_bias.data.copy_(module.in_proj_bias.data)
+
+    converted.out_proj.weight.data.copy_(module.out_proj.weight.data)
+
+    if module.out_proj.bias is not None and not remove_bias:
+        converted.out_proj.bias.data.copy_(module.out_proj.bias.data)
+
+    if module.bias_k is not None and not remove_bias:
+        converted.bias_k.data.copy_(module.bias_k.data)
+
+    if module.bias_v is not None and not remove_bias:
+        converted.bias_v.data.copy_(module.bias_v.data)
 
     return converted
