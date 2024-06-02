@@ -271,6 +271,7 @@ class BitLinear158Inference(nn.Module):
         else:
             self.register_buffer("bias", bias)
 
+        self.in_features, self.out_features = weight.size()
         self.bits = bits
         self.eps = eps
 
@@ -296,6 +297,14 @@ class BitLinear158Inference(nn.Module):
         )
 
         return converted
+
+    def extra_repr(self) -> str:
+        in_features = self.in_features
+        out_features = self.out_features
+        bits = self.bits
+        bias = self.bias is not None
+
+        return f"in_features={in_features}, out_features={out_features}, bits={bits}, bias={bias}"
 
 
 class BitMultiheadAttention158Inference(nn.Module):
