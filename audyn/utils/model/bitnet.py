@@ -2,7 +2,12 @@ import copy
 
 import torch.nn as nn
 
-from ...modules.bitnet import BitLinear158, BitMultiheadAttention158
+from ...modules.bitnet import (
+    BitLinear158,
+    BitLinear158Inference,
+    BitMultiheadAttention158,
+    BitMultiheadAttention158Inference,
+)
 
 __all__ = [
     "convert_to_bitlinear158",
@@ -31,7 +36,7 @@ def convert_to_bitlinear158(
 
     """
     if isinstance(module, (BitLinear158, BitMultiheadAttention158)):
-        return copy.deepcopy(module)
+        module = copy.deepcopy(module)
     elif isinstance(module, nn.Linear):
         module = convert_linear_to_bitlinear158(
             module,
@@ -66,6 +71,61 @@ def convert_to_bitlinear158(
                 )
             else:
                 converted = convert_to_bitlinear158(
+                    child_module, bits=bits, eps=eps, remove_bias=remove_bias
+                )
+
+            setattr(module, name, converted)
+
+    return module
+
+
+def convert_to_bitlinear158_inference(
+    module: nn.Module,
+    bits: int = 8,
+    eps: float = 1e-5,
+    remove_bias: bool = False,
+) -> nn.Module:
+    """Convert nn.Linear and nn.MultiheadAttention to BitLinear158Inference and
+    BitMultiheadAttention158Inference, respectively in given module.
+
+    BitLinear158 and BitMultiheadAttention158 are also converted to their
+    inference modules.
+
+    Args:
+        module (nn.Module): Module to be converted.
+        bits (int): Number of quantization bits in scale parameter.
+        eps (float): Tiny value to avoid zero division.
+        remove_bias (bool): If ``True``, bias is forced to be removed.
+
+    Returns:
+        nn.Module: Converted module.
+
+    """
+    module = convert_to_bitlinear158(
+        module,
+        bits=bits,
+        eps=eps,
+        remove_bias=remove_bias,
+    )
+
+    if isinstance(module, (BitLinear158Inference, BitMultiheadAttention158Inference)):
+        module = copy.deepcopy(module)
+    elif isinstance(module, BitLinear158):
+        module = convert_bitlinear158_to_bitlinear158_inference(module)
+    elif isinstance(module, BitMultiheadAttention158):
+        module = convert_bitmha158_to_bitmha158_inference(module)
+    else:
+        for name, child_module in module.named_children():
+            if isinstance(
+                child_module, (BitLinear158Inference, BitMultiheadAttention158Inference)
+            ):
+                continue
+            elif isinstance(child_module, BitLinear158):
+                converted = convert_bitlinear158_to_bitlinear158_inference(child_module)
+            elif isinstance(child_module, BitMultiheadAttention158):
+                converted = convert_bitmha158_to_bitmha158_inference(child_module)
+            else:
+                converted = convert_to_bitlinear158_inference(
                     child_module, bits=bits, eps=eps, remove_bias=remove_bias
                 )
 
@@ -189,5 +249,21 @@ def convert_mha_to_bitmha158(
 
     if module.bias_v is not None:
         converted.bias_v.data.copy_(module.bias_v.data)
+
+    return converted
+
+
+def convert_bitlinear158_to_bitlinear158_inference(module: BitLinear158) -> BitLinear158Inference:
+    """Convert BitLinear158 to BitLinear158Inference."""
+    converted = BitLinear158Inference.build_from_bitlinear158(module)
+
+    return converted
+
+
+def convert_bitmha158_to_bitmha158_inference(
+    module: BitMultiheadAttention158,
+) -> BitMultiheadAttention158Inference:
+    """Convert BitMultiheadAttention158 to BitMultiheadAttention158Inference."""
+    converted = BitMultiheadAttention158Inference.build_from_bitmha158(module)
 
     return converted
