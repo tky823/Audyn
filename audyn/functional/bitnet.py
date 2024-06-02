@@ -30,7 +30,7 @@ def bitlinear158(
     abs_weight = torch.abs(weight)
     beta = torch.mean(abs_weight)
     beta = torch.clamp(beta, min=eps)
-    weight = abs_weight / beta
+    weight = weight / beta
     quantized_weight = round_clip(weight, min=-1, max=1)
 
     x = F.linear(x, quantized_weight, bias=bias)
