@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from ..functional.activation import scaled_dot_product_attention
-from ..functional.bitnet import bitlinear158, bitlinear158_inference, round_clip
+from ..functional.bitnet import bitlinear158, bitlinear158_inference, quantize_weight
 from .activation import _MultiheadAttention
 
 __all__ = [
@@ -303,11 +303,7 @@ class BitLinear158Inference(BitLinear158):
             **factory_kwargs,
         )
 
-        abs_weight = torch.abs(weight)
-        beta = torch.mean(abs_weight)
-        beta = torch.clamp(beta, min=eps)
-        weight = weight / beta
-        quantized_weight = round_clip(weight, min=-1, max=1)
+        quantized_weight, beta = quantize_weight(weight, eps=self.eps)
 
         # remove weight parameter set quantized weight and beta buffers instead
         del self._parameters["weight"]
