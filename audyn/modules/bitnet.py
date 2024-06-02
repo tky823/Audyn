@@ -258,13 +258,13 @@ class BitLinear158Inference(nn.Module):
     ) -> None:
         super().__init__()
 
-        quantized_weight, beta = quantize_weight(weight.data)
+        quantized_weight, scale = quantize_weight(weight.data)
 
         if bias is not None:
             bias = bias.data
 
         self.register_buffer("quantized_weight", quantized_weight)
-        self.register_buffer("beta", beta)
+        self.register_buffer("scale", scale)
 
         if bias is None:
             self.register_buffer("bias", None)
@@ -278,7 +278,7 @@ class BitLinear158Inference(nn.Module):
         output = bitlinear158_inference(
             input,
             self.quantized_weight,
-            self.beta,
+            self.scale,
             bias=self.bias,
             bits=self.bits,
             eps=self.eps,
@@ -364,33 +364,33 @@ class BitMultiheadAttention158Inference(nn.Module):
                 in_proj_weight, [embed_dim] * 3, dim=-2
             )
 
-        quantized_q_proj_weight, q_proj_beta = quantize_weight(q_proj_weight, eps=eps)
-        quantized_k_proj_weight, k_proj_beta = quantize_weight(k_proj_weight, eps=eps)
-        quantized_v_proj_weight, v_proj_beta = quantize_weight(v_proj_weight, eps=eps)
+        quantized_q_proj_weight, q_proj_scale = quantize_weight(q_proj_weight, eps=eps)
+        quantized_k_proj_weight, k_proj_scale = quantize_weight(k_proj_weight, eps=eps)
+        quantized_v_proj_weight, v_proj_scale = quantize_weight(v_proj_weight, eps=eps)
 
         if _qkv_same_embed_dim:
             quantized_in_proj_weight = torch.cat(
                 [quantized_q_proj_weight, quantized_k_proj_weight, quantized_v_proj_weight], dim=-2
             )
-            in_proj_beta = torch.stack([q_proj_beta, k_proj_beta, v_proj_beta], dim=0)
+            in_proj_scale = torch.stack([q_proj_scale, k_proj_scale, v_proj_scale], dim=0)
             self.register_buffer("quantized_in_proj_weight", quantized_in_proj_weight)
-            self.register_buffer("in_proj_beta", in_proj_beta)
+            self.register_buffer("in_proj_scale", in_proj_scale)
             self.register_buffer("quantized_q_proj_weight", None)
             self.register_buffer("quantized_k_proj_weight", None)
             self.register_buffer("quantized_v_proj_weight", None)
-            self.register_buffer("q_proj_beta", None)
-            self.register_buffer("k_proj_beta", None)
-            self.register_buffer("v_proj_beta", None)
+            self.register_buffer("q_proj_scale", None)
+            self.register_buffer("k_proj_scale", None)
+            self.register_buffer("v_proj_scale", None)
 
         else:
             self.register_buffer("quantized_in_proj_weight", None)
-            self.register_buffer("in_proj_beta", None)
+            self.register_buffer("in_proj_scale", None)
             self.register_buffer("quantized_q_proj_weight", quantized_q_proj_weight)
             self.register_buffer("quantized_k_proj_weight", quantized_k_proj_weight)
             self.register_buffer("quantized_v_proj_weight", quantized_v_proj_weight)
-            self.register_buffer("q_proj_beta", q_proj_beta)
-            self.register_buffer("k_proj_beta", k_proj_beta)
-            self.register_buffer("v_proj_beta", v_proj_beta)
+            self.register_buffer("q_proj_scale", q_proj_scale)
+            self.register_buffer("k_proj_scale", k_proj_scale)
+            self.register_buffer("v_proj_scale", v_proj_scale)
 
         self.register_buffer("in_proj_bias", in_proj_bias)
 
@@ -429,7 +429,7 @@ class BitMultiheadAttention158Inference(nn.Module):
         batch_first = self.batch_first
         num_heads = self.num_heads
         quantized_in_proj_weight = self.quantized_in_proj_weight
-        in_proj_beta = self.in_proj_beta
+        in_proj_scale = self.in_proj_scale
         in_proj_bias = self.in_proj_bias
         bits = self.bits
         eps = self.eps
@@ -471,14 +471,14 @@ class BitMultiheadAttention158Inference(nn.Module):
             quantized_q_proj_weight, quantized_k_proj_weight, quantized_v_proj_weight = (
                 torch.split(quantized_in_proj_weight, [embed_dim] * 3, dim=-2)
             )
-            q_proj_beta, k_proj_beta, v_proj_beta = torch.unbind(in_proj_beta)
+            q_proj_scale, k_proj_scale, v_proj_scale = torch.unbind(in_proj_scale)
         else:
             quantized_q_proj_weight = self.quantized_q_proj_weight
             quantized_k_proj_weight = self.quantized_k_proj_weight
             quantized_v_proj_weight = self.quantized_v_proj_weight
-            q_proj_beta = self.q_proj_beta
-            k_proj_beta = self.k_proj_beta
-            v_proj_beta = self.v_proj_beta
+            q_proj_scale = self.q_proj_scale
+            k_proj_scale = self.k_proj_scale
+            v_proj_scale = self.v_proj_scale
 
         if self.in_proj_bias is None:
             q_proj_bias, k_proj_bias, v_proj_bias = None, None, None
@@ -490,7 +490,7 @@ class BitMultiheadAttention158Inference(nn.Module):
         q = bitlinear158_inference(
             query,
             quantized_q_proj_weight,
-            q_proj_beta,
+            q_proj_scale,
             bias=q_proj_bias,
             bits=bits,
             eps=eps,
@@ -498,7 +498,7 @@ class BitMultiheadAttention158Inference(nn.Module):
         k = bitlinear158_inference(
             key,
             quantized_k_proj_weight,
-            k_proj_beta,
+            k_proj_scale,
             bias=k_proj_bias,
             bits=bits,
             eps=eps,
@@ -506,7 +506,7 @@ class BitMultiheadAttention158Inference(nn.Module):
         v = bitlinear158_inference(
             value,
             quantized_v_proj_weight,
-            v_proj_beta,
+            v_proj_scale,
             bias=v_proj_bias,
             bits=bits,
             eps=eps,

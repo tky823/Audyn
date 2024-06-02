@@ -22,9 +22,9 @@ def bitlinear158(
     """BitLinear158 function."""
     q = 2 ** (bits - 1)
     quantized_input, gamma = quantize_input(input, bits=bits, eps=eps)
-    quantized_weight, beta = quantize_weight(weight, eps=eps)
+    quantized_weight, scale = quantize_weight(weight, eps=eps)
     x = F.linear(quantized_input, quantized_weight, bias=bias)
-    output = x * (beta * gamma) / q
+    output = x * (scale * gamma) / q
 
     return output
 
@@ -32,7 +32,7 @@ def bitlinear158(
 def bitlinear158_inference(
     input: torch.Tensor,
     quantized_weight: torch.Tensor,
-    beta: torch.Tensor,
+    scale: torch.Tensor,
     bias: Optional[torch.Tensor] = None,
     bits: int = 8,
     eps: float = 1e-5,
@@ -40,12 +40,12 @@ def bitlinear158_inference(
     """BitLinear158 function for inference.
 
     Unlike ``bitlinear158``, ``bitlinear158_inference`` takes
-    input, quantized weight, beta, and optional bias.
+    input, quantized weight, scale, and optional bias.
     """
     q = 2 ** (bits - 1)
     quantized_input, gamma = quantize_input(input, bits=bits, eps=eps)
     x = F.linear(quantized_input, quantized_weight, bias=bias)
-    output = x * (beta * gamma) / q
+    output = x * (scale * gamma) / q
 
     return output
 
@@ -109,9 +109,9 @@ def quantize_weight(
     eps: float = 1e-5,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     abs_weight = torch.abs(weight)
-    beta = torch.mean(abs_weight)
-    beta = torch.clamp(beta, min=eps)
-    weight = weight / beta
+    scale = torch.mean(abs_weight)
+    scale = torch.clamp(scale, min=eps)
+    weight = weight / scale
     quantized_weight = round_clip(weight, min=-1, max=1)
 
-    return quantized_weight, beta
+    return quantized_weight, scale
