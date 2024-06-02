@@ -3,9 +3,8 @@ from typing import Optional
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
-from ..functional.bitnet import round_clip
+from ..functional.bitnet import bit_linear_b158
 
 __all__ = [
     "BitLinearB158",
@@ -55,26 +54,13 @@ class BitLinearB158(nn.Module):
         self._reset_parameters()
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        bits = self.bits
-        eps = self.eps
-
-        # quantize input
-        q = 2 ** (bits - 1)
-        abs_input = torch.abs(input)
-        gamma = torch.max(abs_input)
-        gamma = torch.clamp(gamma, min=eps)
-        x = input * q / gamma
-        x = round_clip(x, min=-q, max=q - 1)
-
-        # quantize weight
-        abs_weight = torch.abs(self.weight)
-        beta = torch.mean(abs_weight)
-        beta = torch.clamp(beta, min=eps)
-        weight = abs_weight / beta
-        quantized_weight = round_clip(weight, min=-1, max=1)
-
-        x = F.linear(x, quantized_weight, bias=self.bias)
-        output = x * (beta * gamma) / q
+        output = bit_linear_b158(
+            input,
+            self.weight,
+            bias=self.bias,
+            bits=self.bits,
+            eps=self.eps,
+        )
 
         return output
 
