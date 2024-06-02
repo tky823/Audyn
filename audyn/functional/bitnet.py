@@ -4,13 +4,13 @@ import torch
 import torch.nn.functional as F
 
 __all__ = [
-    "bit_linear_b158",
+    "bitlinear_b158",
     "round_clip",
     "round_clamp",
 ]
 
 
-def bit_linear_b158(
+def bitlinear_b158(
     input: torch.Tensor,
     weight: torch.Tensor,
     bias: Optional[torch.Tensor] = None,

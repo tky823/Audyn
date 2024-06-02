@@ -3,12 +3,12 @@ import torch.nn as nn
 from ...modules.bitnet import BitLinearB158, BitMultiheadAttentionB158
 
 __all__ = [
-    "convert_to_bit_linear_158",
-    "convert_linear_to_bit_linear_158",
+    "convert_to_bitlinear_158",
+    "convert_linear_to_bitlinear_158",
 ]
 
 
-def convert_to_bit_linear_158(
+def convert_to_bitlinear_158(
     module: nn.Module,
     bits: int = 8,
     eps: float = 1e-5,
@@ -27,7 +27,7 @@ def convert_to_bit_linear_158(
 
     """
     if isinstance(module, nn.Linear):
-        module = convert_linear_to_bit_linear_158(
+        module = convert_linear_to_bitlinear_158(
             module,
             bits,
             eps=eps,
@@ -36,7 +36,7 @@ def convert_to_bit_linear_158(
     else:
         for name, child_module in module.named_children():
             if isinstance(child_module, nn.Linear):
-                converted = convert_linear_to_bit_linear_158(
+                converted = convert_linear_to_bitlinear_158(
                     child_module,
                     bits=bits,
                     eps=eps,
@@ -50,7 +50,7 @@ def convert_to_bit_linear_158(
                     remove_bias=remove_bias,
                 )
             else:
-                converted = convert_to_bit_linear_158(
+                converted = convert_to_bitlinear_158(
                     child_module, bits=bits, eps=eps, remove_bias=remove_bias
                 )
 
@@ -59,7 +59,7 @@ def convert_to_bit_linear_158(
     return module
 
 
-def convert_linear_to_bit_linear_158(
+def convert_linear_to_bitlinear_158(
     module: nn.Linear,
     bits: int = 8,
     eps: float = 1e-5,
