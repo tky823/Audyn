@@ -1,11 +1,42 @@
 from typing import Optional
 
 import torch
+import torch.nn.functional as F
 
 __all__ = [
+    "bit_linear_b158",
     "round_clip",
     "round_clamp",
 ]
+
+
+def bit_linear_b158(
+    input: torch.Tensor,
+    weight: torch.Tensor,
+    bias: Optional[torch.Tensor] = None,
+    bits: int = 8,
+    eps: float = 1e-5,
+) -> torch.Tensor:
+    """BitLinearB158 function."""
+    # quantize input
+    q = 2 ** (bits - 1)
+    abs_input = torch.abs(input)
+    gamma = torch.max(abs_input)
+    gamma = torch.clamp(gamma, min=eps)
+    x = input * q / gamma
+    x = round_clip(x, min=-q, max=q - 1)
+
+    # quantize weight
+    abs_weight = torch.abs(weight)
+    beta = torch.mean(abs_weight)
+    beta = torch.clamp(beta, min=eps)
+    weight = abs_weight / beta
+    quantized_weight = round_clip(weight, min=-1, max=1)
+
+    x = F.linear(x, quantized_weight, bias=bias)
+    output = x * (beta * gamma) / q
+
+    return output
 
 
 def round_clip(
