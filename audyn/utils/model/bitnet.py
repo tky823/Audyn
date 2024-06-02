@@ -1,3 +1,5 @@
+import copy
+
 import torch.nn as nn
 
 from ...modules.bitnet import BitLinear158, BitMultiheadAttention158
@@ -28,8 +30,17 @@ def convert_to_bitlinear158(
         nn.Module: Converted module.
 
     """
-    if isinstance(module, nn.Linear):
+    if isinstance(module, (BitLinear158, BitMultiheadAttention158)):
+        return copy.deepcopy(module)
+    elif isinstance(module, nn.Linear):
         module = convert_linear_to_bitlinear158(
+            module,
+            bits,
+            eps=eps,
+            remove_bias=remove_bias,
+        )
+    elif isinstance(module, nn.MultiheadAttention):
+        module = convert_mha_to_bitmha158(
             module,
             bits,
             eps=eps,
@@ -37,7 +48,9 @@ def convert_to_bitlinear158(
         )
     else:
         for name, child_module in module.named_children():
-            if isinstance(child_module, nn.Linear):
+            if isinstance(child_module, (BitLinear158, BitMultiheadAttention158)):
+                continue
+            elif isinstance(child_module, nn.Linear):
                 converted = convert_linear_to_bitlinear158(
                     child_module,
                     bits=bits,
