@@ -72,7 +72,7 @@ def convert_linear_to_bitlinear158(
         "dtype": module.weight.dtype,
     }
 
-    if module.bias is None:
+    if module.bias is None or remove_bias:
         bias = False
     else:
         bias = True
@@ -90,7 +90,7 @@ def convert_linear_to_bitlinear158(
     )
     converted.weight.data.copy_(module.weight.data)
 
-    if bias and not remove_bias:
+    if bias:
         converted.bias.data.copy_(module.bias.data)
 
     return converted
@@ -102,7 +102,15 @@ def convert_mha_to_bitmha158(
     eps: float = 1e-5,
     remove_bias: bool = False,
 ) -> BitMultiheadAttention158:
-    """Convert nn.MultiheadAttention to BitMultiheadAttention158."""
+    """Convert nn.MultiheadAttention to BitMultiheadAttention158.
+
+    .. note::
+
+        Even when ``remove_bias=True``, ``bias_k`` and ``bias_v``
+        are not removed from BitMultiheadAttention158. The role of these values
+        is not the bias term in nn.Linear.
+
+    """
     # device and dtype is determined by out_proj
     factory_kwargs = {
         "device": module.out_proj.weight.device,
@@ -118,6 +126,14 @@ def convert_mha_to_bitmha158(
     kdim = module.kdim
     vdim = module.vdim
     batch_first = module.batch_first
+
+    if bias:
+        assert module.out_proj.bias is not None
+
+        if remove_bias:
+            bias = False
+    else:
+        assert module.out_proj.bias is None
 
     if add_bias_kv:
         assert module.bias_v is not None
@@ -146,18 +162,18 @@ def convert_mha_to_bitmha158(
     else:
         converted.in_proj_weight.data.copy_(module.in_proj_weight.data)
 
-    if module.in_proj_bias is not None and not remove_bias:
+    if module.in_proj_bias is not None and bias:
         converted.in_proj_bias.data.copy_(module.in_proj_bias.data)
 
     converted.out_proj.weight.data.copy_(module.out_proj.weight.data)
 
-    if module.out_proj.bias is not None and not remove_bias:
+    if module.out_proj.bias is not None and bias:
         converted.out_proj.bias.data.copy_(module.out_proj.bias.data)
 
-    if module.bias_k is not None and not remove_bias:
+    if module.bias_k is not None:
         converted.bias_k.data.copy_(module.bias_k.data)
 
-    if module.bias_v is not None and not remove_bias:
+    if module.bias_v is not None:
         converted.bias_v.data.copy_(module.bias_v.data)
 
     return converted
