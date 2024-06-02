@@ -1,7 +1,12 @@
 import pytest
 import torch
 
-from audyn.modules.bitnet import BitLinear158, BitLinear158Inference, BitMultiheadAttention158
+from audyn.modules.bitnet import (
+    BitLinear158,
+    BitLinear158Inference,
+    BitMultiheadAttention158,
+    BitMultiheadAttention158Inference,
+)
 
 
 @pytest.mark.parametrize("bias", [True, False])
@@ -84,3 +89,39 @@ def test_bitlinear158_inference(bias: bool) -> None:
     inference_output = inference_module(input)
 
     assert torch.allclose(inference_output, output)
+
+
+@pytest.mark.parametrize("bias", [True, False])
+@pytest.mark.parametrize("batch_first", [True, False])
+def test_bitmha158_inference(bias: bool, batch_first: bool) -> None:
+    torch.manual_seed(0)
+
+    batch_size = 5
+    embed_dim, num_heads = 8, 4
+    query_length, key_length = 7, 9
+
+    module = BitMultiheadAttention158(
+        embed_dim,
+        num_heads,
+        bias=bias,
+        batch_first=batch_first,
+    )
+    module.eval()
+
+    query = torch.randn((query_length, batch_size, embed_dim))
+    key = torch.randn((key_length, batch_size, embed_dim))
+    value = torch.randn((key_length, batch_size, embed_dim))
+
+    if batch_first:
+        query = query.transpose(1, 0)
+        key = key.transpose(1, 0)
+        value = value.transpose(1, 0)
+
+    output, attn_weights = module(query, key, value)
+
+    inference_module = BitMultiheadAttention158Inference.build_from_bitmha158(module)
+    inference_module.eval()
+    inference_output, inference_attn_weights = inference_module(query, key, value)
+
+    assert torch.allclose(output, inference_output)
+    assert torch.allclose(attn_weights, inference_attn_weights)
