@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from audyn.modules.bitnet import BitLinear158, BitMultiheadAttention158
+from audyn.modules.bitnet import BitLinear158, BitLinear158Inference, BitMultiheadAttention158
 
 
 @pytest.mark.parametrize("bias", [True, False])
@@ -65,3 +65,22 @@ def test_bitmha158(bias: bool, batch_first: bool) -> None:
     for p in module.parameters():
         if p.requires_grad:
             assert p.grad is not None
+
+
+@pytest.mark.parametrize("bias", [True, False])
+def test_bitlinear158_inference(bias: bool) -> None:
+    torch.manual_seed(0)
+
+    batch_size = 5
+    in_features, out_features = 4, 2
+    length = 9
+
+    module = BitLinear158(in_features, out_features, bias=bias)
+
+    input = torch.randn((batch_size, length, in_features))
+    output = module(input)
+
+    inference_module = BitLinear158Inference.build_from_bitlinear158(module)
+    inference_output = inference_module(input)
+
+    assert torch.allclose(inference_output, output)
