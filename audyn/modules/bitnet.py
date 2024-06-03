@@ -60,10 +60,14 @@ class BitLinear158(nn.Linear):
     def extra_repr(self) -> str:
         in_features = self.in_features
         out_features = self.out_features
-        bits = self.bits
         bias = self.bias is not None
+        group_dim = self.group_dim
+        bits = self.bits
 
-        return f"in_features={in_features}, out_features={out_features}, bits={bits}, bias={bias}"
+        return (
+            f"in_features={in_features}, out_features={out_features}, bias={bias}"
+            f", group_dim={group_dim}, bits={bits}"
+        )
 
 
 class BitMultiheadAttention158(_MultiheadAttention):
@@ -318,10 +322,14 @@ class BitLinear158Inference(nn.Module):
     def extra_repr(self) -> str:
         in_features = self.in_features
         out_features = self.out_features
-        bits = self.bits
         bias = self.bias is not None
+        group_dim = self.group_dim
+        bits = self.bits
 
-        return f"in_features={in_features}, out_features={out_features}, bits={bits}, bias={bias}"
+        return (
+            f"in_features={in_features}, out_features={out_features}, bias={bias}"
+            f", group_dim={group_dim}, bits={bits}"
+        )
 
 
 class BitMultiheadAttention158Inference(nn.Module):
