@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, Union
+from typing import Optional, Sequence, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -22,8 +22,9 @@ class BitLinear158(nn.Linear):
         self,
         in_features: int,
         out_features: int,
-        bits: int = 8,
         bias: bool = True,
+        group_dim: Optional[Union[int, Sequence[int]]] = None,
+        bits: int = 8,
         eps: float = 1e-5,
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
@@ -40,6 +41,7 @@ class BitLinear158(nn.Linear):
             **factory_kwargs,
         )
 
+        self.group_dim = group_dim
         self.bits = bits
         self.eps = eps
 
@@ -48,6 +50,7 @@ class BitLinear158(nn.Linear):
             input,
             self.weight,
             bias=self.bias,
+            group_dim=self.group_dim,
             bits=self.bits,
             eps=self.eps,
         )
@@ -80,6 +83,7 @@ class BitMultiheadAttention158(_MultiheadAttention):
         kdim: Optional[int] = None,
         vdim: Optional[int] = None,
         batch_first: bool = False,
+        group_dim: Optional[Union[int, Sequence[int]]] = None,
         bits: int = 8,
         eps: float = 1e-5,
         **kwargs,
@@ -101,11 +105,13 @@ class BitMultiheadAttention158(_MultiheadAttention):
 
         self.out_proj = convert_linear_to_bitlinear158(
             self.out_proj,
+            group_dim=group_dim,
             bits=bits,
             eps=eps,
             remove_bias=False,
         )
 
+        self.group_dim = group_dim
         self.bits = bits
         self.eps = eps
 
@@ -135,6 +141,10 @@ class BitMultiheadAttention158(_MultiheadAttention):
         eps = self.eps
 
         head_dim = embed_dim // num_heads
+        # group_dim is used for in_proj only, not used for out_proj
+        group_dim = swap_group_dim_if_necessary(
+            self.group_dim, query.dim(), batch_first=batch_first
+        )
 
         if batch_first:
             # make sure that the transpose op does not affect the "is" property
@@ -187,6 +197,7 @@ class BitMultiheadAttention158(_MultiheadAttention):
             query,
             q_proj_weight,
             bias=q_proj_bias,
+            group_dim=group_dim,
             bits=bits,
             eps=eps,
         )
@@ -194,6 +205,7 @@ class BitMultiheadAttention158(_MultiheadAttention):
             key,
             k_proj_weight,
             bias=k_proj_bias,
+            group_dim=group_dim,
             bits=bits,
             eps=eps,
         )
@@ -201,6 +213,7 @@ class BitMultiheadAttention158(_MultiheadAttention):
             value,
             v_proj_weight,
             bias=v_proj_bias,
+            group_dim=group_dim,
             bits=bits,
             eps=eps,
         )
@@ -252,6 +265,7 @@ class BitLinear158Inference(nn.Module):
     def __init__(
         self,
         weight: Union[nn.Parameter, torch.Tensor],
+        group_dim: Optional[Union[int, Sequence[int]]] = None,
         bits: int = 8,
         bias: Optional[Union[nn.Parameter, torch.Tensor]] = None,
         eps: float = 1e-5,
@@ -272,6 +286,7 @@ class BitLinear158Inference(nn.Module):
             self.register_buffer("bias", bias)
 
         self.in_features, self.out_features = weight.size()
+        self.group_dim = group_dim
         self.bits = bits
         self.eps = eps
 
@@ -281,6 +296,7 @@ class BitLinear158Inference(nn.Module):
             self.quantized_weight,
             self.scale,
             bias=self.bias,
+            group_dim=self.group_dim,
             bits=self.bits,
             eps=self.eps,
         )
@@ -291,6 +307,7 @@ class BitLinear158Inference(nn.Module):
     def build_from_bitlinear158(cls, module: BitLinear158) -> "BitLinear158Inference":
         converted = cls(
             module.weight,
+            group_dim=module.group_dim,
             bits=module.bits,
             bias=module.bias,
             eps=module.eps,
@@ -328,6 +345,7 @@ class BitMultiheadAttention158Inference(nn.Module):
         k_proj_weight: Optional[torch.Tensor] = None,
         v_proj_weight: Optional[torch.Tensor] = None,
         batch_first: bool = False,
+        group_dim: Optional[Union[int, Sequence[int]]] = None,
         bits: int = 8,
         eps: float = 1e-5,
     ) -> None:
@@ -405,6 +423,7 @@ class BitMultiheadAttention158Inference(nn.Module):
 
         self.out_proj = BitLinear158Inference(
             out_proj_weight,
+            group_dim=group_dim,
             bits=bits,
             bias=out_proj_bias,
             eps=eps,
@@ -420,6 +439,7 @@ class BitMultiheadAttention158Inference(nn.Module):
         self.add_zero_attn = add_zero_attn
         self.dropout = dropout
         self.batch_first = batch_first
+        self.group_dim = group_dim
         self.bits = bits
         self.eps = eps
 
@@ -444,6 +464,10 @@ class BitMultiheadAttention158Inference(nn.Module):
         eps = self.eps
 
         head_dim = embed_dim // num_heads
+        # group_dim is used for in_proj only, not used for out_proj
+        group_dim = swap_group_dim_if_necessary(
+            self.group_dim, query.dim(), batch_first=batch_first
+        )
 
         if batch_first:
             # make sure that the transpose op does not affect the "is" property
@@ -501,6 +525,7 @@ class BitMultiheadAttention158Inference(nn.Module):
             quantized_q_proj_weight,
             q_proj_scale,
             bias=q_proj_bias,
+            group_dim=group_dim,
             bits=bits,
             eps=eps,
         )
@@ -509,6 +534,7 @@ class BitMultiheadAttention158Inference(nn.Module):
             quantized_k_proj_weight,
             k_proj_scale,
             bias=k_proj_bias,
+            group_dim=group_dim,
             bits=bits,
             eps=eps,
         )
@@ -517,6 +543,7 @@ class BitMultiheadAttention158Inference(nn.Module):
             quantized_v_proj_weight,
             v_proj_scale,
             bias=v_proj_bias,
+            group_dim=group_dim,
             bits=bits,
             eps=eps,
         )
@@ -576,6 +603,7 @@ class BitMultiheadAttention158Inference(nn.Module):
             k_proj_weight=module.k_proj_weight,
             v_proj_weight=module.v_proj_weight,
             batch_first=module.batch_first,
+            group_dim=module.group_dim,
             bits=module.bits,
             eps=module.eps,
         )
@@ -604,3 +632,42 @@ class RoundClip(nn.Module):
         output = torch.detach(x - input) + input
 
         return output
+
+
+def swap_group_dim_if_necessary(
+    group_dim: Optional[Union[int, Sequence[int]]],
+    dim: int,
+    batch_first: bool = False,
+) -> Optional[Union[int, Sequence[int]]]:
+    """Swap group dimension of batch and token axes."""
+    if group_dim is None:
+        return group_dim
+
+    is_int = isinstance(group_dim, int)
+
+    if is_int:
+        group_dim = [group_dim]
+        _type = None
+    else:
+        _type = type(group_dim)
+
+    new_group_dim = []
+
+    for _group_dim in group_dim:
+        # set index to non-negative
+        if _group_dim < 0:
+            _group_dim = dim + _group_dim
+
+        if batch_first:
+            # swap 0 and 1
+            if _group_dim in [0, 1]:
+                _group_dim = 1 - _group_dim
+
+        new_group_dim.append(_group_dim)
+
+    if is_int:
+        new_group_dim = new_group_dim[0]
+    else:
+        new_group_dim = _type(new_group_dim)
+
+    return new_group_dim
