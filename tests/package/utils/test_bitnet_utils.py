@@ -125,3 +125,54 @@ def test_convert_to_bitlinear158_inference(remove_bias: bool) -> None:
 
     for p, p_expected in zip(model.parameters(), expected_model.parameters()):
         assert p.size() == p_expected.size()
+
+
+@pytest.mark.parametrize("remove_bias", [True, False])
+@pytest.mark.parametrize("batch_first", [True, False])
+def test_convert_to_bitlinear158_transformer_encoder(remove_bias: bool, batch_first: bool) -> None:
+    torch.manual_seed(0)
+
+    d_model, dim_feedforward = 24, 16
+    nhead = 4
+    batch_size = 5
+    length = 10
+
+    model = nn.TransformerEncoderLayer(
+        d_model,
+        nhead,
+        dim_feedforward=dim_feedforward,
+        batch_first=batch_first,
+    )
+    model = convert_to_bitlinear158(model, bits=8, remove_bias=remove_bias)
+
+    input = torch.randn((length, batch_size, d_model))
+
+    if batch_first:
+        input = input.transpose(1, 0)
+
+    output = model(input)
+
+    if batch_first:
+        assert output.size() == (batch_size, length, d_model)
+    else:
+        assert output.size() == (length, batch_size, d_model)
+
+    model = nn.TransformerEncoderLayer(
+        d_model,
+        nhead,
+        dim_feedforward=dim_feedforward,
+        batch_first=batch_first,
+    )
+    model = convert_to_bitlinear158_inference(model, bits=8, remove_bias=remove_bias)
+
+    input = torch.randn((length, batch_size, d_model))
+
+    if batch_first:
+        input = input.transpose(1, 0)
+
+    output = model(input)
+
+    if batch_first:
+        assert output.size() == (batch_size, length, d_model)
+    else:
+        assert output.size() == (length, batch_size, d_model)
