@@ -1,8 +1,9 @@
-from typing import Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from packaging import version
 
 from ..functional.activation import scaled_dot_product_attention
 from ..functional.bitnet import bitlinear158, bitlinear158_inference, quantize_weight
@@ -15,6 +16,8 @@ __all__ = [
     "BitMultiheadAttention158Inference",
     "RoundClip",
 ]
+
+IS_TORCH_LT_2_0 = version.parse(torch.__version__) < version.parse("2.0")
 
 
 class BitLinear158(nn.Linear):
@@ -134,7 +137,10 @@ class BitMultiheadAttention158(_MultiheadAttention):
         need_weights: bool = True,
         attn_mask: Optional[torch.Tensor] = None,
         average_attn_weights: bool = True,
+        **kwargs,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        self.validate_kwargs(kwargs)
+
         embed_dim = self.embed_dim
         dropout = self.dropout
         batch_first = self.batch_first
@@ -460,7 +466,10 @@ class BitMultiheadAttention158Inference(nn.Module):
         need_weights: bool = True,
         attn_mask: Optional[torch.Tensor] = None,
         average_attn_weights: bool = True,
+        **kwargs,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        self.validate_kwargs(kwargs)
+
         embed_dim = self.embed_dim
         dropout = self.dropout
         batch_first = self.batch_first
@@ -617,6 +626,17 @@ class BitMultiheadAttention158Inference(nn.Module):
         )
 
         return converted
+
+    def validate_kwargs(self, kwargs: Dict[str, Any]) -> None:
+        """Validate keyword arguments for backward compatibility."""
+        valid_keys = set()
+
+        if not IS_TORCH_LT_2_0:
+            valid_keys.add("is_causal")
+
+        invalid_keys = set(kwargs.keys()) - valid_keys
+
+        assert invalid_keys == set(), f"Invalid keys {invalid_keys} are given."
 
 
 class RoundClip(nn.Module):
