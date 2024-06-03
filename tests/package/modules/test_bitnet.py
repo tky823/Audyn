@@ -17,6 +17,7 @@ def test_bitlinear158(bias: bool) -> None:
     in_features, out_features = 4, 2
     length = 9
 
+    # w/o group_dim
     module = BitLinear158(in_features, out_features, bias=bias)
 
     input = torch.randn((batch_size, length, in_features))
@@ -29,6 +30,46 @@ def test_bitlinear158(bias: bool) -> None:
     for p in module.parameters():
         if p.requires_grad:
             assert p.grad is not None
+
+    # w/ group_dim: batch-wise scaling
+    module = BitLinear158(
+        in_features,
+        out_features,
+        bias=bias,
+        group_dim=(1, -1),
+    )
+
+    input = torch.randn((batch_size, length, in_features))
+    output = module(input)
+
+    assert output.size() == (batch_size, length, out_features)
+
+    recomputed_input, _ = torch.split(input, [batch_size - 2, 2], dim=0)
+    recomputed_output = module(recomputed_input)
+    output, _ = torch.split(output, [batch_size - 2, 2], dim=0)
+
+    assert torch.allclose(recomputed_output, output)
+
+    # w/ group_dim: batch and token wise scaling
+    module = BitLinear158(
+        in_features,
+        out_features,
+        bias=bias,
+        group_dim=-1,
+    )
+
+    input = torch.randn((batch_size, length, in_features))
+    output = module(input)
+
+    assert output.size() == (batch_size, length, out_features)
+
+    recomputed_input, _ = torch.split(input, [batch_size - 2, 2], dim=0)
+    recomputed_input, _ = torch.split(recomputed_input, [length // 2, length - length // 2], dim=1)
+    recomputed_output = module(recomputed_input)
+    output, _ = torch.split(output, [batch_size - 2, 2], dim=0)
+    output, _ = torch.split(output, [length // 2, length - length // 2], dim=1)
+
+    assert torch.allclose(recomputed_output, output)
 
 
 @pytest.mark.parametrize("bias", [True, False])
