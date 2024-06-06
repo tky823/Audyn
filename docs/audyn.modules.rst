@@ -10,3 +10,4 @@ Submodules
    :maxdepth: 1
 
    audyn.modules.vit
+   audyn.modules.bitnet

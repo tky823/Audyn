@@ -15,7 +15,7 @@ def download_birdclef2021_primary_labels(
     filename = "primary-labels.txt"
 
     if root is None:
-        root = os.path.join(audyn_cache_dir, "data", "birdclef2022")
+        root = os.path.join(audyn_cache_dir, "data", "birdclef2021")
 
     if url is None:
         url = "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev6/birdclef2021-primary-labels.txt"  # noqa: E501
