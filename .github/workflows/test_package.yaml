@@ -109,7 +109,15 @@ jobs:
           GITHUB_HEAD_REF: ${{ github.head_ref }}
         run: |
           pytest -vvv tests/torchhub/
-      - name: Pytest for package
+      - name: Pytest for package (Windows)
+        id: windows_pytest
+        if: matrix.os == 'windows-latest'
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: |
+          pytest -vvv --cov=audyn/ --cov-report=xml -p no:faulthandler tests/package/
+      - name: Pytest for package (Ubuntu & MacOS)
+        if: steps.windows_pytest.conclusion == 'skipped'
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
