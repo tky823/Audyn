@@ -1,19 +1,9 @@
 defaults:
   - record: hifigan
   - dataset: sortable-torch
-  - dataloader: sequential-batch
+  - dataloader: hifigan
   - clip_gradient: gan
   - _self_
-
-dataset:
-  train:
-    sort_key: waveform
-
-dataloader:
-  train:
-    batch_size: 16
-  validation:
-    batch_size: 1
 
 key_mapping:
   train:

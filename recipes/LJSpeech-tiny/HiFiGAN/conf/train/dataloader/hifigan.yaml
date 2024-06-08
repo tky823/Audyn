@@ -1,0 +1,8 @@
+defaults:
+  - sequential-batch
+  - _self_
+
+train:
+  batch_size: 4
+validation:
+  batch_size: 1
