@@ -83,7 +83,10 @@ class HiFiGANComposer(Composer):
 
         target_sample_rate = self.melspectrogram_transform.sample_rate
         waveform = sample[waveform_key]
-        sample_rate: int = sample[sample_rate_key].item()
+        sample_rate = sample[sample_rate_key]
+
+        if isinstance(sample_rate, torch.Tensor):
+            sample_rate = sample_rate.item()
 
         if waveform.dim() == 1:
             # HiFi-GAN requires 3D target as batch.
