@@ -4,5 +4,33 @@ defaults:
 
 train:
   batch_size: 4
+  collate_fn:
+    _target_: audyn.utils.data.Collator
+    composer:
+      _target_: audyn.utils.data.hifigan.HiFiGANComposer
+      melspectrogram_transform: ${data.melspectrogram}
+      slicer:
+        _target_: audyn.transforms.WaveformSlicer
+        length: ${data.audio.slice_length}
+      waveform_key: waveform
+      melspectrogram_key: log_melspectrogram
+      waveform_slice_key: waveform_slice
+      melspectrogram_slice_key: log_melspectrogram_slice
+      training: true
+      decode_audio_as_waveform: true
+      decode_audio_as_monoral: true
 validation:
   batch_size: 1
+  collate_fn:
+    _target_: ${...train.collate_fn._target_}
+    composer:
+      _target_: ${....train.collate_fn.composer._target_}
+      melspectrogram_transform: ${....train.collate_fn.composer.melspectrogram_transform}
+      slicer: ${....train.collate_fn.composer.slicer}
+      waveform_key: ${....train.collate_fn.composer.waveform_key}
+      melspectrogram_key: ${....train.collate_fn.composer.melspectrogram_key}
+      waveform_slice_key: ${....train.collate_fn.composer.waveform_slice_key}
+      melspectrogram_slice_key: ${....train.collate_fn.composer.melspectrogram_slice_key}
+      training: false
+      decode_audio_as_waveform: ${....train.collate_fn.composer.decode_audio_as_waveform}
+      decode_audio_as_monoral: ${....train.collate_fn.composer.decode_audio_as_monoral}
