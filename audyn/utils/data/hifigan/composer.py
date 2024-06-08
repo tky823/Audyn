@@ -107,10 +107,14 @@ class HiFiGANComposer(Composer):
         if melspectrogram_slice.dim() == 3:
             melspectrogram_slice = melspectrogram_slice.squeeze(dim=0)
 
-        sample[waveform_key] = waveform
-        sample[sample_rate_key] = torch.tensor(sample_rate, dtype=torch.long)
-        sample[melspectrogram_key] = melspectrogram
-        sample[waveform_slice_key] = waveform_slice
-        sample[melspectrogram_slice_key] = melspectrogram_slice
+        sample_rate = torch.tensor(sample_rate, dtype=torch.long)
 
-        return sample
+        output = {
+            waveform_key: waveform,
+            sample_rate_key: sample_rate,
+            melspectrogram_key: melspectrogram,
+            waveform_slice_key: waveform_slice,
+            melspectrogram_slice_key: melspectrogram_slice,
+        }
+
+        return output
