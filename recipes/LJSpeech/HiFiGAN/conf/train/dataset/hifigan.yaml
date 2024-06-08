@@ -1,0 +1,6 @@
+defaults:
+  - sortable-torch
+  - _self_
+
+train:
+  sort_key: waveform

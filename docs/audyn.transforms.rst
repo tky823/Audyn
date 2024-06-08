@@ -6,6 +6,12 @@ audyn.transforms
 Classes
 -------
 
+General modules
+^^^^^^^^^^^^^^^
+
+.. autoclass:: audyn.transforms.WaveformSlicer
+   :members: forward
+
 Librosa-related modules
 ^^^^^^^^^^^^^^^^^^^^^^^
 

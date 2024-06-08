@@ -1,5 +1,5 @@
 import re
-from typing import Any, Callable, Dict, Iterable, List
+from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 
 import torch
 import torch.nn as nn
@@ -10,6 +10,7 @@ __all__ = [
     "Composer",
     "AudioFeatureExtractionComposer",
     "SequentialComposer",
+    "LogarithmTaker",
 ]
 
 
@@ -131,5 +132,50 @@ class SequentialComposer(Composer):
         """Process to edit each sample."""
         for composer in self.composers:
             sample = composer.process(sample)
+
+        return sample
+
+
+class LogarithmTaker(Composer):
+    """Composer to take log.
+
+    Args:
+        input_key (str): Key of tensor to apply log.
+        output_key (str): Key of tensor to store log feature.
+        flooring (callable or float): Flooring function or value to avoid zero division.
+
+    """
+
+    def __init__(
+        self,
+        input_key: str,
+        output_key: str,
+        flooring: Optional[Union[Callable[[torch.Tensor], torch.Tensor], float]] = None,
+        decode_audio_as_waveform: bool = True,
+        decode_audio_as_monoral: bool = True,
+    ) -> None:
+        super().__init__(
+            decode_audio_as_waveform=decode_audio_as_waveform,
+            decode_audio_as_monoral=decode_audio_as_monoral,
+        )
+
+        self.input_key = input_key
+        self.output_key = output_key
+        self.flooring = flooring
+
+    def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        input_key = self.input_key
+        output_key = self.output_key
+
+        sample = super().process(sample)
+        feature = sample[input_key]
+
+        if self.flooring is not None:
+            if isinstance(self.flooring):
+                feature = torch.clamp(feature, min=self.flooring)
+            else:
+                feature = self.flooring(feature)
+
+        sample[output_key] = torch.log(feature)
 
         return sample

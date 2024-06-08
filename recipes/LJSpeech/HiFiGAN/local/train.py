@@ -1,7 +1,3 @@
-import functools
-from typing import Dict, Iterable, List, Optional
-
-import torch
 from omegaconf import DictConfig
 
 import audyn
@@ -20,12 +16,7 @@ from audyn.utils import (
     setup_config,
 )
 from audyn.utils.clip_grad import GANGradClipper
-from audyn.utils.data import (
-    BaseDataLoaders,
-    default_collate_fn,
-    slice_feautures,
-    take_log_features,
-)
+from audyn.utils.data import BaseDataLoaders
 from audyn.utils.driver import GANTrainer
 from audyn.utils.model import set_device
 
@@ -40,20 +31,10 @@ def main(config: DictConfig) -> None:
     train_loader = instantiate(
         config.train.dataloader.train,
         train_dataset,
-        collate_fn=functools.partial(
-            collate_fn,
-            data_config=config.data,
-            random_slice=True,
-        ),
     )
     validation_loader = instantiate(
         config.train.dataloader.validation,
         validation_dataset,
-        collate_fn=functools.partial(
-            collate_fn,
-            data_config=config.data,
-            random_slice=False,
-        ),
     )
     loaders = BaseDataLoaders(train_loader, validation_loader)
 
@@ -119,64 +100,6 @@ def main(config: DictConfig) -> None:
         config=config,
     )
     trainer.run()
-
-
-def collate_fn(
-    batch: List[Dict[str, torch.Tensor]],
-    data_config: DictConfig,
-    keys: Optional[Iterable[str]] = None,
-    random_slice: bool = True,
-) -> Dict[str, torch.Tensor]:
-    """Generate dict-based batch.
-
-    Args:
-        batch (list): Single batch to be collated.
-            Type of each data is expected ``Dict[str, torch.Tensor]``.
-        data_config (DictConfig): Config of data.
-        keys (iterable, optional): Keys to generate batch.
-            If ``None`` is given, all keys detected in ``batch`` are used.
-            Default: ``None``.
-        random_slice (bool): If ``random_slice=True``, waveform and
-            melspectrogram slices are selected at random. Default: ``True``.
-
-    Returns:
-        Dict of batch.
-
-    """
-    hop_length = data_config.melspectrogram.hop_length
-    slice_length = data_config.audio.slice_length
-
-    dict_batch = default_collate_fn(batch, keys=keys)
-
-    dict_batch["waveform"] = dict_batch["waveform"].unsqueeze(dim=1)
-
-    dict_batch = slice_feautures(
-        dict_batch,
-        slice_length=slice_length,
-        key_mapping={
-            "waveform": "waveform_slice",
-            "melspectrogram": "melspectrogram_slice",
-        },
-        hop_lengths={
-            "waveform": 1,
-            "melspectrogram": hop_length,
-        },
-        length_mapping={
-            "waveform": "waveform_length",
-            "melspectrogram": "melspectrogram_length",
-        },
-        random_slice=random_slice,
-    )
-    dict_batch = take_log_features(
-        dict_batch,
-        key_mapping={
-            "melspectrogram": "log_melspectrogram",
-            "melspectrogram_slice": "log_melspectrogram_slice",
-        },
-    )
-    dict_batch["max_waveform_slice_length"] = dict_batch["waveform_slice"].size(-1)
-
-    return dict_batch
 
 
 if __name__ == "__main__":
