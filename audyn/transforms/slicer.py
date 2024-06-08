@@ -39,7 +39,7 @@ class WaveformSlicer(nn.Module):
         self.sample_rate = sample_rate
 
     def forward(self, waveform: torch.Tensor) -> torch.Tensor:
-        """Forward pass of WaveformSlicer.
+        r"""Forward pass of WaveformSlicer.
 
         Args:
             waveform (torch.Tensor): Waveform of shape (*, length).
