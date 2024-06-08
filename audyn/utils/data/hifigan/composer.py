@@ -58,11 +58,21 @@ class HiFiGANComposer(Composer):
         self.training = training
 
         if training:
-            self.slicer.train()
-            self.melspectrogram_transform.train()
+            if hasattr(self.slicer, "train") and callable(self.slicer.train):
+                self.slicer.train()
+
+            if hasattr(self.melspectrogram_transform, "train") and callable(
+                self.melspectrogram_transform.train
+            ):
+                self.melspectrogram_transform.train()
         else:
-            self.slicer.eval()
-            self.melspectrogram_transform.eval()
+            if hasattr(self.slicer, "eval") and callable(self.slicer.eval):
+                self.slicer.eval()
+
+            if hasattr(self.melspectrogram_transform, "eval") and callable(
+                self.melspectrogram_transform.eval
+            ):
+                self.melspectrogram_transform.eval()
 
     def process(self, sample: Dict[str, torch.Any]) -> Dict[str, torch.Any]:
         waveform_key = self.waveform_key
