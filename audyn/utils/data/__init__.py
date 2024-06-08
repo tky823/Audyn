@@ -6,7 +6,7 @@ from omegaconf import DictConfig
 from torch.utils.data import DataLoader
 
 from .collator import Collator, default_collate_fn, rename_webdataset_keys
-from .composer import AudioFeatureExtractionComposer, Composer, SequentialComposer
+from .composer import AudioFeatureExtractionComposer, Composer, LogarithmTaker, SequentialComposer
 from .dataloader import (
     DistributedDataLoader,
     DistributedDynamicBatchDataLoader,
@@ -29,6 +29,7 @@ __all__ = [
     "Composer",
     "AudioFeatureExtractionComposer",
     "SequentialComposer",
+    "LogarithmTaker",
     "Collator",
     "slice_feautures",
     "take_log_features",
