@@ -12,8 +12,11 @@ from ...modules.bitnet import (
 
 __all__ = [
     "convert_to_bitlinear158",
+    "convert_to_bitlinear158_inference",
     "convert_linear_to_bitlinear158",
     "convert_mha_to_bitmha158",
+    "convert_bitlinear158_to_bitlinear158_inference",
+    "convert_bitmha158_to_bitmha158_inference",
 ]
 
 
