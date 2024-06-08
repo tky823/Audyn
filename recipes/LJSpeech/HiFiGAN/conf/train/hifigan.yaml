@@ -1,6 +1,6 @@
 defaults:
   - record: hifigan
-  - dataset: sortable-torch
+  - dataset: hifigan
   - dataloader: hifigan
   - clip_gradient: gan
   - _self_
