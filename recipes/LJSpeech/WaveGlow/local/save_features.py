@@ -3,17 +3,18 @@ from concurrent.futures import ProcessPoolExecutor
 
 import torch
 import torchaudio
-import torchaudio.functional as aF
-import torchaudio.transforms as aT
 import webdataset as wds
 from omegaconf import DictConfig
 from tqdm import tqdm
 
 import audyn
+from audyn.utils import setup_config
 
 
 @audyn.main()
 def main(config: DictConfig) -> None:
+    setup_config(config)
+
     dump_format = config.preprocess.dump_format
     list_path = config.preprocess.list_path
     wav_dir = config.preprocess.wav_dir
@@ -22,8 +23,6 @@ def main(config: DictConfig) -> None:
     assert list_path is not None, "Specify preprocess.list_path."
     assert wav_dir is not None, "Specify preprocess.wav_dir."
     assert feature_dir is not None, "Specify preprocess.feature_dir."
-
-    melspectrogram_transform = aT.MelSpectrogram(**config.data.melspectrogram)
 
     os.makedirs(feature_dir, exist_ok=True)
 
@@ -45,7 +44,6 @@ def main(config: DictConfig) -> None:
                             filename=filename,
                             wav_path=wav_path,
                             feature_path=feature_path,
-                            melspectrogram_transform=melspectrogram_transform,
                         )
                         futures.append(future)
 
@@ -62,7 +60,6 @@ def main(config: DictConfig) -> None:
                         filename=filename,
                         wav_path=wav_path,
                         feature_path=feature_path,
-                        melspectrogram_transform=melspectrogram_transform,
                     )
     else:
         template_path = os.path.join(feature_dir, "%d.tar")
@@ -78,7 +75,6 @@ def main(config: DictConfig) -> None:
                     sink,
                     filename=filename,
                     wav_path=wav_path,
-                    melspectrogram_transform=melspectrogram_transform,
                 )
 
 
@@ -86,25 +82,14 @@ def process_torch(
     filename: str,
     wav_path: str,
     feature_path: str,
-    melspectrogram_transform: aT.MelSpectrogram = None,
 ) -> None:
     feature = {}
 
     waveform, sample_rate = torchaudio.load(wav_path)
-
-    if sample_rate != melspectrogram_transform.sample_rate:
-        # TODO: torchaudio.transforms.Resample
-        waveform = aF.resample(waveform, sample_rate, melspectrogram_transform.sample_rate)
-        sample_rate = melspectrogram_transform.sample_rate
-
     waveform = waveform.mean(dim=0)
-    melspectrogram = melspectrogram_transform(waveform)
 
     feature["waveform"] = waveform
-    feature["melspectrogram"] = melspectrogram
-    feature["waveform_length"] = torch.tensor(waveform.size(-1), dtype=torch.long)
-    feature["melspectrogram_length"] = torch.tensor(melspectrogram.size(-1), dtype=torch.long)
-
+    feature["sample_rate"] = torch.tensor(sample_rate, dtype=torch.long)
     feature["filename"] = filename
 
     feature_dir = os.path.dirname(feature_path)
@@ -116,27 +101,15 @@ def process_webdataset(
     sink: wds.ShardWriter,
     filename: str,
     wav_path: str,
-    melspectrogram_transform: aT.MelSpectrogram = None,
 ) -> None:
     feature = {}
 
     waveform, sample_rate = torchaudio.load(wav_path)
-
-    if sample_rate != melspectrogram_transform.sample_rate:
-        # TODO: torchaudio.transforms.Resample
-        waveform = aF.resample(waveform, sample_rate, melspectrogram_transform.sample_rate)
-        sample_rate = melspectrogram_transform.sample_rate
-
     waveform = waveform.mean(dim=0)
-    melspectrogram = melspectrogram_transform(waveform)
 
     feature["__key__"] = filename
-
     feature["waveform.pth"] = waveform
-    feature["melspectrogram.pth"] = melspectrogram
-    feature["waveform_length.pth"] = torch.tensor(waveform.size(-1), dtype=torch.long)
-    feature["melspectrogram_length.pth"] = torch.tensor(melspectrogram.size(-1), dtype=torch.long)
-
+    feature["sample_rate.pth"] = torch.tensor(sample_rate, dtype=torch.long)
     feature["filename.txt"] = filename
 
     sink.write(feature)
