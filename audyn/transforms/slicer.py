@@ -42,10 +42,10 @@ class WaveformSlicer(nn.Module):
         r"""Forward pass of WaveformSlicer.
 
         Args:
-            waveform (torch.Tensor): Waveform of shape (*, length).
+            waveform (torch.Tensor): Waveform of shape (\*, length).
 
         Returns:
-            torch.Tensor: Sliced waveform of shape (*, slice_length).
+            torch.Tensor: Sliced waveform of shape (\*, slice_length).
 
         .. note::
 
