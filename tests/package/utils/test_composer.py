@@ -79,6 +79,13 @@ def test_hifigan_composer(audioset_samples: Dict[str, Dict[str, Any]]) -> None:
     list_batch = composer(list_batch)
 
     for sample in list_batch:
+        assert {
+            audio_key,
+            "sample_rate",
+            "melspectrogram",
+            "waveform_slice",
+            "melspectrogram_slice",
+        } == set(sample.keys())
         assert sample["waveform_slice"].size(-1) == length
 
 
