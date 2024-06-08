@@ -12,7 +12,21 @@ __all__ = ["HiFiGANComposer"]
 
 
 class HiFiGANComposer(Composer):
-    """Composer for HiFiGAN."""
+    """Composer for HiFiGAN.
+
+    Args:
+        melspectrogram_transform (HiFiGANMelSpectrogram or nn.Module): Module to transform waveform
+            to Mel-spectrogram.
+        slicer (WaveformSlicer or nn.Module): Wavefor slicer.
+        waveform_key (str): Key of waveform in given sample.
+        sample_rate_key (str): Key of sampling rate in given sample.
+        melspectrogram_key (str): Key of Mel-spectrogram to add to given sample.
+        waveform_slice_key (str): Key of sliced waveform to add to given sample.
+        melspectrogram_slice_key (str): Key of sliced Mel-spectrogram to add to given sample.
+        training (bool): If ``training=True``, ``melspectrogram_transform.train()`` and
+            ``slicer.train()`` are called. Otherwise, ``.eval()`` is called.
+
+    """
 
     def __init__(
         self,
