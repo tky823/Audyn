@@ -9,6 +9,7 @@ Submodules
 .. toctree::
    :maxdepth: 1
 
+   audyn.utils.data.hifigan
    audyn.utils.data.birdclef
 
 Create dataset
