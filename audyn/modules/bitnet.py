@@ -1,3 +1,4 @@
+import math
 from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
 import torch
@@ -20,7 +21,9 @@ __all__ = [
 IS_TORCH_LT_2_0 = version.parse(torch.__version__) < version.parse("2.0")
 
 
-class BitLinear158(nn.Linear):
+class BitLinear158(nn.Module):
+    """BitLinear using ternary (i.e. 1.58bit) weight."""
+
     def __init__(
         self,
         in_features: int,
@@ -37,16 +40,27 @@ class BitLinear158(nn.Linear):
             "dtype": dtype,
         }
 
-        super().__init__(
-            in_features,
-            out_features,
-            bias=bias,
-            **factory_kwargs,
-        )
+        super().__init__()
+
+        weight = torch.empty((out_features, in_features), **factory_kwargs)
+        weight = nn.Parameter(weight, requires_grad=True)
+        self.register_parameter("weight", weight)
+
+        if bias:
+            bias = torch.empty((out_features,), **factory_kwargs)
+            bias = nn.Parameter(bias, requires_grad=True)
+            self.register_parameter("bias", bias)
+        else:
+            self.register_parameter("bias", None)
+
+        self.in_features = in_features
+        self.out_features = out_features
 
         self.dim = dim
         self.bits = bits
         self.eps = eps
+
+        self._reset_parameters()
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         output = bitlinear158(
@@ -59,6 +73,15 @@ class BitLinear158(nn.Linear):
         )
 
         return output
+
+    def _reset_parameters(self) -> None:
+        # https://github.com/pytorch/pytorch/blob/b66e3f0957b96b058c9b632ca60833d9717a9d8a/torch/nn/modules/linear.py#L106-L114
+        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+
+        if self.bias is not None:
+            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.weight)
+            bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+            nn.init.uniform_(self.bias, -bound, bound)
 
     def extra_repr(self) -> str:
         in_features = self.in_features
