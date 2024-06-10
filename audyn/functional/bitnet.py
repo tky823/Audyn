@@ -16,13 +16,13 @@ def bitlinear158(
     input: torch.Tensor,
     weight: torch.Tensor,
     bias: Optional[torch.Tensor] = None,
-    group_dim: Optional[Union[int, Sequence[int]]] = None,
+    dim: Optional[Union[int, Sequence[int]]] = None,
     bits: int = 8,
     eps: float = 1e-5,
 ) -> torch.Tensor:
     """BitLinear158 function."""
     q = 2 ** (bits - 1)
-    quantized_input, gamma = quantize_input(input, group_dim=group_dim, bits=bits, eps=eps)
+    quantized_input, gamma = quantize_input(input, dim=dim, bits=bits, eps=eps)
     quantized_weight, scale = quantize_weight(weight, eps=eps)
     x = F.linear(quantized_input, quantized_weight, bias=bias)
     output = x * (scale * gamma) / q
@@ -35,7 +35,7 @@ def bitlinear158_inference(
     quantized_weight: torch.Tensor,
     scale: torch.Tensor,
     bias: Optional[torch.Tensor] = None,
-    group_dim: Optional[Union[int, Sequence[int]]] = None,
+    dim: Optional[Union[int, Sequence[int]]] = None,
     bits: int = 8,
     eps: float = 1e-5,
 ) -> torch.Tensor:
@@ -45,7 +45,7 @@ def bitlinear158_inference(
     input, quantized weight, scale, and optional bias.
     """
     q = 2 ** (bits - 1)
-    quantized_input, gamma = quantize_input(input, group_dim=group_dim, bits=bits, eps=eps)
+    quantized_input, gamma = quantize_input(input, dim=dim, bits=bits, eps=eps)
     x = F.linear(quantized_input, quantized_weight, bias=bias)
     output = x * (scale * gamma) / q
 
@@ -93,45 +93,45 @@ def round_clamp(
 
 def quantize_input(
     input: torch.Tensor,
-    group_dim: Optional[Union[int, Sequence[int]]] = None,
+    dim: Optional[Union[int, Sequence[int]]] = None,
     bits: int = 8,
     eps: float = 1e-5,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     q = 2 ** (bits - 1)
     abs_input = torch.abs(input)
 
-    if group_dim is None:
+    if dim is None:
         gamma = torch.max(abs_input)
     else:
         # compute max per group
         # e.g. When abs_input.size() is (4, 10, 3, 5)
-        #      and group_dim is (1, 3), gamma.size()
+        #      and dim is (1, 3), gamma.size()
         #      becomes (4, 1, 3, 1).
         n_dims = abs_input.dim()
         dims = list(range(n_dims))
 
-        if isinstance(group_dim, int):
+        if isinstance(dim, int):
             group_dims = []
 
-            if group_dim < 0:
-                group_dim = n_dims + group_dim
+            if dim < 0:
+                dim = n_dims + dim
 
-            dim = dims.pop(group_dim)
-            group_dims.append(dim)
+            group_dim = dims.pop(dim)
+            group_dims.append(group_dim)
             batch_dims = dims
         else:
             group_dims = []
 
-            for dim in group_dim:
-                if dim < 0:
-                    dim = n_dims + dim
+            for _dim in dim:
+                if _dim < 0:
+                    _dim = n_dims + _dim
 
-                group_dims.append(dim)
+                group_dims.append(_dim)
 
             group_dims = sorted(group_dims)
 
-            for dim in group_dims[::-1]:
-                dims.pop(dim)
+            for _dim in group_dims[::-1]:
+                dims.pop(_dim)
 
             batch_dims = dims
 
@@ -142,8 +142,8 @@ def quantize_input(
         flattened_abs_input = torch.flatten(abs_input, start_dim=start_dim)
         gamma, _ = torch.max(flattened_abs_input, dim=-1)
 
-        for dim in group_dims:
-            gamma = gamma.unsqueeze(dim=dim)
+        for _dim in group_dims:
+            gamma = gamma.unsqueeze(dim=_dim)
 
     gamma = torch.clamp(gamma, min=eps)
     x = input * q / gamma
