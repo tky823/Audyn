@@ -22,7 +22,7 @@ __all__ = [
 
 def convert_to_bitlinear158(
     module: nn.Module,
-    group_dim: Optional[Union[int, Sequence[int]]] = None,
+    dim: Optional[Union[int, Sequence[int]]] = None,
     bits: int = 8,
     eps: float = 1e-5,
     remove_bias: bool = False,
@@ -45,7 +45,7 @@ def convert_to_bitlinear158(
     elif isinstance(module, nn.Linear):
         module = convert_linear_to_bitlinear158(
             module,
-            group_dim=group_dim,
+            dim=dim,
             bits=bits,
             eps=eps,
             remove_bias=remove_bias,
@@ -53,7 +53,7 @@ def convert_to_bitlinear158(
     elif isinstance(module, nn.MultiheadAttention):
         module = convert_mha_to_bitmha158(
             module,
-            group_dim=group_dim,
+            dim=dim,
             bits=bits,
             eps=eps,
             remove_bias=remove_bias,
@@ -65,7 +65,7 @@ def convert_to_bitlinear158(
             elif isinstance(child_module, nn.Linear):
                 converted = convert_linear_to_bitlinear158(
                     child_module,
-                    group_dim=group_dim,
+                    dim=dim,
                     bits=bits,
                     eps=eps,
                     remove_bias=remove_bias,
@@ -73,7 +73,7 @@ def convert_to_bitlinear158(
             elif isinstance(child_module, nn.MultiheadAttention):
                 converted = convert_mha_to_bitmha158(
                     child_module,
-                    group_dim=group_dim,
+                    dim=dim,
                     bits=bits,
                     eps=eps,
                     remove_bias=remove_bias,
@@ -81,7 +81,7 @@ def convert_to_bitlinear158(
             else:
                 converted = convert_to_bitlinear158(
                     child_module,
-                    group_dim=group_dim,
+                    dim=dim,
                     bits=bits,
                     eps=eps,
                     remove_bias=remove_bias,
@@ -94,7 +94,7 @@ def convert_to_bitlinear158(
 
 def convert_to_bitlinear158_inference(
     module: nn.Module,
-    group_dim: Optional[Union[int, Sequence[int]]] = None,
+    dim: Optional[Union[int, Sequence[int]]] = None,
     bits: int = 8,
     eps: float = 1e-5,
     remove_bias: bool = False,
@@ -117,7 +117,7 @@ def convert_to_bitlinear158_inference(
     """
     module = convert_to_bitlinear158(
         module,
-        group_dim=group_dim,
+        dim=dim,
         bits=bits,
         eps=eps,
         remove_bias=remove_bias,
@@ -142,7 +142,7 @@ def convert_to_bitlinear158_inference(
             else:
                 converted = convert_to_bitlinear158_inference(
                     child_module,
-                    group_dim=group_dim,
+                    dim=dim,
                     bits=bits,
                     eps=eps,
                     remove_bias=remove_bias,
@@ -155,7 +155,7 @@ def convert_to_bitlinear158_inference(
 
 def convert_linear_to_bitlinear158(
     module: nn.Linear,
-    group_dim: Optional[Union[int, Sequence[int]]] = None,
+    dim: Optional[Union[int, Sequence[int]]] = None,
     bits: int = 8,
     eps: float = 1e-5,
     remove_bias: bool = False,
@@ -178,7 +178,7 @@ def convert_linear_to_bitlinear158(
         in_features,
         out_features,
         bias=bias,
-        group_dim=group_dim,
+        dim=dim,
         bits=bits,
         eps=eps,
         **factory_kwargs,
@@ -193,7 +193,7 @@ def convert_linear_to_bitlinear158(
 
 def convert_mha_to_bitmha158(
     module: nn.MultiheadAttention,
-    group_dim: Optional[Union[int, Sequence[int]]] = None,
+    dim: Optional[Union[int, Sequence[int]]] = None,
     bits: int = 8,
     eps: float = 1e-5,
     remove_bias: bool = False,
@@ -246,7 +246,7 @@ def convert_mha_to_bitmha158(
         kdim=kdim,
         vdim=vdim,
         batch_first=batch_first,
-        group_dim=group_dim,
+        dim=dim,
         bits=bits,
         eps=eps,
         **factory_kwargs,
