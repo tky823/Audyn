@@ -1,5 +1,6 @@
+import copy
 import math
-from typing import Any, Dict, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Sequence, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -9,6 +10,7 @@ from torch.nn.modules.linear import NonDynamicallyQuantizableLinear
 
 from ..functional.activation import scaled_dot_product_attention
 from ..functional.bitnet import bitlinear158, bitlinear158_inference, quantize_weight
+from .normalization import RMSNorm
 
 __all__ = [
     "BitLinear158",
@@ -29,6 +31,7 @@ class BitLinear158(nn.Module):
         in_features: int,
         out_features: int,
         bias: bool = True,
+        norm: Optional[Union[str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]] = None,
         dim: Optional[Union[int, Sequence[int]]] = None,
         bits: int = 8,
         eps: float = 1e-5,
@@ -41,6 +44,16 @@ class BitLinear158(nn.Module):
         }
 
         super().__init__()
+
+        if norm is not None:
+            if isinstance(norm, str):
+                norm = _get_normalization(norm, in_features, eps=eps)
+            elif isinstance(norm, nn.Module) or callable(norm):
+                pass
+            else:
+                raise NotImplementedError(f"{type(norm)} is not supported as norm.")
+
+        self.norm = norm
 
         weight = torch.empty((out_features, in_features), **factory_kwargs)
         weight = nn.Parameter(weight, requires_grad=True)
@@ -63,8 +76,13 @@ class BitLinear158(nn.Module):
         self._reset_parameters()
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        if self.norm is None:
+            x = input
+        else:
+            x = self.norm(input)
+
         output = bitlinear158(
-            input,
+            x,
             self.weight,
             bias=self.bias,
             dim=self.dim,
@@ -113,6 +131,7 @@ class BitMultiheadAttention158(nn.Module):
         kdim: Optional[int] = None,
         vdim: Optional[int] = None,
         batch_first: bool = False,
+        norm: Optional[Union[str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]] = None,
         dim: Optional[Union[int, Sequence[int]]] = None,
         bits: int = 8,
         eps: float = 1e-5,
@@ -147,6 +166,26 @@ class BitMultiheadAttention158(nn.Module):
         assert (
             self.head_dim * num_heads == self.embed_dim
         ), "embed_dim must be divisible by num_heads"
+
+        if norm is None:
+            query_norm = None
+            key_norm = None
+            value_norm = None
+        else:
+            if isinstance(norm, str):
+                query_norm = _get_normalization(norm, embed_dim, eps=eps)
+                key_norm = _get_normalization(norm, self.kdim, eps=eps)
+                value_norm = _get_normalization(norm, self.vdim, eps=eps)
+            elif isinstance(norm, nn.Module) or callable(norm):
+                query_norm = copy.deepcopy(norm)
+                key_norm = copy.deepcopy(norm)
+                value_norm = copy.deepcopy(norm)
+            else:
+                raise NotImplementedError(f"{type(norm)} is not supported as norm.")
+
+        self.query_norm = query_norm
+        self.key_norm = key_norm
+        self.value_norm = value_norm
 
         if not self._qkv_same_embed_dim:
             self.q_proj_weight = nn.Parameter(
@@ -199,6 +238,7 @@ class BitMultiheadAttention158(nn.Module):
         # convert out_proj after self._reset_parameters
         self.out_proj = convert_linear_to_bitlinear158(
             self.out_proj,
+            norm=copy.deepcopy(norm),
             dim=dim,
             bits=bits,
             eps=eps,
@@ -281,6 +321,15 @@ class BitMultiheadAttention158(nn.Module):
             q_proj_bias, k_proj_bias, v_proj_bias = torch.split(
                 in_proj_bias, [embed_dim] * 3, dim=0
             )
+
+        if self.query_norm is not None:
+            query = self.query_norm(query)
+
+        if self.key_norm is not None:
+            key = self.key_norm(key)
+
+        if self.value_norm is not None:
+            value = self.value_norm(value)
 
         q = bitlinear158(
             query,
@@ -381,12 +430,15 @@ class BitLinear158Inference(nn.Module):
     def __init__(
         self,
         weight: Union[nn.Parameter, torch.Tensor],
+        bias: Optional[Union[nn.Parameter, torch.Tensor]] = None,
+        norm: Optional[Union[nn.Module, Callable[[torch.Tensor], torch.Tensor]]] = None,
         dim: Optional[Union[int, Sequence[int]]] = None,
         bits: int = 8,
-        bias: Optional[Union[nn.Parameter, torch.Tensor]] = None,
         eps: float = 1e-5,
     ) -> None:
         super().__init__()
+
+        self.norm = copy.deepcopy(norm)
 
         quantized_weight, scale = quantize_weight(weight.data)
 
@@ -407,8 +459,13 @@ class BitLinear158Inference(nn.Module):
         self.eps = eps
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        if self.norm is None:
+            x = input
+        else:
+            x = self.norm(input)
+
         output = bitlinear158_inference(
-            input,
+            x,
             self.quantized_weight,
             self.scale,
             bias=self.bias,
@@ -423,9 +480,10 @@ class BitLinear158Inference(nn.Module):
     def build_from_bitlinear158(cls, module: BitLinear158) -> "BitLinear158Inference":
         converted = cls(
             module.weight,
+            bias=module.bias,
+            norm=module.norm,
             dim=module.dim,
             bits=module.bits,
-            bias=module.bias,
             eps=module.eps,
         )
 
@@ -464,6 +522,10 @@ class BitMultiheadAttention158Inference(nn.Module):
         q_proj_weight: Optional[torch.Tensor] = None,
         k_proj_weight: Optional[torch.Tensor] = None,
         v_proj_weight: Optional[torch.Tensor] = None,
+        query_norm: Optional[Union[nn.Module, Callable[[torch.Tensor], torch.Tensor]]] = None,
+        key_norm: Optional[Union[nn.Module, Callable[[torch.Tensor], torch.Tensor]]] = None,
+        value_norm: Optional[Union[nn.Module, Callable[[torch.Tensor], torch.Tensor]]] = None,
+        out_norm: Optional[Union[nn.Module, Callable[[torch.Tensor], torch.Tensor]]] = None,
         batch_first: bool = False,
         dim: Optional[Union[int, Sequence[int]]] = None,
         bits: int = 8,
@@ -511,6 +573,10 @@ class BitMultiheadAttention158Inference(nn.Module):
                 in_proj_weight, [embed_dim] * 3, dim=-2
             )
 
+        self.query_norm = copy.deepcopy(query_norm)
+        self.key_norm = copy.deepcopy(key_norm)
+        self.value_norm = copy.deepcopy(value_norm)
+
         quantized_q_proj_weight, q_proj_scale = quantize_weight(q_proj_weight, eps=eps)
         quantized_k_proj_weight, k_proj_scale = quantize_weight(k_proj_weight, eps=eps)
         quantized_v_proj_weight, v_proj_scale = quantize_weight(v_proj_weight, eps=eps)
@@ -543,9 +609,10 @@ class BitMultiheadAttention158Inference(nn.Module):
 
         self.out_proj = BitLinear158Inference(
             out_proj_weight,
+            bias=out_proj_bias,
+            norm=out_norm,
             dim=dim,
             bits=bits,
-            bias=out_proj_bias,
             eps=eps,
         )
 
@@ -645,6 +712,15 @@ class BitMultiheadAttention158Inference(nn.Module):
                 in_proj_bias, [embed_dim] * 3, dim=0
             )
 
+        if self.query_norm is not None:
+            query = self.query_norm(query)
+
+        if self.key_norm is not None:
+            key = self.key_norm(key)
+
+        if self.value_norm is not None:
+            value = self.value_norm(value)
+
         q = bitlinear158_inference(
             query,
             quantized_q_proj_weight,
@@ -727,6 +803,10 @@ class BitMultiheadAttention158Inference(nn.Module):
             q_proj_weight=module.q_proj_weight,
             k_proj_weight=module.k_proj_weight,
             v_proj_weight=module.v_proj_weight,
+            query_norm=module.query_norm,
+            key_norm=module.key_norm,
+            value_norm=module.value_norm,
+            out_norm=module.out_proj.norm,
             batch_first=module.batch_first,
             dim=module.dim,
             bits=module.bits,
@@ -807,3 +887,26 @@ def swap_group_dim_if_necessary(
         new_dim = _type(new_dim)
 
     return new_dim
+
+
+def _get_normalization(
+    normalization: str,
+    num_features: int,
+    eps: float = 1e-5,
+) -> nn.Module:
+    """Get normalization module by str.
+
+    Args:
+        normalization (str): Name of normalization module.
+        eps (float): Tiny value to avoid zero division.
+
+    Returns:
+        nn.Module: Normalization module.
+
+    """
+    if normalization.lower() in ["layer", "layer_norm", "ln"]:
+        return nn.LayerNorm(num_features, eps=eps)
+    elif normalization.lower() == "rms":
+        return RMSNorm(num_features, eps=eps)
+
+    raise RuntimeError(f"normalization should be layer/rms, not {normalization}.")
