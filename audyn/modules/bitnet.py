@@ -5,10 +5,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from packaging import version
+from torch.nn.modules.linear import NonDynamicallyQuantizableLinear
 
 from ..functional.activation import scaled_dot_product_attention
 from ..functional.bitnet import bitlinear158, bitlinear158_inference, quantize_weight
-from .activation import _MultiheadAttention
 
 __all__ = [
     "BitLinear158",
@@ -96,7 +96,7 @@ class BitLinear158(nn.Module):
         )
 
 
-class BitMultiheadAttention158(_MultiheadAttention):
+class BitMultiheadAttention158(nn.Module):
     """Multihead attention using BitLinear158.
 
     For parameters, see details of nn.MultiheadAttention.
@@ -116,30 +116,73 @@ class BitMultiheadAttention158(_MultiheadAttention):
         dim: Optional[Union[int, Sequence[int]]] = None,
         bits: int = 8,
         eps: float = 1e-5,
-        **kwargs,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
     ) -> None:
-        super().__init__(
-            embed_dim,
-            num_heads,
-            dropout=dropout,
-            bias=bias,
-            add_bias_kv=add_bias_kv,
-            add_zero_attn=add_zero_attn,
-            kdim=kdim,
-            vdim=vdim,
-            batch_first=batch_first,
-            **kwargs,
-        )
-
         from ..utils.model.bitnet import convert_linear_to_bitlinear158
 
-        self.out_proj = convert_linear_to_bitlinear158(
-            self.out_proj,
-            dim=dim,
-            bits=bits,
-            eps=eps,
-            remove_bias=False,
+        if embed_dim <= 0 or num_heads <= 0:
+            raise ValueError(
+                f"embed_dim and num_heads must be greater than 0,"
+                f" got embed_dim={embed_dim} and num_heads={num_heads} instead"
+            )
+
+        factory_kwargs = {
+            "device": device,
+            "dtype": dtype,
+        }
+
+        super().__init__()
+
+        self.embed_dim = embed_dim
+        self.kdim = kdim if kdim is not None else embed_dim
+        self.vdim = vdim if vdim is not None else embed_dim
+        self._qkv_same_embed_dim = self.kdim == embed_dim and self.vdim == embed_dim
+
+        self.num_heads = num_heads
+        self.dropout = dropout
+        self.batch_first = batch_first
+        self.head_dim = embed_dim // num_heads
+
+        assert (
+            self.head_dim * num_heads == self.embed_dim
+        ), "embed_dim must be divisible by num_heads"
+
+        if not self._qkv_same_embed_dim:
+            self.q_proj_weight = nn.Parameter(
+                torch.empty((embed_dim, embed_dim), **factory_kwargs)
+            )
+            self.k_proj_weight = nn.Parameter(
+                torch.empty((embed_dim, self.kdim), **factory_kwargs)
+            )
+            self.v_proj_weight = nn.Parameter(
+                torch.empty((embed_dim, self.vdim), **factory_kwargs)
+            )
+            self.register_parameter("in_proj_weight", None)
+        else:
+            self.in_proj_weight = nn.Parameter(
+                torch.empty((3 * embed_dim, embed_dim), **factory_kwargs)
+            )
+            self.register_parameter("q_proj_weight", None)
+            self.register_parameter("k_proj_weight", None)
+            self.register_parameter("v_proj_weight", None)
+
+        if bias:
+            self.in_proj_bias = nn.Parameter(torch.empty(3 * embed_dim, **factory_kwargs))
+        else:
+            self.register_parameter("in_proj_bias", None)
+
+        self.out_proj = NonDynamicallyQuantizableLinear(
+            embed_dim, embed_dim, bias=bias, **factory_kwargs
         )
+
+        if add_bias_kv:
+            self.bias_k = nn.Parameter(torch.empty((1, 1, embed_dim), **factory_kwargs))
+            self.bias_v = nn.Parameter(torch.empty((1, 1, embed_dim), **factory_kwargs))
+        else:
+            self.bias_k = self.bias_v = None
+
+        self.add_zero_attn = add_zero_attn
 
         self.dim = dim
         self.bits = bits
@@ -150,6 +193,17 @@ class BitMultiheadAttention158(_MultiheadAttention):
 
         if add_zero_attn:
             raise NotImplementedError("add_zero_attn is not supported.")
+
+        self._reset_parameters()
+
+        # convert out_proj after self._reset_parameters
+        self.out_proj = convert_linear_to_bitlinear158(
+            self.out_proj,
+            dim=dim,
+            bits=bits,
+            eps=eps,
+            remove_bias=False,
+        )
 
     def forward(
         self,
@@ -289,6 +343,33 @@ class BitMultiheadAttention158(_MultiheadAttention):
             attn_weights = None
 
         return output, attn_weights
+
+    def validate_kwargs(self, kwargs: Dict[str, Any]) -> None:
+        """Validate keyword arguments for backward compatibility."""
+        valid_keys = set()
+
+        if not IS_TORCH_LT_2_0:
+            valid_keys.add("is_causal")
+
+        invalid_keys = set(kwargs.keys()) - valid_keys
+
+        assert invalid_keys == set(), f"Invalid keys {invalid_keys} are given."
+
+    def _reset_parameters(self) -> None:
+        if self._qkv_same_embed_dim:
+            nn.init.xavier_uniform_(self.in_proj_weight)
+        else:
+            nn.init.xavier_uniform_(self.q_proj_weight)
+            nn.init.xavier_uniform_(self.k_proj_weight)
+            nn.init.xavier_uniform_(self.v_proj_weight)
+
+        if self.in_proj_bias is not None:
+            nn.init.constant_(self.in_proj_bias, 0.0)
+            nn.init.constant_(self.out_proj.bias, 0.0)
+        if self.bias_k is not None:
+            nn.init.xavier_normal_(self.bias_k)
+        if self.bias_v is not None:
+            nn.init.xavier_normal_(self.bias_v)
 
 
 class BitLinear158Inference(nn.Module):
