@@ -17,7 +17,7 @@ def test_bitlinear158(bias: bool) -> None:
     in_features, out_features = 4, 2
     length = 9
 
-    # w/o group_dim
+    # w/o dim
     module = BitLinear158(in_features, out_features, bias=bias)
 
     input = torch.randn((batch_size, length, in_features))
@@ -31,12 +31,12 @@ def test_bitlinear158(bias: bool) -> None:
         if p.requires_grad:
             assert p.grad is not None
 
-    # w/ group_dim: batch-wise scaling
+    # w/ dim: batch-wise scaling
     module = BitLinear158(
         in_features,
         out_features,
         bias=bias,
-        group_dim=(1, -1),
+        dim=(1, -1),
     )
 
     input = torch.randn((batch_size, length, in_features))
@@ -50,12 +50,12 @@ def test_bitlinear158(bias: bool) -> None:
 
     assert torch.allclose(recomputed_output, output)
 
-    # w/ group_dim: batch and token wise scaling
+    # w/ dim: batch and token wise scaling
     module = BitLinear158(
         in_features,
         out_features,
         bias=bias,
-        group_dim=-1,
+        dim=-1,
     )
 
     input = torch.randn((batch_size, length, in_features))
@@ -112,18 +112,18 @@ def test_bitmha158(bias: bool, batch_first: bool) -> None:
         if p.requires_grad:
             assert p.grad is not None
 
-    # w/ group_dim: batch-wise scaling
+    # w/ dim: batch-wise scaling
     if batch_first:
-        group_dim = (1, -1)
+        dim = (1, -1)
     else:
-        group_dim = (0, -1)
+        dim = (0, -1)
 
     module = BitMultiheadAttention158(
         embed_dim,
         num_heads,
         bias=bias,
         batch_first=batch_first,
-        group_dim=group_dim,
+        dim=dim,
     )
     module.eval()
 
@@ -163,13 +163,13 @@ def test_bitmha158(bias: bool, batch_first: bool) -> None:
     assert torch.allclose(recomputed_output, output)
     assert torch.allclose(recomputed_attn_weights, attn_weights)
 
-    # w/ group_dim: batch and token wise scaling
+    # w/ dim: batch and token wise scaling
     module = BitMultiheadAttention158(
         embed_dim,
         num_heads,
         bias=bias,
         batch_first=batch_first,
-        group_dim=-1,
+        dim=-1,
     )
     module.eval()
 
@@ -262,12 +262,12 @@ def test_bitlinear158_inference(bias: bool) -> None:
 
     assert torch.allclose(inference_output, output)
 
-    # w/ group_dim: batch-wise scaling
+    # w/ dim: batch-wise scaling
     module = BitLinear158(
         in_features,
         out_features,
         bias=bias,
-        group_dim=(1, -1),
+        dim=(1, -1),
     )
     module = BitLinear158Inference.build_from_bitlinear158(module)
 
@@ -282,12 +282,12 @@ def test_bitlinear158_inference(bias: bool) -> None:
 
     assert torch.allclose(recomputed_output, output)
 
-    # w/ group_dim: batch and token wise scaling
+    # w/ dim: batch and token wise scaling
     module = BitLinear158(
         in_features,
         out_features,
         bias=bias,
-        group_dim=-1,
+        dim=-1,
     )
     module = BitLinear158Inference.build_from_bitlinear158(module)
 
@@ -340,18 +340,18 @@ def test_bitmha158_inference(bias: bool, batch_first: bool) -> None:
     assert torch.allclose(output, inference_output)
     assert torch.allclose(attn_weights, inference_attn_weights)
 
-    # w/ group_dim: batch-wise scaling
+    # w/ dim: batch-wise scaling
     if batch_first:
-        group_dim = (1, -1)
+        dim = (1, -1)
     else:
-        group_dim = (0, -1)
+        dim = (0, -1)
 
     module = BitMultiheadAttention158(
         embed_dim,
         num_heads,
         bias=bias,
         batch_first=batch_first,
-        group_dim=group_dim,
+        dim=dim,
     )
     module = BitMultiheadAttention158Inference.build_from_bitmha158(module)
     module.eval()
@@ -392,13 +392,13 @@ def test_bitmha158_inference(bias: bool, batch_first: bool) -> None:
     assert torch.allclose(recomputed_output, output)
     assert torch.allclose(recomputed_attn_weights, attn_weights)
 
-    # w/ group_dim: batch and token wise scaling
+    # w/ dim: batch and token wise scaling
     module = BitMultiheadAttention158(
         embed_dim,
         num_heads,
         bias=bias,
         batch_first=batch_first,
-        group_dim=-1,
+        dim=-1,
     )
     module = BitMultiheadAttention158Inference.build_from_bitmha158(module)
     module.eval()
