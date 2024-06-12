@@ -138,7 +138,7 @@ class BitMultiheadAttention158(nn.Module):
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
     ) -> None:
-        from ..utils.model.bitnet import convert_linear_to_bitlinear158
+        from ..utils.modules.bitnet import convert_linear_to_bitlinear158
 
         if embed_dim <= 0 or num_heads <= 0:
             raise ValueError(
