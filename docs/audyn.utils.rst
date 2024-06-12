@@ -10,7 +10,7 @@ Submodules
    :maxdepth: 1
 
    audyn.utils.data
-   audyn.utils.model
+   audyn.utils.modules
    audyn.utils.music
 
 Cache directory

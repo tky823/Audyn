@@ -64,37 +64,16 @@ def convert_to_bitlinear158(
         )
     else:
         for name, child_module in module.named_children():
-            if isinstance(child_module, (BitLinear158, BitMultiheadAttention158)):
-                continue
-            elif isinstance(child_module, nn.Linear):
-                converted = convert_linear_to_bitlinear158(
-                    child_module,
-                    norm=copy.deepcopy(norm),
-                    dim=dim,
-                    bits=bits,
-                    eps=eps,
-                    remove_bias=remove_bias,
-                )
-            elif isinstance(child_module, nn.MultiheadAttention):
-                converted = convert_mha_to_bitmha158(
-                    child_module,
-                    norm=copy.deepcopy(norm),
-                    dim=dim,
-                    bits=bits,
-                    eps=eps,
-                    remove_bias=remove_bias,
-                )
-            else:
-                converted = convert_to_bitlinear158(
-                    child_module,
-                    norm=copy.deepcopy(norm),
-                    dim=dim,
-                    bits=bits,
-                    eps=eps,
-                    remove_bias=remove_bias,
-                )
+            child_module = convert_to_bitlinear158(
+                child_module,
+                norm=copy.deepcopy(norm),
+                dim=dim,
+                bits=bits,
+                eps=eps,
+                remove_bias=remove_bias,
+            )
 
-            setattr(module, name, converted)
+            setattr(module, name, child_module)
 
     return module
 
@@ -140,24 +119,15 @@ def convert_to_bitlinear158_inference(
         module = convert_bitmha158_to_bitmha158_inference(module)
     else:
         for name, child_module in module.named_children():
-            if isinstance(
-                child_module, (BitLinear158Inference, BitMultiheadAttention158Inference)
-            ):
-                continue
-            elif isinstance(child_module, BitLinear158):
-                converted = convert_bitlinear158_to_bitlinear158_inference(child_module)
-            elif isinstance(child_module, BitMultiheadAttention158):
-                converted = convert_bitmha158_to_bitmha158_inference(child_module)
-            else:
-                converted = convert_to_bitlinear158_inference(
-                    child_module,
-                    dim=dim,
-                    bits=bits,
-                    eps=eps,
-                    remove_bias=remove_bias,
-                )
+            child_module = convert_to_bitlinear158_inference(
+                child_module,
+                dim=dim,
+                bits=bits,
+                eps=eps,
+                remove_bias=remove_bias,
+            )
 
-            setattr(module, name, converted)
+            setattr(module, name, child_module)
 
     return module
 
