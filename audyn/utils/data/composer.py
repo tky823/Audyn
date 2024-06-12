@@ -75,6 +75,8 @@ class AudioFeatureExtractionComposer(Composer):
             Returned feature is saved as ``feature_key`` in a dictionary.
         audio_key (str): Key of audio to extract feature.
         feature_key (str): Key of feature.
+        training (bool): If ``True``, ``feature_extractor.train()`` is called. Otherwise,
+            ``feature_extractor.eval()`` is called (only if possible).
 
     """
 
