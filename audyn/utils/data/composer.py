@@ -2,7 +2,6 @@ import re
 from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 
 import torch
-import torch.nn as nn
 
 from .webdataset import decode_audio, supported_audio_extensions
 
@@ -84,6 +83,7 @@ class AudioFeatureExtractionComposer(Composer):
         feature_extractor: Callable[[torch.Tensor], Any],
         audio_key: str,
         feature_key: str,
+        training: bool = False,
         decode_audio_as_waveform: bool = True,
         decode_audio_as_monoral: bool = True,
     ) -> None:
@@ -92,12 +92,23 @@ class AudioFeatureExtractionComposer(Composer):
             decode_audio_as_monoral=decode_audio_as_monoral,
         )
 
+        self.feature_extractor = feature_extractor
         self.audio_key = audio_key
         self.feature_key = feature_key
-        self.feature_extractor = feature_extractor
+        self.training = training
 
-        if isinstance(self.feature_extractor, nn.Module):
-            self.feature_extractor.eval()
+        if training:
+            assert hasattr(
+                self.feature_extractor, "train"
+            ), "self.feature_extractor should have train."
+            assert callable(
+                self.feature_extractor.train
+            ), "self.feature_extractor.train should be callable."
+
+            self.feature_extractor.train()
+        else:
+            if hasattr(self.feature_extractor, "eval") and callable(self.feature_extractor.eval):
+                self.feature_extractor.eval()
 
     def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
         audio_key = self.audio_key
