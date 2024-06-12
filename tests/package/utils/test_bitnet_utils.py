@@ -8,7 +8,7 @@ from audyn.modules.bitnet import (
     BitMultiheadAttention158,
     BitMultiheadAttention158Inference,
 )
-from audyn.utils.model.bitnet import convert_to_bitlinear158, convert_to_bitlinear158_inference
+from audyn.utils.modules.bitnet import convert_to_bitlinear158, convert_to_bitlinear158_inference
 
 
 @pytest.mark.parametrize("remove_bias", [True, False])
