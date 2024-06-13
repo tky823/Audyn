@@ -1101,17 +1101,17 @@ class BaseTrainer(BaseDriver):
         if config is None:
             config = self.config.train.record
 
-        if hasattr(config, "spectrogram"):
-            spectrogram_config = config.spectrogram.iteration
+        if hasattr(config, "waveform"):
+            waveform_config = config.waveform.iteration
             global_step = self.iteration_idx + 1
 
-            if spectrogram_config is not None and global_step % spectrogram_config.every == 0:
-                self.write_spectrogram_if_necessary(
+            if waveform_config is not None and global_step % waveform_config.every == 0:
+                self.write_waveform_if_necessary(
                     named_output,
                     named_reference,
-                    sample_size=spectrogram_config.sample_size,
-                    key_mapping=spectrogram_config.key_mapping,
-                    transforms=spectrogram_config.transforms,
+                    sample_size=waveform_config.sample_size,
+                    key_mapping=waveform_config.key_mapping,
+                    transforms=waveform_config.transforms,
                     global_step=global_step,
                 )
 
