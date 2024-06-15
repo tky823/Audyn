@@ -12,6 +12,7 @@ class WaveformSlicer(nn.Module):
         length (int, optional): Length of waveform slice.
         duration (float, optional): Duration of waveform slice.
         sample_rate (int, optional): Sampling rate of waveform.
+        seed (int): Random seed.
 
     .. note::
 
