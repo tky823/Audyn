@@ -12,6 +12,7 @@ train:
       slicer:
         _target_: audyn.transforms.WaveformSlicer
         length: ${data.audio.slice_length}
+        seed: ${system.seed}
       waveform_key: waveform
       melspectrogram_key: log_melspectrogram
       waveform_slice_key: waveform_slice
