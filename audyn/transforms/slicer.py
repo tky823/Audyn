@@ -24,6 +24,7 @@ class WaveformSlicer(nn.Module):
         length: int = None,
         duration: float = None,
         sample_rate: int = None,
+        seed: int = 0,
     ) -> None:
         super().__init__()
 
@@ -37,6 +38,9 @@ class WaveformSlicer(nn.Module):
         self.length = length
         self.duration = duration
         self.sample_rate = sample_rate
+        self.generator = torch.Generator()
+
+        self.generator.manual_seed(seed)
 
     def forward(self, waveform: torch.Tensor) -> torch.Tensor:
         r"""Forward pass of WaveformSlicer.
@@ -59,12 +63,22 @@ class WaveformSlicer(nn.Module):
 
         if self.training:
             if padding > 0:
-                padding_left = torch.randint(0, padding, ()).item()
+                padding_left = torch.randint(
+                    0,
+                    padding,
+                    (),
+                    generator=self.generator,
+                ).item()
                 padding_right = padding - padding_left
                 waveform_slice = F.pad(waveform, (padding_left, padding_right))
             elif padding < 0:
                 trimming = -padding
-                start_idx = torch.randint(0, trimming, ()).item()
+                start_idx = torch.randint(
+                    0,
+                    trimming,
+                    (),
+                    generator=self.generator,
+                ).item()
                 end_idx = start_idx + length
                 _, waveform_slice, _ = torch.split(
                     waveform, [start_idx, length, orig_length - end_idx], dim=-1
