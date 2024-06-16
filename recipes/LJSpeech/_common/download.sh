@@ -13,10 +13,10 @@ ljspeech_dirname=$(echo ${ljspeech_filename} | sed "s/\.tar\.bz2//")
 
 mkdir -p "${data_root}"
 
-if [ ! -e "${data_root}/${ljspeech_dirname}" ]; then
+if [ ! -e "${data_root}/${ljspeech_filename}" ]; then
     wget "${ljspeech_url}" -P "${data_root}"
 else
-    echo "${data_root}/${ljspeech_dirname} already exists."
+    echo "${data_root}/${ljspeech_filename} already exists."
 fi
 
 if [ ! -d "${data_root}/${ljspeech_dirname}" ]; then
