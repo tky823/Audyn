@@ -10,7 +10,7 @@ def download_speakers(
     url: Optional[str] = None,
     version: str = "0.92",
 ) -> List[str]:
-    """
+    """Download all speakers of VCTK dataset.
 
     Args:
         version (str): Version of VCTK dataset. Only ``0.92`` is supported.
@@ -37,7 +37,7 @@ def download_valid_speakers(
     url: Optional[str] = None,
     version: str = "0.92",
 ) -> List[str]:
-    """
+    """Download valid speakers of VCTK dataset.
 
     Args:
         version (str): Version of VCTK dataset. Only ``0.92`` is supported.
@@ -60,7 +60,7 @@ def download_valid_speakers(
 
 
 def _download_speakers(root: str, url: str, filename: str) -> List[str]:
-    """
+    """Download speakers of VCTK dataset.
 
     Args:
         version (str): Version of VCTK dataset. Only ``0.92`` is supported.
