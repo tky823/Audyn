@@ -6,4 +6,4 @@ __all__ = [
 ]
 
 speakers = download_speakers()
-num_speakers = 108
+num_speakers = len(speakers)
