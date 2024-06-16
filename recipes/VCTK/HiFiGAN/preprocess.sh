@@ -56,12 +56,18 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
 
         find "${wav_dir}/${spk}" -name "*_mic2.flac" | \
         sort | \
-        sed "s/\.wav//" | \
+        sed "s/\.flac//" | \
         awk -F "/" -v spk=${spk} '{printf "%s/%s\n", spk, $NF}' \
         > "${all_list_path}"
 
         n_all=$(wc -l < ${all_list_path})
         n_train=$((${n_all} - ${n_validation} - ${n_test}))
+
+        if [ ${n_all} -eq 0 ]; then
+            # At least, p280 is missing.
+            column_id=$((column_id + 1))
+            continue
+        fi
 
         cat "${all_list_path}" | \
         head -n ${n_train} \
