@@ -23,7 +23,7 @@ n_test=20
 vctk_root="${data_root}/VCTK-Corpus"
 vctk_speakers_path="${vctk_root}/speaker-info.txt"
 text_dir="${vctk_root}/txt"
-wav_dir="${vctk_root}/wav48"
+wav_dir="${vctk_root}/wav48_silence_trimmed"
 
 dump_dir="${dump_root}/${data}"
 list_dir="${dump_dir}/list"
