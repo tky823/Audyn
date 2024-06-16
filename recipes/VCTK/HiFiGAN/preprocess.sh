@@ -20,7 +20,7 @@ n_test=20
 
 . ../../_common/parse_options.sh || exit 1;
 
-vctk_root="${data_root}/VCTK-Corpus"
+vctk_root="${data_root}/VCTK-Corpus-0.92"
 vctk_speakers_path="${vctk_root}/speaker-info.txt"
 text_dir="${vctk_root}/txt"
 wav_dir="${vctk_root}/wav48_silence_trimmed"
