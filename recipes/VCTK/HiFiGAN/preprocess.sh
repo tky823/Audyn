@@ -46,8 +46,6 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
             continue
         fi
 
-        spk="p${spk}"
-
         if [ ! -d "${wav_dir}/${spk}/" ] || [ ! -d "${text_dir}/${spk}/" ]; then
             # At least, p280 and p305 are missing
             column_id=$((column_id + 1))
@@ -56,7 +54,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
 
         all_list_path=/tmp/$(uuidgen).txt
 
-        find "${wav_dir}/${spk}" -name "*.wav" | \
+        find "${wav_dir}/${spk}" -name "*.flac" | \
         sort | \
         sed "s/\.wav//" | \
         awk -F "/" -v spk=${spk} '{printf "%s/%s\n", spk, $NF}' \
