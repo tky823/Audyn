@@ -47,7 +47,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         fi
 
         if [ ! -d "${wav_dir}/${spk}/" ] || [ ! -d "${text_dir}/${spk}/" ]; then
-            # At least, p280 and p305 are missing
+            # At least, p315 is missing
             column_id=$((column_id + 1))
             continue
         fi
