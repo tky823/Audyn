@@ -14,7 +14,7 @@ vctk_dirname=$(echo ${vctk_filename} | sed "s/\.zip//")
 mkdir -p "${data_root}"
 
 if [ ! -e "${data_root}/${vctk_dirname}" ]; then
-    wget "${vctk_url}" --continue -P "${data_root}"
+    wget "${vctk_url}" -P "${data_root}"
 else
     echo "${data_root}/${vctk_dirname} already exists."
 fi
