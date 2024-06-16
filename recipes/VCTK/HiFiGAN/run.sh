@@ -27,8 +27,8 @@ optimizer="hifigan"
 lr_scheduler="hifigan"
 criterion="hifigan"
 
-n_validation=500
-n_test=500
+n_validation=20
+n_test=20
 
 . ../../_common/parse_options.sh || exit 1;
 
