@@ -10,6 +10,7 @@ Submodules
    :maxdepth: 1
 
    audyn.utils.data.hifigan
+   audyn.utils.data.vctk
    audyn.utils.data.birdclef
 
 Create dataset
