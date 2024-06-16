@@ -12,7 +12,7 @@ continue_from=""
 exp_root="./exp"
 tensorboard_root="./tensorboard"
 
-ljspeech_url="https://data.keithito.com/data/speech/LJSpeech-1.1.tar.bz2"
+vctk_url="https://datashare.ed.ac.uk/bitstream/handle/10283/3443/VCTK-Corpus-0.92.zip"
 data_root="../data"
 dump_root="dump"
 
@@ -32,14 +32,14 @@ n_test=500
 
 . ../../_common/parse_options.sh || exit 1;
 
-ljspeech_root="${data_root}/LJSpeech-1.1"
+vctk_root="${data_root}/VCTK-Corpus-0.92"
 
 if [ ${stage} -le -1 ] && [ ${stop_stage} -ge -1 ]; then
     echo "Stage -1"
 
     (
         . ../_common/download.sh \
-        --ljspeech-url "${ljspeech_url}" \
+        --vctk-url "${vctk_url}" \
         --data-root "${data_root}"
     )
 fi
