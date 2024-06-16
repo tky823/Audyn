@@ -15,6 +15,11 @@ def download_speakers(
     Args:
         version (str): Version of VCTK dataset. Only ``0.92`` is supported.
 
+    .. note::
+
+        For some speakers, transcription or audio is unavailable.
+        To use only valid speakers, call ``download_valid_speakers`` instead.
+
     """
     if version != "0.92":
         raise ValueError("Only version=0.92 is supported.")
