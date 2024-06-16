@@ -22,7 +22,8 @@ fi
 if [ ! -d "${data_root}/${vctk_dirname}" ]; then
     (
         cd "${data_root}"
-        unzip "${vctk_filename}"
+        mkdir -p "${vctk_dirname}"
+        unzip "${vctk_filename}" -d "${vctk_dirname}"
         cd -
     )
 else
