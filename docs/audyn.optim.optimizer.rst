@@ -16,6 +16,11 @@ ExponentialMovingAverageCodebookOptimizer
 
 .. autoclass:: audyn.optim.optimizer.ExponentialMovingAverageCodebookOptimizer
 
+MultiOptimizers
+^^^^^^^^^^^^^^^
+
+.. autoclass:: audyn.optim.optimizer.MultiOptimizers
+
 GANOptimizer
 ^^^^^^^^^^^^
 
