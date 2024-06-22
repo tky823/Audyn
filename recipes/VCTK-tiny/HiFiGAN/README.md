@@ -13,7 +13,7 @@
 ### Stage 0: Preprocessing
 
 ```sh
-data="hifigan"
+data="hifigan_vctk-tiny"
 
 . ./run.sh \
 --stage 0 \
