@@ -1,5 +1,6 @@
 import importlib
 import os
+import shutil
 import warnings
 from typing import Any, Dict, Tuple
 
@@ -36,6 +37,7 @@ from .logging import get_logger
 __all__ = [
     "audyn_cache_dir",
     "model_cache_dir",
+    "clear_cache",
     "setup_config",
     "setup_system",
     "set_seed",
@@ -58,6 +60,16 @@ __all__ = [
 _home_dir = os.path.expanduser("~")
 audyn_cache_dir = os.getenv("AUDYN_CACHE_DIR") or os.path.join(_home_dir, ".cache", "audyn")
 model_cache_dir = os.path.join(audyn_cache_dir, "models")
+
+
+def clear_cache(**kwargs) -> None:
+    """Remove cache directory by ``shutil.rmtree`` for Audyn package.
+
+    Args:
+        kwargs: Keyword arguments given to ``shutil.rmtree``.
+
+    """
+    shutil.rmtree(audyn_cache_dir, **kwargs)
 
 
 def setup_system(config: DictConfig) -> None:
