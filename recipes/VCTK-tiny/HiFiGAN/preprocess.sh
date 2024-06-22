@@ -13,7 +13,7 @@ log_dir="./log"
 dump_format="torch"
 
 preprocess="defaults"
-data="wavenet"
+data="hifigan_vctk-tiny"
 
 n_speakers=5
 n_validation=2

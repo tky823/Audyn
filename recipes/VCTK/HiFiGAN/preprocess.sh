@@ -13,7 +13,7 @@ log_dir="./log"
 dump_format="torch"
 
 preprocess="defaults"
-data="wavenet"
+data="hifigan_vctk"
 
 n_validation=20
 n_test=20

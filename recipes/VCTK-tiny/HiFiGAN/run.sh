@@ -20,7 +20,7 @@ dump_format="torch"
 
 system="defaults"
 preprocess="defaults"
-data="hifigan_vctk"
+data="hifigan_vctk-tiny"
 train="hifigan"
 model="hifigan_v1"
 optimizer="hifigan"

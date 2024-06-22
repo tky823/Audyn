@@ -1,0 +1,6 @@
+defaults:
+  - hifigan_vctk
+  - _self_
+
+speakers:
+  num_speakers: 6
