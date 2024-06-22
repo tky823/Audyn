@@ -38,7 +38,7 @@ def main(config: DictConfig) -> None:
                 with open(list_path) as f:
                     for line in f:
                         filename = line.strip()
-                        wav_path = os.path.join(wav_dir, f"{filename}.wav")
+                        wav_path = os.path.join(wav_dir, f"{filename}.flac")
                         feature_path = os.path.join(feature_dir, f"{filename}.pth")
 
                         future = executor.submit(
@@ -55,7 +55,7 @@ def main(config: DictConfig) -> None:
             with open(list_path) as f:
                 for line in tqdm(f):
                     filename = line.strip()
-                    wav_path = os.path.join(wav_dir, f"{filename}.wav")
+                    wav_path = os.path.join(wav_dir, f"{filename}.flac")
                     feature_path = os.path.join(feature_dir, f"{filename}.pth")
 
                     process_torch(
@@ -71,7 +71,7 @@ def main(config: DictConfig) -> None:
         with wds.ShardWriter(template_path, maxsize=max_shard_size) as sink, open(list_path) as f:
             for line in tqdm(f):
                 filename = line.strip()
-                wav_path = os.path.join(wav_dir, f"{filename}.wav")
+                wav_path = os.path.join(wav_dir, f"{filename}.flac")
 
                 process_webdataset(
                     sink,
