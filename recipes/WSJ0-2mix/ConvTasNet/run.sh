@@ -22,7 +22,7 @@ preprocess="defaults"
 data="wsj0-2mix"
 train="wsj0-2mix"
 model="conv-tasnet"
-optimizer="conv-tasnet"
+optimizer="adam"
 lr_scheduler="conv-tasnet"
 criterion="neg-sisdr"
 
