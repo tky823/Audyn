@@ -106,6 +106,6 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         preprocess.list_path="${list_dir}/${subset}.txt" \
         preprocess.wav_dir="${wav_dir}" \
         preprocess.feature_dir="${feature_dir}/${subset}" \
-        data.speakers.num_speakers=$((n_speakers + 1))
+        data.speakers.num_speakers=${n_speakers}
     done
 fi

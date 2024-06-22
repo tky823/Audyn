@@ -3,4 +3,4 @@ defaults:
   - _self_
 
 speakers:
-  num_speakers: 6
+  num_speakers: 5
