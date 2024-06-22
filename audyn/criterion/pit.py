@@ -11,8 +11,8 @@ def pit(
     criterion: Union[nn.Module, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]],
     input: torch.Tensor,
     target: torch.Tensor,
-    patterns: Optional[torch.Tensor] = None,
-) -> Union[torch.Tensor, torch.Tensor]:
+    permutations: Optional[torch.Tensor] = None,
+) -> Union[torch.Tensor, torch.LongTensor]:
     """Wrapper function for permutation invariant training.
 
     Args:
@@ -31,28 +31,28 @@ def pit(
         ``criterion`` should return loss of shape (batch_size, num_sources).
 
     """
-    if patterns is None:
+    if permutations is None:
         factory_kwargs = {
             "dtype": torch.long,
             "device": target.device,
         }
         num_sources = target.size(1)
-        patterns = itertools.permutations(range(num_sources))
-        patterns = list(patterns)
-        patterns = torch.tensor(patterns, **factory_kwargs)
+        permutations = itertools.permutations(range(num_sources))
+        permutations = list(permutations)
+        permutations = torch.tensor(permutations, **factory_kwargs)
 
-    num_patterns = len(patterns)
+    num_permutations = len(permutations)
     possible_loss = []
 
-    for idx in range(num_patterns):
-        pattern = patterns[idx]
-        loss = criterion(input, target[:, pattern])
+    for idx in range(num_permutations):
+        permutation = permutations[idx]
+        loss = criterion(input, target[:, permutation])
         possible_loss.append(loss)
 
     possible_loss = torch.stack(possible_loss, dim=0)
     loss, indices = torch.min(possible_loss, dim=0)
 
-    return loss, patterns[indices]
+    return loss, permutations[indices]
 
 
 class PIT(nn.Module):
@@ -66,13 +66,15 @@ class PIT(nn.Module):
         self.criterion = criterion
 
         if num_sources is None:
-            self.register_buffer("patterns", None)
+            self.register_buffer("permutations", None)
         else:
-            patterns = itertools.permutations(range(num_sources))
-            patterns = torch.tensor(list(patterns), dtype=torch.long)
-            self.register_buffer("patterns", patterns)
+            permutations = itertools.permutations(range(num_sources))
+            permutations = torch.tensor(list(permutations), dtype=torch.long)
+            self.register_buffer("permutations", permutations)
 
-    def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, input: torch.Tensor, target: torch.Tensor
+    ) -> Union[torch.Tensor, torch.LongTensor]:
         """Forward pass of PIT.
 
         Args:
@@ -86,6 +88,6 @@ class PIT(nn.Module):
                 - torch.LongTensor: Permutation indices.
 
         """
-        loss, pattern = pit(self.criterion, input, target, patterns=self.patterns)
+        loss, permutation = pit(self.criterion, input, target, permutations=self.permutations)
 
-        return loss, pattern
+        return loss, permutation
