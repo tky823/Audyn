@@ -21,6 +21,7 @@ from ..modules.vq import VectorQuantizer
 __all__ = [
     "ExponentialMovingAverageWrapper",
     "ExponentialMovingAverageCodebookOptimizer",
+    "MultiOptimizers",
     "GANOptimizer",
 ]
 
