@@ -1,10 +1,12 @@
 audio:
   sample_rate: 22050
   slice_length: 8192
+
 spectrogram:
   sample_rate: ${..audio.sample_rate}
   n_fft: 1024
   hop_length: 256
+
 melspectrogram:
   _target_: audyn.transforms.HiFiGANMelSpectrogram
   sample_rate: ${..audio.sample_rate}
