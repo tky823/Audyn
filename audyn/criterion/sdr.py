@@ -1,9 +1,14 @@
+from typing import Optional
+
 import torch
 import torch.nn as nn
+
+from .pit import PIT
 
 __all__ = [
     "SISDR",
     "NegSISDR",
+    "PITNegSISDR",
 ]
 
 
@@ -52,6 +57,33 @@ class NegSISDR(nn.Module):
 
     def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         loss = -_sisdr(input, target, eps=self.eps)
+
+        if self.reduction == "mean":
+            loss = loss.mean()
+        elif self.reduction == "sum":
+            loss = loss.sum()
+        elif self.reduction == "none":
+            pass
+        else:
+            raise ValueError(f"Invalid reduction type {self.reduction} is given.")
+
+        return loss
+
+
+class PITNegSISDR(PIT):
+    """negative SI-SDR for permutation invariant training."""
+
+    def __init__(
+        self, reduction: str = "mean", num_sources: Optional[int] = None, eps: float = 1e-8
+    ) -> None:
+        criterion = NegSISDR(reduction="none", eps=eps)
+
+        super().__init__(criterion, num_sources=num_sources)
+
+        self.reduction = reduction
+
+    def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        loss, _ = super().forward(input, target)
 
         if self.reduction == "mean":
             loss = loss.mean()
