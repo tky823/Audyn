@@ -18,4 +18,4 @@ melspectrogram:
   take_log: true
 
 speakers:
-  num_speakers: ${const:audyn.utils.data.vctk.num_speakers}
+  num_speakers: ${const:audyn.utils.data.vctk.num_valid_speakers + 1}
