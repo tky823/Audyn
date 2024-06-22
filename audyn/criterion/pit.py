@@ -26,7 +26,6 @@ def pit(
             - torch.Tensor: Minimum loss for each data
             - torch.LongTensor: Permutation indices.
 
-
     .. note::
 
         ``criterion`` should return loss of shape (batch_size, num_sources).
@@ -54,3 +53,39 @@ def pit(
     loss, indices = torch.min(possible_loss, dim=0)
 
     return loss, patterns[indices]
+
+
+class PIT(nn.Module):
+    def __init__(
+        self,
+        criterion: Union[nn.Module, Callable[[torch.Tensor, torch.Tensor]]],
+        num_sources: Optional[int] = None,
+    ) -> None:
+        super().__init__()
+
+        self.criterion = criterion
+
+        if num_sources is None:
+            self.register_buffer("patterns", None)
+        else:
+            patterns = itertools.permutations(range(num_sources))
+            patterns = torch.tensor(list(patterns), dtype=torch.long)
+            self.register_buffer("patterns", patterns)
+
+    def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        """Forward pass of PIT.
+
+        Args:
+            input (torch.Tensor): Input feature of shape (batch_size, num_sources, *).
+            output (torch.Tensor): Target feature of shape (batch_size, num_sources, *).
+
+        Returns:
+            tuple: Tuple of tensors containing
+
+                - torch.Tensor: Minimum loss for each data
+                - torch.LongTensor: Permutation indices.
+
+        """
+        loss, pattern = pit(self.criterion, input, target, patterns=self.patterns)
+
+        return loss, pattern
