@@ -7,6 +7,9 @@ audyn.utils.driver
 Classes
 -------
 
+.. autoclass:: audyn.utils.driver.AutoTrainer
+    :members: build_from_config
+
 .. autoclass:: audyn.utils.driver.BaseTrainer
 
 .. autoclass:: audyn.utils.driver.BaseGenerator
