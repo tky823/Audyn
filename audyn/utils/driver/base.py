@@ -733,10 +733,11 @@ class BaseTrainer(BaseDriver):
             mean_metrics (dict): Stateful metrics.
 
         """
+        train_config = self.config.train
         criterion_names = self.criterion_names(self.config.criterion)
         named_data = self.move_data_to_device(named_data, self.device)
         named_input = self.map_to_named_input(
-            named_data, key_mapping=self.config.train.key_mapping.train
+            named_data, key_mapping=train_config.key_mapping.train
         )
         named_target = self.map_to_named_target(named_data)
 
@@ -744,7 +745,7 @@ class BaseTrainer(BaseDriver):
             output = self.model(**named_input)
 
             named_output = self.map_to_named_output(
-                output, key_mapping=self.config.train.key_mapping.train
+                output, key_mapping=train_config.key_mapping.train
             )
             named_estimated = self.map_to_named_estimated(named_output)
 
@@ -775,27 +776,27 @@ class BaseTrainer(BaseDriver):
         self.write_train_duration_if_necessary(
             named_output,
             named_data,
-            config=self.config.train.record,
+            config=train_config.record,
         )
         self.write_train_spectrogram_if_necessary(
             named_output,
             named_data,
-            config=self.config.train.record,
+            config=train_config.record,
         )
         self.write_train_waveform_if_necessary(
             named_output,
             named_data,
-            config=self.config.train.record,
+            config=train_config.record,
         )
         self.write_train_audio_if_necessary(
             named_output,
             named_data,
-            config=self.config.train.record,
+            config=train_config.record,
         )
         self.write_train_image_if_necessary(
             named_output,
             named_data,
-            config=self.config.train.record,
+            config=train_config.record,
         )
 
         self.optimizer.zero_grad()
@@ -805,7 +806,7 @@ class BaseTrainer(BaseDriver):
         self.optimizer_step(self.optimizer)
         self.scaler.update()
 
-        if self.config.train.steps.lr_scheduler == "iteration":
+        if train_config.steps.lr_scheduler == "iteration":
             self.lr_scheduler_step(self.lr_scheduler, loss=loss)
 
         prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}"
@@ -821,10 +822,10 @@ class BaseTrainer(BaseDriver):
         self.iteration_idx += 1
 
         if (
-            hasattr(self.config.train.output.save_checkpoint, "iteration")
-            and self.config.train.output.save_checkpoint.iteration
+            hasattr(train_config.output.save_checkpoint, "iteration")
+            and train_config.output.save_checkpoint.iteration
         ):
-            save_config = self.config.train.output.save_checkpoint.iteration
+            save_config = train_config.output.save_checkpoint.iteration
 
             if self.iteration_idx % save_config.every == 0:
                 save_path = save_config.path.format(iteration=self.iteration_idx)
