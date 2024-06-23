@@ -1,7 +1,7 @@
 import importlib
 import os
 import warnings
-from typing import Any, Dict, Iterable, Optional, Union
+from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -264,7 +264,7 @@ class GANTrainer(BaseTrainer):
                 n_remain -= 1
                 continue
 
-            self.train_one_iteration(
+            generator_mean_metrics, discriminator_mean_metrics = self.train_one_iteration(
                 named_data,
                 generator_mean_metrics=generator_mean_metrics,
                 discriminator_mean_metrics=discriminator_mean_metrics,
@@ -318,7 +318,7 @@ class GANTrainer(BaseTrainer):
         self.unwrapped_model.discriminator.eval()
 
         for batch_idx, named_data in enumerate(self.loaders.validation):
-            self.validate_one_iteration(
+            generator_mean_metrics, discriminator_mean_metrics = self.validate_one_iteration(
                 named_data,
                 generator_mean_metrics=generator_mean_metrics,
                 discriminator_mean_metrics=discriminator_mean_metrics,
@@ -357,13 +357,19 @@ class GANTrainer(BaseTrainer):
         named_data: Dict[str, Any],
         generator_mean_metrics: Dict[str, MeanMetric],
         discriminator_mean_metrics: Dict[str, MeanMetric],
-    ) -> None:
+    ) -> Tuple[Dict[str, MeanMetric], Dict[str, MeanMetric]]:
         """Train model by one iteration.
 
         Args:
             named_data (dict): Dict-type input.
             generator_mean_metrics (dict): Stateful metrics for generator.
             discriminator_mean_metrics (dict): Stateful metrics for discriminator.
+
+        Returns:
+            tuple: Tuple of dictionaries containing
+
+                - dict: Updated stateful metrics for generator.
+                - dict: Updated stateful metrics for discriminator.
 
         """
         train_config = self.config.train
@@ -608,13 +614,15 @@ class GANTrainer(BaseTrainer):
                 save_path = save_config.path.format(iteration=self.iteration_idx)
                 self.save_checkpoint_if_necessary(save_path)
 
+        return generator_mean_metrics, discriminator_mean_metrics
+
     def validate_one_iteration(
         self,
         named_data: Dict[str, Any],
         generator_mean_metrics: Dict[str, MeanMetric],
         discriminator_mean_metrics: Dict[str, MeanMetric],
         batch_idx: int = 0,
-    ) -> None:
+    ) -> Tuple[Dict[str, MeanMetric], Dict[str, MeanMetric]]:
         """Validate model by one iteration.
 
         Args:
@@ -622,6 +630,12 @@ class GANTrainer(BaseTrainer):
             generator_mean_metrics (dict): Stateful metrics for generator.
             discriminator_mean_metrics (dict): Stateful metrics for discriminator.
             batch_idx (int): Index of batch.
+
+        Returns:
+            tuple: Tuple of dictionaries containing
+
+                - dict: Updated stateful metrics for generator.
+                - dict: Updated stateful metrics for discriminator.
 
         """
         train_config = self.config.train
@@ -748,6 +762,8 @@ class GANTrainer(BaseTrainer):
             config=train_config.record,
             batch_idx=batch_idx,
         )
+
+        return generator_mean_metrics, discriminator_mean_metrics
 
     def infer_one_iteration(self, named_data: Dict[str, Any], batch_idx: int = 0) -> None:
         """Perform inference by one iteration.

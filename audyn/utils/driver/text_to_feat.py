@@ -126,7 +126,9 @@ class TextToFeatTrainer(BaseTrainer):
                 self.transform_middle.eval()
 
         for batch_idx, named_data in enumerate(self.loaders.validation):
-            self.validate_one_iteration(named_data, mean_metrics=mean_metrics, batch_idx=batch_idx)
+            mean_metrics = self.validate_one_iteration(
+                named_data, mean_metrics=mean_metrics, batch_idx=batch_idx
+            )
 
         validation_loss = {}
 
@@ -155,13 +157,16 @@ class TextToFeatTrainer(BaseTrainer):
 
     def validate_one_iteration(
         self, named_data: Dict[str, Any], mean_metrics: Dict[str, MeanMetric], batch_idx: int = 0
-    ) -> None:
+    ) -> Dict[str, MeanMetric]:
         """Validate model by one iteration.
 
         Args:
             named_data (dict): Dict-type input.
             mean_metrics (dict): Stateful metrics.
             batch_idx (int): Index of batch.
+
+        Returns:
+            dict: Updated stateful metrics.
 
         """
         train_config = self.config.train
@@ -247,6 +252,8 @@ class TextToFeatTrainer(BaseTrainer):
             config=train_config.record,
             batch_idx=batch_idx,
         )
+
+        return mean_metrics
 
     def infer_one_iteration(self, named_data: Dict[str, Any], batch_idx: int = 0) -> None:
         """Perform inference by one iteration.
