@@ -1,8 +1,15 @@
 import functools
+import warnings
 from typing import Any, Callable
 
+__all__ = [
+    "run_only_global_master_rank",
+    "run_only_local_master_rank",
+    "run_only_master_rank",
+]
 
-def run_only_master_rank(enable: bool = True) -> Callable:
+
+def run_only_global_master_rank(enable: bool = True) -> Callable:
     def wrapper(m: Any) -> Callable:
         @functools.wraps(m)
         def _wrapper(mod: Any, *args, **kwargs) -> Any:
@@ -27,3 +34,39 @@ def run_only_master_rank(enable: bool = True) -> Callable:
         return _wrapper
 
     return wrapper
+
+
+def run_only_local_master_rank(enable: bool = True) -> Callable:
+    def wrapper(m: Any) -> Callable:
+        @functools.wraps(m)
+        def _wrapper(mod: Any, *args, **kwargs) -> Any:
+            if hasattr(mod, "is_distributed"):
+                is_distributed = mod.is_distributed
+            else:
+                is_distributed = False
+
+            if hasattr(mod, "local_rank"):
+                local_rank = mod.local_rank
+            else:
+                local_rank = 0
+
+            if local_rank is None:
+                local_rank = 0
+
+            if enable and is_distributed and local_rank != 0:
+                return
+
+            return m(mod, *args, **kwargs)
+
+        return _wrapper
+
+    return wrapper
+
+
+def run_only_master_rank(enable: bool = True) -> Callable:
+    warnings.warn(
+        "run_only_master_rank is deprecated. Use run_only_global_master_rank instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return run_only_global_master_rank(enable)
