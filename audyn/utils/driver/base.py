@@ -597,62 +597,11 @@ class BaseTrainer(BaseDriver):
         mean_metrics = {
             criterion_name: MeanMetric(device=self.device) for criterion_name in criterion_names
         }
-        n_batch = 0
 
         self.model.eval()
 
-        for named_data in self.loaders.validation:
-            named_data = self.move_data_to_device(named_data, self.device)
-            named_input = self.map_to_named_input(
-                named_data, key_mapping=self.config.train.key_mapping.validation
-            )
-            named_target = self.map_to_named_target(named_data)
-            output = self.model(**named_input)
-            named_output = self.map_to_named_output(
-                output, key_mapping=self.config.train.key_mapping.validation
-            )
-            named_estimated = self.map_to_named_estimated(named_output)
-
-            loss = {}
-
-            for criterion_name in criterion_names:
-                loss[criterion_name] = self.criterion[criterion_name](
-                    **named_estimated[criterion_name], **named_target[criterion_name]
-                )
-                mean_metrics[criterion_name].update(loss[criterion_name].item())
-
-            self.write_validation_duration_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_validation_spectrogram_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_validation_waveform_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_validation_audio_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_validation_image_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-
-            n_batch += 1
+        for batch_idx, named_data in enumerate(self.loaders.validation):
+            self.validate_one_iteration(named_data, mean_metrics=mean_metrics, batch_idx=batch_idx)
 
         validation_loss = {}
 
@@ -830,6 +779,72 @@ class BaseTrainer(BaseDriver):
             if self.iteration_idx % save_config.every == 0:
                 save_path = save_config.path.format(iteration=self.iteration_idx)
                 self.save_checkpoint_if_necessary(save_path)
+
+    def validate_one_iteration(
+        self,
+        named_data: Dict[str, Any],
+        mean_metrics: Dict[str, MeanMetric],
+        batch_idx: int = 0,
+    ) -> None:
+        """Validate model by one iteration.
+
+        Args:
+            named_data (dict): Dict-type input.
+            mean_metrics (dict): Stateful metrics.
+            batch_idx (int): Index of batch.
+
+        """
+        train_config = self.config.train
+        criterion_names = self.criterion_names(self.config.criterion)
+        named_data = self.move_data_to_device(named_data, self.device)
+        named_input = self.map_to_named_input(
+            named_data, key_mapping=train_config.key_mapping.validation
+        )
+        named_target = self.map_to_named_target(named_data)
+        output = self.model(**named_input)
+        named_output = self.map_to_named_output(
+            output, key_mapping=train_config.key_mapping.validation
+        )
+        named_estimated = self.map_to_named_estimated(named_output)
+
+        loss = {}
+
+        for criterion_name in criterion_names:
+            loss[criterion_name] = self.criterion[criterion_name](
+                **named_estimated[criterion_name], **named_target[criterion_name]
+            )
+            mean_metrics[criterion_name].update(loss[criterion_name].item())
+
+        self.write_validation_duration_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_validation_spectrogram_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_validation_waveform_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_validation_audio_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_validation_image_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
 
     def unscale_optimizer_if_necessary(self, enable: bool = True) -> None:
         """Unscale optimizer containing values if necessary.
