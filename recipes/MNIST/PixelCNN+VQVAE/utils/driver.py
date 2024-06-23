@@ -19,7 +19,7 @@ except ImportError:
 
 from audyn.utils import instantiate
 from audyn.utils.driver import BaseGenerator
-from audyn.utils.driver._decorator import run_only_master_rank
+from audyn.utils.driver._decorator import run_only_global_master_rank
 from audyn.utils.driver.base import BaseDriver
 from audyn.utils.logging import get_logger
 
@@ -211,7 +211,7 @@ class Generator(BaseGenerator):
         state_dict = torch.load(vqvae_path, map_location=self.device)
         self.unwrapped_model.vqvae.load_state_dict(state_dict["model"])
 
-    @run_only_master_rank()
+    @run_only_global_master_rank()
     def save_figure_if_necessary(
         self,
         named_output: Dict[str, torch.Tensor],

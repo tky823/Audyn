@@ -41,7 +41,7 @@ from ..hydra.utils import TORCH_CLIP_GRAD_FN
 from ..logging import get_logger
 from ..model import unwrap
 from ..tensorboard import get_summary_writer
-from ._decorator import run_only_master_rank
+from ._decorator import run_only_global_master_rank
 
 
 class BaseDriver:
@@ -1011,7 +1011,7 @@ class BaseTrainer(BaseDriver):
         self.best_loss = state_dict["best_loss"]
         self.epoch_idx = self.iteration_idx // len(self.loaders.train)
 
-    @run_only_master_rank()
+    @run_only_global_master_rank()
     def save_checkpoint_if_necessary(self, save_path: str) -> None:
         self.save_checkpoint(save_path)
 
@@ -1649,7 +1649,7 @@ class BaseTrainer(BaseDriver):
                         global_step=global_step,
                     )
 
-    @run_only_master_rank()
+    @run_only_global_master_rank()
     def write_scalar_if_necessary(self, tag: Any, scalar_value: Any, global_step: Any) -> None:
         self.writer.add_scalar(
             tag,
@@ -1657,7 +1657,7 @@ class BaseTrainer(BaseDriver):
             global_step=global_step,
         )
 
-    @run_only_master_rank()
+    @run_only_global_master_rank()
     def write_duration_if_necessary(
         self,
         named_output: Optional[Dict[str, torch.Tensor]] = None,
@@ -1753,7 +1753,7 @@ class BaseTrainer(BaseDriver):
 
         self.writer.add_figure(tag, fig, global_step=global_step)
 
-    @run_only_master_rank()
+    @run_only_global_master_rank()
     def write_spectrogram_if_necessary(
         self,
         named_output: Optional[Dict[str, torch.Tensor]] = None,
@@ -1820,7 +1820,7 @@ class BaseTrainer(BaseDriver):
 
         self.writer.add_figure(tag, fig, global_step=global_step)
 
-    @run_only_master_rank()
+    @run_only_global_master_rank()
     def write_waveform_if_necessary(
         self,
         named_output: Optional[Dict[str, torch.Tensor]] = None,
@@ -1898,7 +1898,7 @@ class BaseTrainer(BaseDriver):
 
         self.writer.add_figure(tag, fig, global_step=global_step)
 
-    @run_only_master_rank()
+    @run_only_global_master_rank()
     def write_audio_if_necessary(
         self,
         named_output: Optional[Dict[str, torch.Tensor]] = None,
@@ -1981,7 +1981,7 @@ class BaseTrainer(BaseDriver):
         waveform = waveform.detach().cpu()
         self.writer.add_audio(tag, waveform, global_step=global_step, sample_rate=sample_rate)
 
-    @run_only_master_rank()
+    @run_only_global_master_rank()
     def write_image_if_necessary(
         self,
         named_output: Optional[Dict[str, torch.Tensor]] = None,
@@ -2316,7 +2316,7 @@ class BaseGenerator(BaseDriver):
                     transforms=transforms,
                 )
 
-    @run_only_master_rank()
+    @run_only_global_master_rank()
     def save_torch_dump_if_necessary(
         self,
         named_output: Dict[str, torch.Tensor],
@@ -2385,7 +2385,7 @@ class BaseGenerator(BaseDriver):
 
         torch.save(obj, path)
 
-    @run_only_master_rank()
+    @run_only_global_master_rank()
     def save_audio_if_necessary(
         self,
         named_output: Dict[str, torch.Tensor],
@@ -2512,7 +2512,7 @@ class BaseGenerator(BaseDriver):
             **kwargs,
         )
 
-    @run_only_master_rank()
+    @run_only_global_master_rank()
     def save_spectrogram_if_necessary(
         self,
         named_output: Optional[Dict[str, torch.Tensor]],
