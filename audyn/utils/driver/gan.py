@@ -163,6 +163,7 @@ class GANTrainer(BaseTrainer):
         train_key, validation_key = "train", "validation"
         generator_key, discriminator_key = "generator", "discriminator"
 
+        output_config = self.config.train.output
         start_epoch_idx = self.epoch_idx
 
         for epoch_idx in range(start_epoch_idx, self.epochs):
@@ -215,20 +216,20 @@ class GANTrainer(BaseTrainer):
             self.epoch_idx += 1
 
             if (
-                hasattr(self.config.train.output.save_checkpoint, "epoch")
-                and self.config.train.output.save_checkpoint.epoch
+                hasattr(output_config.save_checkpoint, "epoch")
+                and output_config.save_checkpoint.epoch
             ):
-                save_config = self.config.train.output.save_checkpoint.epoch
+                save_config = output_config.save_checkpoint.epoch
 
                 if self.epoch_idx % save_config.every == 0:
                     save_path = save_config.path.format(epoch=self.epoch_idx)
                     self.save_checkpoint_if_necessary(save_path)
 
             if (
-                hasattr(self.config.train.output.save_checkpoint, "last")
-                and self.config.train.output.save_checkpoint.last
+                hasattr(output_config.save_checkpoint, "last")
+                and output_config.save_checkpoint.last
             ):
-                save_config = self.config.train.output.save_checkpoint.last
+                save_config = output_config.save_checkpoint.last
                 save_path = save_config.path.format(
                     epoch=self.epoch_idx, iteration=self.iteration_idx
                 )

@@ -480,6 +480,7 @@ class BaseTrainer(BaseDriver):
             self.load_checkpoint(continue_from)
 
     def run(self) -> None:
+        output_config = self.config.train.output
         start_epoch_idx = self.epoch_idx
         criterion_names = self.criterion_names(self.config.criterion)
 
@@ -528,28 +529,28 @@ class BaseTrainer(BaseDriver):
                 self.best_loss = total_loss["validation"]
 
                 if (
-                    hasattr(self.config.train.output.save_checkpoint, "best_epoch")
-                    and self.config.train.output.save_checkpoint.best_epoch
+                    hasattr(output_config.save_checkpoint, "best_epoch")
+                    and output_config.save_checkpoint.best_epoch
                 ):
-                    save_config = self.config.train.output.save_checkpoint.best_epoch
+                    save_config = output_config.save_checkpoint.best_epoch
                     save_path = save_config.path.format(epoch=self.epoch_idx)
                     self.save_checkpoint_if_necessary(save_path)
 
             if (
-                hasattr(self.config.train.output.save_checkpoint, "epoch")
-                and self.config.train.output.save_checkpoint.epoch
+                hasattr(output_config.save_checkpoint, "epoch")
+                and output_config.save_checkpoint.epoch
             ):
-                save_config = self.config.train.output.save_checkpoint.epoch
+                save_config = output_config.save_checkpoint.epoch
 
                 if self.epoch_idx % save_config.every == 0:
                     save_path = save_config.path.format(epoch=self.epoch_idx)
                     self.save_checkpoint_if_necessary(save_path)
 
             if (
-                hasattr(self.config.train.output.save_checkpoint, "last")
-                and self.config.train.output.save_checkpoint.last
+                hasattr(output_config.save_checkpoint, "last")
+                and output_config.save_checkpoint.last
             ):
-                save_config = self.config.train.output.save_checkpoint.last
+                save_config = output_config.save_checkpoint.last
                 save_path = save_config.path.format(
                     epoch=self.epoch_idx, iteration=self.iteration_idx
                 )
