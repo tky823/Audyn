@@ -37,6 +37,7 @@ Classes
 .. autoclass:: audyn.utils.driver.GANTrainer
     :members: build_from_config, run,
         train_one_epoch, validate_one_epoch, infer_one_batch,
+        train_one_iteration, validate_one_iteration, infer_one_iteration,
         count_num_parameters, display_model, display_loss, unscale_optimizer_if_necessary, clip_gradient_if_necessary,
         load_checkpoint, save_checkpoint
 
