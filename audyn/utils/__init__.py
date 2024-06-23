@@ -4,11 +4,8 @@ import shutil
 import warnings
 from typing import Any, Dict, Optional, Tuple, Union
 
-import hydra
-import hydra.conf
-import hydra.core
-import hydra.core.hydra_config
 import torch
+from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, ListConfig, OmegaConf
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
@@ -202,8 +199,9 @@ def save_resolved_config(
 
     """
     if path is None:
-        output_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
-        path = os.path.join(output_dir, "resolved_config.yaml")
+        # TODO: improve design
+        output_dir = HydraConfig.get().runtime.output_dir
+        path = os.path.join(output_dir, ".hydra", "resolved_config.yaml")
 
     OmegaConf.save(config, path, resolve=True)
 
