@@ -1,4 +1,5 @@
 import functools
+import os
 import warnings
 from typing import Any, Callable
 
@@ -23,10 +24,10 @@ def run_only_global_master_rank(enable: bool = True) -> Callable:
             if hasattr(mod, "global_rank"):
                 global_rank = mod.global_rank
             else:
-                global_rank = 0
-
-            if global_rank is None:
-                global_rank = 0
+                if is_distributed:
+                    global_rank = int(os.environ["RANK"])
+                else:
+                    global_rank = 0
 
             if enable and is_distributed and global_rank != 0:
                 return
@@ -50,10 +51,10 @@ def run_only_local_master_rank(enable: bool = True) -> Callable:
             if hasattr(mod, "local_rank"):
                 local_rank = mod.local_rank
             else:
-                local_rank = 0
-
-            if local_rank is None:
-                local_rank = 0
+                if is_distributed:
+                    local_rank = int(os.environ["LOCAL_RANK"])
+                else:
+                    local_rank = 0
 
             if enable and is_distributed and local_rank != 0:
                 return
