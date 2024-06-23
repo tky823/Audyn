@@ -1089,28 +1089,25 @@ class GANGenerator(BaseGenerator):
 
     @torch.no_grad()
     def run(self) -> None:
+        test_config = self.config.test
+        key_mapping = test_config.key_mapping.inference
+
         self.model.eval()
 
         unwrapped_generator = unwrap(self.unwrapped_model.generator)
 
         for named_data in self.loader:
             named_data = self.move_data_to_device(named_data, self.device)
-            named_input = self.map_to_named_input(
-                named_data, key_mapping=self.config.test.key_mapping.inference
-            )
-            named_identifier = self.map_to_named_identifier(
-                named_data, key_mapping=self.config.test.key_mapping.inference
-            )
+            named_input = self.map_to_named_input(named_data, key_mapping=key_mapping)
+            named_identifier = self.map_to_named_identifier(named_data, key_mapping=key_mapping)
 
             if hasattr(unwrapped_generator, "inference"):
                 output = unwrapped_generator.inference(**named_input)
             else:
                 output = unwrapped_generator(**named_input)
 
-            named_output = self.map_to_named_output(
-                output, key_mapping=self.config.test.key_mapping.inference
-            )
+            named_output = self.map_to_named_output(output, key_mapping=key_mapping)
 
             self.save_inference_audio_if_necessary(
-                named_output, named_data, named_identifier, config=self.config.test.output
+                named_output, named_data, named_identifier, config=test_config.output
             )
