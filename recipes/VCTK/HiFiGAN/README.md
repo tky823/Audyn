@@ -20,3 +20,16 @@ data="hifigan_vctk"
 --stop-stage 0 \
 --data "${data}"
 ```
+
+### Stage 1: Train HiFi-GAN
+
+```sh
+data="hifigan_vctk"
+model="hifigan_v1"
+
+. ./run.sh \
+--stage 1 \
+--stop-stage 1 \
+--data "${data}" \
+--model "${model}"
+```

@@ -2568,6 +2568,29 @@ class BaseGenerator(BaseDriver):
             self.unwrapped_model.remove_weight_norm_()
 
 
+class AutoTrainer(BaseTrainer):
+    def __init__(self, *args, **kwargs) -> None:
+        raise RuntimeError("AutoTrainer.__init__ is not supported.")
+
+    @classmethod
+    def build_from_config(cls, config: DictConfig) -> BaseTrainer:
+        train_config = config.train
+
+        if (
+            hasattr(train_config, "trainer")
+            and hasattr(train_config.trainer, "_target_")
+            and train_config.trainer._target_ is not None
+        ):
+            mod_name, var_name = train_config.trainer._target_.rsplit(".", maxsplit=1)
+
+            imported_module = importlib.import_module(mod_name)
+            trainer_cls = getattr(imported_module, var_name)
+        else:
+            trainer_cls = BaseTrainer
+
+        return trainer_cls.build_from_config(config)
+
+
 def _is_torch_clip_gradient(cls: type) -> bool:
     for clip_gradient_fn in TORCH_CLIP_GRAD_FN:
         mod_name, var_name = clip_gradient_fn.rsplit(".", maxsplit=1)
