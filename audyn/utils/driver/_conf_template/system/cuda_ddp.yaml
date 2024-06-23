@@ -1,6 +1,7 @@
 seed: 0
 distributed:
   enable: true
+  nodes:  # number of nodes
   backend: nccl
   init_method: "env://"
 cudnn:
