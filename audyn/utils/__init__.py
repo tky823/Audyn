@@ -200,8 +200,11 @@ def save_resolved_config(
     """
     if path is None:
         # TODO: improve design
-        output_dir = HydraConfig.get().runtime.output_dir
-        path = os.path.join(output_dir, ".hydra", "resolved_config.yaml")
+        try:
+            output_dir = HydraConfig.get().runtime.output_dir
+            path = os.path.join(output_dir, ".hydra", "resolved_config.yaml")
+        except ValueError:
+            return
 
     OmegaConf.save(config, path, resolve=True)
 
