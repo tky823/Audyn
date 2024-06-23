@@ -2,6 +2,8 @@ import functools
 import warnings
 from typing import Any, Callable
 
+import torch.distributed as dist
+
 __all__ = [
     "run_only_global_master_rank",
     "run_only_local_master_rank",
@@ -16,7 +18,7 @@ def run_only_global_master_rank(enable: bool = True) -> Callable:
             if hasattr(mod, "is_distributed"):
                 is_distributed = mod.is_distributed
             else:
-                is_distributed = False
+                is_distributed = dist.is_available() and dist.is_initialized()
 
             if hasattr(mod, "global_rank"):
                 global_rank = mod.global_rank
@@ -43,7 +45,7 @@ def run_only_local_master_rank(enable: bool = True) -> Callable:
             if hasattr(mod, "is_distributed"):
                 is_distributed = mod.is_distributed
             else:
-                is_distributed = False
+                is_distributed = dist.is_available() and dist.is_initialized()
 
             if hasattr(mod, "local_rank"):
                 local_rank = mod.local_rank
