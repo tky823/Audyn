@@ -561,7 +561,6 @@ class BaseTrainer(BaseDriver):
         mean_metrics = {
             criterion_name: MeanMetric(device=self.device) for criterion_name in criterion_names
         }
-        n_batch = 0
         n_remain = self.iteration_idx % len(self.loaders.train)
 
         self.set_epoch_if_necessary(self.epoch_idx)
@@ -574,102 +573,7 @@ class BaseTrainer(BaseDriver):
                 n_remain -= 1
                 continue
 
-            named_data = self.move_data_to_device(named_data, self.device)
-            named_input = self.map_to_named_input(
-                named_data, key_mapping=self.config.train.key_mapping.train
-            )
-            named_target = self.map_to_named_target(named_data)
-
-            with autocast(enabled=self.enable_amp):
-                output = self.model(**named_input)
-
-                named_output = self.map_to_named_output(
-                    output, key_mapping=self.config.train.key_mapping.train
-                )
-                named_estimated = self.map_to_named_estimated(named_output)
-
-                total_loss = 0
-                loss = {}
-
-                for criterion_name in criterion_names:
-                    weight = self.config.criterion[criterion_name].weight
-                    loss[criterion_name] = self.criterion[criterion_name](
-                        **named_estimated[criterion_name], **named_target[criterion_name]
-                    )
-                    total_loss = total_loss + weight * loss[criterion_name]
-
-            for criterion_name in criterion_names:
-                mean_metrics[criterion_name].update(loss[criterion_name].item())
-                self.write_scalar_if_necessary(
-                    f"{criterion_name} (iteration)/train",
-                    loss[criterion_name].item(),
-                    global_step=self.iteration_idx + 1,
-                )
-
-            self.write_scalar_if_necessary(
-                "total (iteration)/train",
-                total_loss,
-                global_step=self.iteration_idx + 1,
-            )
-
-            self.write_train_duration_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-            )
-            self.write_train_spectrogram_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-            )
-            self.write_train_waveform_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-            )
-            self.write_train_audio_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-            )
-            self.write_train_image_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-            )
-
-            self.optimizer.zero_grad()
-            self.scaler.scale(total_loss).backward()
-            self.unscale_optimizer_if_necessary()
-            self.clip_gradient_if_necessary()
-            self.optimizer_step(self.optimizer)
-            self.scaler.update()
-
-            if self.config.train.steps.lr_scheduler == "iteration":
-                self.lr_scheduler_step(self.lr_scheduler, loss=loss)
-
-            prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}"
-            prompt += f", Iter {self.iteration_idx+1}/{self.iterations}]"
-            s = ""
-
-            for criterion_name in criterion_names:
-                s += f"{criterion_name}: {loss[criterion_name]}, "
-
-            s = f"{prompt} {total_loss.item()}, {s[:-2]}"
-
-            self.logger.info(s)
-            self.iteration_idx += 1
-            n_batch += 1
-
-            if (
-                hasattr(self.config.train.output.save_checkpoint, "iteration")
-                and self.config.train.output.save_checkpoint.iteration
-            ):
-                save_config = self.config.train.output.save_checkpoint.iteration
-
-                if self.iteration_idx % save_config.every == 0:
-                    save_path = save_config.path.format(iteration=self.iteration_idx)
-                    self.save_checkpoint_if_necessary(save_path)
+            self.train_one_iteration(named_data, mean_metrics=mean_metrics)
 
             if self.iteration_idx >= self.iterations:
                 # Finish training
@@ -818,6 +722,113 @@ class BaseTrainer(BaseDriver):
 
             # Process only first batch.
             break
+
+    def train_one_iteration(
+        self, named_data: Dict[str, Any], mean_metrics: Dict[str, MeanMetric]
+    ) -> None:
+        """Train model by one iteration.
+
+        Args:
+            named_data (dict): Dict-type input.
+            mean_metrics (dict): Stateful metrics.
+
+        """
+        criterion_names = self.criterion_names(self.config.criterion)
+        named_data = self.move_data_to_device(named_data, self.device)
+        named_input = self.map_to_named_input(
+            named_data, key_mapping=self.config.train.key_mapping.train
+        )
+        named_target = self.map_to_named_target(named_data)
+
+        with autocast(enabled=self.enable_amp):
+            output = self.model(**named_input)
+
+            named_output = self.map_to_named_output(
+                output, key_mapping=self.config.train.key_mapping.train
+            )
+            named_estimated = self.map_to_named_estimated(named_output)
+
+            total_loss = 0
+            loss = {}
+
+            for criterion_name in criterion_names:
+                weight = self.config.criterion[criterion_name].weight
+                loss[criterion_name] = self.criterion[criterion_name](
+                    **named_estimated[criterion_name], **named_target[criterion_name]
+                )
+                total_loss = total_loss + weight * loss[criterion_name]
+
+        for criterion_name in criterion_names:
+            mean_metrics[criterion_name].update(loss[criterion_name].item())
+            self.write_scalar_if_necessary(
+                f"{criterion_name} (iteration)/train",
+                loss[criterion_name].item(),
+                global_step=self.iteration_idx + 1,
+            )
+
+        self.write_scalar_if_necessary(
+            "total (iteration)/train",
+            total_loss,
+            global_step=self.iteration_idx + 1,
+        )
+
+        self.write_train_duration_if_necessary(
+            named_output,
+            named_data,
+            config=self.config.train.record,
+        )
+        self.write_train_spectrogram_if_necessary(
+            named_output,
+            named_data,
+            config=self.config.train.record,
+        )
+        self.write_train_waveform_if_necessary(
+            named_output,
+            named_data,
+            config=self.config.train.record,
+        )
+        self.write_train_audio_if_necessary(
+            named_output,
+            named_data,
+            config=self.config.train.record,
+        )
+        self.write_train_image_if_necessary(
+            named_output,
+            named_data,
+            config=self.config.train.record,
+        )
+
+        self.optimizer.zero_grad()
+        self.scaler.scale(total_loss).backward()
+        self.unscale_optimizer_if_necessary()
+        self.clip_gradient_if_necessary()
+        self.optimizer_step(self.optimizer)
+        self.scaler.update()
+
+        if self.config.train.steps.lr_scheduler == "iteration":
+            self.lr_scheduler_step(self.lr_scheduler, loss=loss)
+
+        prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}"
+        prompt += f", Iter {self.iteration_idx+1}/{self.iterations}]"
+        s = ""
+
+        for criterion_name in criterion_names:
+            s += f"{criterion_name}: {loss[criterion_name]}, "
+
+        s = f"{prompt} {total_loss.item()}, {s[:-2]}"
+
+        self.logger.info(s)
+        self.iteration_idx += 1
+
+        if (
+            hasattr(self.config.train.output.save_checkpoint, "iteration")
+            and self.config.train.output.save_checkpoint.iteration
+        ):
+            save_config = self.config.train.output.save_checkpoint.iteration
+
+            if self.iteration_idx % save_config.every == 0:
+                save_path = save_config.path.format(iteration=self.iteration_idx)
+                self.save_checkpoint_if_necessary(save_path)
 
     def unscale_optimizer_if_necessary(self, enable: bool = True) -> None:
         """Unscale optimizer containing values if necessary.
