@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -112,18 +112,10 @@ class TextToFeatTrainer(BaseTrainer):
     @torch.no_grad()
     def validate_one_epoch(self) -> Dict[str, float]:
         """Validate model for one epoch."""
-        key_mapping = self.config.train.key_mapping.validation
-
-        if hasattr(key_mapping, "text_to_feat"):
-            text_to_feat_key_mapping = key_mapping.text_to_feat
-        else:
-            text_to_feat_key_mapping = key_mapping
-
         criterion_names = self.criterion_names(self.config.criterion)
         mean_metrics = {
             criterion_name: MeanMetric(device=self.device) for criterion_name in criterion_names
         }
-        n_batch = 0
 
         self.model.eval()
 
@@ -133,80 +125,8 @@ class TextToFeatTrainer(BaseTrainer):
             if self.transform_middle is not None and isinstance(self.transform_middle, nn.Module):
                 self.transform_middle.eval()
 
-        for named_data in self.loaders.validation:
-            named_data = self.move_data_to_device(named_data, self.device)
-            named_input = self.map_to_named_input(named_data, key_mapping=text_to_feat_key_mapping)
-            named_target = self.map_to_named_target(named_data)
-            output = self.model(**named_input)
-            named_output = self.map_to_named_output(output, key_mapping=text_to_feat_key_mapping)
-
-            if self.feat_to_wave is not None:
-                (
-                    named_transform_middle_output,
-                    named_feat_to_wave_output,
-                ) = self.feat_to_wave_forward(named_data, named_output, key_mapping=key_mapping)
-
-                assert (
-                    set(named_output.keys()) & set(named_transform_middle_output.keys()) == set()
-                ), "named_output and named_transform_middle_output should be disjointed."
-                assert (
-                    set(named_output.keys()) & set(named_feat_to_wave_output.keys()) == set()
-                ), "named_output and named_feat_to_wave_output should be disjointed."
-                assert (
-                    set(named_transform_middle_output.keys())
-                    & set(named_feat_to_wave_output.keys())
-                    == set()
-                ), (
-                    "named_transform_middle_output and named_feat_to_wave_output "
-                    "should be disjointed."
-                )
-
-                # update named_output by outputs of feat-to-wave model
-                named_output.update(named_transform_middle_output)
-                named_output.update(named_feat_to_wave_output)
-
-            named_estimated = self.map_to_named_estimated(named_output)
-
-            loss = {}
-
-            for criterion_name in criterion_names:
-                loss[criterion_name] = self.criterion[criterion_name](
-                    **named_estimated[criterion_name], **named_target[criterion_name]
-                )
-                mean_metrics[criterion_name].update(loss[criterion_name].item())
-
-            self.write_validation_duration_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_validation_spectrogram_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_validation_waveform_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_validation_audio_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_validation_image_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-
-            n_batch += 1
+        for batch_idx, named_data in enumerate(self.loaders.validation):
+            self.validate_one_iteration(named_data, mean_metrics=mean_metrics, batch_idx=batch_idx)
 
         validation_loss = {}
 
@@ -219,20 +139,6 @@ class TextToFeatTrainer(BaseTrainer):
     @torch.no_grad()
     def infer_one_batch(self) -> None:
         """Inference using one batch."""
-        if hasattr(self.config.train.key_mapping, "inference"):
-            inference_key_mapping = self.config.train.key_mapping.inference
-        elif hasattr(self.config.train.key_mapping, "validation"):
-            inference_key_mapping = self.config.train.key_mapping.validation
-        else:
-            inference_key_mapping = self.config.train.key_mapping
-
-        if hasattr(inference_key_mapping, "text_to_feat"):
-            text_to_feat_key_mapping = inference_key_mapping.text_to_feat
-        else:
-            text_to_feat_key_mapping = inference_key_mapping
-
-        n_batch = 0
-
         self.model.eval()
 
         if self.feat_to_wave is not None:
@@ -241,82 +147,198 @@ class TextToFeatTrainer(BaseTrainer):
             if self.transform_middle is not None and isinstance(self.transform_middle, nn.Module):
                 self.transform_middle.eval()
 
-        for named_data in self.loaders.validation:
-            named_data = self.move_data_to_device(named_data, self.device)
-            named_input = self.map_to_named_input(named_data, key_mapping=text_to_feat_key_mapping)
-
-            if hasattr(self.unwrapped_model, "inference"):
-                output = self.unwrapped_model.inference(**named_input)
-            else:
-                output = self.unwrapped_model(**named_input)
-
-            named_output = self.map_to_named_output(output, key_mapping=text_to_feat_key_mapping)
-
-            if self.feat_to_wave is not None:
-                (
-                    named_transform_middle_output,
-                    named_feat_to_wave_output,
-                ) = self.feat_to_wave_forward(
-                    named_data,
-                    named_output,
-                    key_mapping=inference_key_mapping,
-                    forward_method="inference",
-                )
-
-                assert (
-                    set(named_output.keys()) & set(named_transform_middle_output.keys()) == set()
-                ), "named_output and named_transform_middle_output should be disjointed."
-                assert (
-                    set(named_output.keys()) & set(named_feat_to_wave_output.keys()) == set()
-                ), "named_output and named_feat_to_wave_output should be disjointed."
-                assert (
-                    set(named_transform_middle_output.keys())
-                    & set(named_feat_to_wave_output.keys())
-                    == set()
-                ), (
-                    "named_transform_middle_output and named_feat_to_wave_output "
-                    "should be disjointed."
-                )
-
-                # update named_output by outputs of feat-to-wave model
-                named_output.update(named_transform_middle_output)
-                named_output.update(named_feat_to_wave_output)
-
-            self.write_inference_duration_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_inference_spectrogram_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_inference_waveform_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_inference_audio_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_inference_image_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-
-            n_batch += 1
+        for batch_idx, named_data in enumerate(self.loaders.validation):
+            self.infer_one_iteration(named_data, batch_idx=batch_idx)
 
             # Process only first batch.
             break
+
+    def validate_one_iteration(
+        self, named_data: Dict[str, Any], mean_metrics: Dict[str, MeanMetric], batch_idx: int = 0
+    ) -> None:
+        """Validate model by one iteration.
+
+        Args:
+            named_data (dict): Dict-type input.
+            mean_metrics (dict): Stateful metrics.
+            batch_idx (int): Index of batch.
+
+        """
+        train_config = self.config.train
+        key_mapping = train_config.key_mapping.validation
+
+        if hasattr(key_mapping, "text_to_feat"):
+            text_to_feat_key_mapping = key_mapping.text_to_feat
+        else:
+            text_to_feat_key_mapping = key_mapping
+
+        criterion_names = self.criterion_names(self.config.criterion)
+        mean_metrics = {
+            criterion_name: MeanMetric(device=self.device) for criterion_name in criterion_names
+        }
+
+        named_data = self.move_data_to_device(named_data, self.device)
+        named_input = self.map_to_named_input(named_data, key_mapping=text_to_feat_key_mapping)
+        named_target = self.map_to_named_target(named_data)
+        output = self.model(**named_input)
+        named_output = self.map_to_named_output(output, key_mapping=text_to_feat_key_mapping)
+
+        if self.feat_to_wave is not None:
+            (
+                named_transform_middle_output,
+                named_feat_to_wave_output,
+            ) = self.feat_to_wave_forward(named_data, named_output, key_mapping=key_mapping)
+
+            assert (
+                set(named_output.keys()) & set(named_transform_middle_output.keys()) == set()
+            ), "named_output and named_transform_middle_output should be disjointed."
+            assert (
+                set(named_output.keys()) & set(named_feat_to_wave_output.keys()) == set()
+            ), "named_output and named_feat_to_wave_output should be disjointed."
+            assert (
+                set(named_transform_middle_output.keys()) & set(named_feat_to_wave_output.keys())
+                == set()
+            ), (
+                "named_transform_middle_output and named_feat_to_wave_output "
+                "should be disjointed."
+            )
+
+            # update named_output by outputs of feat-to-wave model
+            named_output.update(named_transform_middle_output)
+            named_output.update(named_feat_to_wave_output)
+
+        named_estimated = self.map_to_named_estimated(named_output)
+
+        loss = {}
+
+        for criterion_name in criterion_names:
+            loss[criterion_name] = self.criterion[criterion_name](
+                **named_estimated[criterion_name], **named_target[criterion_name]
+            )
+            mean_metrics[criterion_name].update(loss[criterion_name].item())
+
+        self.write_validation_duration_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_validation_spectrogram_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_validation_waveform_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_validation_audio_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_validation_image_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+
+    def infer_one_iteration(self, named_data: Dict[str, Any], batch_idx: int = 0) -> None:
+        """Perform inference by one iteration.
+
+        Args:
+            named_data (dict): Dict-type input.
+            batch_idx (int): Index of batch.
+
+        """
+        train_config = self.config.train
+
+        if hasattr(train_config.key_mapping, "inference"):
+            inference_key_mapping = train_config.key_mapping.inference
+        elif hasattr(train_config.key_mapping, "validation"):
+            inference_key_mapping = train_config.key_mapping.validation
+        else:
+            inference_key_mapping = train_config.key_mapping
+
+        if hasattr(inference_key_mapping, "text_to_feat"):
+            text_to_feat_key_mapping = inference_key_mapping.text_to_feat
+        else:
+            text_to_feat_key_mapping = inference_key_mapping
+
+        named_data = self.move_data_to_device(named_data, self.device)
+        named_input = self.map_to_named_input(named_data, key_mapping=text_to_feat_key_mapping)
+
+        if hasattr(self.unwrapped_model, "inference"):
+            output = self.unwrapped_model.inference(**named_input)
+        else:
+            output = self.unwrapped_model(**named_input)
+
+        named_output = self.map_to_named_output(output, key_mapping=text_to_feat_key_mapping)
+
+        if self.feat_to_wave is not None:
+            (
+                named_transform_middle_output,
+                named_feat_to_wave_output,
+            ) = self.feat_to_wave_forward(
+                named_data,
+                named_output,
+                key_mapping=inference_key_mapping,
+                forward_method="inference",
+            )
+
+            assert (
+                set(named_output.keys()) & set(named_transform_middle_output.keys()) == set()
+            ), "named_output and named_transform_middle_output should be disjointed."
+            assert (
+                set(named_output.keys()) & set(named_feat_to_wave_output.keys()) == set()
+            ), "named_output and named_feat_to_wave_output should be disjointed."
+            assert (
+                set(named_transform_middle_output.keys()) & set(named_feat_to_wave_output.keys())
+                == set()
+            ), (
+                "named_transform_middle_output and named_feat_to_wave_output "
+                "should be disjointed."
+            )
+
+            # update named_output by outputs of feat-to-wave model
+            named_output.update(named_transform_middle_output)
+            named_output.update(named_feat_to_wave_output)
+
+        self.write_inference_duration_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_inference_spectrogram_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_inference_waveform_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_inference_audio_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_inference_image_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
 
     def feat_to_wave_forward(
         self,
