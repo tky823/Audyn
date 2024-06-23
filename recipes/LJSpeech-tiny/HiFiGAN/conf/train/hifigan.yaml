@@ -5,6 +5,9 @@ defaults:
   - clip_gradient: gan
   - _self_
 
+trainer:
+  _target_: audyn.utils.driver.GANTrainer
+
 key_mapping:
   train:
     generator:
