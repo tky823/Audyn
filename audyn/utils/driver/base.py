@@ -2608,6 +2608,14 @@ class BaseGenerator(BaseDriver):
 
 
 class AutoTrainer(BaseTrainer):
+    """Dummy class to instantiate trainer.
+
+    .. note::
+
+        This class is expected to be used as ``AutoTrainer.build_from_config(config)``.
+
+    """
+
     def __init__(self, *args, **kwargs) -> None:
         raise RuntimeError("AutoTrainer.__init__ is not supported.")
 
