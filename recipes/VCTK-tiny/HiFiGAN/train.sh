@@ -1,0 +1,1 @@
+../../VCTK/HiFiGAN/train.sh
