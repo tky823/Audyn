@@ -614,60 +614,10 @@ class BaseTrainer(BaseDriver):
     @torch.no_grad()
     def infer_one_batch(self) -> None:
         """Inference using one batch."""
-        if hasattr(self.config.train.key_mapping, "inference"):
-            inference_key_mapping = self.config.train.key_mapping.inference
-        elif hasattr(self.config.train.key_mapping, "validation"):
-            inference_key_mapping = self.config.train.key_mapping.validation
-        else:
-            inference_key_mapping = self.config.train.key_mapping
-
-        n_batch = 0
-
         self.model.eval()
 
-        for named_data in self.loaders.validation:
-            named_data = self.move_data_to_device(named_data, self.device)
-            named_input = self.map_to_named_input(named_data, key_mapping=inference_key_mapping)
-
-            if hasattr(self.unwrapped_model, "inference"):
-                output = self.unwrapped_model.inference(**named_input)
-            else:
-                output = self.unwrapped_model(**named_input)
-
-            named_output = self.map_to_named_output(output, key_mapping=inference_key_mapping)
-
-            self.write_inference_duration_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_inference_spectrogram_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_inference_waveform_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_inference_audio_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_inference_image_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-
-            n_batch += 1
+        for batch_idx, named_data in enumerate(self.loaders.validation):
+            self.infer_one_iteration(named_data, batch_idx=batch_idx)
 
             # Process only first batch.
             break
@@ -840,6 +790,68 @@ class BaseTrainer(BaseDriver):
             batch_idx=batch_idx,
         )
         self.write_validation_image_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+
+    def infer_one_iteration(
+        self,
+        named_data: Dict[str, Any],
+        batch_idx: int = 0,
+    ) -> None:
+        """Perform inference by one iteration.
+
+        Args:
+            named_data (dict): Dict-type input.
+            batch_idx (int): Index of batch.
+
+        """
+        train_config = self.config.train
+
+        if hasattr(train_config.key_mapping, "inference"):
+            inference_key_mapping = train_config.key_mapping.inference
+        elif hasattr(train_config.key_mapping, "validation"):
+            inference_key_mapping = train_config.key_mapping.validation
+        else:
+            inference_key_mapping = train_config.key_mapping
+
+        named_data = self.move_data_to_device(named_data, self.device)
+        named_input = self.map_to_named_input(named_data, key_mapping=inference_key_mapping)
+
+        if hasattr(self.unwrapped_model, "inference"):
+            output = self.unwrapped_model.inference(**named_input)
+        else:
+            output = self.unwrapped_model(**named_input)
+
+        named_output = self.map_to_named_output(output, key_mapping=inference_key_mapping)
+
+        self.write_inference_duration_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_inference_spectrogram_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_inference_waveform_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_inference_audio_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_inference_image_if_necessary(
             named_output,
             named_data,
             config=train_config.record,
