@@ -1,12 +1,6 @@
-seed: 0
-distributed:
-  enable:
-  nodes:  # number of nodes
-  backend:
-  init_method:
-cudnn:
-  benchmark: true
-  deterministic: false
+defaults:
+  - defaults
+  - _self_
+
 amp:
   enable: false
-accelerator: cuda

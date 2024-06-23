@@ -1,4 +1,7 @@
-seed: 0
+defaults:
+  - defaults
+  - _self_
+
 distributed:
   enable: true
   nodes:  # number of nodes

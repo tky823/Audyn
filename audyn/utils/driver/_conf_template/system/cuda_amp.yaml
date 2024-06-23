@@ -1,4 +1,7 @@
-seed: 0
+defaults:
+  - cuda
+  - _self_
+
 distributed:
   enable:
   nodes:  # number of nodes
