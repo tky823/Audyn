@@ -7,7 +7,7 @@ on:
     branches:
       - main
 jobs:
-  build:
+  package:
     name: Run tests with pytest
     runs-on: ${{ matrix.os }}
     strategy:
