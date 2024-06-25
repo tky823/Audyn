@@ -166,7 +166,7 @@ class GANTrainer(BaseTrainer):
         output_config = self.config.train.output
         start_epoch_idx = self.epoch_idx
 
-        for epoch_idx in range(start_epoch_idx, self.epochs):
+        for _ in range(start_epoch_idx, self.epochs):
             train_loss = self.train_one_epoch()
 
             if isinstance(self.optimizer.generator, MovingAverageWrapper):
@@ -217,7 +217,7 @@ class GANTrainer(BaseTrainer):
 
             if (
                 hasattr(output_config.save_checkpoint, "epoch")
-                and output_config.save_checkpoint.epoch
+                and output_config.save_checkpoint.epoch is not None
             ):
                 save_config = output_config.save_checkpoint.epoch
 
@@ -227,7 +227,7 @@ class GANTrainer(BaseTrainer):
 
             if (
                 hasattr(output_config.save_checkpoint, "last")
-                and output_config.save_checkpoint.last
+                and output_config.save_checkpoint.last is not None
             ):
                 save_config = output_config.save_checkpoint.last
                 save_path = save_config.path.format(
@@ -607,7 +607,7 @@ class GANTrainer(BaseTrainer):
 
         if (
             hasattr(train_config.output.save_checkpoint, "iteration")
-            and train_config.output.save_checkpoint.iteration
+            and train_config.output.save_checkpoint.iteration is not None
         ):
             save_config = train_config.output.save_checkpoint.iteration
 

@@ -484,7 +484,7 @@ class BaseTrainer(BaseDriver):
         start_epoch_idx = self.epoch_idx
         criterion_names = self.criterion_names(self.config.criterion)
 
-        for epoch_idx in range(start_epoch_idx, self.epochs):
+        for _ in range(start_epoch_idx, self.epochs):
             train_loss = self.train_one_epoch()
 
             if isinstance(self.optimizer, MovingAverageWrapper):
@@ -530,7 +530,7 @@ class BaseTrainer(BaseDriver):
 
                 if (
                     hasattr(output_config.save_checkpoint, "best_epoch")
-                    and output_config.save_checkpoint.best_epoch
+                    and output_config.save_checkpoint.best_epoch is not None
                 ):
                     save_config = output_config.save_checkpoint.best_epoch
                     save_path = save_config.path.format(epoch=self.epoch_idx)
@@ -538,7 +538,7 @@ class BaseTrainer(BaseDriver):
 
             if (
                 hasattr(output_config.save_checkpoint, "epoch")
-                and output_config.save_checkpoint.epoch
+                and output_config.save_checkpoint.epoch is not None
             ):
                 save_config = output_config.save_checkpoint.epoch
 
@@ -548,7 +548,7 @@ class BaseTrainer(BaseDriver):
 
             if (
                 hasattr(output_config.save_checkpoint, "last")
-                and output_config.save_checkpoint.last
+                and output_config.save_checkpoint.last is not None
             ):
                 save_config = output_config.save_checkpoint.last
                 save_path = save_config.path.format(
