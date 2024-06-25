@@ -1,4 +1,4 @@
-name: test package
+name: test recipes
 on:
   push:
     branches:
@@ -7,8 +7,8 @@ on:
     branches:
       - main
 jobs:
-  package:
-    name: Run tests with pytest
+  recipes:
+    name: Run recipe tests
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -77,7 +77,7 @@ jobs:
           MACOSX_DEPLOYMENT_TARGET: '10.13'
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev,tests]"
+          pip install -e ".[recipes]"
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
         run: |
@@ -102,52 +102,9 @@ jobs:
         run: |
           python -c "import torchaudio; print(torchaudio.list_audio_backends())"
           python -c "import torchaudio; assert len(torchaudio.list_audio_backends()) > 0"
-      - name: Pytest for torch.hub
-        if: matrix.python-version == '3.8' && matrix.os == 'ubuntu-latest' && matrix.torch-version == '2.1.0'
-        env:
-          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-          GITHUB_HEAD_REF: ${{ github.head_ref }}
-        run: |
-          pytest -vvv tests/torchhub/
-      - name: Pytest for package (Windows)
-        id: windows_pytest
-        if: matrix.os == 'windows-latest'
+      - name: Recipe test
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
-          pytest -vvv --cov=audyn/ --cov-report=xml -p no:faulthandler tests/package/
-      - name: Pytest for package (Ubuntu & MacOS)
-        if: steps.windows_pytest.conclusion == 'skipped'
-        env:
-          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-        run: |
-          pytest -vvv --cov=audyn/ --cov-report=xml tests/package/
-      - name: Upload coverage reports to Codecov
-        if: matrix.python-version == '3.8' && matrix.os == 'ubuntu-latest' && matrix.torch-version == '2.1.0'
-        uses: codecov/codecov-action@v3
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        with:
-          fail_ci_if_error: true
-  lint:
-    name: Run linters
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-      - name: Run linters
-        run: |
-          # See pyproject.toml
-          isort --line-length 99 audyn
-          flake8 --max-line-length=99 --ignore=E203,W503,W504,E704 audyn
-      - name: Run formatters
-        run: |
-          python -m black --config pyproject.toml --check audyn tests
+          cd tests/recipes/test_parse_run_command/
+          . ./train.sh

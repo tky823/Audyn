@@ -1,12 +1,12 @@
 from omegaconf import DictConfig
 
 import audyn
-from audyn.utils.distributed import is_distributed
+from audyn.utils import setup_config
 
 
 @audyn.main()
 def main(config: DictConfig) -> None:
-    print(str(is_distributed(config.system)).lower())
+    setup_config(config)
 
 
 if __name__ == "__main__":

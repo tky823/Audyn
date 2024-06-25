@@ -1,6 +1,7 @@
 seed: 0
 distributed:
   enable: true
+  nodes:  # number of nodes
   backend: gloo
   init_method:
 cudnn:

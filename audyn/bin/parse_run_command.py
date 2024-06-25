@@ -17,7 +17,21 @@ def main(config: DictConfig) -> None:
     """
     if is_distributed(config.system):
         nproc_per_node = torch.cuda.device_count()
-        cmd = f"torchrun --standalone --nnodes=1 --nproc_per_node={nproc_per_node}"
+
+        if config.system.distributed.nodes is None:
+            nnodes = 1
+        else:
+            nnodes = config.system.distributed.nodes
+
+        if nnodes > 1:
+            raise NotImplementedError("Only nnodes=1 is supported.")
+
+        cmd = "torchrun"
+
+        if nnodes == 1:
+            cmd += " --standalone"
+
+        cmd += f" --nnodes={nnodes} --nproc_per_node={nproc_per_node}"
     else:
         cmd = "python"
 

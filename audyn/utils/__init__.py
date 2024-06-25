@@ -45,6 +45,7 @@ __all__ = [
     "set_seed",
     "convert_dataset_and_dataloader_to_ddp_if_possible",
     "convert_dataset_and_dataloader_format_if_necessary",
+    "set_nodes_if_necessary",
     "instantiate",
     "instantiate_model",
     "instantiate_gan_generator",
@@ -171,6 +172,7 @@ def setup_config(config: DictConfig) -> None:
             convert_dataset_and_dataloader_to_ddp_if_possible(full_config)
             system_config = full_config.system
 
+        set_nodes_if_necessary(system_config)
         setup_distributed(system_config)
 
     if full_config is None:
@@ -527,6 +529,22 @@ def convert_dataset_and_dataloader_format_if_necessary(config: DictConfig) -> No
     else:
         # TODO: torch
         pass
+
+
+def set_nodes_if_necessary(config: DictConfig) -> None:
+    """Set config.distributed.nodes if necessary.
+
+    .. note::
+
+        This function may overwrite config.distributed.nodes.
+
+    """
+    if config.distributed.nodes is None:
+        OmegaConf.update(
+            config,
+            "distributed.nodes",
+            1,
+        )
 
 
 def _search_webdataset_format_dataset(config: DictConfig) -> Tuple[str, Dict[str, Any]]:

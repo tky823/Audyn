@@ -55,6 +55,9 @@ tests = [
     "pytest-cov",
 ]
 
+[project.scripts]
+audyn-parse-run-command = "audyn.bin.parse_run_command:main"
+
 [tool.setuptools.dynamic]
 version = {attr = "audyn.__version__"}
 
