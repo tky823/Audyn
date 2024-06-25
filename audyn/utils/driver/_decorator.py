@@ -23,6 +23,9 @@ def run_only_global_master_rank(enable: bool = True) -> Callable:
 
             if hasattr(mod, "global_rank"):
                 global_rank = mod.global_rank
+
+                if global_rank is None:
+                    global_rank = 0
             else:
                 if is_distributed:
                     global_rank = int(os.environ["RANK"])
@@ -50,6 +53,9 @@ def run_only_local_master_rank(enable: bool = True) -> Callable:
 
             if hasattr(mod, "local_rank"):
                 local_rank = mod.local_rank
+
+                if local_rank is None:
+                    local_rank = 0
             else:
                 if is_distributed:
                     local_rank = int(os.environ["LOCAL_RANK"])
