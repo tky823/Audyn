@@ -28,7 +28,7 @@ exp_dir="${exp_root}/${tag}"
 save_dir="${exp_dir}/embeddings"
 
 cmd=$(
-    python ../../_common/parse_run_command.py \
+    audyn-parse-run-command \
     --config-dir "./conf" \
     hydra.run.dir="./log/$(date +"%Y%m%d-%H%M%S")" \
     system="${system}"
