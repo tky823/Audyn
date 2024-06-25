@@ -32,6 +32,7 @@ from audyn.utils import (
     instantiate_lr_scheduler,
     instantiate_model,
     instantiate_optimizer,
+    set_nodes_if_necessary,
     setup_config,
 )
 from audyn.utils.clip_grad import GANGradClipper
@@ -282,6 +283,7 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str) -> None:
 
         convert_dataset_and_dataloader_format_if_necessary(config)
         convert_dataset_and_dataloader_to_ddp_if_possible(config)
+        set_nodes_if_necessary(config.system)
 
         dist.init_process_group(
             backend=config.system.distributed.backend,
@@ -458,6 +460,7 @@ def test_base_trainer_ddp_for_audioset(
 
         convert_dataset_and_dataloader_format_if_necessary(config)
         convert_dataset_and_dataloader_to_ddp_if_possible(config)
+        set_nodes_if_necessary(config.system)
 
         dist.init_process_group(
             backend=config.system.distributed.backend,
@@ -1335,6 +1338,7 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str, dataloader_t
 
         convert_dataset_and_dataloader_format_if_necessary(config)
         convert_dataset_and_dataloader_to_ddp_if_possible(config)
+        set_nodes_if_necessary(config.system)
 
         if dataloader_type == "audyn_sequential":
             assert (
