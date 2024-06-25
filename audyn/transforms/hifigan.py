@@ -86,7 +86,7 @@ class HiFiGANMelSpectrogram(LibrosaMelSpectrogram):
         padding = (self.n_fft - self.hop_length) // 2
         pad_mode = self.spectrogram.pad_mode
 
-        waveform = F.pad(waveform, [padding, padding], mode=pad_mode)
+        waveform = F.pad(waveform, (padding, padding), mode=pad_mode)
         spectrogram = super().forward(waveform)
 
         if self.take_log:

@@ -41,7 +41,7 @@ from ..hydra.utils import TORCH_CLIP_GRAD_FN
 from ..logging import get_logger
 from ..model import unwrap
 from ..tensorboard import get_summary_writer
-from ._decorator import run_only_master_rank
+from ._decorator import run_only_global_master_rank
 
 
 class BaseDriver:
@@ -480,10 +480,11 @@ class BaseTrainer(BaseDriver):
             self.load_checkpoint(continue_from)
 
     def run(self) -> None:
+        output_config = self.config.train.output
         start_epoch_idx = self.epoch_idx
         criterion_names = self.criterion_names(self.config.criterion)
 
-        for epoch_idx in range(start_epoch_idx, self.epochs):
+        for _ in range(start_epoch_idx, self.epochs):
             train_loss = self.train_one_epoch()
 
             if isinstance(self.optimizer, MovingAverageWrapper):
@@ -528,28 +529,28 @@ class BaseTrainer(BaseDriver):
                 self.best_loss = total_loss["validation"]
 
                 if (
-                    hasattr(self.config.train.output.save_checkpoint, "best_epoch")
-                    and self.config.train.output.save_checkpoint.best_epoch
+                    hasattr(output_config.save_checkpoint, "best_epoch")
+                    and output_config.save_checkpoint.best_epoch is not None
                 ):
-                    save_config = self.config.train.output.save_checkpoint.best_epoch
+                    save_config = output_config.save_checkpoint.best_epoch
                     save_path = save_config.path.format(epoch=self.epoch_idx)
                     self.save_checkpoint_if_necessary(save_path)
 
             if (
-                hasattr(self.config.train.output.save_checkpoint, "epoch")
-                and self.config.train.output.save_checkpoint.epoch
+                hasattr(output_config.save_checkpoint, "epoch")
+                and output_config.save_checkpoint.epoch is not None
             ):
-                save_config = self.config.train.output.save_checkpoint.epoch
+                save_config = output_config.save_checkpoint.epoch
 
                 if self.epoch_idx % save_config.every == 0:
                     save_path = save_config.path.format(epoch=self.epoch_idx)
                     self.save_checkpoint_if_necessary(save_path)
 
             if (
-                hasattr(self.config.train.output.save_checkpoint, "last")
-                and self.config.train.output.save_checkpoint.last
+                hasattr(output_config.save_checkpoint, "last")
+                and output_config.save_checkpoint.last is not None
             ):
-                save_config = self.config.train.output.save_checkpoint.last
+                save_config = output_config.save_checkpoint.last
                 save_path = save_config.path.format(
                     epoch=self.epoch_idx, iteration=self.iteration_idx
                 )
@@ -561,7 +562,6 @@ class BaseTrainer(BaseDriver):
         mean_metrics = {
             criterion_name: MeanMetric(device=self.device) for criterion_name in criterion_names
         }
-        n_batch = 0
         n_remain = self.iteration_idx % len(self.loaders.train)
 
         self.set_epoch_if_necessary(self.epoch_idx)
@@ -574,102 +574,7 @@ class BaseTrainer(BaseDriver):
                 n_remain -= 1
                 continue
 
-            named_data = self.move_data_to_device(named_data, self.device)
-            named_input = self.map_to_named_input(
-                named_data, key_mapping=self.config.train.key_mapping.train
-            )
-            named_target = self.map_to_named_target(named_data)
-
-            with autocast(enabled=self.enable_amp):
-                output = self.model(**named_input)
-
-                named_output = self.map_to_named_output(
-                    output, key_mapping=self.config.train.key_mapping.train
-                )
-                named_estimated = self.map_to_named_estimated(named_output)
-
-                total_loss = 0
-                loss = {}
-
-                for criterion_name in criterion_names:
-                    weight = self.config.criterion[criterion_name].weight
-                    loss[criterion_name] = self.criterion[criterion_name](
-                        **named_estimated[criterion_name], **named_target[criterion_name]
-                    )
-                    total_loss = total_loss + weight * loss[criterion_name]
-
-            for criterion_name in criterion_names:
-                mean_metrics[criterion_name].update(loss[criterion_name].item())
-                self.write_scalar_if_necessary(
-                    f"{criterion_name} (iteration)/train",
-                    loss[criterion_name].item(),
-                    global_step=self.iteration_idx + 1,
-                )
-
-            self.write_scalar_if_necessary(
-                "total (iteration)/train",
-                total_loss,
-                global_step=self.iteration_idx + 1,
-            )
-
-            self.write_train_duration_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-            )
-            self.write_train_spectrogram_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-            )
-            self.write_train_waveform_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-            )
-            self.write_train_audio_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-            )
-            self.write_train_image_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-            )
-
-            self.optimizer.zero_grad()
-            self.scaler.scale(total_loss).backward()
-            self.unscale_optimizer_if_necessary()
-            self.clip_gradient_if_necessary()
-            self.optimizer_step(self.optimizer)
-            self.scaler.update()
-
-            if self.config.train.steps.lr_scheduler == "iteration":
-                self.lr_scheduler_step(self.lr_scheduler, loss=loss)
-
-            prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}"
-            prompt += f", Iter {self.iteration_idx+1}/{self.iterations}]"
-            s = ""
-
-            for criterion_name in criterion_names:
-                s += f"{criterion_name}: {loss[criterion_name]}, "
-
-            s = f"{prompt} {total_loss.item()}, {s[:-2]}"
-
-            self.logger.info(s)
-            self.iteration_idx += 1
-            n_batch += 1
-
-            if (
-                hasattr(self.config.train.output.save_checkpoint, "iteration")
-                and self.config.train.output.save_checkpoint.iteration
-            ):
-                save_config = self.config.train.output.save_checkpoint.iteration
-
-                if self.iteration_idx % save_config.every == 0:
-                    save_path = save_config.path.format(iteration=self.iteration_idx)
-                    self.save_checkpoint_if_necessary(save_path)
+            mean_metrics = self.train_one_iteration(named_data, mean_metrics=mean_metrics)
 
             if self.iteration_idx >= self.iterations:
                 # Finish training
@@ -693,62 +598,13 @@ class BaseTrainer(BaseDriver):
         mean_metrics = {
             criterion_name: MeanMetric(device=self.device) for criterion_name in criterion_names
         }
-        n_batch = 0
 
         self.model.eval()
 
-        for named_data in self.loaders.validation:
-            named_data = self.move_data_to_device(named_data, self.device)
-            named_input = self.map_to_named_input(
-                named_data, key_mapping=self.config.train.key_mapping.validation
+        for batch_idx, named_data in enumerate(self.loaders.validation):
+            mean_metrics = self.validate_one_iteration(
+                named_data, mean_metrics=mean_metrics, batch_idx=batch_idx
             )
-            named_target = self.map_to_named_target(named_data)
-            output = self.model(**named_input)
-            named_output = self.map_to_named_output(
-                output, key_mapping=self.config.train.key_mapping.validation
-            )
-            named_estimated = self.map_to_named_estimated(named_output)
-
-            loss = {}
-
-            for criterion_name in criterion_names:
-                loss[criterion_name] = self.criterion[criterion_name](
-                    **named_estimated[criterion_name], **named_target[criterion_name]
-                )
-                mean_metrics[criterion_name].update(loss[criterion_name].item())
-
-            self.write_validation_duration_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_validation_spectrogram_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_validation_waveform_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_validation_audio_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_validation_image_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-
-            n_batch += 1
 
         validation_loss = {}
 
@@ -761,63 +617,259 @@ class BaseTrainer(BaseDriver):
     @torch.no_grad()
     def infer_one_batch(self) -> None:
         """Inference using one batch."""
-        if hasattr(self.config.train.key_mapping, "inference"):
-            inference_key_mapping = self.config.train.key_mapping.inference
-        elif hasattr(self.config.train.key_mapping, "validation"):
-            inference_key_mapping = self.config.train.key_mapping.validation
-        else:
-            inference_key_mapping = self.config.train.key_mapping
-
-        n_batch = 0
-
         self.model.eval()
 
-        for named_data in self.loaders.validation:
-            named_data = self.move_data_to_device(named_data, self.device)
-            named_input = self.map_to_named_input(named_data, key_mapping=inference_key_mapping)
-
-            if hasattr(self.unwrapped_model, "inference"):
-                output = self.unwrapped_model.inference(**named_input)
-            else:
-                output = self.unwrapped_model(**named_input)
-
-            named_output = self.map_to_named_output(output, key_mapping=inference_key_mapping)
-
-            self.write_inference_duration_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_inference_spectrogram_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_inference_waveform_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_inference_audio_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_inference_image_if_necessary(
-                named_output,
-                named_data,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-
-            n_batch += 1
+        for batch_idx, named_data in enumerate(self.loaders.validation):
+            self.infer_one_iteration(named_data, batch_idx=batch_idx)
 
             # Process only first batch.
             break
+
+    def train_one_iteration(
+        self, named_data: Dict[str, Any], mean_metrics: Dict[str, MeanMetric]
+    ) -> Dict[str, MeanMetric]:
+        """Train model by one iteration.
+
+        Args:
+            named_data (dict): Dict-type input.
+            mean_metrics (dict): Stateful metrics.
+
+        Returns:
+            dict: Updated stateful metrics.
+
+        """
+        train_config = self.config.train
+        criterion_names = self.criterion_names(self.config.criterion)
+        named_data = self.move_data_to_device(named_data, self.device)
+        named_input = self.map_to_named_input(
+            named_data, key_mapping=train_config.key_mapping.train
+        )
+        named_target = self.map_to_named_target(named_data)
+
+        with autocast(enabled=self.enable_amp):
+            output = self.model(**named_input)
+
+            named_output = self.map_to_named_output(
+                output, key_mapping=train_config.key_mapping.train
+            )
+            named_estimated = self.map_to_named_estimated(named_output)
+
+            total_loss = 0
+            loss = {}
+
+            for criterion_name in criterion_names:
+                weight = self.config.criterion[criterion_name].weight
+                loss[criterion_name] = self.criterion[criterion_name](
+                    **named_estimated[criterion_name], **named_target[criterion_name]
+                )
+                total_loss = total_loss + weight * loss[criterion_name]
+
+        for criterion_name in criterion_names:
+            mean_metrics[criterion_name].update(loss[criterion_name].item())
+            self.write_scalar_if_necessary(
+                f"{criterion_name} (iteration)/train",
+                loss[criterion_name].item(),
+                global_step=self.iteration_idx + 1,
+            )
+
+        self.write_scalar_if_necessary(
+            "total (iteration)/train",
+            total_loss,
+            global_step=self.iteration_idx + 1,
+        )
+
+        self.write_train_duration_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+        )
+        self.write_train_spectrogram_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+        )
+        self.write_train_waveform_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+        )
+        self.write_train_audio_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+        )
+        self.write_train_image_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+        )
+
+        self.optimizer.zero_grad()
+        self.scaler.scale(total_loss).backward()
+        self.unscale_optimizer_if_necessary()
+        self.clip_gradient_if_necessary()
+        self.optimizer_step(self.optimizer)
+        self.scaler.update()
+
+        if train_config.steps.lr_scheduler == "iteration":
+            self.lr_scheduler_step(self.lr_scheduler, loss=loss)
+
+        prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}"
+        prompt += f", Iter {self.iteration_idx+1}/{self.iterations}]"
+        s = ""
+
+        for criterion_name in criterion_names:
+            s += f"{criterion_name}: {loss[criterion_name]}, "
+
+        s = f"{prompt} {total_loss.item()}, {s[:-2]}"
+
+        self.logger.info(s)
+        self.iteration_idx += 1
+
+        if (
+            hasattr(train_config.output.save_checkpoint, "iteration")
+            and train_config.output.save_checkpoint.iteration
+        ):
+            save_config = train_config.output.save_checkpoint.iteration
+
+            if self.iteration_idx % save_config.every == 0:
+                save_path = save_config.path.format(iteration=self.iteration_idx)
+                self.save_checkpoint_if_necessary(save_path)
+
+        return mean_metrics
+
+    def validate_one_iteration(
+        self,
+        named_data: Dict[str, Any],
+        mean_metrics: Dict[str, MeanMetric],
+        batch_idx: int = 0,
+    ) -> Dict[str, MeanMetric]:
+        """Validate model by one iteration.
+
+        Args:
+            named_data (dict): Dict-type input.
+            mean_metrics (dict): Stateful metrics.
+            batch_idx (int): Index of batch.
+
+        Returns:
+            dict: Updated stateful metrics.
+
+        """
+        train_config = self.config.train
+        criterion_names = self.criterion_names(self.config.criterion)
+        named_data = self.move_data_to_device(named_data, self.device)
+        named_input = self.map_to_named_input(
+            named_data, key_mapping=train_config.key_mapping.validation
+        )
+        named_target = self.map_to_named_target(named_data)
+        output = self.model(**named_input)
+        named_output = self.map_to_named_output(
+            output, key_mapping=train_config.key_mapping.validation
+        )
+        named_estimated = self.map_to_named_estimated(named_output)
+
+        loss = {}
+
+        for criterion_name in criterion_names:
+            loss[criterion_name] = self.criterion[criterion_name](
+                **named_estimated[criterion_name], **named_target[criterion_name]
+            )
+            mean_metrics[criterion_name].update(loss[criterion_name].item())
+
+        self.write_validation_duration_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_validation_spectrogram_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_validation_waveform_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_validation_audio_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_validation_image_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+
+        return mean_metrics
+
+    def infer_one_iteration(
+        self,
+        named_data: Dict[str, Any],
+        batch_idx: int = 0,
+    ) -> None:
+        """Perform inference by one iteration.
+
+        Args:
+            named_data (dict): Dict-type input.
+            batch_idx (int): Index of batch.
+
+        """
+        train_config = self.config.train
+
+        if hasattr(train_config.key_mapping, "inference"):
+            inference_key_mapping = train_config.key_mapping.inference
+        elif hasattr(train_config.key_mapping, "validation"):
+            inference_key_mapping = train_config.key_mapping.validation
+        else:
+            inference_key_mapping = train_config.key_mapping
+
+        named_data = self.move_data_to_device(named_data, self.device)
+        named_input = self.map_to_named_input(named_data, key_mapping=inference_key_mapping)
+
+        if hasattr(self.unwrapped_model, "inference"):
+            output = self.unwrapped_model.inference(**named_input)
+        else:
+            output = self.unwrapped_model(**named_input)
+
+        named_output = self.map_to_named_output(output, key_mapping=inference_key_mapping)
+
+        self.write_inference_duration_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_inference_spectrogram_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_inference_waveform_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_inference_audio_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_inference_image_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
 
     def unscale_optimizer_if_necessary(self, enable: bool = True) -> None:
         """Unscale optimizer containing values if necessary.
@@ -972,7 +1024,7 @@ class BaseTrainer(BaseDriver):
         self.best_loss = state_dict["best_loss"]
         self.epoch_idx = self.iteration_idx // len(self.loaders.train)
 
-    @run_only_master_rank()
+    @run_only_global_master_rank()
     def save_checkpoint_if_necessary(self, save_path: str) -> None:
         self.save_checkpoint(save_path)
 
@@ -1610,7 +1662,7 @@ class BaseTrainer(BaseDriver):
                         global_step=global_step,
                     )
 
-    @run_only_master_rank()
+    @run_only_global_master_rank()
     def write_scalar_if_necessary(self, tag: Any, scalar_value: Any, global_step: Any) -> None:
         self.writer.add_scalar(
             tag,
@@ -1618,7 +1670,7 @@ class BaseTrainer(BaseDriver):
             global_step=global_step,
         )
 
-    @run_only_master_rank()
+    @run_only_global_master_rank()
     def write_duration_if_necessary(
         self,
         named_output: Optional[Dict[str, torch.Tensor]] = None,
@@ -1714,7 +1766,7 @@ class BaseTrainer(BaseDriver):
 
         self.writer.add_figure(tag, fig, global_step=global_step)
 
-    @run_only_master_rank()
+    @run_only_global_master_rank()
     def write_spectrogram_if_necessary(
         self,
         named_output: Optional[Dict[str, torch.Tensor]] = None,
@@ -1781,7 +1833,7 @@ class BaseTrainer(BaseDriver):
 
         self.writer.add_figure(tag, fig, global_step=global_step)
 
-    @run_only_master_rank()
+    @run_only_global_master_rank()
     def write_waveform_if_necessary(
         self,
         named_output: Optional[Dict[str, torch.Tensor]] = None,
@@ -1859,7 +1911,7 @@ class BaseTrainer(BaseDriver):
 
         self.writer.add_figure(tag, fig, global_step=global_step)
 
-    @run_only_master_rank()
+    @run_only_global_master_rank()
     def write_audio_if_necessary(
         self,
         named_output: Optional[Dict[str, torch.Tensor]] = None,
@@ -1942,7 +1994,7 @@ class BaseTrainer(BaseDriver):
         waveform = waveform.detach().cpu()
         self.writer.add_audio(tag, waveform, global_step=global_step, sample_rate=sample_rate)
 
-    @run_only_master_rank()
+    @run_only_global_master_rank()
     def write_image_if_necessary(
         self,
         named_output: Optional[Dict[str, torch.Tensor]] = None,
@@ -2277,7 +2329,7 @@ class BaseGenerator(BaseDriver):
                     transforms=transforms,
                 )
 
-    @run_only_master_rank()
+    @run_only_global_master_rank()
     def save_torch_dump_if_necessary(
         self,
         named_output: Dict[str, torch.Tensor],
@@ -2346,7 +2398,7 @@ class BaseGenerator(BaseDriver):
 
         torch.save(obj, path)
 
-    @run_only_master_rank()
+    @run_only_global_master_rank()
     def save_audio_if_necessary(
         self,
         named_output: Dict[str, torch.Tensor],
@@ -2473,7 +2525,7 @@ class BaseGenerator(BaseDriver):
             **kwargs,
         )
 
-    @run_only_master_rank()
+    @run_only_global_master_rank()
     def save_spectrogram_if_necessary(
         self,
         named_output: Optional[Dict[str, torch.Tensor]],
@@ -2569,6 +2621,14 @@ class BaseGenerator(BaseDriver):
 
 
 class AutoTrainer(BaseTrainer):
+    """Dummy class to instantiate trainer.
+
+    .. note::
+
+        This class is expected to be used as ``AutoTrainer.build_from_config(config)``.
+
+    """
+
     def __init__(self, *args, **kwargs) -> None:
         raise RuntimeError("AutoTrainer.__init__ is not supported.")
 

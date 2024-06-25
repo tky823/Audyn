@@ -1,11 +1,6 @@
-seed: 0
-distributed:
-  enable:
-  backend:
-  init_method:
-cudnn:
-  benchmark: true
-  deterministic: false
+defaults:
+  - defaults
+  - _self_
+
 amp:
   enable: false
-accelerator: cuda

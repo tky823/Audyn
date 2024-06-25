@@ -1,7 +1,7 @@
 import importlib
 import os
 import warnings
-from typing import Dict, Iterable, Optional, Union
+from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -163,9 +163,10 @@ class GANTrainer(BaseTrainer):
         train_key, validation_key = "train", "validation"
         generator_key, discriminator_key = "generator", "discriminator"
 
+        output_config = self.config.train.output
         start_epoch_idx = self.epoch_idx
 
-        for epoch_idx in range(start_epoch_idx, self.epochs):
+        for _ in range(start_epoch_idx, self.epochs):
             train_loss = self.train_one_epoch()
 
             if isinstance(self.optimizer.generator, MovingAverageWrapper):
@@ -215,20 +216,20 @@ class GANTrainer(BaseTrainer):
             self.epoch_idx += 1
 
             if (
-                hasattr(self.config.train.output.save_checkpoint, "epoch")
-                and self.config.train.output.save_checkpoint.epoch
+                hasattr(output_config.save_checkpoint, "epoch")
+                and output_config.save_checkpoint.epoch is not None
             ):
-                save_config = self.config.train.output.save_checkpoint.epoch
+                save_config = output_config.save_checkpoint.epoch
 
                 if self.epoch_idx % save_config.every == 0:
                     save_path = save_config.path.format(epoch=self.epoch_idx)
                     self.save_checkpoint_if_necessary(save_path)
 
             if (
-                hasattr(self.config.train.output.save_checkpoint, "last")
-                and self.config.train.output.save_checkpoint.last
+                hasattr(output_config.save_checkpoint, "last")
+                and output_config.save_checkpoint.last is not None
             ):
-                save_config = self.config.train.output.save_checkpoint.last
+                save_config = output_config.save_checkpoint.last
                 save_path = save_config.path.format(
                     epoch=self.epoch_idx, iteration=self.iteration_idx
                 )
@@ -237,10 +238,7 @@ class GANTrainer(BaseTrainer):
     def train_one_epoch(self) -> Dict[str, float]:
         """Train model for one epoch."""
         criterion_config = self.config.criterion
-        generator_key_mapping = self.config.train.key_mapping.train.generator
-        discriminator_key_mapping = self.config.train.key_mapping.train.discriminator
         lr_scheduler_step_config = self.config.train.steps.lr_scheduler
-        train_key = "train"
         generator_key, discriminator_key = "generator", "discriminator"
 
         generator_criterion_names = self.criterion_names(criterion_config.generator)
@@ -254,255 +252,24 @@ class GANTrainer(BaseTrainer):
             for criterion_name in discriminator_criterion_names
         }
 
-        n_batch = 0
         n_remain = self.iteration_idx % len(self.loaders.train)
 
         self.set_epoch_if_necessary(self.epoch_idx)
         self.unwrapped_model.generator.train()
         self.unwrapped_model.discriminator.train()
 
-        for named_batch in self.loaders.train:
+        for named_data in self.loaders.train:
             if n_remain > 0:
                 # When checkpoint is a specific iteration,
                 # we have to skip the batches we've already treated.
                 n_remain -= 1
                 continue
 
-            named_batch = self.move_data_to_device(named_batch, self.device)
-            named_noise = self.map_to_named_input(
-                named_batch,
-                key_mapping=generator_key_mapping,
+            generator_mean_metrics, discriminator_mean_metrics = self.train_one_iteration(
+                named_data,
+                generator_mean_metrics=generator_mean_metrics,
+                discriminator_mean_metrics=discriminator_mean_metrics,
             )
-            named_generator_target = self.map_to_named_target(
-                named_batch,
-                config=criterion_config.generator,
-            )
-            named_discriminator_target = self.map_to_named_target(
-                named_batch,
-                config=criterion_config.discriminator,
-            )
-            fake = self.unwrapped_model.generator(**named_noise)
-            named_fake = self.map_to_named_output(
-                fake,
-                key_mapping=generator_key_mapping,
-            )
-            named_fake_input = self.map_to_named_input(
-                named_fake,
-                key_mapping=discriminator_key_mapping.fake,
-            )
-            named_real_input = self.map_to_named_input(
-                named_batch,
-                key_mapping=discriminator_key_mapping.real,
-            )
-
-            # detach graph for computational efficiency
-            named_fake_input_no_grad = {}
-
-            for key in named_fake_input.keys():
-                named_fake_input_no_grad[key] = named_fake_input[key].detach()
-
-            fake_output = self.unwrapped_model.discriminator(**named_fake_input_no_grad)
-            real_output = self.unwrapped_model.discriminator(**named_real_input)
-
-            named_fake_output = self.map_to_named_output(
-                fake_output,
-                key_mapping=discriminator_key_mapping.fake,
-            )
-            named_real_output = self.map_to_named_output(
-                real_output,
-                key_mapping=discriminator_key_mapping.real,
-            )
-
-            assert (
-                set(named_fake_output.keys()) & set(named_real_output.keys()) == set()
-            ), "named_fake_output and named_real_output should be disjointed."
-
-            named_output = {}
-            named_output.update(named_fake_output)
-            named_output.update(named_real_output)
-            named_estimated = self.map_to_named_estimated(
-                named_output,
-                config=criterion_config.discriminator,
-            )
-
-            total_discriminator_loss = 0
-            discriminator_loss = {}
-
-            for criterion_name in discriminator_criterion_names:
-                weight = criterion_config.discriminator[criterion_name].weight
-                discriminator_loss[criterion_name] = self.criterion.discriminator[criterion_name](
-                    **named_estimated[criterion_name],
-                    **named_discriminator_target[criterion_name],
-                )
-                total_discriminator_loss = (
-                    total_discriminator_loss + weight * discriminator_loss[criterion_name]
-                )
-                discriminator_mean_metrics[criterion_name].update(
-                    discriminator_loss[criterion_name].item()
-                )
-
-                self.write_scalar_if_necessary(
-                    f"{criterion_name} (iteration)/{train_key}",
-                    discriminator_loss[criterion_name].item(),
-                    global_step=self.iteration_idx + 1,
-                )
-
-            self.write_scalar_if_necessary(
-                f"total {discriminator_key} (iteration)/{train_key}",
-                total_discriminator_loss,
-                global_step=self.iteration_idx + 1,
-            )
-
-            self.optimizer.discriminator.zero_grad()
-            self.scaler.scale(total_discriminator_loss).backward()
-            self.unscale_optimizer_if_necessary(self.optimizer.discriminator)
-
-            if self.grad_clipper is None:
-                self.clip_gradient_if_necessary(self.unwrapped_model.discriminator.parameters())
-            else:
-                self.clip_gradient_if_necessary("discriminator")
-
-            self.optimizer_step(self.optimizer.discriminator)
-
-            if lr_scheduler_step_config and lr_scheduler_step_config.discriminator == "iteration":
-                self.lr_scheduler_step(self.lr_scheduler.discriminator, loss=discriminator_loss)
-
-            prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}"
-            prompt += f", Iter {self.iteration_idx+1}/{self.iterations}]"
-            s = ""
-
-            for criterion_name in discriminator_criterion_names:
-                s += f"{criterion_name}: {discriminator_loss[criterion_name]}, "
-
-            s = f"{prompt} {total_discriminator_loss.item()}, {s[:-2]}"
-
-            self.logger.info(s)
-
-            # for updates of generator
-            fake_output = self.unwrapped_model.discriminator(**named_fake_input)
-            real_output = self.unwrapped_model.discriminator(**named_real_input)
-
-            named_fake_output = self.map_to_named_output(
-                fake_output,
-                key_mapping=discriminator_key_mapping.fake,
-            )
-            named_real_output = self.map_to_named_output(
-                real_output,
-                key_mapping=discriminator_key_mapping.real,
-            )
-
-            assert (
-                set(named_fake_output.keys()) & set(named_real_output.keys()) == set()
-            ), "named_fake_output and named_real_output should be disjointed."
-            assert (
-                set(named_real_output.keys()) & set(named_fake.keys()) == set()
-            ), "named_real_output and named_fake should be disjointed."
-            assert (
-                set(named_fake.keys()) & set(named_fake_output.keys()) == set()
-            ), "named_fake and named_fake_output should be disjointed."
-
-            named_output = {}
-            named_output.update(named_fake_output)
-            named_output.update(named_real_output)
-            named_output.update(named_fake)
-
-            named_estimated = self.map_to_named_estimated(
-                named_output,
-                config=criterion_config.generator,
-            )
-
-            total_generator_loss = 0
-            generator_loss = {}
-
-            for criterion_name in generator_criterion_names:
-                weight = criterion_config.generator[criterion_name].weight
-                generator_loss[criterion_name] = self.criterion.generator[criterion_name](
-                    **named_estimated[criterion_name],
-                    **named_generator_target[criterion_name],
-                )
-                total_generator_loss = (
-                    total_generator_loss + weight * generator_loss[criterion_name]
-                )
-                generator_mean_metrics[criterion_name].update(
-                    generator_loss[criterion_name].item()
-                )
-
-                self.write_scalar_if_necessary(
-                    f"{criterion_name} (iteration)/{train_key}",
-                    generator_loss[criterion_name].item(),
-                    global_step=self.iteration_idx + 1,
-                )
-
-            self.write_scalar_if_necessary(
-                f"total {generator_key} (iteration)/{train_key}",
-                total_generator_loss,
-                global_step=self.iteration_idx + 1,
-            )
-
-            self.write_train_duration_if_necessary(
-                named_output,
-                named_batch,
-                config=self.config.train.record,
-            )
-            self.write_train_spectrogram_if_necessary(
-                named_output,
-                named_batch,
-                config=self.config.train.record,
-            )
-            self.write_train_waveform_if_necessary(
-                named_output,
-                named_batch,
-                config=self.config.train.record,
-            )
-            self.write_train_audio_if_necessary(
-                named_output,
-                named_batch,
-                config=self.config.train.record,
-            )
-            self.write_train_image_if_necessary(
-                named_output,
-                named_batch,
-                config=self.config.train.record,
-            )
-
-            self.optimizer.generator.zero_grad()
-            self.scaler.scale(total_generator_loss).backward()
-            self.unscale_optimizer_if_necessary(self.optimizer.generator)
-
-            if self.grad_clipper is None:
-                self.clip_gradient_if_necessary(self.unwrapped_model.generator.parameters())
-            else:
-                self.clip_gradient_if_necessary("generator")
-
-            self.optimizer_step(self.optimizer.generator)
-            self.scaler.update()
-
-            if lr_scheduler_step_config and lr_scheduler_step_config.generator == "iteration":
-                self.lr_scheduler_step(self.lr_scheduler.generator, loss=generator_loss)
-
-            prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}"
-            prompt += f", Iter {self.iteration_idx+1}/{self.iterations}]"
-            s = ""
-
-            for criterion_name in generator_criterion_names:
-                s += f"{criterion_name}: {generator_loss[criterion_name]}, "
-
-            s = f"{prompt} {total_generator_loss.item()}, {s[:-2]}"
-
-            self.logger.info(s)
-
-            self.iteration_idx += 1
-            n_batch += 1
-
-            if (
-                hasattr(self.config.train.output.save_checkpoint, "iteration")
-                and self.config.train.output.save_checkpoint.iteration
-            ):
-                save_config = self.config.train.output.save_checkpoint.iteration
-
-                if self.iteration_idx % save_config.every == 0:
-                    save_path = save_config.path.format(iteration=self.iteration_idx)
-                    self.save_checkpoint_if_necessary(save_path)
 
             if self.iteration_idx >= self.iterations:
                 # Finish training
@@ -535,8 +302,6 @@ class GANTrainer(BaseTrainer):
     def validate_one_epoch(self) -> Dict[str, float]:
         """Validate model for one epoch."""
         criterion_config = self.config.criterion
-        generator_key_mapping = self.config.train.key_mapping.validation.generator
-        discriminator_key_mapping = self.config.train.key_mapping.validation.discriminator
         generator_key, discriminator_key = "generator", "discriminator"
 
         generator_criterion_names = self.criterion_names(criterion_config.generator)
@@ -550,132 +315,16 @@ class GANTrainer(BaseTrainer):
             for criterion_name in discriminator_criterion_names
         }
 
-        n_batch = 0
-
         self.unwrapped_model.generator.eval()
         self.unwrapped_model.discriminator.eval()
 
-        for named_batch in self.loaders.validation:
-            named_batch = self.move_data_to_device(named_batch, self.device)
-
-            # preparation for forward pass of generator
-            named_noise = self.map_to_named_input(
-                named_batch,
-                key_mapping=generator_key_mapping,
+        for batch_idx, named_data in enumerate(self.loaders.validation):
+            generator_mean_metrics, discriminator_mean_metrics = self.validate_one_iteration(
+                named_data,
+                generator_mean_metrics=generator_mean_metrics,
+                discriminator_mean_metrics=discriminator_mean_metrics,
+                batch_idx=batch_idx,
             )
-            named_generator_target = self.map_to_named_target(
-                named_batch,
-                config=criterion_config.generator,
-            )
-            fake = self.unwrapped_model.generator(**named_noise)
-            named_fake = self.map_to_named_output(
-                fake,
-                key_mapping=generator_key_mapping,
-            )
-
-            # preparation for forward pass of discriminator
-            named_fake_input = self.map_to_named_input(
-                named_fake,
-                key_mapping=discriminator_key_mapping.fake,
-            )
-            named_real_input = self.map_to_named_input(
-                named_batch,
-                key_mapping=discriminator_key_mapping.real,
-            )
-            named_discriminator_target = self.map_to_named_target(
-                named_batch,
-                config=criterion_config.discriminator,
-            )
-
-            fake_output = self.unwrapped_model.discriminator(**named_fake_input)
-            real_output = self.unwrapped_model.discriminator(**named_real_input)
-
-            named_fake_output = self.map_to_named_output(
-                fake_output,
-                key_mapping=discriminator_key_mapping.fake,
-            )
-            named_real_output = self.map_to_named_output(
-                real_output,
-                key_mapping=discriminator_key_mapping.real,
-            )
-
-            assert (
-                set(named_fake_output.keys()) & set(named_real_output.keys()) == set()
-            ), "named_fake_output and named_real_output should be disjointed."
-            assert (
-                set(named_real_output.keys()) & set(named_fake.keys()) == set()
-            ), "named_real_output and named_fake should be disjointed."
-            assert (
-                set(named_fake.keys()) & set(named_fake_output.keys()) == set()
-            ), "named_fake and named_fake_output should be disjointed."
-
-            named_output = {}
-            named_output.update(named_fake_output)
-            named_output.update(named_real_output)
-            named_output.update(named_fake)
-            named_discriminator_estimated = self.map_to_named_estimated(
-                named_output,
-                config=criterion_config.discriminator,
-            )
-            named_generator_estimated = self.map_to_named_estimated(
-                named_output,
-                config=criterion_config.generator,
-            )
-
-            discriminator_loss = {}
-
-            for criterion_name in discriminator_criterion_names:
-                discriminator_loss[criterion_name] = self.criterion.discriminator[criterion_name](
-                    **named_discriminator_estimated[criterion_name],
-                    **named_discriminator_target[criterion_name],
-                )
-                discriminator_mean_metrics[criterion_name].update(
-                    discriminator_loss[criterion_name].item()
-                )
-
-            generator_loss = {}
-
-            for criterion_name in generator_criterion_names:
-                generator_loss[criterion_name] = self.criterion.generator[criterion_name](
-                    **named_generator_estimated[criterion_name],
-                    **named_generator_target[criterion_name],
-                )
-                generator_mean_metrics[criterion_name].update(
-                    generator_loss[criterion_name].item()
-                )
-
-            self.write_validation_duration_if_necessary(
-                named_output,
-                named_batch,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_validation_spectrogram_if_necessary(
-                named_output,
-                named_batch,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_validation_waveform_if_necessary(
-                named_output,
-                named_batch,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_validation_audio_if_necessary(
-                named_output,
-                named_batch,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_validation_image_if_necessary(
-                named_output,
-                named_batch,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-
-            n_batch += 1
 
         validation_loss = {
             generator_key: {},
@@ -695,71 +344,493 @@ class GANTrainer(BaseTrainer):
     @torch.no_grad()
     def infer_one_batch(self) -> None:
         """Inference using one batch."""
-        if hasattr(self.config.train.key_mapping, "inference"):
-            inference_key_mapping = self.config.train.key_mapping.inference.generator
-        elif hasattr(self.config.train.key_mapping, "validation"):
-            inference_key_mapping = self.config.train.key_mapping.validation.generator
-        else:
-            inference_key_mapping = self.config.train.key_mapping.generator
-
-        n_batch = 0
-
         self.unwrapped_model.generator.eval()
+        self.unwrapped_model.discriminator.eval()
 
-        for named_batch in self.loaders.validation:
-            named_batch = self.move_data_to_device(named_batch, self.device)
-            named_input = self.map_to_named_input(
-                named_batch,
-                key_mapping=inference_key_mapping,
-            )
-
-            unwrapped_generator = unwrap(self.unwrapped_model.generator)
-
-            if hasattr(unwrapped_generator, "inference"):
-                output = unwrapped_generator.inference(**named_input)
-            else:
-                output = unwrapped_generator(**named_input)
-
-            named_output = self.map_to_named_output(
-                output,
-                key_mapping=inference_key_mapping,
-            )
-
-            self.write_inference_duration_if_necessary(
-                named_output,
-                named_batch,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_inference_spectrogram_if_necessary(
-                named_output,
-                named_batch,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_inference_waveform_if_necessary(
-                named_output,
-                named_batch,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_inference_audio_if_necessary(
-                named_output,
-                named_batch,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-            self.write_inference_image_if_necessary(
-                named_output,
-                named_batch,
-                config=self.config.train.record,
-                batch_idx=n_batch,
-            )
-
-            n_batch += 1
+        for batch_idx, named_data in enumerate(self.loaders.validation):
+            self.infer_one_iteration(named_data, batch_idx=batch_idx)
 
             # Process only first batch.
             break
+
+    def train_one_iteration(
+        self,
+        named_data: Dict[str, Any],
+        generator_mean_metrics: Dict[str, MeanMetric],
+        discriminator_mean_metrics: Dict[str, MeanMetric],
+    ) -> Tuple[Dict[str, MeanMetric], Dict[str, MeanMetric]]:
+        """Train model by one iteration.
+
+        Args:
+            named_data (dict): Dict-type input.
+            generator_mean_metrics (dict): Stateful metrics for generator.
+            discriminator_mean_metrics (dict): Stateful metrics for discriminator.
+
+        Returns:
+            tuple: Tuple of dictionaries containing
+
+                - dict: Updated stateful metrics for generator.
+                - dict: Updated stateful metrics for discriminator.
+
+        """
+        train_config = self.config.train
+        criterion_config = self.config.criterion
+        generator_key_mapping = train_config.key_mapping.train.generator
+        discriminator_key_mapping = train_config.key_mapping.train.discriminator
+        lr_scheduler_step_config = train_config.steps.lr_scheduler
+        train_key = "train"
+        generator_key, discriminator_key = "generator", "discriminator"
+
+        generator_criterion_names = self.criterion_names(criterion_config.generator)
+        discriminator_criterion_names = self.criterion_names(criterion_config.discriminator)
+
+        named_data = self.move_data_to_device(named_data, self.device)
+        named_noise = self.map_to_named_input(
+            named_data,
+            key_mapping=generator_key_mapping,
+        )
+        named_generator_target = self.map_to_named_target(
+            named_data,
+            config=criterion_config.generator,
+        )
+        named_discriminator_target = self.map_to_named_target(
+            named_data,
+            config=criterion_config.discriminator,
+        )
+        fake = self.unwrapped_model.generator(**named_noise)
+        named_fake = self.map_to_named_output(
+            fake,
+            key_mapping=generator_key_mapping,
+        )
+        named_fake_input = self.map_to_named_input(
+            named_fake,
+            key_mapping=discriminator_key_mapping.fake,
+        )
+        named_real_input = self.map_to_named_input(
+            named_data,
+            key_mapping=discriminator_key_mapping.real,
+        )
+
+        # detach graph for computational efficiency
+        named_fake_input_no_grad = {}
+
+        for key in named_fake_input.keys():
+            named_fake_input_no_grad[key] = named_fake_input[key].detach()
+
+        fake_output = self.unwrapped_model.discriminator(**named_fake_input_no_grad)
+        real_output = self.unwrapped_model.discriminator(**named_real_input)
+
+        named_fake_output = self.map_to_named_output(
+            fake_output,
+            key_mapping=discriminator_key_mapping.fake,
+        )
+        named_real_output = self.map_to_named_output(
+            real_output,
+            key_mapping=discriminator_key_mapping.real,
+        )
+
+        assert (
+            set(named_fake_output.keys()) & set(named_real_output.keys()) == set()
+        ), "named_fake_output and named_real_output should be disjointed."
+
+        named_output = {}
+        named_output.update(named_fake_output)
+        named_output.update(named_real_output)
+        named_estimated = self.map_to_named_estimated(
+            named_output,
+            config=criterion_config.discriminator,
+        )
+
+        total_discriminator_loss = 0
+        discriminator_loss = {}
+
+        for criterion_name in discriminator_criterion_names:
+            weight = criterion_config.discriminator[criterion_name].weight
+            discriminator_loss[criterion_name] = self.criterion.discriminator[criterion_name](
+                **named_estimated[criterion_name],
+                **named_discriminator_target[criterion_name],
+            )
+            total_discriminator_loss = (
+                total_discriminator_loss + weight * discriminator_loss[criterion_name]
+            )
+            discriminator_mean_metrics[criterion_name].update(
+                discriminator_loss[criterion_name].item()
+            )
+
+            self.write_scalar_if_necessary(
+                f"{criterion_name} (iteration)/{train_key}",
+                discriminator_loss[criterion_name].item(),
+                global_step=self.iteration_idx + 1,
+            )
+
+        self.write_scalar_if_necessary(
+            f"total {discriminator_key} (iteration)/{train_key}",
+            total_discriminator_loss,
+            global_step=self.iteration_idx + 1,
+        )
+
+        self.optimizer.discriminator.zero_grad()
+        self.scaler.scale(total_discriminator_loss).backward()
+        self.unscale_optimizer_if_necessary(self.optimizer.discriminator)
+
+        if self.grad_clipper is None:
+            self.clip_gradient_if_necessary(self.unwrapped_model.discriminator.parameters())
+        else:
+            self.clip_gradient_if_necessary("discriminator")
+
+        self.optimizer_step(self.optimizer.discriminator)
+
+        if lr_scheduler_step_config and lr_scheduler_step_config.discriminator == "iteration":
+            self.lr_scheduler_step(self.lr_scheduler.discriminator, loss=discriminator_loss)
+
+        prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}"
+        prompt += f", Iter {self.iteration_idx+1}/{self.iterations}]"
+        s = ""
+
+        for criterion_name in discriminator_criterion_names:
+            s += f"{criterion_name}: {discriminator_loss[criterion_name]}, "
+
+        s = f"{prompt} {total_discriminator_loss.item()}, {s[:-2]}"
+
+        self.logger.info(s)
+
+        # for updates of generator
+        fake_output = self.unwrapped_model.discriminator(**named_fake_input)
+        real_output = self.unwrapped_model.discriminator(**named_real_input)
+
+        named_fake_output = self.map_to_named_output(
+            fake_output,
+            key_mapping=discriminator_key_mapping.fake,
+        )
+        named_real_output = self.map_to_named_output(
+            real_output,
+            key_mapping=discriminator_key_mapping.real,
+        )
+
+        assert (
+            set(named_fake_output.keys()) & set(named_real_output.keys()) == set()
+        ), "named_fake_output and named_real_output should be disjointed."
+        assert (
+            set(named_real_output.keys()) & set(named_fake.keys()) == set()
+        ), "named_real_output and named_fake should be disjointed."
+        assert (
+            set(named_fake.keys()) & set(named_fake_output.keys()) == set()
+        ), "named_fake and named_fake_output should be disjointed."
+
+        named_output = {}
+        named_output.update(named_fake_output)
+        named_output.update(named_real_output)
+        named_output.update(named_fake)
+
+        named_estimated = self.map_to_named_estimated(
+            named_output,
+            config=criterion_config.generator,
+        )
+
+        total_generator_loss = 0
+        generator_loss = {}
+
+        for criterion_name in generator_criterion_names:
+            weight = criterion_config.generator[criterion_name].weight
+            generator_loss[criterion_name] = self.criterion.generator[criterion_name](
+                **named_estimated[criterion_name],
+                **named_generator_target[criterion_name],
+            )
+            total_generator_loss = total_generator_loss + weight * generator_loss[criterion_name]
+            generator_mean_metrics[criterion_name].update(generator_loss[criterion_name].item())
+
+            self.write_scalar_if_necessary(
+                f"{criterion_name} (iteration)/{train_key}",
+                generator_loss[criterion_name].item(),
+                global_step=self.iteration_idx + 1,
+            )
+
+        self.write_scalar_if_necessary(
+            f"total {generator_key} (iteration)/{train_key}",
+            total_generator_loss,
+            global_step=self.iteration_idx + 1,
+        )
+
+        self.write_train_duration_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+        )
+        self.write_train_spectrogram_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+        )
+        self.write_train_waveform_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+        )
+        self.write_train_audio_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+        )
+        self.write_train_image_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+        )
+
+        self.optimizer.generator.zero_grad()
+        self.scaler.scale(total_generator_loss).backward()
+        self.unscale_optimizer_if_necessary(self.optimizer.generator)
+
+        if self.grad_clipper is None:
+            self.clip_gradient_if_necessary(self.unwrapped_model.generator.parameters())
+        else:
+            self.clip_gradient_if_necessary("generator")
+
+        self.optimizer_step(self.optimizer.generator)
+        self.scaler.update()
+
+        if lr_scheduler_step_config and lr_scheduler_step_config.generator == "iteration":
+            self.lr_scheduler_step(self.lr_scheduler.generator, loss=generator_loss)
+
+        prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}"
+        prompt += f", Iter {self.iteration_idx+1}/{self.iterations}]"
+        s = ""
+
+        for criterion_name in generator_criterion_names:
+            s += f"{criterion_name}: {generator_loss[criterion_name]}, "
+
+        s = f"{prompt} {total_generator_loss.item()}, {s[:-2]}"
+
+        self.logger.info(s)
+
+        self.iteration_idx += 1
+
+        if (
+            hasattr(train_config.output.save_checkpoint, "iteration")
+            and train_config.output.save_checkpoint.iteration is not None
+        ):
+            save_config = train_config.output.save_checkpoint.iteration
+
+            if self.iteration_idx % save_config.every == 0:
+                save_path = save_config.path.format(iteration=self.iteration_idx)
+                self.save_checkpoint_if_necessary(save_path)
+
+        return generator_mean_metrics, discriminator_mean_metrics
+
+    def validate_one_iteration(
+        self,
+        named_data: Dict[str, Any],
+        generator_mean_metrics: Dict[str, MeanMetric],
+        discriminator_mean_metrics: Dict[str, MeanMetric],
+        batch_idx: int = 0,
+    ) -> Tuple[Dict[str, MeanMetric], Dict[str, MeanMetric]]:
+        """Validate model by one iteration.
+
+        Args:
+            named_data (dict): Dict-type input.
+            generator_mean_metrics (dict): Stateful metrics for generator.
+            discriminator_mean_metrics (dict): Stateful metrics for discriminator.
+            batch_idx (int): Index of batch.
+
+        Returns:
+            tuple: Tuple of dictionaries containing
+
+                - dict: Updated stateful metrics for generator.
+                - dict: Updated stateful metrics for discriminator.
+
+        """
+        train_config = self.config.train
+        criterion_config = self.config.criterion
+        generator_key_mapping = train_config.key_mapping.validation.generator
+        discriminator_key_mapping = train_config.key_mapping.validation.discriminator
+
+        generator_criterion_names = self.criterion_names(criterion_config.generator)
+        discriminator_criterion_names = self.criterion_names(criterion_config.discriminator)
+
+        named_data = self.move_data_to_device(named_data, self.device)
+
+        # preparation for forward pass of generator
+        named_noise = self.map_to_named_input(
+            named_data,
+            key_mapping=generator_key_mapping,
+        )
+        named_generator_target = self.map_to_named_target(
+            named_data,
+            config=criterion_config.generator,
+        )
+        fake = self.unwrapped_model.generator(**named_noise)
+        named_fake = self.map_to_named_output(
+            fake,
+            key_mapping=generator_key_mapping,
+        )
+
+        # preparation for forward pass of discriminator
+        named_fake_input = self.map_to_named_input(
+            named_fake,
+            key_mapping=discriminator_key_mapping.fake,
+        )
+        named_real_input = self.map_to_named_input(
+            named_data,
+            key_mapping=discriminator_key_mapping.real,
+        )
+        named_discriminator_target = self.map_to_named_target(
+            named_data,
+            config=criterion_config.discriminator,
+        )
+
+        fake_output = self.unwrapped_model.discriminator(**named_fake_input)
+        real_output = self.unwrapped_model.discriminator(**named_real_input)
+
+        named_fake_output = self.map_to_named_output(
+            fake_output,
+            key_mapping=discriminator_key_mapping.fake,
+        )
+        named_real_output = self.map_to_named_output(
+            real_output,
+            key_mapping=discriminator_key_mapping.real,
+        )
+
+        assert (
+            set(named_fake_output.keys()) & set(named_real_output.keys()) == set()
+        ), "named_fake_output and named_real_output should be disjointed."
+        assert (
+            set(named_real_output.keys()) & set(named_fake.keys()) == set()
+        ), "named_real_output and named_fake should be disjointed."
+        assert (
+            set(named_fake.keys()) & set(named_fake_output.keys()) == set()
+        ), "named_fake and named_fake_output should be disjointed."
+
+        named_output = {}
+        named_output.update(named_fake_output)
+        named_output.update(named_real_output)
+        named_output.update(named_fake)
+        named_discriminator_estimated = self.map_to_named_estimated(
+            named_output,
+            config=criterion_config.discriminator,
+        )
+        named_generator_estimated = self.map_to_named_estimated(
+            named_output,
+            config=criterion_config.generator,
+        )
+
+        discriminator_loss = {}
+
+        for criterion_name in discriminator_criterion_names:
+            discriminator_loss[criterion_name] = self.criterion.discriminator[criterion_name](
+                **named_discriminator_estimated[criterion_name],
+                **named_discriminator_target[criterion_name],
+            )
+            discriminator_mean_metrics[criterion_name].update(
+                discriminator_loss[criterion_name].item()
+            )
+
+        generator_loss = {}
+
+        for criterion_name in generator_criterion_names:
+            generator_loss[criterion_name] = self.criterion.generator[criterion_name](
+                **named_generator_estimated[criterion_name],
+                **named_generator_target[criterion_name],
+            )
+            generator_mean_metrics[criterion_name].update(generator_loss[criterion_name].item())
+
+        self.write_validation_duration_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_validation_spectrogram_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_validation_waveform_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_validation_audio_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_validation_image_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+
+        return generator_mean_metrics, discriminator_mean_metrics
+
+    def infer_one_iteration(self, named_data: Dict[str, Any], batch_idx: int = 0) -> None:
+        """Perform inference by one iteration.
+
+        Args:
+            named_data (dict): Dict-type input.
+            batch_idx (int): Index of batch.
+
+        """
+        train_config = self.config.train
+
+        if hasattr(train_config.key_mapping, "inference"):
+            inference_key_mapping = train_config.key_mapping.inference.generator
+        elif hasattr(train_config.key_mapping, "validation"):
+            inference_key_mapping = train_config.key_mapping.validation.generator
+        else:
+            inference_key_mapping = train_config.key_mapping.generator
+
+        named_data = self.move_data_to_device(named_data, self.device)
+        named_input = self.map_to_named_input(
+            named_data,
+            key_mapping=inference_key_mapping,
+        )
+
+        unwrapped_generator = unwrap(self.unwrapped_model.generator)
+
+        if hasattr(unwrapped_generator, "inference"):
+            output = unwrapped_generator.inference(**named_input)
+        else:
+            output = unwrapped_generator(**named_input)
+
+        named_output = self.map_to_named_output(
+            output,
+            key_mapping=inference_key_mapping,
+        )
+
+        self.write_inference_duration_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_inference_spectrogram_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_inference_waveform_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_inference_audio_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_inference_image_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
 
     def count_num_parameters(self, model: nn.Module) -> int:
         """Count number of parameters.

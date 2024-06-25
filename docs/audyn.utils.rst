@@ -9,6 +9,7 @@ Submodules
 .. toctree::
    :maxdepth: 1
 
+   audyn.utils.driver
    audyn.utils.data
    audyn.utils.modules
    audyn.utils.music

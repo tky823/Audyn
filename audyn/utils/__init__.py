@@ -2,10 +2,11 @@ import importlib
 import os
 import shutil
 import warnings
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
 import torch
-from omegaconf import DictConfig, OmegaConf
+from hydra.core.hydra_config import HydraConfig
+from omegaconf import DictConfig, ListConfig, OmegaConf
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 
@@ -40,6 +41,7 @@ __all__ = [
     "clear_cache",
     "setup_config",
     "setup_system",
+    "save_resolved_config",
     "set_seed",
     "convert_dataset_and_dataloader_to_ddp_if_possible",
     "convert_dataset_and_dataloader_format_if_necessary",
@@ -171,7 +173,40 @@ def setup_config(config: DictConfig) -> None:
 
         setup_distributed(system_config)
 
+    if full_config is None:
+        warnings.warn(
+            "System config is given to setup_config. In that case, "
+            "resolved configuration is not saved.",
+            UserWarning,
+            stacklevel=2,
+        )
+    else:
+        save_resolved_config(full_config)
+
     set_seed(system_config.seed)
+
+
+def save_resolved_config(
+    config: Union[DictConfig, ListConfig], path: Optional[str] = None
+) -> None:
+    """Save resolved config.
+
+    Args:
+        config (DictConfig or ListConfig): Config to save.
+        path (str, optional): Optional path to save config. If ``None``,
+            ``os.path.join(output_dir, "resolved_config.yaml")`` is used, where ``output_dir``
+            is defined by ``hydra``.
+
+    """
+    if path is None:
+        # TODO: improve design
+        try:
+            output_dir = HydraConfig.get().runtime.output_dir
+            path = os.path.join(output_dir, ".hydra", "resolved_config.yaml")
+        except ValueError:
+            return
+
+    OmegaConf.save(config, path, resolve=True)
 
 
 def set_seed(seed: int = 0) -> None:
