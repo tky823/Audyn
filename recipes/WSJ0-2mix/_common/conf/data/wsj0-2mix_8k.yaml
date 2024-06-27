@@ -1,0 +1,6 @@
+defaults:
+  - wsj0-2mix
+  - _self_
+
+audio:
+  sample_rate: 8000
