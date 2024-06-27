@@ -13,7 +13,7 @@ log_dir="./log"
 dump_format="torch"
 
 preprocess="defaults"
-data="conv-tasnet"
+data="wsj0-2mix"
 
 . ../../_common/parse_options.sh || exit 1;
 

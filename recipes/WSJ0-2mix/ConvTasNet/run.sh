@@ -19,7 +19,7 @@ dump_format="torch"
 
 system="defaults"
 preprocess="defaults"
-data="conv-tasnet"
+data="wsj0-2mix"
 train="wsj0-2mix"
 model="conv-tasnet"
 optimizer="adam"
