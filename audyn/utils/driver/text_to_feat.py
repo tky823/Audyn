@@ -246,6 +246,12 @@ class TextToFeatTrainer(BaseTrainer):
             config=train_config.record,
             batch_idx=batch_idx,
         )
+        self.write_validation_multi_audio_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
         self.write_validation_image_if_necessary(
             named_output,
             named_data,
@@ -335,6 +341,12 @@ class TextToFeatTrainer(BaseTrainer):
             batch_idx=batch_idx,
         )
         self.write_inference_audio_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_inference_multi_audio_if_necessary(
             named_output,
             named_data,
             config=train_config.record,

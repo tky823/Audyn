@@ -698,6 +698,11 @@ class BaseTrainer(BaseDriver):
             named_data,
             config=train_config.record,
         )
+        self.write_train_multi_audio_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+        )
         self.write_train_image_if_necessary(
             named_output,
             named_data,
@@ -800,6 +805,12 @@ class BaseTrainer(BaseDriver):
             config=train_config.record,
             batch_idx=batch_idx,
         )
+        self.write_validation_multi_audio_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
         self.write_validation_image_if_necessary(
             named_output,
             named_data,
@@ -859,6 +870,12 @@ class BaseTrainer(BaseDriver):
             batch_idx=batch_idx,
         )
         self.write_inference_audio_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_inference_multi_audio_if_necessary(
             named_output,
             named_data,
             config=train_config.record,
@@ -1199,6 +1216,38 @@ class BaseTrainer(BaseDriver):
                     sample_rate=audio_config.sample_rate,
                 )
 
+    def write_train_multi_audio_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        config: DictConfig = None,
+    ) -> None:
+        """Write multiple audio to tensorboard for training.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            config (DictConfig, optional): Config to write out to tensorboard.
+
+        """
+        if config is None:
+            config = self.config.train.record
+
+        if hasattr(config, "multi_audio"):
+            audio_config = config.multi_audio.iteration
+            global_step = self.iteration_idx + 1
+
+            if audio_config is not None and global_step % audio_config.every == 0:
+                self.write_multi_audio_if_necessary(
+                    named_output,
+                    named_reference,
+                    sample_size=audio_config.sample_size,
+                    key_mapping=audio_config.key_mapping,
+                    transforms=audio_config.transforms,
+                    global_step=global_step,
+                    sample_rate=audio_config.sample_rate,
+                )
+
     def write_train_image_if_necessary(
         self,
         named_output: Optional[Dict[str, torch.Tensor]] = None,
@@ -1394,6 +1443,50 @@ class BaseTrainer(BaseDriver):
                     transforms = audio_config.transforms
 
                 self.write_audio_if_necessary(
+                    named_output,
+                    named_reference,
+                    sample_size=audio_config.sample_size,
+                    key_mapping=key_mapping,
+                    transforms=transforms,
+                    global_step=global_step,
+                    sample_rate=audio_config.sample_rate,
+                )
+
+    def write_validation_multi_audio_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        config: DictConfig = None,
+        batch_idx: int = 0,
+    ) -> None:
+        """Write multiple audio to tensorboard for validation.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            config (DictConfig, optional): Config to write out to tensorboard.
+            batch_idx (int): Batch index.
+
+        """
+        if config is None:
+            config = self.config.train.record
+
+        if hasattr(config, "multi_audio") and batch_idx < 1:
+            audio_config = config.multi_audio.epoch
+            global_step = self.epoch_idx + 1
+
+            if audio_config is not None and global_step % audio_config.every == 0:
+                if hasattr(audio_config.key_mapping, "validation"):
+                    key_mapping = audio_config.key_mapping.validation
+                else:
+                    key_mapping = audio_config.key_mapping
+
+                if hasattr(audio_config.transforms, "validation"):
+                    transforms = audio_config.transforms.validation
+                else:
+                    transforms = audio_config.transforms
+
+                self.write_multi_audio_if_necessary(
                     named_output,
                     named_reference,
                     sample_size=audio_config.sample_size,
@@ -1610,6 +1703,50 @@ class BaseTrainer(BaseDriver):
                         transforms = audio_config.transforms
 
                     self.write_audio_if_necessary(
+                        named_output,
+                        named_reference,
+                        sample_size=audio_config.sample_size,
+                        key_mapping=key_mapping,
+                        transforms=transforms,
+                        global_step=global_step,
+                        sample_rate=audio_config.sample_rate,
+                    )
+
+    def write_inference_multi_audio_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        config: DictConfig = None,
+        batch_idx: int = 0,
+    ) -> None:
+        """Write multiple audio to tensorboard for inference.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            config (DictConfig, optional): Config to write out to tensorboard.
+            batch_idx (int): Batch index.
+
+        """
+        if config is None:
+            config = self.config.train.record
+
+        if hasattr(config, "multi_audio") and batch_idx < 1:
+            audio_config = config.multi_audio.epoch
+            global_step = self.epoch_idx + 1
+
+            if audio_config is not None and global_step % audio_config.every == 0:
+                if hasattr(audio_config.key_mapping, "inference"):
+                    key_mapping = audio_config.key_mapping.inference
+
+                    if hasattr(audio_config.transforms, "inference"):
+                        transforms = audio_config.transforms.inference
+                    elif hasattr(audio_config.transforms, "validation"):
+                        transforms = audio_config.transforms.validation
+                    else:
+                        transforms = audio_config.transforms
+
+                    self.write_multi_audio_if_necessary(
                         named_output,
                         named_reference,
                         sample_size=audio_config.sample_size,
@@ -1993,6 +2130,72 @@ class BaseTrainer(BaseDriver):
 
         waveform = waveform.detach().cpu()
         self.writer.add_audio(tag, waveform, global_step=global_step, sample_rate=sample_rate)
+
+    @run_only_global_master_rank()
+    def write_multi_audio_if_necessary(
+        self,
+        named_output: Optional[Dict[str, torch.Tensor]] = None,
+        named_reference: Optional[Dict[str, torch.Tensor]] = None,
+        sample_size: int = 1,
+        key_mapping: DictConfig = None,
+        transforms: Optional[DictConfig] = None,
+        global_step: int = 1,
+        sample_rate: int = 44100,
+    ) -> None:
+        """Write multiple audio to tensorboard.
+
+        Args:
+            named_output (dict, optional): Estimated data.
+            named_reference (dict, optional): Target data.
+            key_mapping (DictConfig): Config to map data.
+            transforms (DictConfig, optional): Config to transform data.
+            global_step (int): Step value to record.
+            sample_rate (int): Sampling rate of audio. Default: 44100.
+
+        """
+        if hasattr(key_mapping, "output") and key_mapping.output is not None:
+            if named_output is None:
+                raise ValueError("named_output is not specified.")
+
+            for key, tag in key_mapping.output.items():
+                for sample_idx, waveform in enumerate(named_output[key]):
+                    if sample_idx >= sample_size:
+                        break
+
+                    if transforms is not None and transforms.output is not None:
+                        if key in transforms.output.keys():
+                            transform = instantiate(transforms.output[key])
+                            waveform = transform(waveform)
+
+                    for source_idx, _waveform in enumerate(waveform):
+                        self.write_audio(
+                            tag.format(number=sample_idx + 1, index=source_idx + 1),
+                            _waveform,
+                            global_step=global_step,
+                            sample_rate=sample_rate,
+                        )
+
+        if hasattr(key_mapping, "reference") and key_mapping.reference is not None:
+            if named_reference is None:
+                raise ValueError("named_reference is not specified.")
+
+            for key, tag in key_mapping.reference.items():
+                for sample_idx, waveform in enumerate(named_reference[key]):
+                    if sample_idx >= sample_size:
+                        break
+
+                    if transforms is not None and transforms.reference is not None:
+                        if key in transforms.reference.keys():
+                            transform = instantiate(transforms.reference[key])
+                            waveform = transform(waveform)
+
+                    for source_idx, _waveform in enumerate(waveform):
+                        self.write_audio(
+                            tag.format(number=sample_idx + 1, index=source_idx + 1),
+                            _waveform,
+                            global_step=global_step,
+                            sample_rate=sample_rate,
+                        )
 
     @run_only_global_master_rank()
     def write_image_if_necessary(
