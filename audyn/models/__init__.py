@@ -1,4 +1,5 @@
 from .ast import AST, AudioSpectrogramTransformer
+from .conv_tasnet import ConvTasNet
 from .encodec import EnCodec
 from .fastspeech import FastSpeech, MultiSpeakerFastSpeech
 from .hifigan import HiFiGANDiscriminator, HiFiGANGenerator
@@ -18,6 +19,8 @@ from .waveglow import MultiSpeakerWaveGlow, WaveGlow
 from .wavenet import MultiSpeakerWaveNet, WaveNet
 
 __all__ = [
+    # Conv-TasNet
+    "ConvTasNet",
     # WaveNet
     "WaveNet",
     "MultiSpeakerWaveNet",
