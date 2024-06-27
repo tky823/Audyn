@@ -125,7 +125,7 @@ class CumulativeLayerNorm1d(nn.Module):
     https://arxiv.org/abs/1809.07454.
     """
 
-    def __init__(self, num_features, eps: float = 1e-12) -> None:
+    def __init__(self, num_features, eps: float = 1e-8) -> None:
         super().__init__()
 
         self.num_features = num_features
@@ -151,6 +151,10 @@ class CumulativeLayerNorm1d(nn.Module):
 
         """
         eps = self.eps
+        factory_kwargs = {
+            "device": input.device,
+            "dtype": input.dtype,
+        }
 
         batch_size, num_features, *length_shape = input.size()
         x = input.view(batch_size, num_features, -1)
@@ -165,8 +169,7 @@ class CumulativeLayerNorm1d(nn.Module):
             num_features,
             num_features * (length + 1),
             num_features,
-            device=input.device,
-            dtype=torch.float,
+            **factory_kwargs,
         )
         cum_mean = cum_sum / cum_num
         cum_squared_mean = cum_squared_sum / cum_num
@@ -175,7 +178,7 @@ class CumulativeLayerNorm1d(nn.Module):
         cum_mean = cum_mean.unsqueeze(dim=1)
         cum_var = cum_var.unsqueeze(dim=1)
 
-        x = (x - cum_mean) / (torch.sqrt(cum_var) + eps) * self.weight + self.bias
+        x = (x - cum_mean) / (torch.sqrt(cum_var + eps)) * self.weight + self.bias
         output = x.view(batch_size, num_features, *length_shape)
 
         return output
