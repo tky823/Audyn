@@ -30,3 +30,5 @@ ${wsj0_2mix_root}
    |- s2/
    |- mix/
 ```
+
+By default, `${wsj0_2mix_root}` is set to `../data/wsj0-mix/2speakers/wav8k/min`.
