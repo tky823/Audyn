@@ -78,7 +78,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         --train "${train}" \
         --model "${model}" \
         --optimizer "${optimizer}" \
-        --lr_scheduler "${lr_scheduler}" \
+        --lr-scheduler "${lr_scheduler}" \
         --criterion "${criterion}"
     )
 fi
