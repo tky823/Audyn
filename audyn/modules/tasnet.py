@@ -1,12 +1,43 @@
 import copy
-from typing import Callable, Optional, Union
+from typing import Any, Callable, Dict, Optional, Union
 
 import torch
 import torch.nn as nn
 
 from .normalization import CumulativeLayerNorm1d, GlobalLayerNorm
 
-__all__ = ["get_layer_norm"]
+__all__ = [
+    "get_nonlinear",
+    "get_layer_norm",
+]
+
+
+def get_nonlinear(
+    nonlinear: Union[str, nn.Module, Callable[[torch.Tensor], torch.Tensor]],
+    nonlinear_kwargs: Optional[Dict[str, Any]] = None,
+) -> Union[nn.Module, Callable[[torch.Tensor], torch.Tensor]]:
+    if nonlinear_kwargs is None:
+        nonlinear_kwargs = {}
+
+    if isinstance(nonlinear, nn.Module):
+        nonlinear = copy.deepcopy(nonlinear)
+
+    if callable(nonlinear):
+        assert len(nonlinear_kwargs) == 0
+        return nonlinear
+
+    assert isinstance(nonlinear, str)
+
+    if nonlinear == "sigmoid":
+        assert len(nonlinear_kwargs) == 0
+
+        nonlinear = nn.Sigmoid()
+    elif nonlinear == "softmax":
+        nonlinear = nn.Softmax(**nonlinear_kwargs)
+    else:
+        raise NotImplementedError(f"{nonlinear} is not supported as nonlinear function.")
+
+    return nonlinear
 
 
 def get_layer_norm(
