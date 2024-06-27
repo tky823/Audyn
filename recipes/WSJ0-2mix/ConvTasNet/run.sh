@@ -19,7 +19,7 @@ dump_format="torch"
 
 system="defaults"
 preprocess="defaults"
-data="wsj0-2mix"
+data="wsj0-2mix_8k"
 train="wsj0-2mix"
 model="conv-tasnet"
 optimizer="adam"
@@ -45,5 +45,27 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
         --dump-format "${dump_format}" \
         --preprocess "${preprocess}" \
         --data "${data}"
+    )
+fi
+
+if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
+    echo "Stage 1: Training"
+
+    (
+        . ./train.sh \
+        --tag "${tag}" \
+        --continue-from "${continue_from}" \
+        --exp-root "${exp_root}" \
+        --tensorboard-root "${tensorboard_root}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
+        --system "${system}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --train "${train}" \
+        --model "${model}" \
+        --optimizer "${optimizer}" \
+        --lr-scheduler "${lr_scheduler}" \
+        --criterion "${criterion}"
     )
 fi

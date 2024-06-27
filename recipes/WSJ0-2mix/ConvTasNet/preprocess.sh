@@ -13,7 +13,7 @@ log_dir="./log"
 dump_format="torch"
 
 preprocess="defaults"
-data="wsj0-2mix"
+data="wsj0-2mix_8k"
 
 . ../../_common/parse_options.sh || exit 1;
 
