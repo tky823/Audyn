@@ -7,6 +7,6 @@ neg_sisdr:
   weight: 1
   key_mapping:
     estimated:
-      input: separated
+      input: separated_slice
     target:
-      target: sources
+      target: sources_slice
