@@ -290,8 +290,7 @@ class SynchronousWaveformSlicer(Composer):
                     sample[output_key] = waveform_slice
             else:
                 for input_key, output_key in zip(input_keys, output_keys):
-                    waveform = sample[input_key]
-                    sample[output_key] = waveform_slice
+                    sample[output_key] = sample[input_key].clone()
         else:
             if padding > 0:
                 padding_left = padding // 2
@@ -314,7 +313,6 @@ class SynchronousWaveformSlicer(Composer):
                     sample[output_key] = waveform_slice
             else:
                 for input_key, output_key in zip(input_keys, output_keys):
-                    waveform = sample[input_key]
-                    sample[output_key] = waveform_slice
+                    sample[output_key] = sample[input_key].clone()
 
         return sample
