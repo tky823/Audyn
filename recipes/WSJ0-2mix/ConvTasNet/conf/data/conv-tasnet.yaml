@@ -1,0 +1,4 @@
+audio:
+  sample_rate:
+  duration: 4
+  validation_duration: 10
