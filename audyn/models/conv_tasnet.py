@@ -1,5 +1,5 @@
 import warnings
-from typing import Callable, Union
+from typing import Callable, Optional, Union
 
 import torch
 import torch.nn as nn
@@ -107,7 +107,7 @@ class Separator(nn.Module):
         separable: bool = True,
         is_causal: bool = True,
         nonlinear: str = "prelu",
-        norm: Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]] = True,
+        norm: Optional[Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]] = True,
         mask_nonlinear: str = "sigmoid",
         num_sources: int = 2,
         eps: float = 1e-8,

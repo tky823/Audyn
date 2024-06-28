@@ -30,7 +30,7 @@ class TimeDilatedConvNet(nn.Module):
         separable: bool = False,
         is_causal: bool = True,
         nonlinear: Optional[str] = None,
-        norm: Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]] = True,
+        norm: Optional[Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]] = True,
         eps: float = 1e-8,
     ) -> None:
         super().__init__()
@@ -106,7 +106,7 @@ class TimeDilatedConvBlock1d(nn.Module):
         separable: bool = False,
         is_causal: bool = True,
         nonlinear: Optional[str] = None,
-        norm: Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]] = True,
+        norm: Optional[Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]] = True,
         dual_head: bool = True,
         eps: float = 1e-8,
     ) -> None:
@@ -175,7 +175,7 @@ class ResidualBlock1d(nn.Module):
         separable: bool = False,
         is_causal: bool = True,
         nonlinear: Optional[str] = None,
-        norm: Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]] = True,
+        norm: Optional[Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]] = True,
         dual_head: bool = True,
         eps: float = 1e-8,
     ) -> None:
@@ -290,7 +290,7 @@ class DepthwiseSeparableConv1d(nn.Module):
         dilation: _size_1_t = 1,
         is_causal: bool = True,
         nonlinear: Optional[str] = None,
-        norm: Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]] = True,
+        norm: Optional[Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]] = True,
         dual_head: bool = True,
         eps: float = 1e-8,
     ) -> None:
