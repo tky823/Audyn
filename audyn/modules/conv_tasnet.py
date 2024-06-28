@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, Union
+from typing import Callable, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -30,7 +30,7 @@ class TimeDilatedConvNet(nn.Module):
         separable: bool = False,
         is_causal: bool = True,
         nonlinear: Optional[str] = None,
-        norm: Optional[Union[bool, str]] = True,
+        norm: Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]] = True,
         eps: float = 1e-8,
     ) -> None:
         super().__init__()
@@ -106,7 +106,7 @@ class TimeDilatedConvBlock1d(nn.Module):
         separable: bool = False,
         is_causal: bool = True,
         nonlinear: Optional[str] = None,
-        norm: Optional[Union[bool, str]] = True,
+        norm: Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]] = True,
         dual_head: bool = True,
         eps: float = 1e-8,
     ) -> None:
@@ -175,7 +175,7 @@ class ResidualBlock1d(nn.Module):
         separable: bool = False,
         is_causal: bool = True,
         nonlinear: Optional[str] = None,
-        norm: Optional[Union[bool, str]] = True,
+        norm: Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]] = True,
         dual_head: bool = True,
         eps: float = 1e-8,
     ) -> None:
@@ -199,14 +199,11 @@ class ResidualBlock1d(nn.Module):
         if norm is None:
             self.norm = None
         elif isinstance(norm, str):
-            norm_type = norm
-            self.norm = get_layer_norm(norm_type, hidden_channels, eps=eps)
+            self.norm = get_layer_norm(norm, hidden_channels, eps=eps)
         elif isinstance(norm, bool):
             if norm:
-                norm_type = "cLN" if is_causal else "gLN"
-                self.norm = get_layer_norm(
-                    norm_type, hidden_channels, is_causal=is_causal, eps=eps
-                )
+                norm = "cLN" if is_causal else "gLN"
+                self.norm = get_layer_norm(norm, hidden_channels, is_causal=is_causal, eps=eps)
             else:
                 self.norm = None
         else:
@@ -293,7 +290,7 @@ class DepthwiseSeparableConv1d(nn.Module):
         dilation: _size_1_t = 1,
         is_causal: bool = True,
         nonlinear: Optional[str] = None,
-        norm: Optional[Union[bool, str]] = True,
+        norm: Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]] = True,
         dual_head: bool = True,
         eps: float = 1e-8,
     ) -> None:
@@ -323,12 +320,11 @@ class DepthwiseSeparableConv1d(nn.Module):
         if norm is None:
             self.norm = None
         elif isinstance(norm, str):
-            norm_type = norm
-            self.norm = get_layer_norm(norm_type, in_channels, eps=eps)
+            self.norm = get_layer_norm(norm, in_channels, eps=eps)
         elif isinstance(norm, bool):
             if norm:
-                norm_type = "cLN" if is_causal else "gLN"
-                self.norm = get_layer_norm(norm_type, in_channels, is_causal=is_causal, eps=eps)
+                norm = "cLN" if is_causal else "gLN"
+                self.norm = get_layer_norm(norm, in_channels, is_causal=is_causal, eps=eps)
             else:
                 self.norm = None
         else:
