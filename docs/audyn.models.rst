@@ -27,7 +27,7 @@ Conv-TasNet
    :members: forward
 
 DPRNN-TasNet
-^^^^^^^^^^^
+^^^^^^^^^^^^
 
 .. autoclass:: audyn.models.DPRNNTasNet
    :members: forward
