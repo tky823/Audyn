@@ -50,3 +50,17 @@ def test_dprnn_tasnet() -> None:
     output = model(input)
 
     assert output.size() == (batch_size, num_sources, in_channels, timesteps)
+
+    model = DPRNNTasNet.build_from_config(
+        encoder,
+        decoder,
+        bottleneck_channels=bottleneck_channels,
+        hidden_channels=hidden_channels,
+        chunk_size=chunk_size,
+        hop_size=hop_size,
+        num_sources=num_sources,
+    )
+
+    output = model(input)
+
+    assert output.size() == (batch_size, num_sources, in_channels, timesteps)
