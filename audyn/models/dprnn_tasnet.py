@@ -114,16 +114,11 @@ class Separator(nn.Module):
         if norm is None:
             self.norm = None
         elif isinstance(norm, str):
-            self.norm = get_layer_norm(norm, hidden_channels, eps=eps)
+            self.norm = get_layer_norm(norm, num_features, eps=eps)
         elif isinstance(norm, bool):
             if norm:
                 norm = "cLN" if is_causal else "gLN"
-                self.norm = get_layer_norm(
-                    norm,
-                    num_features,
-                    is_causal=is_causal,
-                    eps=eps,
-                )
+                self.norm = get_layer_norm(norm, num_features, is_causal=is_causal, eps=eps)
             else:
                 self.norm = None
         else:
