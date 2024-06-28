@@ -1,0 +1,24 @@
+_target_: audyn.models.DPRNNTasNet.build_from_config
+encoder:
+  _target_: audyn.models.tasnet.Encoder
+  in_channels: 1
+  num_basis: 512
+  kernel_size: 16
+  stride: 8
+  nonlinear: relu
+decoder:
+  _target_: audyn.models.tasnet.Decoder
+  out_channels: ${..encoder.in_channels}
+  num_basis: ${..encoder.num_basis}
+  kernel_size: ${..encoder.kernel_size}
+  stride: ${..encoder.stride}
+bottleneck_channels: 64
+hidden_channels: 128
+chunk_size: 100
+hop_size: 50
+num_blocks: 6
+norm: true
+mask_nonlinear: sigmoid
+is_causal: true
+rnn: lstm
+num_sources: 2
