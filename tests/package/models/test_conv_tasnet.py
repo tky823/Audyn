@@ -47,3 +47,17 @@ def test_conv_tasnet() -> None:
     output = model(input)
 
     assert output.size() == (batch_size, num_sources, in_channels, timesteps)
+
+    model = ConvTasNet.build_from_config(
+        encoder,
+        decoder,
+        bottleneck_channels=bottleneck_channels,
+        hidden_channels=hidden_channels,
+        skip_channels=skip_channels,
+        num_sources=num_sources,
+    )
+
+    input = torch.randn(batch_size, in_channels, timesteps)
+    output = model(input)
+
+    assert output.size() == (batch_size, num_sources, in_channels, timesteps)
