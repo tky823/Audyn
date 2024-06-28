@@ -1,4 +1,5 @@
 import warnings
+from typing import Callable, Union
 
 import torch
 import torch.nn as nn
@@ -106,7 +107,7 @@ class Separator(nn.Module):
         separable: bool = True,
         is_causal: bool = True,
         nonlinear: str = "prelu",
-        norm: bool = True,
+        norm: Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]] = True,
         mask_nonlinear: str = "sigmoid",
         num_sources: int = 2,
         eps: float = 1e-8,
@@ -119,12 +120,11 @@ class Separator(nn.Module):
         if norm is None:
             self.norm = None
         elif isinstance(norm, str):
-            norm_type = norm
-            self.norm = get_layer_norm(norm_type, num_features, eps=eps)
+            self.norm = get_layer_norm(norm, num_features, eps=eps)
         elif isinstance(norm, bool):
             if norm:
-                norm_type = "cLN" if is_causal else "gLN"
-                self.norm = get_layer_norm(norm_type, num_features, is_causal=is_causal, eps=eps)
+                norm = "cLN" if is_causal else "gLN"
+                self.norm = get_layer_norm(norm, num_features, is_causal=is_causal, eps=eps)
             else:
                 self.norm = None
         else:
@@ -150,13 +150,6 @@ class Separator(nn.Module):
         self.mask_conv1d = nn.Conv1d(
             skip_channels, num_sources * num_features, kernel_size=1, stride=1
         )
-
-        if mask_nonlinear == "sigmoid":
-            self.mask_nonlinear = nn.Sigmoid()
-        elif mask_nonlinear == "softmax":
-            self.mask_nonlinear = nn.Softmax(dim=1)
-        else:
-            raise ValueError("{} is not supported.".format(mask_nonlinear))
 
         if mask_nonlinear == "sigmoid":
             kwargs = {}
