@@ -9,6 +9,8 @@ from .glow import ActNorm1d
 __all__ = [
     "ActNorm1d",
     "RMSNorm",
+    "GlobalLayerNorm",
+    "CumulativeLayerNorm1d",
 ]
 
 
@@ -78,3 +80,111 @@ class RMSNorm(nn.Module):
             output = self.weight * x + self.bias
 
         return output
+
+
+class GlobalLayerNorm(nn.Module):
+    """Global layer normalization.
+
+    See "Conv-TasNet: Surpassing ideal time-frequency magnitude masking for speech separation"
+    https://arxiv.org/abs/1809.07454.
+    """
+
+    def __init__(self, num_features: int, eps: float = 1e-8) -> None:
+        super().__init__()
+
+        self.num_features = num_features
+        self.eps = eps
+
+        self.norm = nn.GroupNorm(1, num_features, eps=eps)
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of GlobalLayerNorm.
+
+        Args:
+            input (torch.Tensor): Input feature of shape (batch_size, num_features, *).
+
+        Returns:
+            torch.Tensor: Normalized feature of shape (batch_size, num_features, *).
+
+        """
+        output = self.norm(input)
+
+        return output
+
+    def __repr__(self) -> str:
+        s = "{}".format(self.__class__.__name__)
+        s += "({num_features}, eps={eps})"
+
+        return s.format(**self.__dict__)
+
+
+class CumulativeLayerNorm1d(nn.Module):
+    """Cumulative layer normalization.
+
+    See "Conv-TasNet: Surpassing ideal time-frequency magnitude masking for speech separation"
+    https://arxiv.org/abs/1809.07454.
+    """
+
+    def __init__(self, num_features, eps: float = 1e-8) -> None:
+        super().__init__()
+
+        self.num_features = num_features
+        self.eps = eps
+
+        self.weight = nn.Parameter(torch.Tensor(1, num_features, 1))
+        self.bias = nn.Parameter(torch.Tensor(1, num_features, 1))
+
+        self._reset_parameters()
+
+    def _reset_parameters(self) -> None:
+        self.weight.data.fill_(1)
+        self.bias.data.fill_(0)
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of CumulativeLayerNorm1d.
+
+        Args:
+            input (torch.Tensor): Input feature of shape (batch_size, num_features, *).
+
+        Returns:
+            torch.Tensor: Normalized feature of shape (batch_size, num_features, *).
+
+        """
+        eps = self.eps
+        factory_kwargs = {
+            "device": input.device,
+            "dtype": input.dtype,
+        }
+
+        batch_size, num_features, *length_shape = input.size()
+        x = input.view(batch_size, num_features, -1)
+        length = input.size(-1)
+
+        step_sum = torch.sum(x, dim=1)
+        step_squared_sum = torch.sum(x**2, dim=1)
+        cum_sum = torch.cumsum(step_sum, dim=1)
+        cum_squared_sum = torch.cumsum(step_squared_sum, dim=1)
+
+        cum_num = torch.arange(
+            num_features,
+            num_features * (length + 1),
+            num_features,
+            **factory_kwargs,
+        )
+        cum_mean = cum_sum / cum_num
+        cum_squared_mean = cum_squared_sum / cum_num
+        cum_var = cum_squared_mean - cum_mean**2
+
+        cum_mean = cum_mean.unsqueeze(dim=1)
+        cum_var = cum_var.unsqueeze(dim=1)
+
+        x = (x - cum_mean) / (torch.sqrt(cum_var + eps)) * self.weight + self.bias
+        output = x.view(batch_size, num_features, *length_shape)
+
+        return output
+
+    def __repr__(self) -> str:
+        s = "{}".format(self.__class__.__name__)
+        s += "({num_features}, eps={eps})"
+
+        return s.format(**self.__dict__)

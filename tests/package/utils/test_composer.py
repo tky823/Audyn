@@ -6,8 +6,32 @@ import torchaudio.transforms as aT
 
 from audyn.transforms.hubert import HuBERTMFCC
 from audyn.transforms.slicer import WaveformSlicer
-from audyn.utils.data.composer import AudioFeatureExtractionComposer, SequentialComposer
+from audyn.utils.data.composer import (
+    AudioFeatureExtractionComposer,
+    SequentialComposer,
+    SynchronousWaveformSlicer,
+)
 from audyn.utils.data.hifigan.composer import HiFiGANComposer
+
+
+def test_synchronous_waveform_slicer(audioset_samples: Dict[str, Dict[str, Any]]) -> None:
+    sample_rate = 16000
+    list_batch = []
+
+    for key, sample in audioset_samples.items():
+        sample["__key__"] = key
+        list_batch.append(sample)
+
+    composer = SynchronousWaveformSlicer(
+        input_keys=["audio", "audio"],
+        output_keys=["audio_slice1", "audio_slice2"],
+        length=int(1.5 * sample_rate),
+        training=True,
+    )
+    list_batch = composer(list_batch)
+
+    for sample in list_batch:
+        assert torch.equal(sample["audio_slice1"], sample["audio_slice2"])
 
 
 def test_hubert_composer(audioset_samples: Dict[str, Dict[str, Any]]) -> None:

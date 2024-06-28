@@ -2,6 +2,7 @@ import re
 from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 
 import torch
+import torch.nn.functional as F
 
 from .webdataset import decode_audio, supported_audio_extensions
 
@@ -10,6 +11,7 @@ __all__ = [
     "AudioFeatureExtractionComposer",
     "SequentialComposer",
     "LogarithmTaker",
+    "SynchronousWaveformSlicer",
 ]
 
 
@@ -190,5 +192,127 @@ class LogarithmTaker(Composer):
                 feature = self.flooring(feature)
 
         sample[output_key] = torch.log(feature)
+
+        return sample
+
+
+class SynchronousWaveformSlicer(Composer):
+    """Composer to slice multiple waveforms synchronously by fixed length or duration.
+
+    Args:
+        input_keys (list): Keys of tensor to slice waveforms.
+        output_keys (str): Keys of tensor to store sliced waveforms.
+        length (int, optional): Length of waveform slice.
+        duration (float, optional): Duration of waveform slice.
+        sample_rate (int, optional): Sampling rate of waveform.
+        seed (int): Random seed.
+        training (bool): If ``True``, waveforms are sliced at random. Default: ``False``.
+
+    """
+
+    def __init__(
+        self,
+        input_keys: List[str],
+        output_keys: List[str],
+        length: int = None,
+        duration: float = None,
+        sample_rate: int = None,
+        seed: int = 0,
+        training: bool = False,
+        decode_audio_as_waveform: bool = True,
+        decode_audio_as_monoral: bool = True,
+    ) -> None:
+        super().__init__(
+            decode_audio_as_waveform=decode_audio_as_waveform,
+            decode_audio_as_monoral=decode_audio_as_monoral,
+        )
+
+        self.input_keys = input_keys
+        self.output_keys = output_keys
+        self.training = training
+
+        if length is None:
+            assert duration is not None and sample_rate is not None
+
+            length = int(sample_rate * duration)
+        else:
+            assert duration is None and sample_rate is None
+
+        self.length = length
+        self.duration = duration
+        self.sample_rate = sample_rate
+        self.generator = torch.Generator()
+
+        self.generator.manual_seed(seed)
+
+    def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        input_keys = self.input_keys
+        output_keys = self.output_keys
+
+        sample = super().process(sample)
+
+        # use first input key
+        input_key = input_keys[0]
+        waveform = sample[input_key]
+        length = self.length
+        orig_length = waveform.size(-1)
+        padding = length - orig_length
+
+        if self.training:
+            if padding > 0:
+                padding_left = torch.randint(
+                    0,
+                    padding,
+                    (),
+                    generator=self.generator,
+                ).item()
+                padding_right = padding - padding_left
+
+                for input_key, output_key in zip(input_keys, output_keys):
+                    waveform = sample[input_key]
+                    waveform_slice = F.pad(waveform, (padding_left, padding_right))
+                    sample[output_key] = waveform_slice
+            elif padding < 0:
+                trimming = -padding
+                start_idx = torch.randint(
+                    0,
+                    trimming,
+                    (),
+                    generator=self.generator,
+                ).item()
+                end_idx = start_idx + length
+
+                for input_key, output_key in zip(input_keys, output_keys):
+                    waveform = sample[input_key]
+                    _, waveform_slice, _ = torch.split(
+                        waveform, [start_idx, length, orig_length - end_idx], dim=-1
+                    )
+                    sample[output_key] = waveform_slice
+            else:
+                for input_key, output_key in zip(input_keys, output_keys):
+                    sample[output_key] = sample[input_key].clone()
+        else:
+            if padding > 0:
+                padding_left = padding // 2
+                padding_right = padding - padding_left
+
+                for input_key, output_key in zip(input_keys, output_keys):
+                    waveform = sample[input_key]
+                    waveform_slice = F.pad(waveform, (padding_left, padding_right))
+                    sample[output_key] = waveform_slice
+            elif padding < 0:
+                trimming = -padding
+                start_idx = trimming // 2
+                end_idx = start_idx + length
+
+                for input_key, output_key in zip(input_keys, output_keys):
+                    waveform = sample[input_key]
+                    _, waveform_slice, _ = torch.split(
+                        waveform, [start_idx, length, orig_length - end_idx], dim=-1
+                    )
+                    sample[output_key] = waveform_slice
+            else:
+                for input_key, output_key in zip(input_keys, output_keys):
+                    sample[output_key] = sample[input_key].clone()
 
         return sample

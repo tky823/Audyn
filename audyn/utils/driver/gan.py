@@ -571,6 +571,11 @@ class GANTrainer(BaseTrainer):
             named_data,
             config=train_config.record,
         )
+        self.write_train_multi_audio_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+        )
         self.write_train_image_if_necessary(
             named_output,
             named_data,
@@ -757,6 +762,12 @@ class GANTrainer(BaseTrainer):
             config=train_config.record,
             batch_idx=batch_idx,
         )
+        self.write_validation_multi_audio_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
         self.write_validation_image_if_necessary(
             named_output,
             named_data,
@@ -820,6 +831,12 @@ class GANTrainer(BaseTrainer):
             batch_idx=batch_idx,
         )
         self.write_inference_audio_if_necessary(
+            named_output,
+            named_data,
+            config=train_config.record,
+            batch_idx=batch_idx,
+        )
+        self.write_inference_multi_audio_if_necessary(
             named_output,
             named_data,
             config=train_config.record,

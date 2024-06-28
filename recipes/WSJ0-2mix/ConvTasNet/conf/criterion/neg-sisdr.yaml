@@ -1,13 +1,12 @@
 _target_: audyn.criterion.MultiCriteria
-mse_period_generator:
+neg_sisdr:
   _target_: audyn.criterion.BaseCriterionWrapper
   criterion:
     _target_: audyn.criterion.sdr.PITNegSISDR
-    target: 1
     reduction: mean
   weight: 1
   key_mapping:
     estimated:
-      input: estimated_waveform
+      input: separated_slice
     target:
-      target: waveform
+      target: sources_slice

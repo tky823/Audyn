@@ -20,6 +20,12 @@ Submodules
 Classes
 -------
 
+Conv-TasNet
+^^^^^^^^^^^
+
+.. autoclass:: audyn.models.ConvTasNet
+   :members: forward
+
 WaveNet
 ^^^^^^^
 

@@ -58,7 +58,7 @@ def pit(
 class PIT(nn.Module):
     def __init__(
         self,
-        criterion: Union[nn.Module, Callable[[torch.Tensor, torch.Tensor]]],
+        criterion: Union[nn.Module, Callable[[torch.Tensor], torch.Tensor]],
         num_sources: Optional[int] = None,
     ) -> None:
         super().__init__()
