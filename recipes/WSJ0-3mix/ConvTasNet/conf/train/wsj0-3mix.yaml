@@ -1,0 +1,81 @@
+defaults:
+  - dataset: torch
+  - dataloader: defaults
+  - record: wsj0-3mix
+  - _self_
+
+trainer:
+  _target_: audyn.utils.driver.BaseTrainer
+
+dataloader:
+  train:
+    batch_size: 4
+    collate_fn:
+      _target_: audyn.utils.data.Collator
+      composer:
+        _target_: audyn.utils.data.SynchronousWaveformSlicer
+        input_keys:
+          - mixture
+          - sources
+        output_keys:
+          - mixture_slice
+          - sources_slice
+        length:
+        duration: ${data.audio.duration}
+        sample_rate: ${data.audio.sample_rate}
+        seed: ${system.seed}
+        training: true
+        decode_audio_as_waveform: true
+        decode_audio_as_monoral: true
+  validation:
+    batch_size: 4
+    collate_fn:
+      _target_: audyn.utils.data.Collator
+      composer:
+        _target_: audyn.utils.data.SynchronousWaveformSlicer
+        input_keys:
+          - mixture
+          - sources
+        output_keys:
+          - mixture_slice
+          - sources_slice
+        length:
+        duration: ${data.audio.validation_duration}
+        sample_rate: ${data.audio.sample_rate}
+        seed: ${system.seed}
+        training: false
+        decode_audio_as_waveform: true
+        decode_audio_as_monoral: true
+
+key_mapping:
+  train:
+    input:
+      input: mixture_slice
+    output: separated_slice
+  validation: ${.train}
+
+clip_gradient:
+  max_norm: 5
+
+resume:
+  continue_from:
+
+output:
+  exp_dir: "./exp"
+  tensorboard_dir: "./tensorboard"
+  save_checkpoint:
+    iteration:
+      every: 200000
+      path: ${...exp_dir}/model/iteration{iteration}.pth
+    epoch:
+      every: 1000
+      path: ${...exp_dir}/model/epoch{epoch}.pth
+    last:
+      path: ${...exp_dir}/model/last.pth
+    best_epoch:
+      path: ${...exp_dir}/model/best_epoch.pth
+
+steps:
+  epochs: 100
+  iterations:
+  lr_scheduler: epoch

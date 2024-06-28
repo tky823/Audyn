@@ -4,4 +4,4 @@ audio:
   validation_duration: 10
 
 sources:
-  num_sources: 2
+  num_sources: 3

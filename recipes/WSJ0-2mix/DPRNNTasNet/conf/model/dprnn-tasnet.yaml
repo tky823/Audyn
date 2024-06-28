@@ -1,4 +1,4 @@
-_target_: audyn.models.ConvTasNet.build_from_config
+_target_: audyn.models.DPRNNTasNet.build_from_config
 encoder:
   _target_: audyn.models.tasnet.Encoder
   in_channels: 1
@@ -12,16 +12,13 @@ decoder:
   num_basis: ${..encoder.num_basis}
   kernel_size: ${..encoder.kernel_size}
   stride: ${..encoder.stride}
-bottleneck_channels: 128
-hidden_channels: 256
-skip_channels: 128
-kernel_size: 3
-num_blocks: 3
-num_layers: 8
-dilated: true
-separable: true
-nonlinear: prelu
+bottleneck_channels: 64
+hidden_channels: 128
+chunk_size: 100
+hop_size: 50
+num_blocks: 6
 norm: true
 mask_nonlinear: sigmoid
 is_causal: true
+rnn: lstm
 num_sources: ${data.sources.num_sources}
