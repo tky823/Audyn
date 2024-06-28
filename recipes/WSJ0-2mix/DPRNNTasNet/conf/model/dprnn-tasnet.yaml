@@ -21,4 +21,4 @@ norm: true
 mask_nonlinear: sigmoid
 is_causal: true
 rnn: lstm
-num_sources: ${data.num_sources}
+num_sources: ${data.sources.num_sources}

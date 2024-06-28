@@ -24,4 +24,4 @@ nonlinear: prelu
 norm: true
 mask_nonlinear: sigmoid
 is_causal: true
-num_sources: ${data.num_sources}
+num_sources: ${data.sources.num_sources}
