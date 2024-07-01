@@ -64,6 +64,7 @@ def set_device(
 
 
 def unwrap(module: nn.Module) -> nn.Module:
+    """Unwrap nn.DataParallel and nn.DistributedDataParallel."""
     if is_dp_or_ddp(module):
         module: Union[DataParallel, DistributedDataParallel]
         return module.module
