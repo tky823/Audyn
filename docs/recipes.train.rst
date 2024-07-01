@@ -61,3 +61,37 @@ The following example shows the case where ``dtype`` is ``torch.bfloat16``.
         enable: true
         dtype: ${const:torch.bfloat16}
     ...
+
+Multi-node training
+-------------------
+
+``Audyn`` partially supports multi-node training.
+
+To activate this feature, please set ``system=cuda_ddp``.
+If you use mixed precision training, please set ``system=cuda_ddp_amp``.
+
+.. code-block:: yaml
+
+    # cuda_amp.yaml
+    seed: ...
+
+    distributed:  # Please set parameters in this section.
+        enable: true
+        nodes:  # number of nodes
+        nproc_per_node:  # number of processes per node
+        backend: nccl
+        init_method: "env://"
+
+        # multi-node training parameters
+        rdzv_id:  # required
+        rdzv_backend:  # required
+        rdzv_endpoint:  # required
+        max_restarts:  # optional
+
+    cudnn:
+        ...
+
+    amp:
+        ...
+
+    accelerator:
