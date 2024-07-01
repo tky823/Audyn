@@ -4,5 +4,3 @@ defaults:
 
 amp:
   enable: true
-
-accelerator: cuda
