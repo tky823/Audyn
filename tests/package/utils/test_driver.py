@@ -46,7 +46,7 @@ from audyn.utils.driver import (
     GANTrainer,
     TextToFeatTrainer,
 )
-from audyn.utils.model import set_device
+from audyn.utils.modules import set_device
 
 IS_WINDOWS = sys.platform == "win32"
 

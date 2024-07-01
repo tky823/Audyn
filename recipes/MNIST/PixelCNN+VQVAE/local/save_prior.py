@@ -3,7 +3,7 @@ from utils.driver import PriorSaver
 
 import audyn
 from audyn.utils import instantiate, instantiate_model, setup_config
-from audyn.utils.model import set_device
+from audyn.utils.modules import set_device
 
 
 @audyn.main()

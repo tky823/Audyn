@@ -15,7 +15,7 @@ from audyn.utils import (
 )
 from audyn.utils.data import BaseDataLoaders, default_collate_fn
 from audyn.utils.driver import BaseTrainer
-from audyn.utils.model import set_device
+from audyn.utils.modules import set_device
 
 
 @audyn.main()

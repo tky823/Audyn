@@ -9,7 +9,7 @@ from utils.driver import PriorSaver
 import audyn
 from audyn.utils import instantiate, instantiate_model, setup_config
 from audyn.utils.data import default_collate_fn, take_log_features
-from audyn.utils.model import set_device
+from audyn.utils.modules import set_device
 
 
 @audyn.main()

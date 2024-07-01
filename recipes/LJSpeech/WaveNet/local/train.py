@@ -22,7 +22,7 @@ from audyn.utils.data import (
     take_log_features,
 )
 from audyn.utils.driver import FeatToWaveTrainer
-from audyn.utils.model import set_device
+from audyn.utils.modules import set_device
 
 
 @audyn.main()

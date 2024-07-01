@@ -9,7 +9,7 @@ from utils.utils import instantiate_cascade_model
 import audyn
 from audyn.utils import instantiate, setup_config
 from audyn.utils.data import default_collate_fn, slice_feautures
-from audyn.utils.model import set_device
+from audyn.utils.modules import set_device
 
 
 @audyn.main()

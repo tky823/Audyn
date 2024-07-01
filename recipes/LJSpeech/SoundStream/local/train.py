@@ -22,7 +22,7 @@ from audyn.utils import (
 from audyn.utils.clip_grad import GANGradClipper
 from audyn.utils.data import BaseDataLoaders, default_collate_fn, slice_feautures
 from audyn.utils.driver import GANTrainer
-from audyn.utils.model import set_device
+from audyn.utils.modules import set_device
 
 
 @audyn.main()

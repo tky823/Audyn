@@ -10,7 +10,7 @@ from ...metrics import MeanMetric
 from ..clip_grad import GradClipper
 from ..data import BaseDataLoaders
 from ..hydra.utils import instantiate_model
-from ..model import set_device, unwrap
+from ..modules import set_device, unwrap
 from .base import BaseTrainer
 
 
