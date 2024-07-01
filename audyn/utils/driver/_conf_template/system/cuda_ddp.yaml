@@ -1,5 +1,5 @@
 defaults:
-  - defaults
+  - cuda
   - _self_
 
 distributed:
@@ -14,8 +14,3 @@ distributed:
   rdzv_backend: c10d
   rdzv_endpoint:
   max_restarts: 3
-
-amp:
-  enable: false
-
-accelerator: cuda
