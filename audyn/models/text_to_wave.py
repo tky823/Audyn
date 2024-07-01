@@ -3,7 +3,7 @@ from typing import Callable, Optional, Tuple
 import torch
 import torch.nn as nn
 
-from ..utils.model import unwrap
+from ..utils.modules import unwrap
 from .fastspeech import FastSpeech
 from .waveglow import WaveGlow
 from .wavenet import WaveNet

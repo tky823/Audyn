@@ -23,10 +23,10 @@ from ...utils.hydra.utils import (
     instantiate_lr_scheduler,
     instantiate_optimizer,
 )
-from ...utils.model import set_device
+from ...utils.modules import set_device
 from ..clip_grad import GANGradClipper
 from ..data import BaseDataLoaders
-from ..model import unwrap
+from ..modules import unwrap
 from .base import BaseGenerator, BaseTrainer, _is_audyn_clip_gradient, _is_torch_clip_gradient
 
 

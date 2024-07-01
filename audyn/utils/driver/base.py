@@ -32,14 +32,14 @@ from ...utils.hydra.utils import (
     instantiate_model,
     instantiate_optimizer,
 )
-from ...utils.model import set_device
+from ...utils.modules import set_device
 from ..alignment import expand_by_duration
 from ..clip_grad import GradClipper
 from ..data import BaseDataLoaders, select_device
 from ..distributed import select_global_rank, select_local_rank
 from ..hydra.utils import TORCH_CLIP_GRAD_FN
 from ..logging import get_logger
-from ..model import unwrap
+from ..modules import unwrap
 from ..tensorboard import get_summary_writer
 from ._decorator import run_only_global_master_rank
 
