@@ -1,3 +1,4 @@
+import warnings
 from typing import Any, Dict, Union
 
 import torch.nn as nn
@@ -19,6 +20,12 @@ def set_device(
     is_distributed: bool = False,
     ddp_kwargs: Dict[str, Any] = None,
 ) -> Union[nn.Module, DistributedDataParallel]:
+    warnings.warn(
+        "Use audyn.utils.modules.set_device instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
     return _set_device(
         module,
         accelerator,
@@ -28,4 +35,9 @@ def set_device(
 
 
 def unwrap(module: nn.Module) -> nn.Module:
+    warnings.warn(
+        "Use audyn.utils.modules.unwrap instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return _unwrap(module)
