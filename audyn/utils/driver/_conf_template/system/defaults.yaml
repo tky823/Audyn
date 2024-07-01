@@ -9,4 +9,5 @@ cudnn:
   deterministic: false
 amp:
   enable:
+  dtype:
 accelerator:

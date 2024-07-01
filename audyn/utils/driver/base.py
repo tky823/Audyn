@@ -107,6 +107,7 @@ class BaseDriver:
         - device (str): Device to allocate tensors.
         - enable_amp (bool): If True, automatic mixed precision package (amp) is used.
             This is available when CUDA is also available.
+        - amp_dtype (torch.dtype): Dtype used as ``with autocast(..., dtype=amp_dtype)``.
 
         """
         if config is None:
@@ -121,8 +122,10 @@ class BaseDriver:
         )
         self.device = select_device(config.accelerator, is_distributed=config.distributed.enable)
 
+        # mixed precision
         if hasattr(config, "amp"):
             availability = config.amp.enable
+            amp_dtype = config.amp.dtype
 
             if availability and not torch.cuda.is_available():
                 raise ValueError(
@@ -133,8 +136,14 @@ class BaseDriver:
                 availability = False
 
             self.enable_amp = availability
+            self.amp_dtype = amp_dtype
         else:
             self.enable_amp = False
+            self.amp_dtype = None
+
+        if self.amp_dtype is None:
+            # amp_dtype is set to float16 by default, but ignored when enable_amp=False.
+            self.amp_dtype = torch.float16
 
     def move_data_to_device(
         self, data: Dict[str, torch.Tensor], device: torch.device
@@ -646,7 +655,7 @@ class BaseTrainer(BaseDriver):
         )
         named_target = self.map_to_named_target(named_data)
 
-        with autocast(enabled=self.enable_amp):
+        with autocast(enabled=self.enable_amp, dtype=self.amp_dtype):
             output = self.model(**named_input)
 
             named_output = self.map_to_named_output(

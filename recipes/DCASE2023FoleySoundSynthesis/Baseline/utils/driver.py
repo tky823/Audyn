@@ -69,7 +69,7 @@ class PriorSaver(BaseDriver):
                 named_batch, key_mapping=train_config.key_mapping
             )
 
-            with autocast(enabled=self.enable_amp):
+            with autocast(enabled=self.enable_amp, dtype=self.amp_dtype):
                 output = self.model(**named_input)
 
             named_output = self.map_to_named_output(

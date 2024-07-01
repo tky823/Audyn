@@ -64,7 +64,7 @@ class QuantizedFeatureSaver(BaseDriver):
             named_batch = self.move_data_to_device(named_batch, self.device)
             named_input = self.map_to_named_input(named_batch, key_mapping=key_mapping)
 
-            with autocast(enabled=self.enable_amp):
+            with autocast(enabled=self.enable_amp, dtype=self.amp_dtype):
                 output = self.model(**named_input)
 
             named_output = self.map_to_named_output(
