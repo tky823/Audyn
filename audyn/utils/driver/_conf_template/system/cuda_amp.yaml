@@ -2,14 +2,5 @@ defaults:
   - cuda
   - _self_
 
-distributed:
-  enable:
-  nodes:  # number of nodes
-  backend:
-  init_method:
-cudnn:
-  benchmark: true
-  deterministic: false
 amp:
   enable: true
-accelerator: cuda

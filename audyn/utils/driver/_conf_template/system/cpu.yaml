@@ -4,12 +4,12 @@ defaults:
 
 distributed:
   enable: false
-  nodes:  # number of nodes
-  backend:
-  init_method:
+
 cudnn:
   benchmark:
   deterministic:
+
 amp:
   enable: false
+
 accelerator: cpu

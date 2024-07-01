@@ -1,15 +1,16 @@
 defaults:
-  - defaults
+  - cuda
   - _self_
 
 distributed:
   enable: true
   nodes:  # number of nodes
+  nproc_per_node:  # number of processes per node
   backend: nccl
   init_method: "env://"
-cudnn:
-  benchmark: true
-  deterministic: false
-amp:
-  enable: false
-accelerator: cuda
+
+  # multi-node training parameters
+  rdzv_id:
+  rdzv_backend: c10d
+  rdzv_endpoint:
+  max_restarts: 3

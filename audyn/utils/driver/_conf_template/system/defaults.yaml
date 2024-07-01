@@ -1,12 +1,24 @@
 seed: 0
+
 distributed:
   enable:
   nodes:  # number of nodes
+  nproc_per_node:  # number of processes per node
   backend:
   init_method:
+
+  # multi-node training parameters
+  rdzv_id:
+  rdzv_backend:
+  rdzv_endpoint:
+  max_restarts:
+
 cudnn:
   benchmark: true
   deterministic: false
+
 amp:
   enable:
+  dtype:
+
 accelerator:

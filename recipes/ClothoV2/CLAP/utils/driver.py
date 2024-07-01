@@ -61,7 +61,7 @@ class EmbeddingSaver(BaseDriver):
             named_data = self.move_data_to_device(named_data, self.device)
             named_input = self.map_to_named_input(named_data, key_mapping=test_key_mapping)
 
-            with autocast(enabled=self.enable_amp):
+            with autocast(enabled=self.enable_amp, dtype=self.amp_dtype):
                 output = self.model(**named_input)
 
             named_output = self.map_to_named_output(
