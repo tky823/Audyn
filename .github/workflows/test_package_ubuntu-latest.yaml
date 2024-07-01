@@ -1,0 +1,17 @@
+name: test package on ubuntu-latest
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        required: true
+        type: string
+      torch-version:
+        required: true
+        type: string
+jobs:
+  package:
+    uses: ./.github/workflows/test_package_main.yaml
+    with:
+      os: ubuntu-latest
+      python-version: ${{ inputs.python-version }}
+      torch-version: ${{ inputs.torch-version }}
