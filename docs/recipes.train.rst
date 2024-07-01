@@ -25,10 +25,10 @@ Template of ``train.py`` for training.
 
 ``AutoTrainer`` tries to instantiate ``config.train.trainer._target_`` class trainer.
 
-Mixed precision training by ``torcf.amp``
+Mixed precision training by ``torch.amp``
 -----------------------------------------
 
-`Audyn` supports mixed precision training by ``torcf.amp`` on GPUs.
+``Audyn`` supports mixed precision training by ``torch.amp`` on GPUs.
 
 To activate this feature, please set ``system=cuda_amp``.
 If you use mixed precision training with distributed data parallel, please set ``system=cuda_ddp_amp``.
@@ -37,13 +37,17 @@ If you use mixed precision training with distributed data parallel, please set `
 
     # cuda_amp.yaml
     seed: ...
+
     distributed:
         ...
+
     cudnn:
         ...
+
     amp:  # Please set parameters in this section.
         enable: true
         dtype:  # none by default
+
     accelerator:
 
 To change ``dtype``, please set ``system.amp.dtype``.
