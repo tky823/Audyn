@@ -72,7 +72,7 @@ If you use mixed precision training, please set ``system=cuda_ddp_amp``.
 
 .. code-block:: yaml
 
-    # cuda_amp.yaml
+    # cuda_ddp.yaml
     seed: ...
 
     distributed:  # Please set parameters in this section.
