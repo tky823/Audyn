@@ -1,4 +1,11 @@
 name: test package on windows-latest
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 jobs:
   package:
     uses: ./.github/workflows/test_package_windows-latest.yaml

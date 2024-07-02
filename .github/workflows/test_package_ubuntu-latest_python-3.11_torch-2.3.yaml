@@ -1,4 +1,11 @@
 name: test package on ubuntu-latest
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 jobs:
   package:
     uses: ./.github/workflows/test_package_ubuntu-latest.yaml
