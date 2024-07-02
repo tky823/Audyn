@@ -10,5 +10,5 @@ jobs:
   package:
     uses: ./.github/workflows/test_package_ubuntu-latest.yaml
     with:
-      python-version: 3.8
-      torch-version: 2.0.0
+      python-version: "3.8"
+      torch-version: "2.0.0"

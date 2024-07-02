@@ -10,5 +10,5 @@ jobs:
   package:
     uses: ./.github/workflows/test_package_windows-latest.yaml
     with:
-      python-version: 3.9
-      torch-version: 2.0.0
+      python-version: "3.9"
+      torch-version: "2.0.0"
