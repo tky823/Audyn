@@ -1,0 +1,7 @@
+name: test package on macos-13
+jobs:
+  package:
+    uses: ./.github/workflows/test_package_macos-13.yaml
+    with:
+      python-version: 3.9
+      torch-version: 2.0.0

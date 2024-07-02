@@ -1,0 +1,7 @@
+name: test package on ubuntu-latest
+jobs:
+  package:
+    uses: ./.github/workflows/test_package_ubuntu-latest.yaml
+    with:
+      python-version: 3.9
+      torch-version: 2.2.0
