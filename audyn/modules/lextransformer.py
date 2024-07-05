@@ -2,12 +2,15 @@
 Ported from https://github.com/pytorch/pytorch/blob/e8836759d0898c29262b5370e16970d697cbaf3a/torch/nn/modules/transformer.py.  # noqa: E501
 """
 
-import warnings
+from typing import Callable, Optional, Union
 
-from ..modules.lextransformer import LEXTransformerDecoder as _LEXTransformerDecoder
-from ..modules.lextransformer import LEXTransformerDecoderLayer as _LEXTransformerDecoderLayer
-from ..modules.lextransformer import LEXTransformerEncoder as _LEXTransformerEncoder
-from ..modules.lextransformer import LEXTransformerEncoderLayer as _LEXTransformerEncoderLayer
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from packaging import version
+
+from .activation import ExtrapolatablePositionalMultiheadAttention
+from .roformer import _get_activation
 
 __all__ = [
     "LEXTransformerEncoder",
@@ -16,52 +19,140 @@ __all__ = [
     "LEXTransformerDecoderLayer",
 ]
 
-warning_message = (
-    "audyn.modeles.lextransformer.{class_name} is deprecated."
-    " Use audyn.modules.lextransformer.{class_name} instead."
-)
+IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
 
-class LEXTransformerEncoder(_LEXTransformerDecoder):
+class LEXTransformerEncoder(nn.TransformerEncoder):
     """Encoder of LEX Transformer."""
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-
-        warnings.warn(
-            warning_message.format(class_name=self.__class__.__name__),
-            DeprecationWarning,
-            stacklevel=2,
+    def __init__(
+        self,
+        d_model: int,
+        nhead: int,
+        num_layers: int,
+        dim_feedforward: int = 2048,
+        dropout: float = 0.1,
+        activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.relu,
+        layer_norm_eps: float = 1e-5,
+        xpos_base: int = 10000,
+        share_heads: bool = True,
+        batch_first: bool = False,
+        norm_first: bool = False,
+        bias: bool = True,
+        norm: Optional[nn.Module] = None,
+        enable_nested_tensor: bool = True,
+        mask_check: bool = True,
+        device: torch.device = None,
+        dtype: torch.dtype = None,
+    ) -> None:
+        encoder_layer = LEXTransformerEncoderLayer(
+            d_model,
+            nhead,
+            dim_feedforward=dim_feedforward,
+            dropout=dropout,
+            activation=activation,
+            layer_norm_eps=layer_norm_eps,
+            xpos_base=xpos_base,
+            share_heads=share_heads,
+            batch_first=batch_first,
+            norm_first=norm_first,
+            bias=bias,
+            device=device,
+            dtype=dtype,
+        )
+        super().__init__(
+            encoder_layer,
+            num_layers,
+            norm=norm,
+            enable_nested_tensor=enable_nested_tensor,
+            mask_check=mask_check,
         )
 
 
-class LEXTransformerDecoder(_LEXTransformerEncoder):
+class LEXTransformerDecoder(nn.TransformerDecoder):
     """Decoder of LEX Transformer."""
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-
-        warnings.warn(
-            warning_message.format(class_name=self.__class__.__name__),
-            DeprecationWarning,
-            stacklevel=2,
+    def __init__(
+        self,
+        d_model: int,
+        nhead: int,
+        num_layers: int,
+        dim_feedforward: int = 2048,
+        dropout: float = 0.1,
+        activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.relu,
+        layer_norm_eps: float = 1e-5,
+        xpos_base: int = 10000,
+        share_heads: bool = True,
+        batch_first: bool = False,
+        norm_first: bool = False,
+        bias: bool = True,
+        norm: Optional[nn.Module] = None,
+        device: torch.device = None,
+        dtype: torch.dtype = None,
+    ) -> None:
+        decoder_layer = LEXTransformerDecoderLayer(
+            d_model,
+            nhead,
+            dim_feedforward=dim_feedforward,
+            dropout=dropout,
+            activation=activation,
+            layer_norm_eps=layer_norm_eps,
+            xpos_base=xpos_base,
+            share_heads=share_heads,
+            batch_first=batch_first,
+            norm_first=norm_first,
+            bias=bias,
+            device=device,
+            dtype=dtype,
         )
+        super().__init__(decoder_layer, num_layers, norm=norm)
 
 
-class LEXTransformerEncoderLayer(_LEXTransformerEncoderLayer):
+class LEXTransformerEncoderLayer(nn.Module):
     """Encoder layer of LEX Transformer."""
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        d_model: int,
+        nhead: int,
+        dim_feedforward: int = 2048,
+        dropout: float = 0.1,
+        activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.relu,
+        layer_norm_eps: float = 1e-5,
+        xpos_base: int = 10000,
+        share_heads: bool = True,
+        batch_first: bool = False,
+        norm_first: bool = False,
+        bias: bool = True,
+        device: torch.device = None,
+        dtype: torch.dtype = None,
+    ) -> None:
+        factory_kwargs = {"device": device, "dtype": dtype}
 
-        warnings.warn(
-            warning_message.format(class_name=self.__class__.__name__),
-            DeprecationWarning,
-            stacklevel=2,
+        super().__init__()
+
+        if IS_TORCH_LT_2_1:
+            assert bias, "Only bias=True is supported for torch < 2.1."
+
+            layer_norm_kwargs = {}
+        else:
+            layer_norm_kwargs = {"bias": bias}
+
+        self.self_attn = ExtrapolatablePositionalMultiheadAttention(
+            d_model,
+            nhead,
+            dropout=dropout,
+            bias=bias,
+            base=xpos_base,
+            share_heads=share_heads,
+            batch_first=batch_first,
+            **factory_kwargs,
         )
 
+        self.linear1 = nn.Linear(d_model, dim_feedforward, bias=bias, **factory_kwargs)
+        self.dropout = nn.Dropout(dropout)
+        self.linear2 = nn.Linear(dim_feedforward, d_model, bias=bias, **factory_kwargs)
 
-<<<<<<< HEAD
         self.norm_first = norm_first
         self.norm1 = nn.LayerNorm(
             d_model, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs
@@ -73,7 +164,7 @@ class LEXTransformerEncoderLayer(_LEXTransformerEncoderLayer):
         self.dropout2 = nn.Dropout(dropout)
 
         if isinstance(activation, str):
-            activation = get_activation(activation)
+            activation = _get_activation(activation)
 
         if activation is F.relu or isinstance(activation, nn.ReLU):
             self.activation_relu_or_gelu = 1
@@ -167,20 +258,48 @@ class LEXTransformerEncoderLayer(_LEXTransformerEncoderLayer):
 
 
 class LEXTransformerDecoderLayer(nn.Module):
-=======
-class LEXTransformerDecoderLayer(_LEXTransformerDecoderLayer):
->>>>>>> 940036f1 ([src] Create audyn.modules.lextransformer)
     """Decoder layer of LEX Transformer."""
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        d_model: int,
+        nhead: int,
+        dim_feedforward: int = 2048,
+        dropout: float = 0.1,
+        activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.relu,
+        layer_norm_eps: float = 1e-5,
+        xpos_base: int = 10000,
+        share_heads: bool = True,
+        batch_first: bool = False,
+        norm_first: bool = False,
+        bias: bool = True,
+        device: torch.device = None,
+        dtype: torch.dtype = None,
+    ) -> None:
+        factory_kwargs = {
+            "device": device,
+            "dtype": dtype,
+        }
 
-        warnings.warn(
-            warning_message.format(class_name=self.__class__.__name__),
-            DeprecationWarning,
-            stacklevel=2,
+        super().__init__()
+
+        if IS_TORCH_LT_2_1:
+            assert bias, "Only bias=True is supported for torch < 2.1."
+
+            layer_norm_kwargs = {}
+        else:
+            layer_norm_kwargs = {"bias": bias}
+
+        self.self_attn = ExtrapolatablePositionalMultiheadAttention(
+            d_model,
+            nhead,
+            dropout=dropout,
+            bias=bias,
+            base=xpos_base,
+            share_heads=share_heads,
+            batch_first=batch_first,
+            **factory_kwargs,
         )
-<<<<<<< HEAD
         self.multihead_attn = ExtrapolatablePositionalMultiheadAttention(
             d_model,
             nhead,
@@ -209,7 +328,7 @@ class LEXTransformerDecoderLayer(_LEXTransformerDecoderLayer):
         self.dropout3 = nn.Dropout(dropout)
 
         if isinstance(activation, str):
-            activation = get_activation(activation)
+            activation = _get_activation(activation)
 
         self.activation = activation
 
@@ -328,5 +447,3 @@ class LEXTransformerDecoderLayer(_LEXTransformerDecoderLayer):
         x = self.linear2(self.dropout(self.activation(self.linear1(x))))
 
         return self.dropout3(x)
-=======
->>>>>>> 940036f1 ([src] Create audyn.modules.lextransformer)
