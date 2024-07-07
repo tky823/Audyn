@@ -859,8 +859,8 @@ class TransformerXLRelativePositionalMultiheadAttention(_MultiheadAttention):
         num_heads = self.num_heads
         in_proj_weight = self.in_proj_weight
         in_proj_bias = self.in_proj_bias
-        u = self.query_bias
-        v = self.key_bias
+        s = self.query_bias
+        t = self.key_bias
 
         head_dim = embed_dim // num_heads
 
@@ -930,25 +930,17 @@ class TransformerXLRelativePositionalMultiheadAttention(_MultiheadAttention):
         k = k.permute(1, 2, 3, 0)
         v = v.permute(1, 2, 0, 3)
 
-        # term (a)
-        qk = torch.matmul(q, k)
+        # term (a) & (c)
+        qk = torch.matmul(q + s.unsqueeze(dim=-2), k)
 
-        # term (b)
-        _q = q.permute(1, 2, 0, 3)
-        _r = r.permute(0, 2, 1, 3)
-        qr = torch.matmul(_q, _r)
+        # term (b) & (d)
+        qt = q + t.unsqueeze(dim=-2)
+        qt = qt.permute(1, 2, 0, 3)
+        r = r.permute(0, 2, 1, 3)
+        qr = torch.matmul(qt, r)
         qr = qr.permute(2, 0, 1, 3)
 
-        # term (c)
-        uk = torch.sum(u.unsqueeze(dim=-1) * k, dim=-2)
-
-        # term (d)
-        _v = v.permute(1, 2, 0, 3)
-        _r = r.permute(0, 3, 1, 2)
-        vr = torch.matmul(_v, _r)
-        vr = vr.permute(2, 0, 3, 1)
-
-        qk = (qk + qr + uk.unsqueeze(dim=-2) + vr) / math.sqrt(head_dim)
+        qk = (qk + qr) / math.sqrt(head_dim)
 
         if key_padding_mask is not None:
             key_padding_mask = key_padding_mask.view(batch_size, 1, 1, key_length)
