@@ -12,6 +12,7 @@ from .positional_encoding import ExtrapolatablePositionalEmbedding, RotaryPositi
 __all__ = [
     "TrainableAbsolutePositionalMultiheadAttention",
     "RelativePositionalMultiheadAttention",
+    "TransformerXLRelativePositionalMultiheadAttention",
     "RotaryPositionalMultiheadAttention",
     "ExtrapolatablePositionalMultiheadAttention",
 ]
@@ -730,6 +731,300 @@ class RelativePositionalMultiheadAttention(_MultiheadAttention):
             positional_embedding = positional_embedding.view(
                 num_heads, embed_dim // num_heads, query_length, key_length
             )
+
+        return positional_embedding
+
+
+class TransformerXLRelativePositionalMultiheadAttention(_MultiheadAttention):
+    """Multihead attention using relative positional representation proposed \
+        in [#dai2019transformer]_.
+
+    .. [#dai2019transformer] Zihang et al.,
+        "Transformer-XL: Attentive language models beyond a fixed-length context".
+
+    """
+
+    def __init__(
+        self,
+        embed_dim: int,
+        num_heads: int,
+        dropout: float = 0,
+        bias: bool = True,
+        add_bias_kv: bool = False,
+        add_zero_attn: bool = False,
+        kdim: Optional[int] = None,
+        vdim: Optional[int] = None,
+        base: int = 10000,
+        batch_first: bool = False,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
+    ) -> None:
+        factory_kwargs = {
+            "device": device,
+            "dtype": dtype,
+        }
+        super().__init__(
+            embed_dim,
+            num_heads,
+            dropout=dropout,
+            bias=bias,
+            add_bias_kv=add_bias_kv,
+            add_zero_attn=add_zero_attn,
+            kdim=kdim,
+            vdim=vdim,
+            batch_first=batch_first,
+            **factory_kwargs,
+        )
+
+        if add_bias_kv:
+            raise NotImplementedError("add_bias_kv is not supported.")
+
+        if add_zero_attn:
+            raise NotImplementedError("add_zero_attn is not supported.")
+
+        self.base = base
+
+        pos_proj_weight = torch.empty((embed_dim, embed_dim), **factory_kwargs)
+        query_bias = torch.empty((num_heads, embed_dim // num_heads), **factory_kwargs)
+        key_bias = torch.empty((num_heads, embed_dim // num_heads), **factory_kwargs)
+
+        self.pos_proj_weight = nn.Parameter(pos_proj_weight, requires_grad=True)
+        self.query_bias = nn.Parameter(query_bias, requires_grad=True)
+        self.key_bias = nn.Parameter(key_bias, requires_grad=True)
+
+        self._reset_weights()
+        self._reset_biases()
+
+    def _reset_parameters(self) -> None:
+        """Reset parameters.
+
+        Since this method is often called before defining positional encodings,
+        we initialize them only if they exist.
+
+        """
+        super()._reset_parameters()
+
+        if hasattr(self, "pos_proj_weight"):
+            self._reset_weights()
+
+        if hasattr(self, "query_bias") and hasattr(self, "key_bias"):
+            self._reset_biases()
+
+    def _reset_weights(self) -> None:
+        nn.init.kaiming_uniform_(self.pos_proj_weight, a=math.sqrt(5))
+
+    def _reset_biases(self) -> None:
+        nn.init.xavier_normal_(self.query_bias.data)
+        nn.init.xavier_normal_(self.key_bias.data)
+
+    def forward(
+        self,
+        query: torch.Tensor,
+        key: torch.Tensor,
+        value: torch.Tensor,
+        key_padding_mask: Optional[torch.Tensor] = None,
+        need_weights: bool = True,
+        attn_mask: Optional[torch.Tensor] = None,
+        average_attn_weights: bool = True,
+        **kwargs,
+    ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        """Forward pass of RelativePositionalMultiheadAttention.
+
+        Args:
+            query (torch.Tensor): Sequence of shape (batch_size, query_length, embed_dim)
+                if ``batch_first=True``, otherwise (query_length, batch_size, embed_dim).
+            key (torch.Tensor): Sequence of shape (batch_size, key_length, embed_dim)
+                if ``batch_first=True``, otherwise (key_length, batch_size, embed_dim).
+            key_padding_mask (torch.BoolTensor, optional): Padding mask of shape
+                (batch_size, key_length).
+            attn_mask (torch.BoolTensor, optional): Attention padding mask of
+                shape (query_length, key_length) or
+                (batch_size * num_heads, query_length, key_length).
+
+        Returns:
+            tuple: Tuple of tensors containing
+
+                - torch.Tensor: Sequence of same shape as input.
+                - torch.Tensor: Attention weights of shape
+                    (batch_size, num_heads, query_length, key_length) if
+                    ``average_attn_weights=True``, otherwise
+                    (batch_size, query_length, key_length).
+
+        """
+        self.validate_kwargs(kwargs)
+
+        embed_dim = self.embed_dim
+        dropout = self.dropout
+        batch_first = self.batch_first
+        num_heads = self.num_heads
+        in_proj_weight = self.in_proj_weight
+        in_proj_bias = self.in_proj_bias
+        s = self.query_bias
+        t = self.key_bias
+
+        head_dim = embed_dim // num_heads
+
+        if batch_first:
+            if key is value:
+                if query is key:
+                    query = key = value = query.transpose(1, 0)
+                else:
+                    query = query.transpose(1, 0)
+                    key = key.transpose(1, 0)
+                    value = key
+            else:
+                query = query.transpose(1, 0)
+                key = key.transpose(1, 0)
+                value = value.transpose(1, 0)
+
+        query_length, batch_size, _ = query.size()
+        key_length, _, _ = key.size()
+
+        key_padding_mask = F._canonical_mask(
+            mask=key_padding_mask,
+            mask_name="key_padding_mask",
+            other_type=F._none_or_dtype(attn_mask),
+            other_name="attn_mask",
+            target_type=query.dtype,
+        )
+
+        attn_mask = F._canonical_mask(
+            mask=attn_mask,
+            mask_name="attn_mask",
+            other_type=None,
+            other_name="",
+            target_type=query.dtype,
+            check_other=False,
+        )
+
+        if self._qkv_same_embed_dim:
+            q_proj_weight, k_proj_weight, v_proj_weight = torch.split(
+                in_proj_weight, [embed_dim] * 3, dim=-2
+            )
+        else:
+            q_proj_weight = self.q_proj_weight
+            k_proj_weight = self.k_proj_weight
+            v_proj_weight = self.v_proj_weight
+
+        if self.in_proj_bias is None:
+            q_proj_bias, k_proj_bias, v_proj_bias = None, None, None
+        else:
+            q_proj_bias, k_proj_bias, v_proj_bias = torch.split(
+                in_proj_bias, [embed_dim] * 3, dim=0
+            )
+
+        q = F.linear(query, q_proj_weight, bias=q_proj_bias)
+        k = F.linear(key, k_proj_weight, bias=k_proj_bias)
+        v = F.linear(value, v_proj_weight, bias=v_proj_bias)
+
+        r = self.compute_positional_encoding(
+            self.pos_proj_weight, query_length=q.size(0), key_length=k.size(0)
+        )
+
+        q = q.view(query_length, batch_size, num_heads, head_dim)
+        k = k.view(key_length, batch_size, num_heads, head_dim)
+        v = v.view(key_length, batch_size, num_heads, head_dim)
+        r = r.view(num_heads, head_dim, query_length, key_length)
+
+        q = q.permute(1, 2, 0, 3)
+        k = k.permute(1, 2, 3, 0)
+        v = v.permute(1, 2, 0, 3)
+
+        # term (a) & (c)
+        qk = torch.matmul(q + s.unsqueeze(dim=-2), k)
+
+        # term (b) & (d)
+        qt = q + t.unsqueeze(dim=-2)
+        qt = qt.permute(1, 2, 0, 3)
+        r = r.permute(0, 2, 1, 3)
+        qr = torch.matmul(qt, r)
+        qr = qr.permute(2, 0, 1, 3)
+
+        qk = (qk + qr) / math.sqrt(head_dim)
+
+        if key_padding_mask is not None:
+            key_padding_mask = key_padding_mask.view(batch_size, 1, 1, key_length)
+
+            if attn_mask is None:
+                attn_mask = key_padding_mask
+            else:
+                if attn_mask.dim() == 3:
+                    attn_mask.view(batch_size, num_heads, query_length, key_length)
+                else:
+                    assert attn_mask.dim() == 2
+
+                attn_mask = attn_mask + key_padding_mask
+
+        if attn_mask is not None:
+            qk = qk + attn_mask
+
+        attn_weights = F.softmax(qk, dim=-1)
+
+        if dropout > 0:
+            attn_weights = F.dropout(attn_weights, p=dropout, training=self.training)
+
+        qkv = torch.matmul(attn_weights, v)
+
+        if batch_first:
+            qkv = qkv.permute(0, 2, 1, 3).contiguous()
+            qkv = qkv.view(batch_size, query_length, embed_dim)
+        else:
+            qkv = qkv.permute(2, 0, 1, 3).contiguous()
+            qkv = qkv.view(query_length, batch_size, embed_dim)
+
+        output = self.out_proj(qkv)
+
+        if average_attn_weights and need_weights:
+            attn_weights = attn_weights.mean(dim=1)
+
+        if not need_weights:
+            attn_weights = None
+
+        return output, attn_weights
+
+    def compute_positional_encoding(
+        self, proj_weight: torch.Tensor, query_length: int, key_length: int
+    ) -> torch.Tensor:
+        """Compute relative positional encoding.
+
+        Args:
+            query_length (int): Length of key.
+            key_length (torch.Tensor): Length of key.
+            proj_weight (torch.Tensor): Projection weight for positional encoding
+                of shape (embed_dim, embed_dim).
+
+        Returns:
+            torch.Tensor: Projected relative positional encoding of shape
+                (embed_dim, query_length, key_length).
+
+        """
+        base = self.base
+
+        device = proj_weight.device
+        embed_dim = proj_weight.size(-1)
+
+        assert embed_dim % 2 == 0, "Feature dimension is expected to be even number."
+
+        pos_seq = torch.arange(query_length - 1, -key_length, -1)
+        num_seq = torch.arange(0, embed_dim, 2) / embed_dim
+        theta = pos_seq.unsqueeze(dim=-1) / (base**num_seq)
+
+        sin = torch.sin(theta)
+        cos = torch.cos(theta)
+
+        positional_embedding = torch.stack([sin, cos], dim=-1)
+        positional_embedding = positional_embedding.view(query_length + key_length - 1, embed_dim)
+        positional_embedding = positional_embedding.to(device)
+        positional_embedding = F.linear(positional_embedding, proj_weight)
+        positional_embedding = positional_embedding.transpose(1, 0).contiguous()
+        positional_embedding = positional_embedding.view(
+            1, embed_dim, 1, query_length + key_length - 1
+        )
+        positional_embedding = F.unfold(
+            positional_embedding, kernel_size=(1, query_length), stride=(1, 1)
+        )
+        positional_embedding = positional_embedding.view(embed_dim, query_length, key_length)
+        positional_embedding = torch.flip(positional_embedding, dims=(-2,))
 
         return positional_embedding
 
