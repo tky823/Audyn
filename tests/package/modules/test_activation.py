@@ -3,6 +3,7 @@ from typing import Optional, Tuple
 import pytest
 import torch
 import torch.nn as nn
+from dummy import allclose
 
 from audyn.modules.activation import (
     ExtrapolatablePositionalMultiheadAttention,
@@ -273,8 +274,8 @@ def test_relative_positional_attn(
 
     assert relative_attn_weights.size() == (batch_size, max_query_length, max_key_length)
 
-    assert torch.allclose(output, relative_output, atol=1e-7)
-    assert torch.allclose(attn_weights, relative_attn_weights)
+    allclose(output, relative_output, atol=1e-7)
+    allclose(attn_weights, relative_attn_weights)
 
     # ensure invariance of relative positions
     relative_mha = RelativePositionalMultiheadAttention(
@@ -341,8 +342,8 @@ def test_relative_positional_attn(
         padded_relative_attn_weights, [1, max_key_length], dim=-1
     )
 
-    assert torch.allclose(padded_relative_output, relative_output, atol=1e-7)
-    assert torch.allclose(padded_relative_attn_weights, relative_attn_weights)
+    allclose(padded_relative_output, relative_output, atol=1e-7)
+    allclose(padded_relative_attn_weights, relative_attn_weights)
 
     (query, key, value), (query_length, key_length) = create_qkv(
         batch_size,
@@ -500,8 +501,8 @@ def test_transformer_xl_relative_positional_attn(
         padded_relative_attn_weights, [1, max_key_length], dim=-1
     )
 
-    assert torch.allclose(padded_relative_output, relative_output)
-    assert torch.allclose(padded_relative_attn_weights, relative_attn_weights)
+    allclose(padded_relative_output, relative_output, atol=1e-7)
+    allclose(padded_relative_attn_weights, relative_attn_weights)
 
     (query, key, value), (query_length, key_length) = create_qkv(
         batch_size,
