@@ -11,6 +11,7 @@ Welcome to Audyn's documentation!
    :caption: Contents:
 
    api
+   pretrained
    recipes
 
 
