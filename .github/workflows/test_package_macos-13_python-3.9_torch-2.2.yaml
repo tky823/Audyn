@@ -13,4 +13,4 @@ jobs:
       python-version: "3.9"
       torch-version: "2.2.0"
     secrets:
-      ACCESS_TOKEN: "${{ secrets.ACCESS_TOKEN }}"
+      ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}

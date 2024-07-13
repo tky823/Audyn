@@ -18,4 +18,4 @@ jobs:
       python-version: ${{ inputs.python-version }}
       torch-version: ${{ inputs.torch-version }}
     secrets:
-      ACCESS_TOKEN: "${{ secrets.ACCESS_TOKEN }}"
+      ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
