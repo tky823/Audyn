@@ -1,11 +1,11 @@
 defaults:
   - dataset: torch
   - dataloader: defaults
-  - record: wsj0-2mix
+  - record: wsj0-mix
   - _self_
 
 trainer:
-  _target_: audyn.utils.driver.BaseTrainer
+  _target_: wsj0_mix.utils.driver.BaseTrainer
 
 dataloader:
   train:
