@@ -1,5 +1,19 @@
 # Pretrained models via torch.hub
 
+## Audio spectrogram transformer (AST)
+- Provided weights are extracted from the original implementation.
+
+```python
+>>> import torch
+>>> repo = "tky823/Audyn"
+>>> model = "ast_base"
+>>> ast = torch.hub.load(
+...     repo,
+...     model,
+...     skip_validation=False,
+... )
+```
+
 ## Self-supervised audio spectrogram transformer (SSAST)
 - Provided weights are extracted from the original implementation.
 - SSAST for pretraining
