@@ -1,4 +1,4 @@
-name: test package on windows-latest
+name: windows-latest/3.11/2.1
 on:
   push:
     branches:

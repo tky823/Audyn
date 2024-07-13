@@ -1,4 +1,4 @@
-name: test package on macos-13
+name: macos-13/3.11/2.1
 on:
   push:
     branches:

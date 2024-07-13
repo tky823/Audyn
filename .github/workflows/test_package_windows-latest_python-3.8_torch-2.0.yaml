@@ -1,4 +1,4 @@
-name: test package on windows-latest
+name: windows-latest/3.8/2.0
 on:
   push:
     branches:
@@ -10,7 +10,7 @@ jobs:
   package:
     uses: ./.github/workflows/test_package_windows-latest.yaml
     with:
-      python-version: "3.9"
+      python-version: "3.8"
       torch-version: "2.0.0"
     secrets:
       ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}

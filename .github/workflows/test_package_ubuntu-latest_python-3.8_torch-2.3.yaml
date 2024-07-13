@@ -1,4 +1,4 @@
-name: test package on ubuntu-latest
+name: ubuntu-latest/3.8/2.3
 on:
   push:
     branches:
