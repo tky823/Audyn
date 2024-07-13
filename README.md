@@ -78,7 +78,8 @@ pip install -e "."
 
 ## Development
 ```shell
-# In Audyn/
+git clone https://github.com/tky823/Audyn.git
+cd Audyn
 pip install -e ".[recipes,dev,tests]"
 ```
 
