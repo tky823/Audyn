@@ -17,3 +17,5 @@ jobs:
       os: macos-13
       python-version: ${{ inputs.python-version }}
       torch-version: ${{ inputs.torch-version }}
+    secrets:
+      ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
