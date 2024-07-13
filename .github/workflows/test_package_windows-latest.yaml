@@ -22,3 +22,4 @@ jobs:
       torch-version: ${{ inputs.torch-version }}
     secrets:
       ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
