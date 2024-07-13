@@ -1,75 +1,56 @@
+# To create status badge per os, python-version, and torch-version, we use workflow call.
+# https://github.com/orgs/community/discussions/52616
+
 name: test package
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  workflow_call:
+    inputs:
+      os:
+        required: true
+        type: string
+      python-version:
+        required: true
+        type: string
+      torch-version:
+        required: true
+        type: string
+    secrets:
+      ACCESS_TOKEN:
+        required: true
+      CODECOV_TOKEN:
+        required: true
 jobs:
   package:
     name: Run tests with pytest
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
-        # macos-13: x86_64, macos-latest: arm
-        # See https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners
-        os: [ubuntu-latest, macos-13, windows-latest]
-        torch-version:
-          - "1.9.0"
-          - "1.11.0"
-          - "2.0.0"
-          - "2.1.0"
-          - "2.2.0"
-          - "2.3.0"
-        exclude:
-          # skip torch==1.9 and 1.11 for the time being
-          - torch-version: "1.9.0"
-          - torch-version: "1.11.0"
-          - python-version: "3.10"
-            torch-version: "1.9.0"
-          - python-version: "3.11"
-            torch-version: "1.9.0"
-          - python-version: "3.11"
-            torch-version: "1.11.0"
-          - python-version: "3.11"
-            os: macos-13
-            torch-version: "2.2.0"
-          - os: macos-13
-            torch-version: "2.3.0"
-          - os: windows-latest
-            torch-version: "2.2.0"
-          - os: windows-latest
-            torch-version: "2.3.0"
+    runs-on: ${{ inputs.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python ${{ inputs.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ inputs.python-version }}
       - name: Install dependencies (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
+        if: inputs.os == 'ubuntu-latest'
         run: |
           sudo apt update
           sudo apt install ffmpeg
           ffmpeg -version
       - name: Install dependencies (MacOS)
-        if: matrix.os == 'macos-13'
+        if: inputs.os == 'macos-13'
         run: |
           brew install ffmpeg
       - name: Overwrite torch version in pyproject.toml (Windows)
         id: windows_torch_installation
-        if: matrix.os == 'windows-latest'
+        if: inputs.os == 'windows-latest'
         env:
-          TORCH_VERSION: ${{ matrix.torch-version }}
+          TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${env:TORCH_VERSION}
       - name: Overwrite torch version in pyproject.toml (Ubuntu & MacOS)
         if: steps.windows_torch_installation.conclusion == 'skipped'
         env:
-          TORCH_VERSION: ${{ matrix.torch-version }}
+          TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
       - name: Install dependencies
@@ -79,7 +60,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev,tests]"
       - name: Install dependencies (Windows)
-        if: matrix.os == 'windows-latest'
+        if: inputs.os == 'windows-latest'
         run: |
           pip install soundfile
       - name: Show dependencies
@@ -87,15 +68,15 @@ jobs:
           pip list
       - name: Verify version of torch (Windows)
         id: windows_torch_verification
-        if: matrix.os == 'windows-latest'
+        if: inputs.os == 'windows-latest'
         env:
-          TORCH_VERSION: ${{ matrix.torch-version }}
+          TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
           python tests/scripts/verify_torch_version.py --torch-version ${env:TORCH_VERSION}
       - name: Verify version of torch (Ubuntu & MacOS)
         if: steps.windows_torch_verification.conclusion == 'skipped'
         env:
-          TORCH_VERSION: ${{ matrix.torch-version }}
+          TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
           python tests/scripts/verify_torch_version.py --torch-version ${TORCH_VERSION}
       - name: Show backend of torchaudio
@@ -103,7 +84,7 @@ jobs:
           python -c "import torchaudio; print(torchaudio.list_audio_backends())"
           python -c "import torchaudio; assert len(torchaudio.list_audio_backends()) > 0"
       - name: Pytest for torch.hub
-        if: matrix.python-version == '3.8' && matrix.os == 'ubuntu-latest' && matrix.torch-version == '2.1.0'
+        if: inputs.python-version == '3.8' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.1.0'
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           GITHUB_HEAD_REF: ${{ github.head_ref }}
@@ -111,7 +92,7 @@ jobs:
           pytest -vvv tests/torchhub/
       - name: Pytest for package (Windows)
         id: windows_pytest
-        if: matrix.os == 'windows-latest'
+        if: inputs.os == 'windows-latest'
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
@@ -123,7 +104,7 @@ jobs:
         run: |
           pytest -vvv --cov=audyn/ --cov-report=xml tests/package/
       - name: Upload coverage reports to Codecov
-        if: matrix.python-version == '3.8' && matrix.os == 'ubuntu-latest' && matrix.torch-version == '2.1.0'
+        if: inputs.python-version == '3.8' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.1.0'
         uses: codecov/codecov-action@v3
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -131,67 +112,35 @@ jobs:
           fail_ci_if_error: true
   recipes:
     name: Run recipe tests
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
-        # macos-13: x86_64, macos-latest: arm
-        # See https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners
-        os: [ubuntu-latest, macos-13, windows-latest]
-        torch-version:
-          - "1.9.0"
-          - "1.11.0"
-          - "2.0.0"
-          - "2.1.0"
-          - "2.2.0"
-          - "2.3.0"
-        exclude:
-          # skip torch==1.9 and 1.11 for the time being
-          - torch-version: "1.9.0"
-          - torch-version: "1.11.0"
-          - python-version: "3.10"
-            torch-version: "1.9.0"
-          - python-version: "3.11"
-            torch-version: "1.9.0"
-          - python-version: "3.11"
-            torch-version: "1.11.0"
-          - python-version: "3.11"
-            os: macos-13
-            torch-version: "2.2.0"
-          - os: macos-13
-            torch-version: "2.3.0"
-          - os: windows-latest
-            torch-version: "2.2.0"
-          - os: windows-latest
-            torch-version: "2.3.0"
+    runs-on: ${{ inputs.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python ${{ inputs.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ inputs.python-version }}
       - name: Install dependencies (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
+        if: inputs.os == 'ubuntu-latest'
         run: |
           sudo apt update
           sudo apt install ffmpeg
           ffmpeg -version
       - name: Install dependencies (MacOS)
-        if: matrix.os == 'macos-13'
+        if: inputs.os == 'macos-13'
         run: |
           brew install ffmpeg
       - name: Overwrite torch version in pyproject.toml (Windows)
         id: windows_torch_installation
-        if: matrix.os == 'windows-latest'
+        if: inputs.os == 'windows-latest'
         env:
-          TORCH_VERSION: ${{ matrix.torch-version }}
+          TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${env:TORCH_VERSION}
       - name: Overwrite torch version in pyproject.toml (Ubuntu & MacOS)
         if: steps.windows_torch_installation.conclusion == 'skipped'
         env:
-          TORCH_VERSION: ${{ matrix.torch-version }}
+          TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
       - name: Install dependencies
@@ -201,7 +150,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[recipes]"
       - name: Install dependencies (Windows)
-        if: matrix.os == 'windows-latest'
+        if: inputs.os == 'windows-latest'
         run: |
           pip install soundfile
       - name: Show dependencies
@@ -209,15 +158,15 @@ jobs:
           pip list
       - name: Verify version of torch (Windows)
         id: windows_torch_verification
-        if: matrix.os == 'windows-latest'
+        if: inputs.os == 'windows-latest'
         env:
-          TORCH_VERSION: ${{ matrix.torch-version }}
+          TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
           python tests/scripts/verify_torch_version.py --torch-version ${env:TORCH_VERSION}
       - name: Verify version of torch (Ubuntu & MacOS)
         if: steps.windows_torch_verification.conclusion == 'skipped'
         env:
-          TORCH_VERSION: ${{ matrix.torch-version }}
+          TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
           python tests/scripts/verify_torch_version.py --torch-version ${TORCH_VERSION}
       - name: Show backend of torchaudio
