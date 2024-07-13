@@ -1,7 +1,7 @@
 defaults:
   - dataset: torch
   - dataloader: defaults
-  - record: wsj0-3mix
+  - record: wsj0-mix
   - _self_
 
 trainer:

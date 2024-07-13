@@ -11,7 +11,7 @@ dump_format="torch"
 
 system="defaults"
 preprocess="defaults"
-data="wsj0-2mix_8k"
+data="wsj0-3mix_8k"
 train="wsj0-mix"
 model="conv-tasnet"
 optimizer="adam"

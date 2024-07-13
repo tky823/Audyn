@@ -11,11 +11,11 @@ dump_format="torch"
 
 system="defaults"
 preprocess="defaults"
-data="wsj0-2mix_8k"
+data="wsj0-3mix_8k"
 train="wsj0-mix"
-model="conv-tasnet"
+model="dprnn-tasnet"
 optimizer="adam"
-lr_scheduler="conv-tasnet"
+lr_scheduler="dprnn-tasnet"
 criterion="neg-sisdr"
 
 . ../../_common/parse_options.sh || exit 1;
