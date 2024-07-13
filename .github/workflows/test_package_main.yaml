@@ -14,6 +14,10 @@ on:
       torch-version:
         required: true
         type: string
+    secrets:
+      ACCESS_TOKEN:
+        required: true
+        type: string
 jobs:
   package:
     name: Run tests with pytest
