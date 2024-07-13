@@ -17,6 +17,8 @@ on:
     secrets:
       ACCESS_TOKEN:
         required: true
+      CODECOV_TOKEN:
+        required: true
 jobs:
   package:
     name: Run tests with pytest

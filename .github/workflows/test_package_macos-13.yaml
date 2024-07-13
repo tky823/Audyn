@@ -11,6 +11,8 @@ on:
     secrets:
       ACCESS_TOKEN:
         required: true
+      CODECOV_TOKEN:
+        required: true
 jobs:
   package:
     uses: ./.github/workflows/test_package_main.yaml

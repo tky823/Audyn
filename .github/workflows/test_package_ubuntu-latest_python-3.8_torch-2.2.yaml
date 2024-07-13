@@ -14,3 +14,4 @@ jobs:
       torch-version: "2.2.0"
     secrets:
       ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
