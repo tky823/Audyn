@@ -3,13 +3,12 @@
 set -eu
 set -o pipefail
 
-libritts_url="https://www.openslr.org/resources/60"
-
-data_root="../data"
-
 train_name="train-clean-100"
 validation_name="dev-clean"
 test_name="test-clean"
+
+libritts_url="https://www.openslr.org/resources/60"
+data_root="../data"
 
 . ../../_common/parse_options.sh || exit 1;
 
