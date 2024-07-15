@@ -31,6 +31,13 @@ def pit(
         ``criterion`` should return loss of shape (batch_size, num_sources).
 
     """
+    assert (
+        input.dim() >= 2
+    ), "At least, 2D is required to dim of input, but {}D tensor is given.".format(input.dim())
+    assert (
+        target.dim() >= 2
+    ), "At least, 2D is required to dim of target, but {}D tensor is given.".format(target.dim())
+
     if permutations is None:
         factory_kwargs = {
             "dtype": torch.long,
