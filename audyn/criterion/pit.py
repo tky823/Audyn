@@ -4,7 +4,10 @@ from typing import Callable, Optional, Union
 import torch
 import torch.nn as nn
 
-__all__ = ["pit"]
+__all__ = [
+    "pit",
+    "PIT",
+]
 
 
 def pit(
@@ -13,12 +16,12 @@ def pit(
     target: torch.Tensor,
     permutations: Optional[torch.Tensor] = None,
 ) -> Union[torch.Tensor, torch.LongTensor]:
-    """Wrapper function for permutation invariant training.
+    r"""Wrapper function for permutation invariant training.
 
     Args:
         criterion (nn.Module or callable): Criterion to apply PIT.
-        input (torch.Tensor): Input feature of shape (batch_size, num_sources, *).
-        output (torch.Tensor): Target feature of shape (batch_size, num_sources, *).
+        input (torch.Tensor): Input feature of shape (batch_size, num_sources, \*).
+        output (torch.Tensor): Target feature of shape (batch_size, num_sources, \*).
 
     Returns:
         tuple: Tuple of tensors containing
@@ -31,6 +34,13 @@ def pit(
         ``criterion`` should return loss of shape (batch_size, num_sources).
 
     """
+    assert (
+        input.dim() >= 2
+    ), "At least, 2D is required to dim of input, but {}D tensor is given.".format(input.dim())
+    assert (
+        target.dim() >= 2
+    ), "At least, 2D is required to dim of target, but {}D tensor is given.".format(target.dim())
+
     if permutations is None:
         factory_kwargs = {
             "dtype": torch.long,
@@ -47,6 +57,9 @@ def pit(
     for idx in range(num_permutations):
         permutation = permutations[idx]
         loss = criterion(input, target[:, permutation])
+
+        assert loss.dim() == 2
+
         possible_loss.append(loss)
 
     possible_loss = torch.stack(possible_loss, dim=0)
@@ -56,6 +69,14 @@ def pit(
 
 
 class PIT(nn.Module):
+    """Permutation invariant training.
+
+    Args:
+        criterion (nn.Module or callable): Criterion to compute loss.
+        num_sources (int, optional): Number of sources.
+
+    """
+
     def __init__(
         self,
         criterion: Union[nn.Module, Callable[[torch.Tensor], torch.Tensor]],
@@ -75,11 +96,11 @@ class PIT(nn.Module):
     def forward(
         self, input: torch.Tensor, target: torch.Tensor
     ) -> Union[torch.Tensor, torch.LongTensor]:
-        """Forward pass of PIT.
+        r"""Forward pass of PIT.
 
         Args:
-            input (torch.Tensor): Input feature of shape (batch_size, num_sources, *).
-            output (torch.Tensor): Target feature of shape (batch_size, num_sources, *).
+            input (torch.Tensor): Input feature of shape (batch_size, num_sources, \*).
+            output (torch.Tensor): Target feature of shape (batch_size, num_sources, \*).
 
         Returns:
             tuple: Tuple of tensors containing

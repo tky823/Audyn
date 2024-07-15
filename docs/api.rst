@@ -10,5 +10,6 @@ Submodules
    audyn.models
    audyn.modules
    audyn.transforms
+   audyn.criterion
    audyn.optim
    audyn.utils
