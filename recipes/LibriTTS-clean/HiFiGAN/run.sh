@@ -31,6 +31,10 @@ optimizer="hifigan"
 lr_scheduler="hifigan"
 criterion="hifigan"
 
+min_train=10
+ratio_validation=0.05
+ratio_test=0.1
+
 . ../../_common/parse_options.sh || exit 1;
 
 if [ ${stage} -le -1 ] && [ ${stop_stage} -ge -1 ]; then
@@ -43,5 +47,23 @@ if [ ${stage} -le -1 ] && [ ${stop_stage} -ge -1 ]; then
         --train-name "${train_name}" \
         --validation-name "${validation_name}" \
         --test-name "${test_name}"
+    )
+fi
+
+if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
+    echo "Stage 0: Preprocessing"
+
+    (
+        . ./preprocess.sh \
+        --stage 1 \
+        --stop-stage 2 \
+        --data-root "${data_root}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --min-train ${min_train} \
+        --ratio-validation ${ratio_validation} \
+        --ratio-test ${ratio_test}
     )
 fi
