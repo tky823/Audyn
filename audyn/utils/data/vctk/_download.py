@@ -13,6 +13,10 @@ def download_speakers(
     """Download all speakers of VCTK dataset.
 
     Args:
+        root (str, optional): Rootdirectory to save ``vctk-{version}_speakers.txt``.
+            Default: ``$HOME/.cache/audyn/data/vctk``.
+        url (str, optional): URL of pre-defined ``vctk-{version}_speakers.txt``.
+            Default: ``https://github.com/tky823/Audyn/releases/download/v0.0.1.dev7/vctk-{version}_speakers.txt``.  # noqa: E501
         version (str): Version of VCTK dataset. Only ``0.92`` is supported.
 
     .. note::
@@ -45,6 +49,10 @@ def download_valid_speakers(
     """Download valid speakers of VCTK dataset.
 
     Args:
+        root (str, optional): Rootdirectory to save ``vctk-{version}_valid-speakers.txt``.
+            Default: ``$HOME/.cache/audyn/data/vctk``.
+        url (str, optional): URL of pre-defined ``vctk-{version}_valid-speakers.txt``.
+            Default: ``https://github.com/tky823/Audyn/releases/download/v0.0.1.dev7/vctk-{version}_valid-speakers.txt``.  # noqa: E501
         version (str): Version of VCTK dataset. Only ``0.92`` is supported.
 
     """

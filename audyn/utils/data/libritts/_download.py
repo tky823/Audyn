@@ -6,7 +6,15 @@ from ...github import download_file_from_github_release
 
 
 def download_speakers(root: Optional[str] = None, url: Optional[str] = None) -> List[str]:
-    """Download all speakers of LibriTTS dataset."""
+    """Download all speakers of LibriTTS dataset.
+
+    Args:
+        root (str, optional): Rootdirectory to save ``libritts_speakers.txt``.
+            Default: ``$HOME/.cache/audyn/data/libritts``.
+        url (str, optional): URL of pre-defined ``libritts_speakers.txt``.
+            Default: ``https://github.com/tky823/Audyn/releases/download/v0.0.1.dev8/libritts_speakers.txt``.  # noqa: E501
+
+    """
     filename = "libritts_speakers.txt"
 
     if root is None:
