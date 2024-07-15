@@ -65,12 +65,7 @@ def download_valid_speakers(
 
 
 def _download_speakers(root: str, url: str, filename: str) -> List[str]:
-    """Download speakers of VCTK dataset.
-
-    Args:
-        version (str): Version of VCTK dataset. Only ``0.92`` is supported.
-
-    """
+    """Download speakers of VCTK dataset."""
     path = os.path.join(root, filename)
 
     if not os.path.exists(path):
