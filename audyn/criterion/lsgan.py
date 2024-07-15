@@ -1,6 +1,10 @@
 import torch
 import torch.nn as nn
 
+__all__ = [
+    "MSELoss",
+]
+
 
 class MSELoss(nn.Module):
     def __init__(self, target: float, reduction: str = "mean") -> None:
