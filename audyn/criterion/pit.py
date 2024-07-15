@@ -4,7 +4,10 @@ from typing import Callable, Optional, Union
 import torch
 import torch.nn as nn
 
-__all__ = ["pit"]
+__all__ = [
+    "pit",
+    "PIT",
+]
 
 
 def pit(
@@ -54,6 +57,9 @@ def pit(
     for idx in range(num_permutations):
         permutation = permutations[idx]
         loss = criterion(input, target[:, permutation])
+
+        assert loss.dim() == 2
+
         possible_loss.append(loss)
 
     possible_loss = torch.stack(possible_loss, dim=0)
