@@ -16,12 +16,12 @@ def pit(
     target: torch.Tensor,
     permutations: Optional[torch.Tensor] = None,
 ) -> Union[torch.Tensor, torch.LongTensor]:
-    """Wrapper function for permutation invariant training.
+    r"""Wrapper function for permutation invariant training.
 
     Args:
         criterion (nn.Module or callable): Criterion to apply PIT.
-        input (torch.Tensor): Input feature of shape (batch_size, num_sources, *).
-        output (torch.Tensor): Target feature of shape (batch_size, num_sources, *).
+        input (torch.Tensor): Input feature of shape (batch_size, num_sources, \*).
+        output (torch.Tensor): Target feature of shape (batch_size, num_sources, \*).
 
     Returns:
         tuple: Tuple of tensors containing
@@ -69,6 +69,14 @@ def pit(
 
 
 class PIT(nn.Module):
+    """Permutation invariant training.
+
+    Args:
+        criterion (nn.Module or callable): Criterion to compute loss.
+        num_sources (int, optional): Number of sources.
+
+    """
+
     def __init__(
         self,
         criterion: Union[nn.Module, Callable[[torch.Tensor], torch.Tensor]],
@@ -88,11 +96,11 @@ class PIT(nn.Module):
     def forward(
         self, input: torch.Tensor, target: torch.Tensor
     ) -> Union[torch.Tensor, torch.LongTensor]:
-        """Forward pass of PIT.
+        r"""Forward pass of PIT.
 
         Args:
-            input (torch.Tensor): Input feature of shape (batch_size, num_sources, *).
-            output (torch.Tensor): Target feature of shape (batch_size, num_sources, *).
+            input (torch.Tensor): Input feature of shape (batch_size, num_sources, \*).
+            output (torch.Tensor): Target feature of shape (batch_size, num_sources, \*).
 
         Returns:
             tuple: Tuple of tensors containing
