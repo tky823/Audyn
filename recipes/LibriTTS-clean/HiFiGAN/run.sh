@@ -24,7 +24,7 @@ dump_format="torch"
 
 system="defaults"
 preprocess="defaults"
-data="hifigan"
+data="hifigan_libritts-clean"
 train="hifigan"
 model="hifigan_v1"
 optimizer="hifigan"
@@ -65,5 +65,27 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
         --min-train ${min_train} \
         --ratio-validation ${ratio_validation} \
         --ratio-test ${ratio_test}
+    )
+fi
+
+if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
+    echo "Stage 1: Training"
+
+    (
+        . ./train.sh \
+        --tag "${tag}" \
+        --continue-from "${continue_from}" \
+        --exp-root "${exp_root}" \
+        --tensorboard-root "${tensorboard_root}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
+        --system "${system}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --train "${train}" \
+        --model "${model}" \
+        --optimizer "${optimizer}" \
+        --lr-scheduler "${lr_scheduler}" \
+        --criterion "${criterion}"
     )
 fi

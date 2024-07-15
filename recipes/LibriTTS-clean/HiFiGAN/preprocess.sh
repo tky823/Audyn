@@ -13,7 +13,7 @@ log_dir="./log"
 dump_format="torch"
 
 preprocess="defaults"
-data="defaults"
+data="hifigan_libritts-clean"
 
 train_name="train-clean-100"
 validation_name="dev-clean"
