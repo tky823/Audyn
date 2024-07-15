@@ -13,7 +13,7 @@ __all__ = [
 
 
 class SISDR(nn.Module):
-    """SI-SDR.
+    """Scale-invatiant SDR.
 
     See https://arxiv.org/abs/1811.02508 for the details.
     """
@@ -25,6 +25,16 @@ class SISDR(nn.Module):
         self.eps = eps
 
     def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        r"""Forward pass of SISDR.
+
+        Args:
+            input (torch.Tensor): Estimated sources of shape (batch_size, num_sources, \*).
+            target (torch.Tensor): Target sources of shape (batch_size, num_sources, \*).
+
+        Returns:
+            torch.Tensor: Computed loss of shape (batch_size, num_sources, \*) or ().
+
+        """
         loss = _sisdr(input, target, eps=self.eps)
 
         if self.reduction == "mean":
@@ -56,6 +66,16 @@ class NegSISDR(nn.Module):
         self.eps = eps
 
     def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        r"""Forward pass of NegSISDR.
+
+        Args:
+            input (torch.Tensor): Estimated sources of shape (batch_size, num_sources, \*).
+            target (torch.Tensor): Target sources of shape (batch_size, num_sources, \*).
+
+        Returns:
+            torch.Tensor: Computed loss of shape (batch_size, num_sources, \*) or ().
+
+        """
         loss = -_sisdr(input, target, eps=self.eps)
 
         if self.reduction == "mean":
@@ -71,7 +91,7 @@ class NegSISDR(nn.Module):
 
 
 class PITNegSISDR(PIT):
-    """negative SI-SDR for permutation invariant training."""
+    """Negative SI-SDR for permutation invariant training."""
 
     def __init__(
         self, reduction: str = "mean", num_sources: Optional[int] = None, eps: float = 1e-8
@@ -83,6 +103,20 @@ class PITNegSISDR(PIT):
         self.reduction = reduction
 
     def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        """Forward pass of PITNegSISDR.
+
+        Args:
+            input (torch.Tensor): Estimated sources of shape (batch_size, num_sources, length).
+            target (torch.Tensor): Target sources of shape (batch_size, num_sources, length).
+
+        Returns:
+            torch.Tensor: Computed loss of shape (batch_size, num_sources) or ().
+
+        .. note::
+
+            Unlike PIT class, this child class returns loss only.
+
+        """
         loss, _ = super().forward(input, target)
 
         if self.reduction == "mean":
