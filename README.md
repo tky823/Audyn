@@ -84,3 +84,7 @@ sphinx-autobuild docs docs/_build/html
 ```shell
 pytest tests/package
 ```
+
+## License
+- Apache License, Version 2.0 **EXCEPT FOR WEIGHTS OF PRETRAINED MODELS**
+- Weights for some of the pre-trained models are extracted from the official implementations. Their licenses follow the official implementations.
