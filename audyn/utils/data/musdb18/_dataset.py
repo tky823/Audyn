@@ -7,6 +7,32 @@ from torch.utils.data import Dataset
 
 
 class MUSDB18(Dataset):
+    """MUSDB18 dataset.
+
+    Args:
+        root (str): Root of MUDDB18 dataset.
+        subset (str): ``train``, ``validation``, or ``test``.
+
+    .. note::
+
+        We assume following structure.
+
+        .. code-block:: shell
+
+            - root
+                |- train/
+                    |- A Classic Education - NightOwl/
+                        |- mixture.wav
+                        |- drums.wav
+                        |- bass.wav
+                        |- other.wav
+                        |- vocals.wav
+                    ...
+                |- test/
+                    ...
+
+    """
+
     def __init__(self, root: str, subset: str) -> None:
         from . import test_track_names, train_track_names, validation_track_names
 

@@ -12,6 +12,7 @@ Submodules
    audyn.utils.data.hifigan
    audyn.utils.data.vctk
    audyn.utils.data.birdclef
+   audyn.utils.data.musdb18
 
 Create dataset
 --------------
