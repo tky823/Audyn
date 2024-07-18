@@ -10,7 +10,7 @@ class MUSDB18(Dataset):
     """MUSDB18 dataset.
 
     Args:
-        root (str): Root of MUDDB18 dataset.
+        root (str): Root of MUSDB18 dataset.
         subset (str): ``train``, ``validation``, or ``test``.
 
     .. note::
@@ -19,7 +19,7 @@ class MUSDB18(Dataset):
 
         .. code-block:: shell
 
-            - root
+            - root/  # typically MUSDB18, MUSDB18-HQ, MUSDB18-7s
                 |- train/
                     |- A Classic Education - NightOwl/
                         |- mixture.wav
