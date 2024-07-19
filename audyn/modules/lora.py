@@ -400,3 +400,38 @@ class LoRAMultiheadAttention(nn.Module):
         invalid_keys = set(kwargs.keys()) - valid_keys
 
         assert invalid_keys == set(), f"Invalid keys {invalid_keys} are given."
+
+    @classmethod
+    def build_from_mha(
+        cls,
+        module: nn.MultiheadAttention,
+        rank: int = 8,
+        persistent: bool = False,
+    ) -> "LoRAMultiheadAttention":
+        in_proj_weight = module.in_proj_weight
+
+        factory_kwargs = {
+            "dtype": in_proj_weight.dtype,
+            "device": in_proj_weight.device,
+        }
+
+        module = cls(
+            module.num_heads,
+            module.in_proj_weight,
+            in_proj_bias=module.in_proj_bias,
+            bias_k=module.bias_k,
+            bias_v=module.bias_v,
+            add_zero_attn=module.add_zero_attn,
+            dropout=module.dropout,
+            out_proj_weight=module.out_proj.weight,
+            out_proj_bias=module.out_proj.bias,
+            q_proj_weight=module.q_proj_weight,
+            k_proj_weight=module.k_proj_weight,
+            v_proj_weight=module.v_proj_weight,
+            batch_first=module.batch_first,
+            rank=rank,
+            persistent=persistent,
+            **factory_kwargs,
+        )
+
+        return module
