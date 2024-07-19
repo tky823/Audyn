@@ -34,6 +34,12 @@ def test_lora_linear(persistent: bool) -> None:
     assert lora_output.size() == output.size()
     allclose(lora_output, output)
 
+    lora_linear = LoRALinear.build_from_linear(linear, rank=rank, persistent=persistent)
+    lora_output = lora_linear(input)
+
+    assert lora_output.size() == output.size()
+    allclose(lora_output, output)
+
 
 @pytest.mark.parametrize("batch_first", [True, False])
 @pytest.mark.parametrize("persistent", [True, False])
@@ -93,6 +99,14 @@ def test_lora_mha(batch_first: bool, persistent: bool) -> None:
         input = input.transpose(1, 0)
 
     output, attn_weights = mha(input, input, input)
+    lora_output, loar_attn_weights = lora_mha(input, input, input)
+
+    assert lora_output.size() == output.size()
+    assert attn_weights.size() == loar_attn_weights.size()
+    allclose(lora_output, output, atol=1e-6)
+    allclose(attn_weights, loar_attn_weights, atol=1e-6)
+
+    lora_mha = LoRAMultiheadAttention.build_from_mha(mha, rank=rank, persistent=persistent)
     lora_output, loar_attn_weights = lora_mha(input, input, input)
 
     assert lora_output.size() == output.size()
