@@ -11,6 +11,7 @@ from ..functional.activation import scaled_dot_product_attention
 
 __all__ = [
     "LoRALinear",
+    "LoRAMultiheadAttention",
 ]
 
 IS_TORCH_LT_2_0 = version.parse(torch.__version__) < version.parse("2.0")
