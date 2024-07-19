@@ -78,3 +78,28 @@ class LoRALinear(nn.Module):
         s += f", rank={self.rank}"
 
         return s
+
+    @classmethod
+    def build_from_linear(
+        cls,
+        module: nn.Linear,
+        rank: int = 8,
+        persistent: bool = False,
+    ) -> "LoRALinear":
+        weight = module.weight
+        bias = module.bias
+
+        factory_kwargs = {
+            "dtype": weight.dtype,
+            "device": weight.device,
+        }
+
+        module = cls(
+            weight,
+            bias=bias,
+            rank=rank,
+            persistent=persistent,
+            **factory_kwargs,
+        )
+
+        return module
