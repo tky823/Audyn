@@ -1,0 +1,12 @@
+_target_: audyn.criterion.MultiCriteria
+neg_sisdr:
+  _target_: audyn.criterion.BaseCriterionWrapper
+  criterion:
+    _target_: audyn.criterion.sdr.NegSISDR
+    reduction: mean
+  weight: 1
+  key_mapping:
+    estimated:
+      input: separated_slice
+    target:
+      target: sources_slice
