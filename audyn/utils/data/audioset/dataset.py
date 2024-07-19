@@ -116,7 +116,7 @@ class WeightedAudioSetWebDataset(IterableDataset):
         *args,
         replacement: bool = True,
         smooth: float = 1,
-        composer: Callable[[Any], Any] = None,
+        composer: Optional[Callable[[Any], Any]] = None,
         decode_audio_as_waveform: Optional[bool] = None,
         decode_audio_as_monoral: Optional[bool] = None,
         **kwargs,
@@ -197,7 +197,7 @@ class WeightedAudioSetWebDataset(IterableDataset):
         length: int,
         replacement: bool = True,
         smooth: float = 1,
-        ytids: List[str] = None,
+        ytids: Optional[List[str]] = None,
     ) -> None:
         if ytids is None:
             ytids = self.ytids
@@ -327,7 +327,7 @@ class DistributedWeightedAudioSetWebDataset(WeightedAudioSetWebDataset):
         rank: Optional[int] = None,
         seed: int = 0,
         drop_last: bool = False,
-        composer: Callable[[Any], Any] = None,
+        composer: Optional[Callable[[Any], Any]] = None,
         decode_audio_as_waveform: Optional[bool] = None,
         decode_audio_as_monoral: Optional[bool] = None,
         **kwargs,
@@ -379,7 +379,7 @@ class DistributedWeightedAudioSetWebDataset(WeightedAudioSetWebDataset):
         length: int,
         replacement: bool = True,
         smooth: float = 1,
-        ytids: List[str] = None,
+        ytids: Optional[List[str]] = None,
     ) -> None:
         if ytids is None:
             ytids = self.ytids
