@@ -1,5 +1,5 @@
-from ._dataset import MUSDB18
 from ._download import download_track_names
+from .dataset import MUSDB18
 
 __all__ = [
     "track_names",
