@@ -41,3 +41,7 @@ class RandomStemsMUSDB18Sampler(RandomSampler):
                 yield indices
 
                 indices = []
+
+    @property
+    def track_names(self) -> List[str]:
+        return self.data_source
