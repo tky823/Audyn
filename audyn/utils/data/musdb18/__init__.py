@@ -1,5 +1,5 @@
 from ._download import download_track_names
-from .dataset import MUSDB18
+from .dataset import MUSDB18, RandomStemsMUSDB18Dataset
 
 __all__ = [
     "track_names",
@@ -9,6 +9,7 @@ __all__ = [
     "sources",
     "accompaniments",
     "MUSDB18",
+    "RandomStemsMUSDB18Dataset",
 ]
 
 track_names = download_track_names()

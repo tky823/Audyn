@@ -48,3 +48,5 @@ Dataset
 ^^^^^^^
 
 .. autoclass:: audyn.utils.data.musdb18.MUSDB18
+
+.. autoclass:: audyn.utils.data.musdb18.RandomStemsMUSDB18Dataset
