@@ -4,14 +4,15 @@ import tempfile
 import torch
 import torchaudio
 from dummy import allclose
+from torch.utils.data import DataLoader
 
 from audyn.utils.data.musdb18 import (
-    MUSDB18,
     sources,
     test_track_names,
     train_track_names,
     validation_track_names,
 )
+from audyn.utils.data.musdb18.dataset import MUSDB18, RandomStemsMUSDB18Dataset
 
 
 def test_musdb18() -> None:
@@ -19,7 +20,7 @@ def test_musdb18() -> None:
 
     with tempfile.TemporaryDirectory() as temp_dir:
         _save_dummy_musdb18(root=temp_dir, num_frames=num_frames)
-        dataset = MUSDB18(temp_dir, "train")
+        dataset = MUSDB18(temp_dir, subset="train")
 
         for track in dataset:
             track.frame_offset = num_frames // 4
@@ -43,6 +44,28 @@ def test_musdb18() -> None:
             allclose(stems[4], vocals)
 
             break
+
+
+def test_musdb18_dataset() -> None:
+    batch_size = 4
+    num_workers = 2
+    num_frames = 48000
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        _save_dummy_musdb18(root=temp_dir, num_frames=num_frames)
+
+        dataset = RandomStemsMUSDB18Dataset(temp_dir, subset="train", duration=1.0)
+        dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers)
+
+        for feature in dataloader:
+            assert set(feature.keys()) == {
+                "drums",
+                "bass",
+                "other",
+                "vocals",
+                "sample_rate",
+                "filename",
+            }
 
 
 def _save_dummy_musdb18(root: str, num_frames: int) -> None:
