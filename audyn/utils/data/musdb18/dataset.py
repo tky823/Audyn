@@ -81,6 +81,39 @@ class MUSDB18(Dataset):
 
 
 class RandomStemsMUSDB18Dataset(IterableDataset):
+    """MUSDB18 dataset for random mixing.
+
+    Args:
+        root (str): Root of MUSDB18 dataset.
+        subset (str): ``train``, ``validation``, or ``test``.
+        duration (float): Duration of waveform slice.
+        drums_key (str): Key to store ``drums`` waveform.
+        bass_key (str): Key to store ``bass`` waveform.
+        other_key (str): Key to store ``other`` waveform.
+        vocals_key (str): Key to store ``vocals`` waveform.
+        sample_rate_key (str): Key to store sampling rate.
+        filename_key (str): Key to store filename.
+        seed (int): Random seed to set sampler state.
+
+    .. note::
+
+        We assume following structure.
+
+        .. code-block:: shell
+
+            - root/  # typically MUSDB18, MUSDB18-HQ, MUSDB18-7s
+                |- train/
+                    |- A Classic Education - NightOwl/
+                        |- mixture.wav
+                        |- drums.wav
+                        |- bass.wav
+                        |- other.wav
+                        |- vocals.wav
+                    ...
+                |- test/
+                    ...
+
+    """
 
     def __init__(
         self,
