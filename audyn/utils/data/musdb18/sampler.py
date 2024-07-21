@@ -1,4 +1,4 @@
-from typing import Iterator, List, Optional
+from typing import Any, Iterator, List, Optional
 
 from torch.utils.data import RandomSampler, Sampler
 
@@ -15,7 +15,7 @@ class RandomStemsMUSDB18Sampler(Sampler):
         replacement (bool): If ``True``, samples are taken with replacement.
         num_samples (int, optional): Number of sampler per epoch. ``len(track_names)`` is
             used by default.
-        generator (torch.Generator): Random number generator.
+        generator (torch.Generator, optional): Random number generator.
 
     .. code-block::
 
@@ -50,23 +50,41 @@ class RandomStemsMUSDB18Sampler(Sampler):
     ) -> None:
         super().__init__(track_names)
 
-        self.stem_sampler = _RandomStemSampler(
-            track_names,
-            replacement=replacement,
-            num_samples_per_source=num_samples,
-            generator=generator,
-        )
+        if replacement:
+            self.stem_sampler = _ReplacementRandomStemsSampler(
+                track_names,
+                num_samples_per_source=num_samples,
+                generator=generator,
+            )
+        else:
+            self.stem_sampler = _NoReplacementRandomStemsSampler(
+                track_names,
+                num_samples_per_source=num_samples,
+                generator=generator,
+            )
 
     def __iter__(self) -> Iterator[List[int]]:
         yield from self.stem_sampler
 
     @property
+    def replacement(self) -> bool:
+        return self.stem_sampler.replacement
+
+    @property
     def track_names(self) -> List[str]:
         return self.stem_sampler.track_names
 
+    @property
+    def num_samples(self) -> int:
+        return len(self.track_names)
 
-class _RandomStemSampler(RandomSampler):
-    """Actual implementation of RandomStemsMUSDB18Sampler.
+    @property
+    def generator(self) -> Optional[Any]:
+        return self.stem_sampler.generator
+
+
+class _ReplacementRandomStemsSampler(RandomSampler):
+    """Core implementation of RandomStemsMUSDB18Sampler with replacement.
 
     Args:
         track_names (list): Track name list.
@@ -77,7 +95,6 @@ class _RandomStemSampler(RandomSampler):
     def __init__(
         self,
         track_names: List[str],
-        replacement: bool = True,
         num_samples_per_source: Optional[int] = None,
         generator=None,
     ) -> None:
@@ -90,7 +107,7 @@ class _RandomStemSampler(RandomSampler):
 
         super().__init__(
             track_names,
-            replacement=replacement,
+            replacement=True,
             num_samples=num_samples,
             generator=generator,
         )
@@ -107,6 +124,46 @@ class _RandomStemSampler(RandomSampler):
                 yield indices
 
                 indices = []
+
+    @property
+    def track_names(self) -> List[str]:
+        return self.data_source
+
+
+class _NoReplacementRandomStemsSampler(RandomSampler):
+    """Core implementation of RandomStemsMUSDB18Sampler without replacement.
+
+    Args:
+        track_names (list): Track name list.
+        num_samples_per_source (int): Number of samples per source.
+
+    """
+
+    def __init__(
+        self,
+        track_names: List[str],
+        num_samples_per_source: Optional[int] = None,
+        generator=None,
+    ) -> None:
+        if num_samples_per_source is None:
+            num_samples = len(track_names)
+        else:
+            num_samples = num_samples_per_source
+
+        super().__init__(
+            track_names,
+            replacement=False,
+            num_samples=num_samples,
+            generator=generator,
+        )
+
+    def __iter__(self) -> Iterator[List[int]]:
+        from . import sources
+
+        for idx in super().__iter__():
+            indices = [idx] * len(sources)
+
+            yield indices
 
     @property
     def track_names(self) -> List[str]:

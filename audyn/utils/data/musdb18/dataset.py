@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, Iterator, Tuple
+from typing import Any, Dict, Iterator, Optional, Tuple
 
 import torch
 import torchaudio
@@ -93,7 +93,11 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
         vocals_key (str): Key to store ``vocals`` waveform.
         sample_rate_key (str): Key to store sampling rate.
         filename_key (str): Key to store filename.
+        replacement (bool): If ``True``, samples are taken with replacement.
+        num_samples (int, optional): Number of sampler per epoch. ``len(track_names)`` is
+            used by default.
         seed (int): Random seed to set sampler state.
+        generator (torch.Generator, optional): Random number generator.
 
     .. note::
 
@@ -126,7 +130,10 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
         vocals_key: str = "vocals",
         sample_rate_key: str = "sample_rate",
         filename_key: str = "filename",
+        replacement: bool = True,
+        num_samples: Optional[int] = None,
         seed: int = 0,
+        generator: Optional[torch.Generator] = None,
     ) -> None:
         from . import test_track_names, train_track_names, validation_track_names
 
@@ -152,7 +159,12 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
 
         self.worker_id = None
         self.generator = None
-        self.sampler = RandomStemsMUSDB18Sampler(track_names)
+        self.sampler = RandomStemsMUSDB18Sampler(
+            track_names,
+            replacement=replacement,
+            num_samples=num_samples,
+            generator=generator,
+        )
 
         self._validate_tracks()
 
@@ -184,7 +196,7 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
 
             # set sampler state
             sampler = self.sampler
-            num_total_samples = sampler.num_samples // len(sources)
+            num_total_samples = sampler.num_samples
             num_samples_per_worker = num_total_samples // num_workers
 
             if self.worker_id < num_total_samples % num_workers:
@@ -194,6 +206,7 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
                 sampler.track_names,
                 replacement=sampler.replacement,
                 num_samples=num_samples_per_worker,
+                generator=sampler.generator,
             )
 
         for indices in self.sampler:
@@ -216,7 +229,15 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
 
                 feature[source_key] = waveform
 
-            feature[filename_key] = "+".join(track_names)
+            if self.sampler.replacement:
+                feature[filename_key] = "+".join(track_names)
+            else:
+                assert len(set(track_names)) == 1, (
+                    "Even when self.sampler.replacement=False, "
+                    "different tracks are chosen among sources."
+                )
+
+                feature[filename_key] = track_names[0]
 
             yield feature
 
