@@ -3,9 +3,14 @@ from typing import Any, Dict, Iterator, Optional, Tuple
 
 import torch
 import torchaudio
-from torch.utils.data import Dataset, IterableDataset, get_worker_info
+from torch.utils.data import Dataset, IterableDataset, RandomSampler, get_worker_info
 
 from .sampler import RandomStemsMUSDB18Sampler
+
+__all__ = [
+    "MUSDB18",
+    "RandomStemsMUSDB18Dataset",
+]
 
 
 class MUSDB18(Dataset):
@@ -96,8 +101,9 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
         replacement (bool): If ``True``, samples are taken with replacement.
         num_samples (int, optional): Number of sampler per epoch. ``len(track_names)`` is
             used by default.
-        seed (int): Random seed to set sampler state.
-        generator (torch.Generator, optional): Random number generator.
+        seed (int): Random seed to set dataset and sampler state.
+        generator (torch.Generator, optional): Random number generator to
+            determine slicing positions of audio.
 
     .. note::
 
@@ -116,6 +122,12 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
                     ...
                 |- test/
                     ...
+
+    .. note::
+
+        Internally, ``RandomStemsMUSDB18Sampler`` is used as sampler if ``replacement=True``.
+        Otherwise, ``RandomSampler`` is used as sampler. Be careful of the difference in behavior
+        of sampler depending on ``replacement``.
 
     """
 
@@ -158,13 +170,34 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
         self.filename_key = filename_key
 
         self.worker_id = None
+        self.num_workers = None
         self.generator = None
-        self.sampler = RandomStemsMUSDB18Sampler(
-            track_names,
-            replacement=replacement,
-            num_samples=num_samples,
-            generator=generator,
-        )
+
+        if num_samples is None:
+            num_samples = len(track_names)
+
+        if replacement:
+            self.sampler = RandomStemsMUSDB18Sampler(
+                track_names,
+                num_samples=num_samples,
+                generator=generator,
+            )
+        else:
+            if num_samples > len(track_names):
+                raise ValueError(
+                    f"num_samples ({num_samples}) is greater than "
+                    f"length of track_names ({len(track_names)})."
+                )
+
+            self.sampler = RandomSampler(
+                track_names,
+                replacement=replacement,
+                num_samples=num_samples,
+                generator=generator,
+            )
+
+        self.replacement = replacement
+        self.num_total_samples = num_samples
 
         self._validate_tracks()
 
@@ -184,27 +217,67 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
 
             if worker_info is None:
                 self.worker_id = 0
-                num_workers = 1
+                self.num_workers = 1
             else:
                 self.worker_id = worker_info.id
-                num_workers = worker_info.num_workers
+                self.num_workers = worker_info.num_workers
 
             # set generator state
-            seed = self.seed + self.worker_id
+            if self.replacement:
+                # NOTE: Seed is dependent on worker_id,
+                #       so random state of self.generator is not shared among processes.
+                seed = self.seed + self.worker_id
+            else:
+                # NOTE: Seed is independent of worker_id,
+                #       so random state of self.generator is shared among processes.
+                seed = self.seed
+
             self.generator = torch.Generator()
             self.generator.manual_seed(seed)
 
             # set sampler state
             sampler = self.sampler
-            num_total_samples = sampler.num_samples
-            num_samples_per_worker = num_total_samples // num_workers
+            num_total_samples = self.num_total_samples
 
-            if self.worker_id < num_total_samples % num_workers:
+            if self.replacement:
+                num_samples_per_worker = num_total_samples // self.num_workers
+
+                if self.worker_id < num_total_samples % self.num_workers:
+                    num_samples_per_worker += 1
+
+                self.sampler = RandomStemsMUSDB18Sampler(
+                    self.track_names,
+                    num_samples=num_samples_per_worker,
+                    generator=sampler.generator,
+                )
+            else:
+                self.sampler = RandomSampler(
+                    self.track_names,
+                    replacement=self.replacement,
+                    num_samples=num_total_samples,
+                    generator=sampler.generator,
+                )
+
+        if self.replacement:
+            track_names_per_worker = self.track_names
+        else:
+            # If self.replacement=False, track names should be disjointed among workers.
+            sampler = self.sampler
+            num_total_samples = self.num_total_samples
+            num_samples_per_worker = num_total_samples // self.num_workers
+
+            if self.worker_id < num_total_samples % self.num_workers:
                 num_samples_per_worker += 1
 
-            self.sampler = RandomStemsMUSDB18Sampler(
-                sampler.track_names,
-                replacement=sampler.replacement,
+            # NOTE: Random state of self.generator is shared among processes.
+            #       Random state of sampler.generator is not shared among processes.
+            indices = torch.randperm(num_total_samples, generator=self.generator).tolist()
+            track_names_per_worker = [
+                self.track_names[idx] for idx in indices[self.worker_id :: self.num_workers]
+            ]
+            self.sampler = RandomSampler(
+                track_names_per_worker,
+                replacement=self.replacement,
                 num_samples=num_samples_per_worker,
                 generator=sampler.generator,
             )
@@ -213,10 +286,19 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
             track_names = []
             feature = {}
 
-            assert len(indices) == len(sources) == len(source_keys)
+            assert len(sources) == len(source_keys)
+
+            if self.replacement:
+                # If self.replacement=True,
+                # indices returned by sampler should contain multiple indices.
+                assert len(indices) == len(sources)
+            else:
+                # If self.replacement=False,
+                # indices returned by sampler should contain single index.
+                indices = [indices] * len(sources)
 
             for idx, source, source_key in zip(indices, sources, source_keys):
-                track_name = self.track_names[idx]
+                track_name = track_names_per_worker[idx]
                 track_names.append(track_name)
                 filename = f"{track_name}/{source}.wav"
                 path = os.path.join(root, subset_dir, filename)
@@ -229,7 +311,7 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
 
                 feature[source_key] = waveform
 
-            if self.sampler.replacement:
+            if self.replacement:
                 feature[filename_key] = "+".join(track_names)
             else:
                 assert len(set(track_names)) == 1, (
