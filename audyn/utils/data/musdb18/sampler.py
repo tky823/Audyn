@@ -1,13 +1,46 @@
 from typing import Iterator, List, Optional
 
-from torch.utils.data import RandomSampler
+from torch.utils.data import RandomSampler, Sampler
 
 __all__ = [
     "RandomStemsMUSDB18Sampler",
 ]
 
 
-class RandomStemsMUSDB18Sampler(RandomSampler):
+class RandomStemsMUSDB18Sampler(Sampler):
+    """MUSDB18 sampler to generate mixture composed by randomly selected tracks.
+
+    Args:
+        track_names (list): Track name list.
+        replacement (bool): If ``True``, samples are taken with replacement.
+        num_samples (int, optional): Number of sampler per epoch. ``len(track_names)`` is
+            used by default.
+        generator (torch.Generator): Random number generator.
+
+    .. code-block::
+
+        >>> import torch
+        >>> from audyn.utils.data.musdb18.sampler import RandomStemsMUSDB18Sampler
+        >>> torch.manual_seed(0)
+        >>> track_names = [
+        ...     "A Classic Education - NightOwl",
+        ...     "Flags - 54",
+        ...     "Night Panther - Fire",
+        ...     "The Districts - Vermont",
+        ...     "Young Griffo - Pennies",
+        ... ]
+        >>> sampler = RandomStemsMUSDB18Sampler(track_names)
+        >>> for indices in sampler:
+        ...     print(indices)
+        ...
+        [1, 0, 4, 3]
+        [4, 0, 2, 3]
+        [4, 1, 3, 0]
+        [1, 4, 0, 0]
+        [3, 3, 0, 0]
+
+    """
+
     def __init__(
         self,
         track_names: List[str],
@@ -15,12 +48,45 @@ class RandomStemsMUSDB18Sampler(RandomSampler):
         num_samples: Optional[int] = None,
         generator=None,
     ) -> None:
+        super().__init__(track_names)
+
+        self.stem_sampler = _RandomStemSampler(
+            track_names,
+            replacement=replacement,
+            num_samples_per_source=num_samples,
+            generator=generator,
+        )
+
+    def __iter__(self) -> Iterator[List[int]]:
+        yield from self.stem_sampler
+
+    @property
+    def track_names(self) -> List[str]:
+        return self.stem_sampler.track_names
+
+
+class _RandomStemSampler(RandomSampler):
+    """Actual implementation of RandomStemsMUSDB18Sampler.
+
+    Args:
+        track_names (list): Track name list.
+        num_samples_per_source (int): Number of samples per source.
+
+    """
+
+    def __init__(
+        self,
+        track_names: List[str],
+        replacement: bool = True,
+        num_samples_per_source: Optional[int] = None,
+        generator=None,
+    ) -> None:
         from . import sources
 
-        if num_samples is None:
+        if num_samples_per_source is None:
             num_samples = len(sources) * len(track_names)
         else:
-            num_samples = len(sources) * num_samples
+            num_samples = len(sources) * num_samples_per_source
 
         super().__init__(
             track_names,
