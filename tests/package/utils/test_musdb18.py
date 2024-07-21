@@ -1,6 +1,7 @@
 import os
 import tempfile
 
+import pytest
 import torch
 import torchaudio
 from dummy import allclose
@@ -46,15 +47,20 @@ def test_musdb18() -> None:
             break
 
 
-def test_musdb18_dataset() -> None:
-    batch_size = 4
+@pytest.mark.parametrize("replacement", [True, False])
+def test_musdb18_dataset(replacement: bool) -> None:
+    batch_size = 3
     num_workers = 2
     num_frames = 48000
+
+    filenames = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
         _save_dummy_musdb18(root=temp_dir, num_frames=num_frames)
 
-        dataset = RandomStemsMUSDB18Dataset(temp_dir, subset="train", duration=1.0)
+        dataset = RandomStemsMUSDB18Dataset(
+            temp_dir, subset="validation", duration=1.0, replacement=replacement
+        )
         dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers)
 
         for feature in dataloader:
@@ -66,6 +72,19 @@ def test_musdb18_dataset() -> None:
                 "sample_rate",
                 "filename",
             }
+
+            filenames_per_batch = set()
+
+            for filename in feature["filename"]:
+                # If ``replacement=True``, filename may be included in filenames_per_batch
+                # with tiny probability.
+                assert filename not in filenames_per_batch
+
+                filenames_per_batch.add(filename)
+                filenames.append(filename)
+
+        if not replacement:
+            assert len(set(filenames)) == len(dataset.track_names)
 
 
 def _save_dummy_musdb18(root: str, num_frames: int) -> None:
