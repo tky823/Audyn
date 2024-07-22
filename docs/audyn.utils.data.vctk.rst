@@ -3,7 +3,7 @@ audyn.utils.data.vctk
 
 ``audyn.utils.data.vctk`` provides utilities for VCTK dataset.
 
-.. code-block::
+.. code-block:: python
 
     >>> from audyn.utils.data.vctk import speakers, num_speakers
     >>> print(speakers[80:90])
