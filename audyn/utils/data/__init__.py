@@ -20,10 +20,16 @@ from .dataloader import (
     DynamicBatchDataLoader,
     SequentialBatchDataLoader,
 )
-from .dataset import SortableTorchObjectDataset, TorchObjectDataset, WebDatasetWrapper
+from .dataset import (
+    SortableTorchObjectDataset,
+    TorchObjectDataset,
+    WebDatasetWrapper,
+    available_dump_formats,
+)
 from .postprocess import make_noise, slice_feautures, take_log_features
 
 __all__ = [
+    "available_dump_formats",
     "TorchObjectDataset",
     "SortableTorchObjectDataset",
     "WebDatasetWrapper",
