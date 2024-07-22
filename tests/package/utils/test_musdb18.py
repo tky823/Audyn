@@ -1,3 +1,4 @@
+import glob
 import os
 import tempfile
 
@@ -56,10 +57,22 @@ def test_musdb18_dataset(replacement: bool) -> None:
     filenames = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        _save_dummy_musdb18(root=temp_dir, num_frames=num_frames)
+        feature_dir = os.path.join(temp_dir, "features")
+        list_dir = os.path.join(temp_dir, "list")
+        train_feature_dir = os.path.join(feature_dir, "train")
+        train_list_path = os.path.join(list_dir, "train.txt")
+
+        os.makedirs(feature_dir, exist_ok=True)
+        os.makedirs(list_dir, exist_ok=True)
+
+        _save_dummy_musdb18(root=feature_dir, num_frames=num_frames)
+
+        with open(train_list_path, mode="w") as f:
+            for track_name in sorted(glob.glob(os.path.join(train_feature_dir, "*"))):
+                f.write(track_name + "\n")
 
         dataset = RandomStemsMUSDB18Dataset(
-            temp_dir, subset="validation", duration=1.0, replacement=replacement
+            train_list_path, train_feature_dir, duration=1.0, replacement=replacement
         )
         dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers)
 
@@ -84,7 +97,7 @@ def test_musdb18_dataset(replacement: bool) -> None:
                 filenames.append(filename)
 
         if not replacement:
-            assert len(set(filenames)) == len(dataset.track_names)
+            assert len(set(filenames)) == len(dataset.filenames)
 
 
 def _save_dummy_musdb18(root: str, num_frames: int) -> None:

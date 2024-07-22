@@ -89,8 +89,8 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
     """MUSDB18 dataset for random mixing.
 
     Args:
-        root (str): Root of MUSDB18 dataset.
-        subset (str): ``train``, ``validation``, or ``test``.
+        list_path (str): Path to list file containing filenames.
+        feature_dir (str): Path to directory containing .wav files.
         duration (float): Duration of waveform slice.
         drums_key (str): Key to store ``drums`` waveform.
         bass_key (str): Key to store ``bass`` waveform.
@@ -111,17 +111,14 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
 
         .. code-block:: shell
 
-            - root/  # typically MUSDB18, MUSDB18-HQ, MUSDB18-7s
-                |- train/
-                    |- A Classic Education - NightOwl/
-                        |- mixture.wav
-                        |- drums.wav
-                        |- bass.wav
-                        |- other.wav
-                        |- vocals.wav
-                    ...
-                |- test/
-                    ...
+            |- feature_dir/  # typically train or test
+                |- A Classic Education - NightOwl/
+                    |- mixture.wav
+                    |- drums.wav
+                    |- bass.wav
+                    |- other.wav
+                    |- vocals.wav
+                ...
 
     .. note::
 
@@ -133,8 +130,8 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
 
     def __init__(
         self,
-        root: str,
-        subset: str,
+        list_path: str,
+        feature_dir: str,
         duration: float,
         drums_key: str = "drums",
         bass_key: str = "bass",
@@ -147,25 +144,24 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
         seed: int = 0,
         generator: Optional[torch.Generator] = None,
     ) -> None:
-        from . import test_track_names, train_track_names, validation_track_names
-
         super().__init__()
 
-        if subset == "train":
-            track_names = train_track_names
-        elif subset == "validation":
-            track_names = validation_track_names
-        elif subset == "test":
-            track_names = test_track_names
-        else:
-            raise ValueError(f"{subset} is not supported as subset.")
+        filenames = []
 
-        self.root = root
-        self.subset = subset
-        self.track_names = track_names
+        with open(list_path) as f:
+            for line in f:
+                filenames.append(line.strip("\n"))
+
+        self.feature_dir = feature_dir
+        self.filenames = filenames
         self.duration = duration
         self.seed = seed
-        self.source_keys = [drums_key, bass_key, other_key, vocals_key]
+        self.source_keys = [
+            drums_key,
+            bass_key,
+            other_key,
+            vocals_key,
+        ]
         self.sample_rate_key = sample_rate_key
         self.filename_key = filename_key
 
@@ -174,23 +170,23 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
         self.generator = None
 
         if num_samples is None:
-            num_samples = len(track_names)
+            num_samples = len(filenames)
 
         if replacement:
             self.sampler = RandomStemsMUSDB18Sampler(
-                track_names,
+                filenames,
                 num_samples=num_samples,
                 generator=generator,
             )
         else:
-            if num_samples > len(track_names):
+            if num_samples > len(filenames):
                 raise ValueError(
                     f"num_samples ({num_samples}) is greater than "
-                    f"length of track_names ({len(track_names)})."
+                    f"length of filenames ({len(filenames)})."
                 )
 
             self.sampler = RandomSampler(
-                track_names,
+                filenames,
                 replacement=replacement,
                 num_samples=num_samples,
                 generator=generator,
@@ -204,12 +200,10 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
     def __iter__(self) -> Iterator[Dict[str, Any]]:
         from . import sources
 
-        root = self.root
+        feature_dir = self.feature_dir
         source_keys = self.source_keys
         sample_rate_key = self.sample_rate_key
         filename_key = self.filename_key
-
-        subset_dir = "test" if self.subset == "test" else "train"
 
         if self.worker_id is None:
             # should be initialized
@@ -246,20 +240,20 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
                     num_samples_per_worker += 1
 
                 self.sampler = RandomStemsMUSDB18Sampler(
-                    self.track_names,
+                    self.filenames,
                     num_samples=num_samples_per_worker,
                     generator=sampler.generator,
                 )
             else:
                 self.sampler = RandomSampler(
-                    self.track_names,
+                    self.filenames,
                     replacement=self.replacement,
                     num_samples=num_total_samples,
                     generator=sampler.generator,
                 )
 
         if self.replacement:
-            track_names_per_worker = self.track_names
+            filenames_per_worker = self.filenames
         else:
             # If self.replacement=False, track names should be disjointed among workers.
             sampler = self.sampler
@@ -272,18 +266,18 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
             # NOTE: Random state of self.generator is shared among processes.
             #       Random state of sampler.generator is not shared among processes.
             indices = torch.randperm(num_total_samples, generator=self.generator).tolist()
-            track_names_per_worker = [
-                self.track_names[idx] for idx in indices[self.worker_id :: self.num_workers]
+            filenames_per_worker = [
+                self.filenames[idx] for idx in indices[self.worker_id :: self.num_workers]
             ]
             self.sampler = RandomSampler(
-                track_names_per_worker,
+                filenames_per_worker,
                 replacement=self.replacement,
                 num_samples=num_samples_per_worker,
                 generator=sampler.generator,
             )
 
         for indices in self.sampler:
-            track_names = []
+            filenames = []
             feature = {}
 
             assert len(sources) == len(source_keys)
@@ -298,10 +292,10 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
                 indices = [indices] * len(sources)
 
             for idx, source, source_key in zip(indices, sources, source_keys):
-                track_name = track_names_per_worker[idx]
-                track_names.append(track_name)
-                filename = f"{track_name}/{source}.wav"
-                path = os.path.join(root, subset_dir, filename)
+                filename = filenames_per_worker[idx]
+                filenames.append(filename)
+                filename_per_source = f"{filename}/{source}.wav"
+                path = os.path.join(feature_dir, filename_per_source)
                 waveform, sample_rate = self.load_sliced_audio(path)
 
                 if sample_rate_key in feature:
@@ -312,14 +306,14 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
                 feature[source_key] = waveform
 
             if self.replacement:
-                feature[filename_key] = "+".join(track_names)
+                feature[filename_key] = "+".join(filenames)
             else:
-                assert len(set(track_names)) == 1, (
+                assert len(set(filenames)) == 1, (
                     "Even when self.sampler.replacement=False, "
                     "different tracks are chosen among sources."
                 )
 
-                feature[filename_key] = track_names[0]
+                feature[filename_key] = filenames[0]
 
             yield feature
 
@@ -329,14 +323,12 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
     def _validate_tracks(self) -> None:
         from . import sources
 
-        root = self.root
+        feature_dir = self.feature_dir
 
-        subset_dir = "test" if self.subset == "test" else "train"
-
-        for track_name in self.track_names:
+        for filename in self.filenames:
             for source in ["mixture"] + sources:
-                filename = f"{track_name}/{source}.wav"
-                path = os.path.join(root, subset_dir, filename)
+                filename_per_source = f"{filename}/{source}.wav"
+                path = os.path.join(feature_dir, filename_per_source)
 
                 if not os.path.exists(path):
                     raise FileNotFoundError(f"{path} is not found.")
