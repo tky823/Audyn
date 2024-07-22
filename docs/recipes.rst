@@ -6,4 +6,5 @@ Recipes
 
    recipes.train
    recipes.configs
+   recipes.dump_format
    recipes.tips
