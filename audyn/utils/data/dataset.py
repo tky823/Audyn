@@ -20,6 +20,7 @@ available_dump_formats = [
     "torch",
     "webdataset",
     "birdclef2024",
+    "musdb18",
     "custom",
 ]
 
