@@ -19,6 +19,7 @@ __all__ = [
 available_dump_formats = [
     "torch",
     "webdataset",
+    "birdclef2024",
 ]
 
 
