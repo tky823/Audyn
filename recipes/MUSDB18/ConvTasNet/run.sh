@@ -16,7 +16,10 @@ musdb18_url="https://zenodo.org/records/1117372/files/musdb18.zip"
 data_root="../data"
 dump_root="dump"
 
-dump_format="torch"
+dump_format="musdb18"
+
+preprocess="musdb18"
+data="defaults"
 
 . ../../_common/parse_options.sh || exit 1;
 
@@ -29,5 +32,20 @@ if [ ${stage} -le -1 ] && [ ${stop_stage} -ge -1 ]; then
         . ../_common/download.sh \
         --musdb18-url "${musdb18_url}" \
         --data-root "${data_root}"
+    )
+fi
+
+if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
+    echo "Stage 0: Preprocess dataset"
+
+    (
+        . ../_common/preprocess.sh \
+        --stage 1 \
+        --stop-stage 1 \
+        --data-root "${data_root}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
+        --preprocess "${preprocess}" \
+        --data "${data}"
     )
 fi
