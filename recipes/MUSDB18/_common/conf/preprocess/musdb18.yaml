@@ -1,0 +1,6 @@
+defaults:
+  - defaults
+  - _self_
+
+musdb18_root:
+subset:
