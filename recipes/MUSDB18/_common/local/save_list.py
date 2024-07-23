@@ -31,16 +31,10 @@ def main(config: DictConfig) -> None:
     paths = sorted(glob.glob(os.path.join(musdb18_root, subset_name, "*")))
     paths = [path for path in paths if is_included(path, subset=subset)]
 
-    filenames = []
-
-    for path in paths:
-        filename = os.path.basename(path)
-        filename, _ = os.path.splitext(filename)
-        filenames.append(filename)
-
     with open(list_path, mode="w") as f:
-        for filename in filenames:
-            filename, _ = os.path.splitext(filename)
+        for path in paths:
+            filename = os.path.basename(path)
+            filename = filename.replace(".stem.mp4", "")
             f.write(filename + "\n")
 
 
