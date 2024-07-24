@@ -9,6 +9,7 @@ from .sampler import RandomStemsMUSDB18Sampler
 
 __all__ = [
     "MUSDB18",
+    "StemsMUSDB18Dataset",
     "RandomStemsMUSDB18Dataset",
 ]
 
@@ -83,6 +84,127 @@ class MUSDB18(Dataset):
 
                 if not os.path.exists(path):
                     raise FileNotFoundError(f"{path} is not found.")
+
+
+class StemsMUSDB18Dataset(Dataset):
+    """MUSDB18 dataset for evaluation.
+
+    Args:
+        list_path (str): Path to list file containing filenames.
+        feature_dir (str): Path to directory containing .wav files.
+        duration (float): Duration of waveform slice.
+        drums_key (str): Key to store ``drums`` waveform.
+        bass_key (str): Key to store ``bass`` waveform.
+        other_key (str): Key to store ``other`` waveform.
+        vocals_key (str): Key to store ``vocals`` waveform.
+        sample_rate_key (str): Key to store sampling rate.
+        filename_key (str): Key to store filename.
+
+    .. note::
+
+        We assume following structure.
+
+        .. code-block:: shell
+
+            |- feature_dir/  # typically train or test
+                |- A Classic Education - NightOwl/
+                    |- mixture.wav
+                    |- drums.wav
+                    |- bass.wav
+                    |- other.wav
+                    |- vocals.wav
+                ...
+
+    """
+
+    def __init__(
+        self,
+        list_path: str,
+        feature_dir: str,
+        duration: float,
+        drums_key: str = "drums",
+        bass_key: str = "bass",
+        other_key: str = "other",
+        vocals_key: str = "vocals",
+        sample_rate_key: str = "sample_rate",
+        filename_key: str = "filename",
+    ) -> None:
+        super().__init__()
+
+        filenames = []
+
+        with open(list_path) as f:
+            for line in f:
+                filenames.append(line.strip("\n"))
+
+        self.feature_dir = feature_dir
+        self.filenames = filenames
+        self.duration = duration
+        self.source_keys = [
+            drums_key,
+            bass_key,
+            other_key,
+            vocals_key,
+        ]
+        self.sample_rate_key = sample_rate_key
+        self.filename_key = filename_key
+
+        self._validate_tracks()
+
+    def __getitem__(self, idx: int) -> Dict[str, Any]:
+        from . import sources
+
+        feature_dir = self.feature_dir
+        source_keys = self.source_keys
+        sample_rate_key = self.sample_rate_key
+        filename_key = self.filename_key
+
+        filename = self.filenames[idx]
+        feature = {}
+
+        for source, source_key in zip(sources, source_keys):
+            filename_per_source = f"{filename}/{source}.wav"
+            path = os.path.join(feature_dir, filename_per_source)
+            waveform, sample_rate = self.load_sliced_audio(path)
+
+            if sample_rate_key in feature:
+                assert feature[sample_rate_key].item() == sample_rate
+            else:
+                feature[sample_rate_key] = torch.tensor(sample_rate, dtype=torch.long)
+
+            feature[source_key] = waveform
+
+        feature[filename_key] = filename
+
+        return feature
+
+    def __len__(self) -> int:
+        return len(self.filenames)
+
+    def _validate_tracks(self) -> None:
+        from . import sources
+
+        feature_dir = self.feature_dir
+
+        for filename in self.filenames:
+            for source in ["mixture"] + sources:
+                filename_per_source = f"{filename}/{source}.wav"
+                path = os.path.join(feature_dir, filename_per_source)
+
+                if not os.path.exists(path):
+                    raise FileNotFoundError(f"{path} is not found.")
+
+    def load_sliced_audio(self, path: str) -> Tuple[torch.Tensor, int]:
+        duration = self.duration
+        metadata = torchaudio.info(path)
+        num_all_frames = metadata.num_frames
+        num_frames = int(metadata.sample_rate * duration)
+        frame_offset = (num_all_frames - num_frames) // 2
+        waveform, sample_rate = torchaudio.load(
+            path, frame_offset=frame_offset, num_frames=num_frames
+        )
+
+        return waveform, sample_rate
 
 
 class RandomStemsMUSDB18Dataset(IterableDataset):
@@ -318,7 +440,7 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
             yield feature
 
     def __len__(self) -> int:
-        return len(self.track_names)
+        return len(self.filenames)
 
     def _validate_tracks(self) -> None:
         from . import sources
