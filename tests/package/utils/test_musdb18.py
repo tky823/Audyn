@@ -14,7 +14,11 @@ from audyn.utils.data.musdb18 import (
     train_track_names,
     validation_track_names,
 )
-from audyn.utils.data.musdb18.dataset import MUSDB18, RandomStemsMUSDB18Dataset
+from audyn.utils.data.musdb18.dataset import (
+    MUSDB18,
+    RandomStemsMUSDB18Dataset,
+    StemsMUSDB18Dataset,
+)
 
 
 def test_musdb18() -> None:
@@ -53,8 +57,7 @@ def test_musdb18_dataset(replacement: bool) -> None:
     batch_size = 3
     num_workers = 2
     num_frames = 48000
-
-    filenames = []
+    duration = 1.0
 
     with tempfile.TemporaryDirectory() as temp_dir:
         feature_dir = os.path.join(temp_dir, "features")
@@ -71,10 +74,42 @@ def test_musdb18_dataset(replacement: bool) -> None:
             for track_name in sorted(glob.glob(os.path.join(train_feature_dir, "*"))):
                 f.write(track_name + "\n")
 
+        if not replacement:
+            # StemsMUSDB18Dataset
+            dataset = StemsMUSDB18Dataset(train_list_path, train_feature_dir, duration=duration)
+            dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers)
+
+            filenames = []
+
+            for feature in dataloader:
+                assert set(feature.keys()) == {
+                    "drums",
+                    "bass",
+                    "other",
+                    "vocals",
+                    "sample_rate",
+                    "filename",
+                }
+
+                filenames_per_batch = set()
+
+                for filename in feature["filename"]:
+                    # If ``replacement=True``, filename may be included in filenames_per_batch
+                    # with tiny probability.
+                    assert filename not in filenames_per_batch
+
+                    filenames_per_batch.add(filename)
+                    filenames.append(filename)
+
+            assert len(set(filenames)) == len(dataset.filenames)
+
+        # RandomStemsMUSDB18Dataset
         dataset = RandomStemsMUSDB18Dataset(
-            train_list_path, train_feature_dir, duration=1.0, replacement=replacement
+            train_list_path, train_feature_dir, duration=duration, replacement=replacement
         )
         dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers)
+
+        filenames = []
 
         for feature in dataloader:
             assert set(feature.keys()) == {
@@ -107,10 +142,10 @@ def _save_dummy_musdb18(root: str, num_frames: int) -> None:
     num_channels = 2
     sample_rate = 24000
 
-    subset = "train"
+    subset_name = "train"
 
     for track_name in train_track_names:
-        track_dir = os.path.join(root, subset, track_name)
+        track_dir = os.path.join(root, subset_name, track_name)
 
         os.makedirs(track_dir, exist_ok=True)
 
@@ -129,7 +164,7 @@ def _save_dummy_musdb18(root: str, num_frames: int) -> None:
         torchaudio.save(path, mixture, sample_rate)
 
     for track_name in validation_track_names:
-        track_dir = os.path.join(root, subset, track_name)
+        track_dir = os.path.join(root, subset_name, track_name)
 
         os.makedirs(track_dir, exist_ok=True)
 
@@ -147,10 +182,10 @@ def _save_dummy_musdb18(root: str, num_frames: int) -> None:
         path = os.path.join(track_dir, "mixture.wav")
         torchaudio.save(path, mixture, sample_rate)
 
-    subset = "test"
+    subset_name = "test"
 
     for track_name in test_track_names:
-        track_dir = os.path.join(root, subset, track_name)
+        track_dir = os.path.join(root, subset_name, track_name)
 
         os.makedirs(track_dir, exist_ok=True)
 
