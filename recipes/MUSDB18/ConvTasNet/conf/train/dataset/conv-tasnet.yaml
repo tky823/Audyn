@@ -1,0 +1,10 @@
+defaults:
+  - random-stems-musdb18
+  - _self_
+
+train:
+  duration: 10
+  decode_audio_as_monoral: true
+validation:
+  duration: 30
+  decode_audio_as_monoral: true
