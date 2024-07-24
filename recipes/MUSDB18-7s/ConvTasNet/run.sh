@@ -20,7 +20,7 @@ dump_format="musdb18"
 
 system="defaults"
 preprocess="musdb18"
-data="musdb18"
+data="musdb18-tiny"
 train="conv-tasnet-tiny"
 model="conv-tasnet-tiny"
 optimizer="adam"

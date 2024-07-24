@@ -25,7 +25,7 @@ output:
   tensorboard_dir: "./tensorboard"
   save_checkpoint:
     iteration:
-      every: 10
+      every: 4
       path: ${...exp_dir}/model/iteration{iteration}.pth
     epoch:
       every: 1
@@ -36,6 +36,6 @@ output:
       path: ${...exp_dir}/model/best_epoch.pth
 
 steps:
-  epochs: 1
+  epochs: 2
   iterations:
   lr_scheduler: epoch
