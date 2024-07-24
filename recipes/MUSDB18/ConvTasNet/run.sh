@@ -18,8 +18,14 @@ dump_root="dump"
 
 dump_format="musdb18"
 
+system="defaults"
 preprocess="musdb18"
 data="musdb18"
+train="conv-tasnet"
+model="conv-tasnet"
+optimizer="adam"
+lr_scheduler="conv-tasnet"
+criterion="neg-sisdr"
 
 . ../../_common/parse_options.sh || exit 1;
 
@@ -47,5 +53,27 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
         --dump-format "${dump_format}" \
         --preprocess "${preprocess}" \
         --data "${data}"
+    )
+fi
+
+if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
+    echo "Stage 1: Training"
+
+    (
+        . ./train.sh \
+        --tag "${tag}" \
+        --continue-from "${continue_from}" \
+        --exp-root "${exp_root}" \
+        --tensorboard-root "${tensorboard_root}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
+        --system "${system}" \
+        --preprocess "${preprocess}" \
+        --data "${data}" \
+        --train "${train}" \
+        --model "${model}" \
+        --optimizer "${optimizer}" \
+        --lr-scheduler "${lr_scheduler}" \
+        --criterion "${criterion}"
     )
 fi
