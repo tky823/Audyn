@@ -29,8 +29,6 @@ criterion="neg-sisdr"
 
 . ../../_common/parse_options.sh || exit 1;
 
-musdb18_root="${data_root}/MUSDB18"
-
 if [ ${stage} -le -1 ] && [ ${stop_stage} -ge -1 ]; then
     echo "Stage -1"
 
