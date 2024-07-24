@@ -61,7 +61,7 @@ class MUSDB18(Dataset):
 
         self._validate_tracks()
 
-    def __iter__(self, idx: int) -> Dict[str, torch.Tensor]:
+    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         track_name = self.track_names[idx]
         track = Track(self.root, track_name)
 
