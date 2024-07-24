@@ -1,0 +1,9 @@
+defaults:
+  - defaults
+
+audio:
+  sample_rate: 44100
+  duration: 10
+
+sources:
+  num_sources: ${const:audyn.utils.data.musdb18.num_sources}

@@ -6,7 +6,7 @@ audyn.utils.data.musdb18
 Example
 -------
 
-.. code-block::
+.. code-block:: python
 
     >>> from audyn.utils.data.musdb18 import MUSDB18
     >>> root = "./MUSDB18"
@@ -48,3 +48,5 @@ Dataset
 ^^^^^^^
 
 .. autoclass:: audyn.utils.data.musdb18.MUSDB18
+
+.. autoclass:: audyn.utils.data.musdb18.RandomStemsMUSDB18Dataset

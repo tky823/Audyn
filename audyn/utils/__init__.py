@@ -19,7 +19,12 @@ from .data.dataloader import (
     DynamicBatchDataLoader,
     SequentialBatchDataLoader,
 )
-from .data.dataset import SortableTorchObjectDataset, TorchObjectDataset, WebDatasetWrapper
+from .data.dataset import (
+    SortableTorchObjectDataset,
+    TorchObjectDataset,
+    WebDatasetWrapper,
+    available_dump_formats,
+)
 from .distributed import is_distributed, setup_distributed
 from .hydra.utils import (
     instantiate,
@@ -526,9 +531,11 @@ def convert_dataset_and_dataloader_format_if_necessary(config: DictConfig) -> No
             {"_target_": validation_dataloader_target, **validation_dataloader_kwargs},
             merge=False,
         )
-    else:
-        # TODO: torch
+    elif dump_format in available_dump_formats:
+        # TODO: format conversion other than webdataset.
         pass
+    else:
+        raise ValueError(f"Unknown dump format {dump_format} is detected.")
 
 
 def set_nodes_if_necessary(config: DictConfig) -> None:

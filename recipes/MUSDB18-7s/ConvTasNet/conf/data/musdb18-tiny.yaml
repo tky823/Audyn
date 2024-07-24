@@ -1,0 +1,6 @@
+defaults:
+  - musdb18
+  - _self_
+
+audio:
+  duration: 1

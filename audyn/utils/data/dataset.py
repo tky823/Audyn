@@ -10,12 +10,19 @@ from torch.utils.data import Dataset
 from .composer import Composer
 
 __all__ = [
+    "available_dump_formats",
     "TorchObjectDataset",
     "SortableTorchObjectDataset",
     "WebDatasetWrapper",
 ]
 
-available_dump_formats = ["torch", "webdataset"]
+available_dump_formats = [
+    "torch",
+    "webdataset",
+    "birdclef2024",
+    "musdb18",
+    "custom",
+]
 
 
 class TorchObjectDataset(Dataset):

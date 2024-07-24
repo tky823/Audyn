@@ -17,7 +17,7 @@ Submodules
 Create dataset
 --------------
 
-.. code-block::
+.. code-block:: python
 
     >>> import os
     >>> import torch

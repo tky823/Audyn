@@ -10,7 +10,9 @@ from .composer import (
     AudioFeatureExtractionComposer,
     Composer,
     LogarithmTaker,
+    Mixer,
     SequentialComposer,
+    Stacker,
     SynchronousWaveformSlicer,
 )
 from .dataloader import (
@@ -20,10 +22,16 @@ from .dataloader import (
     DynamicBatchDataLoader,
     SequentialBatchDataLoader,
 )
-from .dataset import SortableTorchObjectDataset, TorchObjectDataset, WebDatasetWrapper
+from .dataset import (
+    SortableTorchObjectDataset,
+    TorchObjectDataset,
+    WebDatasetWrapper,
+    available_dump_formats,
+)
 from .postprocess import make_noise, slice_feautures, take_log_features
 
 __all__ = [
+    "available_dump_formats",
     "TorchObjectDataset",
     "SortableTorchObjectDataset",
     "WebDatasetWrapper",
@@ -37,6 +45,8 @@ __all__ = [
     "SequentialComposer",
     "LogarithmTaker",
     "SynchronousWaveformSlicer",
+    "Mixer",
+    "Stacker",
     "Collator",
     "slice_feautures",
     "take_log_features",
