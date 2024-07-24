@@ -8,6 +8,7 @@ __all__ = [
     "test_track_names",
     "sources",
     "accompaniments",
+    "num_sources",
     "MUSDB18",
     "RandomStemsMUSDB18Dataset",
 ]
@@ -23,3 +24,4 @@ accompaniments = [
     "other",
 ]
 sources = accompaniments + ["vocals"]
+num_sources = len(sources)

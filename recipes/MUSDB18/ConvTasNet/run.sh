@@ -19,7 +19,7 @@ dump_root="dump"
 dump_format="musdb18"
 
 preprocess="musdb18"
-data="defaults"
+data="musdb18"
 
 . ../../_common/parse_options.sh || exit 1;
 
