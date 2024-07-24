@@ -128,6 +128,7 @@ class StemsMUSDB18Dataset(Dataset):
         vocals_key: str = "vocals",
         sample_rate_key: str = "sample_rate",
         filename_key: str = "filename",
+        decode_audio_as_monoral: bool = False,
     ) -> None:
         super().__init__()
 
@@ -148,6 +149,7 @@ class StemsMUSDB18Dataset(Dataset):
         ]
         self.sample_rate_key = sample_rate_key
         self.filename_key = filename_key
+        self.decode_audio_as_monoral = decode_audio_as_monoral
 
         self._validate_tracks()
 
@@ -203,6 +205,9 @@ class StemsMUSDB18Dataset(Dataset):
         waveform, sample_rate = torchaudio.load(
             path, frame_offset=frame_offset, num_frames=num_frames
         )
+
+        if self.decode_audio_as_monoral:
+            waveform = waveform.mean(dim=0)
 
         return waveform, sample_rate
 
@@ -263,6 +268,7 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
         filename_key: str = "filename",
         replacement: bool = True,
         num_samples: Optional[int] = None,
+        decode_audio_as_monoral: bool = False,
         seed: int = 0,
         generator: Optional[torch.Generator] = None,
     ) -> None:
@@ -286,6 +292,7 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
         ]
         self.sample_rate_key = sample_rate_key
         self.filename_key = filename_key
+        self.decode_audio_as_monoral = decode_audio_as_monoral
 
         self.worker_id = None
         self.num_workers = None
@@ -465,6 +472,9 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
         waveform, sample_rate = torchaudio.load(
             path, frame_offset=frame_offset, num_frames=num_frames
         )
+
+        if self.decode_audio_as_monoral:
+            waveform = waveform.mean(dim=0)
 
         return waveform, sample_rate
 
