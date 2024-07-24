@@ -3,8 +3,8 @@ defaults:
   - _self_
 
 train:
-  duration: 10
+  duration: ${data.audio.duration}
   decode_audio_as_monoral: true
 validation:
-  duration: 30
+  duration: ${..train.duration}
   decode_audio_as_monoral: true

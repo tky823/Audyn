@@ -3,7 +3,7 @@ defaults:
   - _self_
 
 train:
-  batch_size: 4
+  batch_size: 16
   collate_fn:
     _target_: audyn.utils.data.Collator
     composer:
@@ -26,5 +26,5 @@ train:
           decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
   shuffle:
 validation:
-  batch_size: 4
+  batch_size: 16
   collate_fn: ${..train.collate_fn}
