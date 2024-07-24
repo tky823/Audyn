@@ -316,3 +316,88 @@ class SynchronousWaveformSlicer(Composer):
                     sample[output_key] = sample[input_key].clone()
 
         return sample
+
+
+class Mixer(Composer):
+    """Mixer for training of source separation.
+
+    Args:
+        input_keys (list): Input keys to mix.
+        output_key (str): Output key to store mixture.
+        decode_audio_as_monoral (bool): Whether to decode audio as monoral. Default: ``False``.
+
+    """
+
+    def __init__(
+        self,
+        input_keys: List[str],
+        output_key: str,
+        decode_audio_as_waveform: bool = True,
+        decode_audio_as_monoral: bool = True,
+    ) -> None:
+        super().__init__(
+            decode_audio_as_waveform=decode_audio_as_waveform,
+            decode_audio_as_monoral=decode_audio_as_monoral,
+        )
+
+        self.input_keys = input_keys
+        self.output_key = output_key
+
+    def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        input_keys = self.input_keys
+        output_key = self.output_key
+
+        sample = super().process(sample)
+
+        mixture = 0
+
+        for input_key in input_keys:
+            mixture = mixture + sample[input_key]
+
+        sample[output_key] = mixture
+
+        return sample
+
+
+class Stacker(Composer):
+    """Stack for training of source separation.
+
+    Args:
+        input_keys (list): Input keys to concatenate.
+        output_key (str): Output key to store concatenated features.
+        dim (int): Dimension to stack.
+
+    """
+
+    def __init__(
+        self,
+        input_keys: List[str],
+        output_key: str,
+        dim: int,
+        decode_audio_as_waveform: bool = True,
+        decode_audio_as_monoral: bool = True,
+    ) -> None:
+        super().__init__(
+            decode_audio_as_waveform=decode_audio_as_waveform,
+            decode_audio_as_monoral=decode_audio_as_monoral,
+        )
+
+        self.input_keys = input_keys
+        self.output_key = output_key
+        self.dim = dim
+
+    def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        input_keys = self.input_keys
+        output_key = self.output_key
+        dim = self.dim
+
+        sample = super().process(sample)
+
+        output = []
+
+        for input_key in input_keys:
+            output.append(sample[input_key])
+
+        sample[output_key] = torch.stack(output, dim=dim)
+
+        return sample

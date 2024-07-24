@@ -10,7 +10,9 @@ from .composer import (
     AudioFeatureExtractionComposer,
     Composer,
     LogarithmTaker,
+    Mixer,
     SequentialComposer,
+    Stacker,
     SynchronousWaveformSlicer,
 )
 from .dataloader import (
@@ -43,6 +45,8 @@ __all__ = [
     "SequentialComposer",
     "LogarithmTaker",
     "SynchronousWaveformSlicer",
+    "Mixer",
+    "Stacker",
     "Collator",
     "slice_feautures",
     "take_log_features",
