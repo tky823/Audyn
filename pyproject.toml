@@ -57,6 +57,7 @@ tests = [
 
 [project.scripts]
 audyn-parse-run-command = "audyn.bin.parse_run_command:main"
+audyn-download-mtg-jamando = "audyn.bin.download_mtg_jamendo:main"
 
 [tool.setuptools.dynamic]
 version = {attr = "audyn.__version__"}

@@ -1,0 +1,6 @@
+defaults:
+  - config
+  - _self_
+
+quality: raw
+server_type: mirror
