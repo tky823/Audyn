@@ -10,7 +10,7 @@ def download_top50_tags(
     force_download: bool = False,
     chunk_size: int = 1024,
 ) -> List[str]:
-    url = "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev8/mtg-jamendo_top50-tags.txt"  # noqa: E501
+    url = "https://github.com/tky823/Audyn/releases/download/v0.0.1/mtg-jamendo_top50-tags.txt"  # noqa: E501
     filename = "top50-tags.txt"
 
     if root is None:
@@ -40,7 +40,7 @@ def download_genre_tags(
     force_download: bool = False,
     chunk_size: int = 1024,
 ) -> List[str]:
-    url = "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev8/mtg-jamendo_genre-tags.txt"  # noqa: E501
+    url = "https://github.com/tky823/Audyn/releases/download/v0.0.1/mtg-jamendo_genre-tags.txt"  # noqa: E501
     filename = "genre-tags.txt"
 
     if root is None:
@@ -70,7 +70,7 @@ def download_instrument_tags(
     force_download: bool = False,
     chunk_size: int = 1024,
 ) -> List[str]:
-    url = "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev8/mtg-jamendo_instrument-tags.txt"  # noqa: E501
+    url = "https://github.com/tky823/Audyn/releases/download/v0.0.1/mtg-jamendo_instrument-tags.txt"  # noqa: E501
     filename = "instrument-tags.txt"
 
     if root is None:
@@ -100,7 +100,7 @@ def download_moodtheme_tags(
     force_download: bool = False,
     chunk_size: int = 1024,
 ) -> List[str]:
-    url = "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev8/mtg-jamendo_moodtheme-tags.txt"  # noqa: E501
+    url = "https://github.com/tky823/Audyn/releases/download/v0.0.1/mtg-jamendo_moodtheme-tags.txt"  # noqa: E501
     filename = "moodtheme-tags.txt"
 
     if root is None:
