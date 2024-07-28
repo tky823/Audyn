@@ -75,6 +75,14 @@ class TextToFeatTrainer(BaseTrainer):
                 )
                 unwrapped_feat_to_wave = unwrap(feat_to_wave)
                 unwrapped_feat_to_wave.load_state_dict(state_dict["model"])
+
+                if config.system.compile.enable:
+                    kwargs = config.system.compile.kwargs
+
+                    if kwargs is None:
+                        kwargs = {}
+
+                    feat_to_wave = torch.compile(feat_to_wave, **kwargs)
             elif "generator" in feat_to_wave_config.model:
                 # generator of GAN
                 feat_to_wave = instantiate_model(feat_to_wave_config.model.generator)
@@ -86,6 +94,14 @@ class TextToFeatTrainer(BaseTrainer):
                 )
                 unwrapped_feat_to_wave = unwrap(feat_to_wave)
                 unwrapped_feat_to_wave.load_state_dict(state_dict["model"]["generator"])
+
+                if config.system.compile.enable:
+                    kwargs = config.system.compile.kwargs
+
+                    if kwargs is None:
+                        kwargs = {}
+
+                    feat_to_wave = torch.compile(feat_to_wave, **kwargs)
             else:
                 raise ValueError("Given config type is not supported now.")
 
@@ -106,6 +122,13 @@ class TextToFeatTrainer(BaseTrainer):
                         ddp_kwargs=config.train.ddp_kwargs,
                     )
 
+                    if config.system.compile.enable:
+                        kwargs = config.system.compile.kwargs
+
+                        if kwargs is None:
+                            kwargs = {}
+
+                        transform_middle = torch.compile(transform_middle, **kwargs)
         self.feat_to_wave = feat_to_wave
         self.transform_middle = transform_middle
 

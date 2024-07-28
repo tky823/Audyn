@@ -396,6 +396,15 @@ class BaseTrainer(BaseDriver):
             ddp_kwargs=config.train.ddp_kwargs,
         )
 
+        if config.system.compile.enable:
+            kwargs = config.system.compile.kwargs
+
+            if kwargs is None:
+                kwargs = {}
+
+            model = torch.compile(model, **kwargs)
+            criterion = torch.compile(criterion, **kwargs)
+
         # TODO: support model and criterion by instantiate_optimizer.
         optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
@@ -2334,6 +2343,14 @@ class BaseGenerator(BaseDriver):
             accelerator=config.system.accelerator,
             is_distributed=config.system.distributed.enable,
         )
+
+        if config.system.compile.enable:
+            kwargs = config.system.compile.kwargs
+
+            if kwargs is None:
+                kwargs = {}
+
+            model = torch.compile(model, **kwargs)
 
         if (
             hasattr(config.test, "generator")
