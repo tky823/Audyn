@@ -192,3 +192,5 @@ def test_passt(sample_wise: bool) -> None:
     output = model(input)
 
     assert output.size() == (batch_size, out_channels)
+
+    print(model)

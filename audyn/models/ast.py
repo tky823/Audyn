@@ -577,6 +577,19 @@ class HeadTokensAggregator(Aggregator):
 
         return output
 
+    def extra_repr(self) -> str:
+        s = []
+
+        if self.insert_cls_token:
+            s.append("cls_token=True")
+
+        if self.insert_dist_token:
+            s.append("dist_token=True")
+
+        s = ", ".join(s)
+
+        return s
+
 
 class Head(nn.Module):
     """Base class of Head module to transform aggregated feature."""

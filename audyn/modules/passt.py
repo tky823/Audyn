@@ -510,6 +510,11 @@ class UnstructuredPatchout(Patchout):
 
         return keeping_mask
 
+    def extra_repr(self) -> str:
+        s = "drops={num_drops}"
+
+        return s.format(**self.__dict__)
+
 
 class StructuredPatchout(Patchout):
     """Structured patch out, which drops vertical or horizontal patches at random.
@@ -572,3 +577,8 @@ class StructuredPatchout(Patchout):
         keeping_mask = torch.logical_not(padding_mask)
 
         return keeping_mask
+
+    def extra_repr(self) -> str:
+        s = "frequency_drops={num_frequency_drops}, time_drops={num_time_drops}"
+
+        return s.format(**self.__dict__)
