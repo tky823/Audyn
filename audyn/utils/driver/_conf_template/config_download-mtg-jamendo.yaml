@@ -4,3 +4,5 @@ defaults:
 
 quality: raw
 server_type: mirror
+output:
+chunk_size:
