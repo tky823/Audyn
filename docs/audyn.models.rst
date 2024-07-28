@@ -53,10 +53,11 @@ WaveGlow
 Audio spectrogram Transformer (AST) and self-supervised AST (SSAST)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. code-block::python
+.. code-block:: python
 
    >>> import torch
-   >>> from audyn.models.ast import AudioSpectrogramTransformer, MLPHead
+   >>> from audyn.models import AudioSpectrogramTransformer
+   >>> from audyn.models.ast import MLPHead
    >>> torch.manual_seed(0)
    >>> batch_size, n_bins, n_frames = 4, 128, 512
    >>> model = AudioSpectrogramTransformer.build_from_pretrained("ast-base-stride10")
