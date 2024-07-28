@@ -118,7 +118,7 @@ Audio spectrogram Transformer (AST) and self-supervised AST (SSAST)
    >>> model.head = None
    >>> output = model(input)
    >>> print(output.size())
-   torch.Size([4, 602, 768])  # 1 [CLS], 1 [DIST], and 600 frames
+   torch.Size([4, 602, 768])  # 1 [CLS], 1 [DIST], and 600 patches
 
 .. autoclass:: audyn.models.AudioSpectrogramTransformer
    :members: forward
