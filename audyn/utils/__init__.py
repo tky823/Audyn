@@ -153,7 +153,7 @@ def setup_config(config: DictConfig) -> None:
 
     accelerator = select_accelerator(system_config)
 
-    if accelerator == "gpu":
+    if accelerator in ["gpu", "cuda"]:
         from torch.backends import cudnn
 
         cudnn.benchmark = system_config.cudnn.benchmark
@@ -179,6 +179,8 @@ def setup_config(config: DictConfig) -> None:
 
         set_nodes_if_necessary(system_config)
         setup_distributed(system_config)
+
+    set_compiler_if_necessary(system_config)
 
     if full_config is None:
         warnings.warn(
@@ -552,6 +554,53 @@ def set_nodes_if_necessary(config: DictConfig) -> None:
             "distributed.nodes",
             1,
         )
+
+
+def set_compiler_if_necessary(config: DictConfig) -> None:
+    """Set config.compile if necessary.
+
+    .. note::
+
+        This function may overwrite config.compile.
+
+    """
+    from .torch.compile import is_gpu_supported
+
+    if config.compile.enable is not None:
+        return
+
+    if config.accelerator is None:
+        OmegaConf.update(
+            config,
+            "compile.enable",
+            False,
+        )
+    else:
+        if config.accelerator == "cpu":
+            OmegaConf.update(
+                config,
+                "compile.enable",
+                True,
+            )
+        elif config.accelerator in ["gpu", "cuda"]:
+            if is_gpu_supported():
+                OmegaConf.update(
+                    config,
+                    "compile.enable",
+                    True,
+                )
+            else:
+                OmegaConf.update(
+                    config,
+                    "compile.enable",
+                    False,
+                )
+        else:
+            OmegaConf.update(
+                config,
+                "compile.enable",
+                False,
+            )
 
 
 def _search_webdataset_format_dataset(config: DictConfig) -> Tuple[str, Dict[str, Any]]:
