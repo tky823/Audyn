@@ -1,8 +1,9 @@
 import os
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from ... import audyn_cache_dir
 from ...github import download_file_from_github_release
+from ..download import download_file
 
 
 def download_top50_tags(
@@ -123,3 +124,120 @@ def download_moodtheme_tags(
             tags.append(tag)
 
     return tags
+
+
+def download_top50_metadata(
+    root: Optional[str] = None,
+    force_download: bool = False,
+    chunk_size: int = 1024,
+) -> List[Dict[str, Any]]:
+    url = "https://raw.githubusercontent.com/MTG/mtg-jamendo-dataset/master/data/autotagging_top50tags.tsv"  # noqa: E501
+    filename = "autotagging_top50tags.tsv"
+
+    if root is None:
+        root = os.path.join(audyn_cache_dir, "data", "mtg-jamendo")
+
+    path = os.path.join(root, filename)
+
+    download_file(
+        url,
+        path,
+        force_download=force_download,
+        chunk_size=chunk_size,
+    )
+    metadata = _load_metadata(path)
+
+    return metadata
+
+
+def download_genre_metadata(
+    root: Optional[str] = None,
+    force_download: bool = False,
+    chunk_size: int = 1024,
+) -> List[Dict[str, Any]]:
+    url = "https://raw.githubusercontent.com/MTG/mtg-jamendo-dataset/master/data/autotagging_genre.tsv"  # noqa: E501
+    filename = "autotagging_genre.tsv"
+
+    if root is None:
+        root = os.path.join(audyn_cache_dir, "data", "mtg-jamendo")
+
+    path = os.path.join(root, filename)
+
+    download_file(
+        url,
+        path,
+        force_download=force_download,
+        chunk_size=chunk_size,
+    )
+    metadata = _load_metadata(path)
+
+    return metadata
+
+
+def download_instrument_metadata(
+    root: Optional[str] = None,
+    force_download: bool = False,
+    chunk_size: int = 1024,
+) -> List[Dict[str, Any]]:
+    url = "https://raw.githubusercontent.com/MTG/mtg-jamendo-dataset/master/data/autotagging_instrument.tsv"  # noqa: E501
+    filename = "autotagging_instrument.tsv"
+
+    if root is None:
+        root = os.path.join(audyn_cache_dir, "data", "mtg-jamendo")
+
+    path = os.path.join(root, filename)
+
+    download_file(
+        url,
+        path,
+        force_download=force_download,
+        chunk_size=chunk_size,
+    )
+    metadata = _load_metadata(path)
+
+    return metadata
+
+
+def download_moodtheme_metadata(
+    root: Optional[str] = None,
+    force_download: bool = False,
+    chunk_size: int = 1024,
+) -> List[Dict[str, Any]]:
+    url = "https://raw.githubusercontent.com/MTG/mtg-jamendo-dataset/master/data/autotagging_moodtheme.tsv"  # noqa: E501
+    filename = "autotagging_moodtheme.tsv"
+
+    if root is None:
+        root = os.path.join(audyn_cache_dir, "data", "mtg-jamendo")
+
+    path = os.path.join(root, filename)
+
+    download_file(
+        url,
+        path,
+        force_download=force_download,
+        chunk_size=chunk_size,
+    )
+    metadata = _load_metadata(path)
+
+    return metadata
+
+
+def _load_metadata(path: str) -> List[Dict[str, Any]]:
+    metadata = []
+
+    with open(path) as f:
+        for idx, (track, artist, album, _path, duration, *tags) in enumerate(f):
+            if idx < 1:
+                continue
+
+            data = {
+                "track": track,
+                "artist": artist,
+                "album": album,
+                "path": _path,
+                "duration": duration,
+                "tags": list(tags),
+            }
+            metadata.append(data)
+
+    return metadata
