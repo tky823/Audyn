@@ -1,9 +1,10 @@
 import json
 import os
-from io import BufferedWriter
 from typing import Tuple
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
+
+from ..data.download import download_by_response
 
 try:
     from tqdm import tqdm
@@ -65,9 +66,9 @@ def download_file_from_github_release(
                 description = f"Download file to {path}"
 
                 with tqdm(unit="B", unit_scale=True, desc=description, total=total_size) as pbar:
-                    _download(response, f, chunk_size=chunk_size, pbar=pbar)
+                    download_by_response(response, f, chunk_size=chunk_size, pbar=pbar)
             else:
-                _download(response, f, chunk_size=chunk_size)
+                download_by_response(response, f, chunk_size=chunk_size)
     except Exception as e:
         raise e
 
@@ -118,16 +119,3 @@ def _obtain_metadata(url: str) -> Tuple[str, int]:
         raise ValueError(f"Asset {url} is not found.")
 
     return converted_url, total_size
-
-
-def _download(response, f: BufferedWriter, chunk_size: int = 1024, pbar=None) -> None:
-    while True:
-        chunk = response.read(chunk_size)
-
-        if not chunk:
-            break
-
-        f.write(chunk)
-
-        if pbar is not None:
-            pbar.update(len(chunk))
