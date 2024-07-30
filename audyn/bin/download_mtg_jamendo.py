@@ -14,7 +14,7 @@ except ImportError:
     IS_TQDM_AVAILABLE = False
 
 
-@audyn_main(config_name="config_download-mtg-jamendo")
+@audyn_main(config_name="download-mtg-jamendo")
 def main(config: DictConfig) -> None:
     """Download MTG-Jamendo audio files.
 
