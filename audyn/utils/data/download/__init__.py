@@ -40,7 +40,7 @@ def download_file(
 
     try:
         with urlopen(request) as response, open(path, "wb") as f:
-            total_size = int(response.info()["Content-Length"])
+            total_size = int(response.headers["Content-Length"])
 
             if IS_TQDM_AVAILABLE:
                 description = f"Download file to {path}"

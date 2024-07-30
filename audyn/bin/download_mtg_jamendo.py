@@ -1,10 +1,10 @@
 import os
-from io import BufferedWriter
 from urllib.request import Request, urlopen
 
 from omegaconf import DictConfig
 
-import audyn
+from ..utils.data.download import download_by_response
+from ..utils.hydra import main as audyn_main
 
 try:
     from tqdm import tqdm
@@ -14,7 +14,7 @@ except ImportError:
     IS_TQDM_AVAILABLE = False
 
 
-@audyn.main(config_name="config_download-mtg-jamendo")
+@audyn_main(config_name="config_download-mtg-jamendo")
 def main(config: DictConfig) -> None:
     """Download MTG-Jamendo audio files.
 
@@ -78,24 +78,11 @@ def main(config: DictConfig) -> None:
                     total_size = int(response.headers["Content-Length"])
 
                     with tqdm(unit="B", unit_scale=True, desc=filename, total=total_size) as pbar:
-                        _download(response, f, chunk_size=chunk_size, pbar=pbar)
+                        download_by_response(response, f, chunk_size=chunk_size, pbar=pbar)
                 else:
-                    _download(response, f, chunk_size=chunk_size)
+                    download_by_response(response, f, chunk_size=chunk_size)
         except Exception as e:
             raise e
-
-
-def _download(response, f: BufferedWriter, chunk_size: int = 1024, pbar=None) -> None:
-    while True:
-        chunk = response.read(chunk_size)
-
-        if not chunk:
-            break
-
-        f.write(chunk)
-
-        if pbar is not None:
-            pbar.update(len(chunk))
 
 
 if __name__ == "__main__":
