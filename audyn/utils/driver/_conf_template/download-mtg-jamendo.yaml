@@ -1,0 +1,12 @@
+defaults:
+  - config
+  - _self_
+
+quality: raw
+server_type: mirror
+output:
+chunk_size:
+
+hydra:
+  run:
+    dir: "./log/${now:%Y%m%d-%H%M%S}"

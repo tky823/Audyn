@@ -13,6 +13,7 @@ Submodules
    audyn.utils.data.vctk
    audyn.utils.data.birdclef
    audyn.utils.data.musdb18
+   audyn.utils.data.mtg_jamendo
 
 Create dataset
 --------------
