@@ -7,6 +7,7 @@ import torch.nn as nn
 from dummy import allclose
 
 from audyn.models.ast import (
+    AST,
     AudioSpectrogramTransformer,
     AverageAggregator,
     HeadTokensAggregator,
@@ -93,6 +94,26 @@ def test_official_ast() -> None:
             num_parameters += p.numel()
 
     assert num_parameters == expected_num_parameters
+    assert model.__class__.__name__ == "AudioSpectrogramTransformer"
+
+    # build_from_pretrained
+    model = AST.build_from_pretrained(
+        "ast-base-stride10",
+        stride=stride,
+        n_bins=n_bins,
+        n_frames=n_frames,
+        aggregator=aggregator,
+        head=head,
+    )
+
+    num_parameters = 0
+
+    for p in model.parameters():
+        if p.requires_grad:
+            num_parameters += p.numel()
+
+    assert num_parameters == expected_num_parameters
+    assert model.__class__.__name__ == "AST"
 
     # regression test
     n_bins, n_frames = 256, 100
