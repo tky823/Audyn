@@ -71,6 +71,7 @@ class WaveNeXtVocoder(nn.Module):
             activation=activation,
             num_blocks=num_blocks,
         )
+        self.post_norm = _get_normalization(norm, hidden_channels)
         self.post_conv1d = nn.ConvTranspose1d(
             hidden_channels,
             out_channels,
@@ -105,6 +106,9 @@ class WaveNeXtVocoder(nn.Module):
         x = self.pre_norm(x)
         x = x.transpose(-2, -1)
         x = self.backbone(x)
+        x = x.transpose(-2, -1)
+        x = self.post_norm(x)
+        x = x.transpose(-2, -1)
         # TODO: padding for overlapping
         output = self.post_conv1d(x)
 

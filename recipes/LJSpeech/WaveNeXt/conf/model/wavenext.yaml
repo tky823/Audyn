@@ -1,0 +1,20 @@
+generator:
+  _target_: audyn.models.wavenext.WaveNeXtVocoder
+  in_channels: ${data.melspectrogram.n_mels}
+  out_channels: 1
+  hidden_channels: 512
+  bottleneck_channels: 1536
+  kernel_size: 7
+  norm: layer_norm
+  activation: gelu
+  pre_kernel_size: 7
+  post_kernel_size: 256
+  post_stride:
+  num_blocks: 8
+
+discriminator:
+  _target_: audyn.models.hifigan.Discriminator
+  period_discriminator:
+    _target_: audyn.models.hifigan.MultiPeriodDiscriminator.build_from_default_config
+  scale_discriminator:
+    _target_: audyn.models.hifigan.MultiScaleDiscriminator.build_from_default_config

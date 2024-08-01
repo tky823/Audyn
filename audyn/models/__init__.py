@@ -18,6 +18,7 @@ from .vae import BaseVAE
 from .vqvae import VQVAE
 from .waveglow import MultiSpeakerWaveGlow, WaveGlow
 from .wavenet import MultiSpeakerWaveNet, WaveNet
+from .wavenext import WaveNeXtVocoder
 
 __all__ = [
     # Conv-TasNet
@@ -37,6 +38,8 @@ __all__ = [
     "HiFiGANGenerator",
     "HiFiGANVocoder",
     "HiFiGANDiscriminator",
+    # WaveNeXt Vocoder
+    "WaveNeXtVocoder",
     "BaseVAE",
     "VQVAE",
     "RVQVAE",
