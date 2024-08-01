@@ -1,3 +1,4 @@
+import csv
 import os
 from typing import Any, Dict, List, Optional
 
@@ -226,7 +227,9 @@ def _load_metadata(path: str) -> List[Dict[str, Any]]:
     metadata = []
 
     with open(path) as f:
-        for idx, (track, artist, album, _path, duration, *tags) in enumerate(f):
+        for idx, (track, artist, album, _path, duration, *tags) in enumerate(
+            csv.reader(f, delimiter="\t")
+        ):
             if idx < 1:
                 continue
 
