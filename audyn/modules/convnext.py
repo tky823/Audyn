@@ -32,7 +32,7 @@ class StackedConvNeXtBlock1d(nn.Module):
             (batch_size, length, num_features) such as ``nn.LayerNorm``.
         activation (str, nn.Module or callable): Activation module.
         num_blocks (int): Number of blocks. This parameter also defines the output scale
-            of each block. Default: ``12``.
+            of each block. Default: ``8``.
 
     """
 
@@ -43,7 +43,7 @@ class StackedConvNeXtBlock1d(nn.Module):
         kernel_size: Union[List[_size_1_t], _size_1_t],
         norm: Union[str, nn.Module] = "layer_norm",
         activation: Union[str, nn.Module, Callable[[torch.Tensor], torch.Tensor]] = "gelu",
-        num_blocks: int = 12,
+        num_blocks: int = 8,
     ) -> None:
         super().__init__()
 
