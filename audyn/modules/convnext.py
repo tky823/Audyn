@@ -22,10 +22,11 @@ class ConvNeXtBlock1d(nn.Module):
     """ConvNeXt block.
 
     Args:
-        in_channels (int):
+        num_features (int): Number of features.
         hidden_channels (int): Number of hidden channels.
         kernel_size (_size_1_t): Kernel size in depthwise convolutions.
-        norm (nn.Module): Layer normalization module.
+        norm (nn.Module): Layer normalization module, which takes
+            (batch_size, length, num_features) such as ``nn.LayerNorm``.
         activation (str, nn.Module or callable): Activation module.
         scale (float, optional): Initial scale of output.
 
@@ -33,7 +34,7 @@ class ConvNeXtBlock1d(nn.Module):
 
     def __init__(
         self,
-        in_channels: int,
+        num_features: int,
         hidden_channels: int,
         kernel_size: _size_1_t,
         norm: nn.Module,
@@ -49,19 +50,19 @@ class ConvNeXtBlock1d(nn.Module):
         self.kernel_size = _single(kernel_size)
 
         self.depthwise_conv1d = nn.Conv1d(
-            in_channels,
-            in_channels,
+            num_features,
+            num_features,
             kernel_size=kernel_size,
-            groups=in_channels,
+            groups=num_features,
         )
         self.norm = norm
-        self.pointwise_conv1d_in = nn.Conv1d(in_channels, hidden_channels, kernel_size=1)
+        self.pointwise_conv1d_in = nn.Conv1d(num_features, hidden_channels, kernel_size=1)
 
         if isinstance(activation, str):
             activation = _get_activation(activation)
 
         self.activation = activation
-        self.pointwise_conv1d_out = nn.Conv1d(hidden_channels, in_channels, kernel_size=1)
+        self.pointwise_conv1d_out = nn.Conv1d(hidden_channels, num_features, kernel_size=1)
 
         if scale is None:
             self.register_parameter("scale", None)
@@ -70,6 +71,15 @@ class ConvNeXtBlock1d(nn.Module):
             self.scale = nn.Parameter(scale, requires_grad=True)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of ConvNeXtBlock1d.
+
+        Args:
+            input (torch.Tensor): Input feature of shape (batch_size, num_features, length).
+
+        Returns:
+            torch.Tensor: Output feature of shape (batch_size, num_features, length).
+
+        """
         (kernel_size,) = self.kernel_size
         padding = kernel_size // 2
 
