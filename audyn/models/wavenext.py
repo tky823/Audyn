@@ -76,6 +76,7 @@ class WaveNeXtVocoder(nn.Module):
             out_channels,
             kernel_size=post_kernel_size,
             stride=post_stride,
+            bias=False,
         )
 
         self.pre_kernel_size = _single(pre_kernel_size)
