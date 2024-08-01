@@ -14,12 +14,22 @@ from torch.nn.modules.utils import _single
 from ..models.roformer import _get_activation
 
 __all__ = [
-    "ConvNeXtBlock",
+    "ConvNeXtBlock1d",
 ]
 
 
-class ConvNeXtBlock(nn.Module):
-    """ConvNeXt block."""
+class ConvNeXtBlock1d(nn.Module):
+    """ConvNeXt block.
+
+    Args:
+        in_channels (int):
+        hidden_channels (int): Number of hidden channels.
+        kernel_size (_size_1_t): Kernel size in depthwise convolutions.
+        norm (nn.Module): Layer normalization module.
+        activation (str, nn.Module or callable): Activation module.
+        scale (float, optional): Initial scale of output.
+
+    """
 
     def __init__(
         self,
