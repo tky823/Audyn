@@ -143,7 +143,7 @@ class ConvNeXtBlock1d(nn.Module):
         if scale is None:
             self.register_parameter("scale", None)
         else:
-            scale = torch.full((), fill_value=scale)
+            scale = torch.full((num_features,), fill_value=scale)
             self.scale = nn.Parameter(scale, requires_grad=True)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
