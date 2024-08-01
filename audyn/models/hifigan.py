@@ -13,6 +13,7 @@ __all__ = [
     "Generator",
     "Discriminator",
     "HiFiGANGenerator",
+    "HiFiGANVocoder",
     "HiFiGANDiscriminator",
     "MultiScaleDiscriminator",
     "MultiPeriodDiscriminator",
@@ -914,6 +915,10 @@ class PeriodDiscriminator(nn.Module):
 
 
 class HiFiGANGenerator(Generator):
+    """Alias of Generator for HiFi-GAN."""
+
+
+class HiFiGANVocoder(Generator):
     """Alias of Generator for HiFi-GAN."""
 
 
