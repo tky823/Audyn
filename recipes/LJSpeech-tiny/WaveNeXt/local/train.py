@@ -1,0 +1,1 @@
+../../../LJSpeech/WaveNeXt/local/train.py
