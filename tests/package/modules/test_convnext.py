@@ -7,7 +7,7 @@ from audyn.modules.convnext import ConvNeXtBlock1d, StackedConvNeXtBlock1d
 def test_stacked_convnext_block() -> None:
     torch.manual_seed(0)
 
-    num_features, hidden_channels = 3, 5
+    num_features, bottleneck_channels = 3, 5
     kernel_size = 7
     norm = nn.LayerNorm(num_features)
     activation = "gelu"
@@ -16,7 +16,7 @@ def test_stacked_convnext_block() -> None:
 
     module = StackedConvNeXtBlock1d(
         num_features,
-        hidden_channels,
+        bottleneck_channels,
         kernel_size,
         norm,
         activation=activation,
@@ -31,7 +31,7 @@ def test_stacked_convnext_block() -> None:
 def test_convnext_block() -> None:
     torch.manual_seed(0)
 
-    num_features, hidden_channels = 3, 5
+    num_features, bottleneck_channels = 3, 5
     kernel_size = 7
     norm = nn.LayerNorm(num_features)
     activation = "gelu"
@@ -40,7 +40,7 @@ def test_convnext_block() -> None:
 
     module = ConvNeXtBlock1d(
         num_features,
-        hidden_channels,
+        bottleneck_channels,
         kernel_size,
         norm,
         activation=activation,

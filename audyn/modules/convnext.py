@@ -25,7 +25,7 @@ class StackedConvNeXtBlock1d(nn.Module):
 
     Args:
         num_features (int): Number of features.
-        hidden_channels (int): Number of hidden channels.
+        bottleneck_channels (int): Number of bottleneck channels.
         kernel_size (_size_1_t): Kernel size in depthwise convolutions.
         norm (nn.Module): Layer normalization module, which takes
             (batch_size, length, num_features) such as ``nn.LayerNorm``.
@@ -38,7 +38,7 @@ class StackedConvNeXtBlock1d(nn.Module):
     def __init__(
         self,
         num_features: int,
-        hidden_channels: int,
+        bottleneck_channels: int,
         kernel_size: Union[List[_size_1_t], _size_1_t],
         norm: nn.Module,
         activation: Union[str, nn.Module, Callable[[torch.Tensor], torch.Tensor]] = "gelu",
@@ -62,7 +62,7 @@ class StackedConvNeXtBlock1d(nn.Module):
             _activation = copy.deepcopy(activation)
             block = ConvNeXtBlock1d(
                 num_features,
-                hidden_channels,
+                bottleneck_channels,
                 kernel_size=_kernel_size,
                 norm=_norm,
                 activation=_activation,
@@ -99,7 +99,7 @@ class ConvNeXtBlock1d(nn.Module):
 
     Args:
         num_features (int): Number of features.
-        hidden_channels (int): Number of hidden channels.
+        bottleneck_channels (int): Number of bottleneck channels.
         kernel_size (_size_1_t): Kernel size in depthwise convolutions.
         norm (nn.Module): Layer normalization module, which takes
             (batch_size, length, num_features) such as ``nn.LayerNorm``.
@@ -111,7 +111,7 @@ class ConvNeXtBlock1d(nn.Module):
     def __init__(
         self,
         num_features: int,
-        hidden_channels: int,
+        bottleneck_channels: int,
         kernel_size: _size_1_t,
         norm: nn.Module,
         activation: Union[str, nn.Module, Callable[[torch.Tensor], torch.Tensor]] = "gelu",
@@ -132,13 +132,13 @@ class ConvNeXtBlock1d(nn.Module):
             groups=num_features,
         )
         self.norm = norm
-        self.pointwise_conv1d_in = nn.Conv1d(num_features, hidden_channels, kernel_size=1)
+        self.pointwise_conv1d_in = nn.Conv1d(num_features, bottleneck_channels, kernel_size=1)
 
         if isinstance(activation, str):
             activation = _get_activation(activation)
 
         self.activation = activation
-        self.pointwise_conv1d_out = nn.Conv1d(hidden_channels, num_features, kernel_size=1)
+        self.pointwise_conv1d_out = nn.Conv1d(bottleneck_channels, num_features, kernel_size=1)
 
         if scale is None:
             self.register_parameter("scale", None)
@@ -170,7 +170,7 @@ class ConvNeXtBlock1d(nn.Module):
         x = self.pointwise_conv1d_out(x)
 
         if self.scale is not None:
-            x = self.scale * x
+            x = self.scale.unsqueeze(dim=-1) * x
 
         output = x + residual
 
