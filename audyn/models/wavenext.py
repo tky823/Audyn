@@ -107,7 +107,7 @@ class WaveNeXtVocoder(nn.Module):
         x = x.transpose(-2, -1)
         x = self.backbone(x)
         x = x.transpose(-2, -1)
-        self.post_norm(x)
+        x = self.post_norm(x)
         x = x.transpose(-2, -1)
         # TODO: padding for overlapping
         output = self.post_conv1d(x)
