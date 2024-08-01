@@ -354,9 +354,11 @@ class MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
             )
             resolved_config = state_dict["resolved_config"]
             resolved_config = OmegaConf.create(resolved_config)
+            pretrained_model_config = resolved_config.model
+            pretrained_model_config["_target_"] = f"{cls.__module__}.{cls.__name__}"
 
             model: MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel = (
-                instantiate(resolved_config.model)
+                instantiate(pretrained_model_config)
             )
             model.load_state_dict(state_dict["model"])
 

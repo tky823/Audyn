@@ -11,9 +11,11 @@ from audyn.models.lextransformer import LEXTransformerEncoderLayer
 from audyn.models.roformer import RoFormerEncoderLayer
 from audyn.models.ssast import (
     MLP,
+    SSAST,
     FastMasker,
     Masker,
     MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel,
+    MultiTaskSSASTMPM,
     SelfSupervisedAudioSpectrogramTransformer,
 )
 from audyn.modules.vit import PatchEmbedding, PositionalPatchEmbedding
@@ -112,6 +114,21 @@ def test_official_ssast_multi_task_mpm(model_name: str, sample_wise: bool) -> No
             num_parameters += p.numel()
 
     assert num_parameters == expected_num_parameters
+    assert (
+        model.__class__.__name__
+        == "MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel"
+    )
+
+    model = MultiTaskSSASTMPM.build_from_pretrained(model_name)
+
+    num_parameters = 0
+
+    for p in model.parameters():
+        if p.requires_grad:
+            num_parameters += p.numel()
+
+    assert num_parameters == expected_num_parameters
+    assert model.__class__.__name__ == "MultiTaskSSASTMPM"
 
 
 @pytest.mark.parametrize(
@@ -196,6 +213,20 @@ def test_official_ssast(model_name: str) -> None:
             num_parameters += p.numel()
 
     assert num_parameters == expected_num_parameters
+    assert model.__class__.__name__ == "SelfSupervisedAudioSpectrogramTransformer"
+
+    model = SSAST.build_from_pretrained(
+        model_name, stride=stride, n_bins=n_bins, n_frames=n_frames, head=head
+    )
+
+    num_parameters = 0
+
+    for p in model.parameters():
+        if p.requires_grad:
+            num_parameters += p.numel()
+
+    assert num_parameters == expected_num_parameters
+    assert model.__class__.__name__ == "SSAST"
 
     # regression test
     n_bins, n_frames = 256, 100
