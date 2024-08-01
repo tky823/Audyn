@@ -238,7 +238,7 @@ def _load_metadata(path: str) -> List[Dict[str, Any]]:
                 "artist": artist,
                 "album": album,
                 "path": _path,
-                "duration": duration,
+                "duration": float(duration),
                 "tags": list(tags),
             }
             metadata.append(data)
