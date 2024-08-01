@@ -252,6 +252,17 @@ class Generator(nn.Module):
         return model
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of Generator.
+
+        Args:
+            input (torch.Tensor): Spectrogram-like feature of shape
+                (batch_size, in_channels, num_frames).
+
+        Returns:
+            torch.Tensor: Waveform-like feature of shape (batch_size, out_channels, num_frames'),
+                where num_frames' represents number of upsampled frames.
+
+        """
         num_stacks = self.num_stacks
         (pre_kernel_size,) = self.pre_kernel_size
 
