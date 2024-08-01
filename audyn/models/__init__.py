@@ -3,7 +3,7 @@ from .conv_tasnet import ConvTasNet
 from .dprnn_tasnet import DPRNNTasNet
 from .encodec import EnCodec
 from .fastspeech import FastSpeech, MultiSpeakerFastSpeech
-from .hifigan import HiFiGANDiscriminator, HiFiGANGenerator
+from .hifigan import HiFiGANDiscriminator, HiFiGANGenerator, HiFiGANVocoder
 from .passt import PaSST
 from .roformer import RoFormerDecoder, RoFormerDecoderLayer, RoFormerEncoder, RoFormerEncoderLayer
 from .rvqvae import RVQVAE
@@ -35,6 +35,7 @@ __all__ = [
     "MultiSpeakerFastSpeech",
     # HiFi-GAN
     "HiFiGANGenerator",
+    "HiFiGANVocoder",
     "HiFiGANDiscriminator",
     "BaseVAE",
     "VQVAE",
