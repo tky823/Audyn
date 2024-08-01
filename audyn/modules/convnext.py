@@ -13,6 +13,7 @@ from torch.nn.common_types import _size_1_t
 from torch.nn.modules.utils import _single
 
 from ..models.roformer import _get_activation
+from .normalization import RMSNorm
 
 __all__ = [
     "StackedConvNeXtBlock1d",
@@ -27,7 +28,7 @@ class StackedConvNeXtBlock1d(nn.Module):
         num_features (int): Number of features.
         bottleneck_channels (int): Number of bottleneck channels.
         kernel_size (_size_1_t): Kernel size in depthwise convolutions.
-        norm (nn.Module): Layer normalization module, which takes
+        norm (str or nn.Module): Layer normalization module, which takes
             (batch_size, length, num_features) such as ``nn.LayerNorm``.
         activation (str, nn.Module or callable): Activation module.
         num_blocks (int): Number of blocks. This parameter also defines the output scale
@@ -40,7 +41,7 @@ class StackedConvNeXtBlock1d(nn.Module):
         num_features: int,
         bottleneck_channels: int,
         kernel_size: Union[List[_size_1_t], _size_1_t],
-        norm: nn.Module,
+        norm: Union[str, nn.Module] = "layer_norm",
         activation: Union[str, nn.Module, Callable[[torch.Tensor], torch.Tensor]] = "gelu",
         num_blocks: int = 12,
     ) -> None:
@@ -101,7 +102,7 @@ class ConvNeXtBlock1d(nn.Module):
         num_features (int): Number of features.
         bottleneck_channels (int): Number of bottleneck channels.
         kernel_size (_size_1_t): Kernel size in depthwise convolutions.
-        norm (nn.Module): Layer normalization module, which takes
+        norm (str or nn.Module): Layer normalization module, which takes
             (batch_size, length, num_features) such as ``nn.LayerNorm``.
         activation (str, nn.Module or callable): Activation module.
         scale (float, optional): Initial scale of output.
@@ -113,7 +114,7 @@ class ConvNeXtBlock1d(nn.Module):
         num_features: int,
         bottleneck_channels: int,
         kernel_size: _size_1_t,
-        norm: nn.Module,
+        norm: Union[str, nn.Module] = "layer_norm",
         activation: Union[str, nn.Module, Callable[[torch.Tensor], torch.Tensor]] = "gelu",
         scale: Optional[float] = None,
     ) -> None:
@@ -131,6 +132,10 @@ class ConvNeXtBlock1d(nn.Module):
             kernel_size=kernel_size,
             groups=num_features,
         )
+
+        if isinstance(norm, str):
+            norm = _get_normalization(norm, num_features)
+
         self.norm = norm
         self.pointwise_conv1d_in = nn.Conv1d(num_features, bottleneck_channels, kernel_size=1)
 
@@ -175,3 +180,26 @@ class ConvNeXtBlock1d(nn.Module):
         output = x + residual
 
         return output
+
+
+def _get_normalization(
+    normalization: str,
+    num_features: int,
+    eps: float = 1e-5,
+) -> nn.Module:
+    """Get normalization module by str.
+
+    Args:
+        normalization (str): Name of normalization module.
+        eps (float): Tiny value to avoid zero division.
+
+    Returns:
+        nn.Module: Normalization module.
+
+    """
+    if normalization.lower() in ["layer", "layer_norm", "ln"]:
+        return nn.LayerNorm(num_features, eps=eps)
+    elif normalization.lower() == "rms":
+        return RMSNorm(num_features, eps=eps)
+
+    raise RuntimeError(f"normalization should be layer/rms, not {normalization}.")
