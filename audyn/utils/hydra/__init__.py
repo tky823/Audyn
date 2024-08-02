@@ -5,7 +5,7 @@ import hydra
 
 __all__ = ["main"]
 
-config_path = join(dirname(dirname(realpath(__file__))), "driver", "_conf_template")
+config_path = join(dirname(dirname(dirname(realpath(__file__)))), "configs")
 config_name = "config"
 
 
