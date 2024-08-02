@@ -50,7 +50,7 @@ from audyn.utils.modules import set_device
 
 IS_WINDOWS = sys.platform == "win32"
 
-config_template_path = join(dirname(realpath(audyn.__file__)), "utils", "driver", "_conf_template")
+config_template_path = join(dirname(realpath(audyn.__file__)), "configs")
 config_name = "config"
 
 
