@@ -98,6 +98,8 @@ class WaveNeXtVocoder(nn.Module):
 
         """
         (pre_kernel_size,) = self.pre_kernel_size
+        (post_kernel_size,) = self.post_kernel_size
+        (post_stride,) = self.post_stride
 
         padding = (pre_kernel_size - 1) // 2
         x = F.pad(input, (padding, padding))
@@ -109,8 +111,12 @@ class WaveNeXtVocoder(nn.Module):
         x = x.transpose(-2, -1)
         x = self.post_norm(x)
         x = x.transpose(-2, -1)
-        # TODO: padding for overlapping
-        output = self.post_conv1d(x)
+        x = self.post_conv1d(x)
+
+        trimming = post_kernel_size - post_stride
+        trimming_left = trimming // 2
+        trimming_right = trimming - trimming_left
+        output = F.pad(x, (-trimming_left, -trimming_right))
 
         return output
 
