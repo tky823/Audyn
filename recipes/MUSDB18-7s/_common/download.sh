@@ -27,5 +27,7 @@ else
     echo "${musdb18_7s_root} already exists."
 fi
 
-. ../_common/decode_mp4.sh \
---musdb18-root "${musdb18_7s_root}"
+audyn-decode-musdb18 \
+mp4_root="${musdb18_7s_root}" \
+wav_root="${musdb18_7s_root}" \
+subset="all"
