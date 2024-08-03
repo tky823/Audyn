@@ -83,10 +83,17 @@ def main(config: DictConfig) -> None:
         if subset is None:
             decode_folder(mp4_root, wav_root, chunk_size=chunk_size)
         else:
-            mp4_dir = os.path.join(mp4_root, subset)
-            wav_dir = os.path.join(wav_root, subset)
+            if subset == "all":
+                for _subset in ["train", "validation", "test"]:
+                    mp4_dir = os.path.join(mp4_root, _subset)
+                    wav_dir = os.path.join(wav_root, _subset)
 
-            decode_folder(mp4_dir, wav_dir, chunk_size=chunk_size)
+                    decode_folder(mp4_dir, wav_dir, chunk_size=chunk_size)
+            else:
+                mp4_dir = os.path.join(mp4_root, subset)
+                wav_dir = os.path.join(wav_root, subset)
+
+                decode_folder(mp4_dir, wav_dir, chunk_size=chunk_size)
 
 
 def decode_folder(mp4_dir: str, wav_dir: str, chunk_size: int = 4096) -> None:
@@ -95,6 +102,7 @@ def decode_folder(mp4_dir: str, wav_dir: str, chunk_size: int = 4096) -> None:
 
     for mp4_path in mp4_paths:
         track_name = os.path.basename(mp4_path)
+        track_name = track_name.replace(".stem.mp4", "")
         wav_path = os.path.join(wav_dir, track_name, "SOURCE.wav")
 
         decode_file(mp4_path, wav_path, chunk_size=chunk_size)
