@@ -103,6 +103,7 @@ def main(config: DictConfig) -> None:
 
                     if _subset == "validation":
                         mp4_dir = os.path.join(mp4_root, "train")
+                        wav_dir = os.path.join(wav_root, "train")
 
                     decode_folder(mp4_dir, wav_dir, subset=_subset, chunk_size=chunk_size)
             else:
@@ -111,6 +112,7 @@ def main(config: DictConfig) -> None:
 
                 if subset == "validation":
                     mp4_dir = os.path.join(mp4_root, "train")
+                    wav_dir = os.path.join(wav_root, "train")
 
                 decode_folder(mp4_dir, wav_dir, subset=subset, chunk_size=chunk_size)
 
