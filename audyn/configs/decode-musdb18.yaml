@@ -2,9 +2,10 @@ defaults:
   - config
   - _self_
 
-subset:
-
 mp4_root:
 wav_root:
 mp4_path:
 wav_path:
+
+subset:
+chunk_size: 4096
