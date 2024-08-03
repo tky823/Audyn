@@ -21,7 +21,7 @@ on:
         required: true
 jobs:
   package:
-    name: Run tests with pytest
+    name: Run package tests
     runs-on: ${{ inputs.os }}
     steps:
       - name: Checkout
