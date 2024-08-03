@@ -8,3 +8,8 @@ set -o pipefail
     . ./train.sh
     cd -
 )
+(
+    cd test_decode_musdb18/
+    . ./preprocess.sh
+    cd -
+)
