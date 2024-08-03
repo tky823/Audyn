@@ -1,6 +1,14 @@
 Commands
 ========
 
+Decode MUSDB18 ``.mp4`` to ``.wav``s
+-------------------------------------
+
+You can decode .stem.mp4 file(s) into .wav files for MUSDB18 dataset by ``audyn-decode-musdb18``.
+
+.. autofunction:: audyn.bin.decode_musdb18.main
+
+
 Download MTG-Jamendo dataset
 ----------------------------
 
