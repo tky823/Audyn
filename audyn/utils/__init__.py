@@ -567,41 +567,26 @@ def set_compiler_if_necessary(config: DictConfig) -> None:
     """
     from ._torch.compile import is_gpu_supported
 
-    if config.compile.enable is not None:
-        return
-
-    if config.accelerator is None:
+    if config.compile.enable is None:
         OmegaConf.update(
             config,
             "compile.enable",
             False,
         )
     else:
-        if config.accelerator == "cpu":
-            OmegaConf.update(
-                config,
-                "compile.enable",
-                True,
-            )
-        elif config.accelerator in ["gpu", "cuda"]:
-            if is_gpu_supported():
-                OmegaConf.update(
-                    config,
-                    "compile.enable",
-                    True,
+        if config.compile.enable and config.accelerator in ["gpu", "cuda"]:
+            if not is_gpu_supported():
+                warnings.warn(
+                    "Since torch.compile is not available on your device, "
+                    "we overwrite config.compile.enable=False.",
+                    UserWarning,
+                    stacklevel=2,
                 )
-            else:
                 OmegaConf.update(
                     config,
                     "compile.enable",
                     False,
                 )
-        else:
-            OmegaConf.update(
-                config,
-                "compile.enable",
-                False,
-            )
 
 
 def _search_webdataset_format_dataset(config: DictConfig) -> Tuple[str, Dict[str, Any]]:
