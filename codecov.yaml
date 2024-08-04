@@ -1,2 +1,2 @@
 ignore:
-  - "audyn/utils/torchhub"
+  - "audyn/utils/_torchhub"
