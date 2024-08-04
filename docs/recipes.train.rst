@@ -96,7 +96,7 @@ Use of ``torch.compile``
 ------------------------
 
 ``torch.compile`` optimizes training of models by TorchDynamo.
-By default, this feature is deactivated.
+By default, this feature is deactivated in ``Audyn``.
 To activate this feature, please set ``config.system.compile=true`` in your config.
 
 .. code-block:: yaml
@@ -105,5 +105,5 @@ To activate this feature, please set ``config.system.compile=true`` in your conf
     accelerator: ...
 
     compile:
-    enable: true
-    kwargs:  # keyword arguments fed to torch.compile
+        enable: true
+        kwargs:  # keyword arguments fed to torch.compile
