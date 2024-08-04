@@ -17,8 +17,8 @@ class MusicTaggingTransformerMelSpectrogram(aT.MelSpectrogram):
 
     def __init__(
         self,
-        sample_rate: int = 16000,
-        n_fft: int = 400,
+        sample_rate: int = 22050,
+        n_fft: int = 1024,
         win_length: Optional[int] = None,
         hop_length: Optional[int] = None,
         f_min: float = 0,
