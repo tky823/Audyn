@@ -51,6 +51,7 @@ __all__ = [
     "convert_dataset_and_dataloader_to_ddp_if_possible",
     "convert_dataset_and_dataloader_format_if_necessary",
     "set_nodes_if_necessary",
+    "set_compiler_if_necessary",
     "instantiate",
     "instantiate_model",
     "instantiate_gan_generator",
