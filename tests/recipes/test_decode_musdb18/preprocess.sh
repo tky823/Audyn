@@ -3,10 +3,15 @@
 set -eu
 set -o pipefail
 
-musdb18_7s_url="https://zenodo.org/api/files/1ff52183-071a-4a59-923f-7a31c4762d43/MUSDB18-7-STEMS.zip"
-data_root="../data"
+is_ffmpeg_available="$(python local/is_ffmpeg_available.py)"
 
-. ../../_common/parse_options.sh || exit 1;
+if [ "${is_ffmpeg_available}" = "False" ]; then
+    echo "FFmpeg is not available."
+    exit 0;
+fi
+
+musdb18_7s_url="https://zenodo.org/api/files/1ff52183-071a-4a59-923f-7a31c4762d43/MUSDB18-7-STEMS.zip"
+data_root="./data"
 
 musdb18_7s_filename=$(basename "${musdb18_7s_url}")
 musdb18_7s_root="${data_root}/MUSDB18-7s"
@@ -30,4 +35,4 @@ fi
 audyn-decode-musdb18 \
 mp4_root="${musdb18_7s_root}" \
 wav_root="${musdb18_7s_root}" \
-subset="all"
+subset="validation"

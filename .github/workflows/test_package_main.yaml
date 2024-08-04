@@ -21,7 +21,7 @@ on:
         required: true
 jobs:
   package:
-    name: Run tests with pytest
+    name: Run package tests
     runs-on: ${{ inputs.os }}
     steps:
       - name: Checkout
@@ -177,5 +177,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
-          cd tests/recipes/test_parse_run_command/
-          . ./train.sh
+          cd tests/recipes/
+          . ./test_all.sh

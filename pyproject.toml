@@ -20,7 +20,9 @@ dependencies = [
     "importlib_resources < 6.2; python_version == '3.8'",
     "omegaconf",
     "hydra-core",
-    "matplotlib",
+    # https://github.com/tky823/Audyn/pull/199#issuecomment-2267236196
+    "matplotlib < 3.9.1; sys_platform == 'win32'",
+    "matplotlib; sys_platform != 'win32'",
     "torch",
     "torchaudio",
     "torchtext",
@@ -57,6 +59,7 @@ tests = [
 
 [project.scripts]
 audyn-parse-run-command = "audyn.bin.parse_run_command:main"
+audyn-decode-musdb18 = "audyn.bin.decode_musdb18:main"
 audyn-download-mtg-jamando = "audyn.bin.download_mtg_jamendo:main"
 
 [tool.setuptools.dynamic]
