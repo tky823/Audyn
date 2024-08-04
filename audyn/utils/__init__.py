@@ -564,7 +564,7 @@ def set_compiler_if_necessary(config: DictConfig) -> None:
         This function may overwrite config.compile.
 
     """
-    from .torch.compile import is_gpu_supported
+    from ._torch.compile import is_gpu_supported
 
     if config.compile.enable is not None:
         return
