@@ -3,6 +3,13 @@
 set -eu
 set -o pipefail
 
+is_ffmpeg_available="$(python local/is_ffmpeg_available.py)"
+
+if [ "${is_ffmpeg_available}" = "False" ]; then
+    echo "FFmpeg is not available."
+    exit 0;
+fi
+
 musdb18_7s_url="https://zenodo.org/api/files/1ff52183-071a-4a59-923f-7a31c4762d43/MUSDB18-7-STEMS.zip"
 data_root="./data"
 
