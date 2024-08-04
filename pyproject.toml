@@ -20,7 +20,9 @@ dependencies = [
     "importlib_resources < 6.2; python_version == '3.8'",
     "omegaconf",
     "hydra-core",
-    "matplotlib",
+    # https://github.com/tky823/Audyn/pull/199#issuecomment-2267236196
+    "matplotlib < 3.9.1; sys_platform == 'win32'",
+    "matplotlib; sys_platform != 'win32'",
     "torch",
     "torchaudio",
     "torchtext",
