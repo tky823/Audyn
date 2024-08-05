@@ -77,7 +77,10 @@ def round_clip(
     if len(kwargs) > 0:
         x = torch.clamp(x, **kwargs)
 
-    output = torch.detach(x - input) + input
+    if torch.is_grad_enabled():
+        output = x
+    else:
+        output = torch.detach(x - input) + input
 
     return output
 
