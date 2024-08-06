@@ -502,11 +502,11 @@ class UnstructuredPatchout(Patchout):
         padding_mask = torch.zeros(
             (height * width,),
             dtype=torch.bool,
-            device=input.device,
         )
         padding_mask.scatter_(0, indices, True)
         padding_mask = padding_mask.view(height, width)
         keeping_mask = torch.logical_not(padding_mask)
+        keeping_mask = keeping_mask.to(input.device)
 
         return keeping_mask
 
@@ -558,7 +558,6 @@ class StructuredPatchout(Patchout):
         frequency_padding_mask = torch.zeros(
             (height,),
             dtype=torch.bool,
-            device=input.device,
         )
         frequency_padding_mask.scatter_(0, indices, True)
 
@@ -567,7 +566,6 @@ class StructuredPatchout(Patchout):
         time_padding_mask = torch.zeros(
             (width,),
             dtype=torch.bool,
-            device=input.device,
         )
         time_padding_mask.scatter_(0, indices, True)
 
@@ -575,6 +573,7 @@ class StructuredPatchout(Patchout):
             frequency_padding_mask.unsqueeze(dim=-1), time_padding_mask.unsqueeze(dim=-2)
         )
         keeping_mask = torch.logical_not(padding_mask)
+        keeping_mask = keeping_mask.to(input.device)
 
         return keeping_mask
 
