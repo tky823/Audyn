@@ -65,7 +65,7 @@ class MUSDB18(Dataset):
 
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         track_name = self.track_names[idx]
-        track = Track(self.root, track_name)
+        track = Track(self.root, track_name, ext=self.ext)
 
         return track
 
