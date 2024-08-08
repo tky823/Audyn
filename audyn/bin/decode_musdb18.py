@@ -171,7 +171,7 @@ def decode_file(mp4_path: str, wav_path: str, frames_per_chunk: int = 44100) -> 
 
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_mp4_path = os.path.join(temp_dir, "raw.stem.mp4")
-        temp_wav_path = os.path.join(temp_dir, "SOURCE.mp4")
+        temp_wav_path = os.path.join(temp_dir, "SOURCE.wav")
 
         shutil.copy2(mp4_path, temp_mp4_path)
 
