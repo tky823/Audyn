@@ -21,10 +21,23 @@ class MUSDB18(Dataset):
     Args:
         root (str): Root of MUSDB18 dataset.
         subset (str): ``train``, ``validation``, or ``test``.
+        ext (str): Extension of audio files. ``wav`` and ``mp4`` are supported.
+            Default: ``mp4``.
 
     .. note::
 
-        We assume following structure.
+        We assume following structure when ``ext=wav``
+
+        .. code-block:: shell
+
+            - root/  # typically MUSDB18, MUSDB18-HQ, MUSDB18-7s
+                |- train/
+                    |- A Classic Education - NightOwl.mp4
+                    ...
+                |- test/
+                    ...
+
+        We assume following structure when ``ext=wav``
 
         .. code-block:: shell
 
