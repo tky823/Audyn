@@ -8,4 +8,4 @@ mp4_path:
 wav_path:
 
 subset:
-chunk_size: 4096
+frames_per_chunk: 44100
