@@ -1,4 +1,5 @@
 import os
+import warnings
 from typing import Any, Dict, Iterator, Optional, Tuple
 
 import torch
@@ -99,13 +100,13 @@ class MUSDB18(Dataset):
                     path = os.path.join(root, subset_dir, filename)
 
                     if not os.path.exists(path):
-                        raise FileNotFoundError(f"{path} is not found.")
+                        warnings.warn(f"{path} is not found.", UserWarning, stacklevel=2)
             elif self.ext in ["mp4", "stem.mp4", ".mp4", ".stem.mp4"]:
                 filename = f"{track_name}.stem.mp4"
                 path = os.path.join(root, subset_dir, filename)
 
                 if not os.path.exists(path):
-                    raise FileNotFoundError(f"{path} is not found.")
+                    warnings.warn(f"{path} is not found.", UserWarning, stacklevel=2)
             else:
                 raise ValueError(f"{self.ext} is not supported as extension.")
 
