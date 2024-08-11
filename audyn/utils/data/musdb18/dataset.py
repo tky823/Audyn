@@ -1,6 +1,6 @@
 import os
 import warnings
-from typing import Any, Dict, Iterator, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import torch
 import torchaudio
@@ -72,10 +72,9 @@ class MUSDB18(Dataset):
 
         self.root = root
         self.subset = subset
-        self.track_names = track_names
         self.ext = ext
 
-        self._validate_tracks()
+        self.track_names = self._validate_tracks(track_names)
 
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         track_name = self.track_names[idx]
@@ -86,29 +85,42 @@ class MUSDB18(Dataset):
     def __len__(self) -> int:
         return len(self.track_names)
 
-    def _validate_tracks(self) -> None:
+    def _validate_tracks(self, track_names: List[str]) -> List[str]:
         from . import sources
 
         root = self.root
 
         subset_dir = "test" if self.subset == "test" else "train"
+        existing_track_names = []
 
-        for track_name in self.track_names:
+        for track_name in track_names:
+            existing = True
+
             if self.ext in ["wav", ".wav"]:
                 for source in ["mixture"] + sources:
                     filename = f"{track_name}/{source}.wav"
                     path = os.path.join(root, subset_dir, filename)
 
                     if not os.path.exists(path):
+                        existing = False
                         warnings.warn(f"{path} is not found.", UserWarning, stacklevel=2)
             elif self.ext in ["mp4", "stem.mp4", ".mp4", ".stem.mp4"]:
                 filename = f"{track_name}.stem.mp4"
                 path = os.path.join(root, subset_dir, filename)
 
                 if not os.path.exists(path):
+                    existing = False
                     warnings.warn(f"{path} is not found.", UserWarning, stacklevel=2)
             else:
                 raise ValueError(f"{self.ext} is not supported as extension.")
+
+            if existing:
+                existing_track_names.append(track_name)
+
+        if len(existing_track_names) == 0:
+            raise RuntimeError("There are no tracks.")
+
+        return existing_track_names
 
 
 class StemsMUSDB18Dataset(Dataset):
