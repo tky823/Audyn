@@ -1,6 +1,7 @@
 import os
 import shutil
 import uuid
+import zipfile
 from urllib.request import Request, urlopen
 
 from omegaconf import DictConfig
@@ -41,10 +42,14 @@ def main(config: DictConfig) -> None:
 def download_musdb18(config: DictConfig) -> None:
     _type = config.type
     root = config.root
+    unpack = config.unpack
     chunk_size = config.chunk_size
 
     if _type is None:
         _type = "default"
+
+    if unpack is None:
+        unpack = True
 
     if chunk_size is None:
         chunk_size = 1024
@@ -60,10 +65,20 @@ def download_musdb18(config: DictConfig) -> None:
 
     filename = os.path.basename(url)
     path = os.path.join(root, filename)
-    temp_path = path + str(uuid.uuid4())[:8]
 
     if root:
         os.makedirs(root, exist_ok=True)
+
+    if not os.path.exists(path):
+        _download_musdb18(url, path, chunk_size=chunk_size)
+
+    if unpack:
+        _unpack_zip(path)
+
+
+def _download_musdb18(url: str, path: str, chunk_size: int = 1024) -> None:
+    filename = os.path.basename(url)
+    temp_path = path + str(uuid.uuid4())[:8]
 
     request = Request(url)
 
@@ -83,6 +98,13 @@ def download_musdb18(config: DictConfig) -> None:
             os.remove(temp_path)
 
         raise e
+
+
+def _unpack_zip(path: str) -> None:
+    zip_root = os.path.dirname(path)
+
+    with zipfile.ZipFile(path) as f:
+        f.extractall(zip_root)
 
 
 if __name__ == "__main__":
