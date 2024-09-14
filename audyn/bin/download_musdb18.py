@@ -27,12 +27,12 @@ def main(config: DictConfig) -> None:
         # type="hq"  # for MUSDB18-HQ
         # type="7s"  # for MUSDB18-7s
 
-        musdb18_root="./MUSDB18"  # root directory to save dataset
+        data_root="./data"  # root directory to save dataset
         chunk_size=1024  # chunk size in byte to download
 
         audyn-download-musdb18 \
         type="${type}" \
-        root="${musdb18_root}" \
+        root="${data_root}" \
         chunk_size=${chunk_size}
 
     """
@@ -101,10 +101,15 @@ def _download_musdb18(url: str, path: str, chunk_size: int = 1024) -> None:
 
 
 def _unpack_zip(path: str) -> None:
-    zip_root = os.path.dirname(path)
+    root = os.path.dirname(path)
+    filename = os.path.basename(path)
+    filename, _ = os.path.splitext(filename)
+    musdb18_root = os.path.join(root, filename)
+
+    os.makedirs(musdb18_root, exist_ok=True)
 
     with zipfile.ZipFile(path) as f:
-        f.extractall(zip_root)
+        f.extractall(musdb18_root)
 
 
 if __name__ == "__main__":
