@@ -1,0 +1,7 @@
+defaults:
+  - config
+  - _self_
+
+type:
+root: ???
+chunk_size:
