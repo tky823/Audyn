@@ -66,7 +66,7 @@ def download_mtg_jamendo(config: DictConfig) -> None:
         raise ValueError("Set root directory.")
 
     if chunk_size is None:
-        chunk_size = 1024
+        chunk_size = 8192
 
     if root:
         os.makedirs(root, exist_ok=True)
