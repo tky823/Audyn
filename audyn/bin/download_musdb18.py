@@ -2,6 +2,7 @@ import os
 import shutil
 import uuid
 import zipfile
+from typing import Optional
 from urllib.request import Request, urlopen
 
 from omegaconf import DictConfig
@@ -27,12 +28,14 @@ def main(config: DictConfig) -> None:
         # type="hq"  # for MUSDB18-HQ
         # type="7s"  # for MUSDB18-7s
 
-        data_root="./data"  # root directory to save dataset
-        chunk_size=1024  # chunk size in byte to download
+        data_root="./data"  # root directory to save .zip file.
+        musdb18_root="${data_root}/MUSDB18"
+        chunk_size=8192  # chunk size in byte to download
 
         audyn-download-musdb18 \
         type="${type}" \
         root="${data_root}" \
+        musdb18_root="${musdb18_root}" \
         chunk_size=${chunk_size}
 
     """
@@ -42,6 +45,7 @@ def main(config: DictConfig) -> None:
 def download_musdb18(config: DictConfig) -> None:
     _type = config.type
     root = config.root
+    musdb18_root = config.musdb18_root
     unpack = config.unpack
     chunk_size = config.chunk_size
 
@@ -52,7 +56,7 @@ def download_musdb18(config: DictConfig) -> None:
         unpack = True
 
     if chunk_size is None:
-        chunk_size = 1024
+        chunk_size = 8192
 
     if _type == "default":
         url = "https://zenodo.org/records/1117372/files/musdb18.zip"
@@ -73,7 +77,7 @@ def download_musdb18(config: DictConfig) -> None:
         _download_musdb18(url, path, chunk_size=chunk_size)
 
     if unpack:
-        _unpack_zip(path)
+        _unpack_zip(path, musdb18_root=musdb18_root)
 
 
 def _download_musdb18(url: str, path: str, chunk_size: int = 1024) -> None:
@@ -100,11 +104,13 @@ def _download_musdb18(url: str, path: str, chunk_size: int = 1024) -> None:
         raise e
 
 
-def _unpack_zip(path: str) -> None:
+def _unpack_zip(path: str, musdb18_root: Optional[str] = None) -> None:
     root = os.path.dirname(path)
-    filename = os.path.basename(path)
-    filename, _ = os.path.splitext(filename)
-    musdb18_root = os.path.join(root, filename)
+
+    if musdb18_root is None:
+        filename = os.path.basename(path)
+        filename, _ = os.path.splitext(filename)
+        musdb18_root = os.path.join(root, filename)
 
     os.makedirs(musdb18_root, exist_ok=True)
 

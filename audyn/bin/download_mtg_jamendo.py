@@ -25,7 +25,7 @@ def main(config: DictConfig) -> None:
         server_type="mirror"  # or "origin"
         quality="raw"  # or "low"
         output="./MTG-Jamendo/raw"  # output directory to store
-        chunk_size=1024  # chunk size in byte to download
+        chunk_size=8192  # chunk size in byte to download
 
         audyn-download-mtg-jamando \
         server_type="${server_type}" \

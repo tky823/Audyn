@@ -4,5 +4,6 @@ defaults:
 
 type:
 root: ???
+musdb18_root:
 unpack:
 chunk_size:
