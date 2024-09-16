@@ -4,5 +4,5 @@ defaults:
 
 quality: raw
 server_type: mirror
-output:
+root: ???
 chunk_size:
