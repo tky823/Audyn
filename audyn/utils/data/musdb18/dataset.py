@@ -27,7 +27,7 @@ class MUSDB18(Dataset):
 
     .. note::
 
-        We assume following structure when ``ext=wav``
+        We assume following structure when ``ext=mp4``
 
         .. code-block:: shell
 
