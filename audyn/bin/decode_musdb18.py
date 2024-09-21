@@ -66,6 +66,10 @@ def main(config: DictConfig) -> None:
         subset="${subset}"
 
     """
+    decode_musdb18(config)
+
+
+def decode_musdb18(config: DictConfig) -> None:
     frames_per_chunk = config.frames_per_chunk
 
     if config.mp4_root is None:
