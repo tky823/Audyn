@@ -1,9 +1,11 @@
 import os
-from typing import Any, Dict, Iterator, Optional, Tuple
+import warnings
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import torch
 import torchaudio
 from torch.utils.data import Dataset, IterableDataset, RandomSampler, get_worker_info
+from torchaudio.io import StreamReader
 
 from .sampler import RandomStemsMUSDB18Sampler
 
@@ -20,10 +22,23 @@ class MUSDB18(Dataset):
     Args:
         root (str): Root of MUSDB18 dataset.
         subset (str): ``train``, ``validation``, or ``test``.
+        ext (str): Extension of audio files. ``wav`` and ``mp4`` are supported.
+            Default: ``mp4``.
 
     .. note::
 
-        We assume following structure.
+        We assume following structure when ``ext=mp4``
+
+        .. code-block:: shell
+
+            - root/  # typically MUSDB18, MUSDB18-HQ, MUSDB18-7s
+                |- train/
+                    |- A Classic Education - NightOwl.mp4
+                    ...
+                |- test/
+                    ...
+
+        We assume following structure when ``ext=wav``
 
         .. code-block:: shell
 
@@ -41,7 +56,7 @@ class MUSDB18(Dataset):
 
     """
 
-    def __init__(self, root: str, subset: str) -> None:
+    def __init__(self, root: str, subset: str, ext: str = "mp4") -> None:
         from . import test_track_names, train_track_names, validation_track_names
 
         super().__init__()
@@ -57,33 +72,55 @@ class MUSDB18(Dataset):
 
         self.root = root
         self.subset = subset
-        self.track_names = track_names
+        self.ext = ext
 
-        self._validate_tracks()
+        self.track_names = self._validate_tracks(track_names)
 
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         track_name = self.track_names[idx]
-        track = Track(self.root, track_name)
+        track = Track(self.root, track_name, ext=self.ext)
 
         return track
 
     def __len__(self) -> int:
         return len(self.track_names)
 
-    def _validate_tracks(self) -> None:
+    def _validate_tracks(self, track_names: List[str]) -> List[str]:
         from . import sources
 
         root = self.root
 
         subset_dir = "test" if self.subset == "test" else "train"
+        existing_track_names = []
 
-        for track_name in self.track_names:
-            for source in ["mixture"] + sources:
-                filename = f"{track_name}/{source}.wav"
+        for track_name in track_names:
+            existing = True
+
+            if self.ext in ["wav", ".wav"]:
+                for source in ["mixture"] + sources:
+                    filename = f"{track_name}/{source}.wav"
+                    path = os.path.join(root, subset_dir, filename)
+
+                    if not os.path.exists(path):
+                        existing = False
+                        warnings.warn(f"{path} is not found.", UserWarning, stacklevel=2)
+            elif self.ext in ["mp4", "stem.mp4", ".mp4", ".stem.mp4"]:
+                filename = f"{track_name}.stem.mp4"
                 path = os.path.join(root, subset_dir, filename)
 
                 if not os.path.exists(path):
-                    raise FileNotFoundError(f"{path} is not found.")
+                    existing = False
+                    warnings.warn(f"{path} is not found.", UserWarning, stacklevel=2)
+            else:
+                raise ValueError(f"{self.ext} is not supported as extension.")
+
+            if existing:
+                existing_track_names.append(track_name)
+
+        if len(existing_track_names) == 0:
+            raise RuntimeError("There are no tracks.")
+
+        return existing_track_names
 
 
 class StemsMUSDB18Dataset(Dataset):
@@ -480,7 +517,22 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
 
 
 class Track:
-    def __init__(self, root: str, name: str) -> None:
+    """Music track for MUSDB18 dataset.
+
+    Args:
+        root (str): Root directory of dataset.
+        name (str): Track name. e.g. ``A Classic Education - NightOwl``.
+        ext (str): Extension to load file. ``mp4`` and ``wav`` are supported.
+            Default: ``mp4``.
+
+    """
+
+    def __init__(
+        self,
+        root: str,
+        name: str,
+        ext: str = "mp4",
+    ) -> None:
         from . import test_track_names, train_track_names, validation_track_names
 
         if name in train_track_names:
@@ -495,6 +547,7 @@ class Track:
         self._root = root
         self._subset = _subset
         self._name = name
+        self._ext = ext
 
         self._frame_offset = 0
         self._num_frames = -1
@@ -524,13 +577,15 @@ class Track:
         root = self._root
         subset = self._subset
         name = self.name
-        filename = f"{name}/mixture.wav"
-        path = os.path.join(root, subset, filename)
 
-        waveform, sample_rate = torchaudio.load(
-            path,
+        waveform, sample_rate = _load_single_stream(
+            root,
+            subset,
+            name,
+            instrument="mixture",
             frame_offset=self.frame_offset,
             num_frames=self.num_frames,
+            ext=self._ext,
         )
 
         return waveform, sample_rate
@@ -540,13 +595,15 @@ class Track:
         root = self._root
         subset = self._subset
         name = self.name
-        filename = f"{name}/drums.wav"
-        path = os.path.join(root, subset, filename)
 
-        waveform, sample_rate = torchaudio.load(
-            path,
+        waveform, sample_rate = _load_single_stream(
+            root,
+            subset,
+            name,
+            instrument="drums",
             frame_offset=self.frame_offset,
             num_frames=self.num_frames,
+            ext=self._ext,
         )
 
         return waveform, sample_rate
@@ -556,13 +613,15 @@ class Track:
         root = self._root
         subset = self._subset
         name = self.name
-        filename = f"{name}/bass.wav"
-        path = os.path.join(root, subset, filename)
 
-        waveform, sample_rate = torchaudio.load(
-            path,
+        waveform, sample_rate = _load_single_stream(
+            root,
+            subset,
+            name,
+            instrument="bass",
             frame_offset=self.frame_offset,
             num_frames=self.num_frames,
+            ext=self._ext,
         )
 
         return waveform, sample_rate
@@ -572,13 +631,15 @@ class Track:
         root = self._root
         subset = self._subset
         name = self.name
-        filename = f"{name}/other.wav"
-        path = os.path.join(root, subset, filename)
 
-        waveform, sample_rate = torchaudio.load(
-            path,
+        waveform, sample_rate = _load_single_stream(
+            root,
+            subset,
+            name,
+            instrument="other",
             frame_offset=self.frame_offset,
             num_frames=self.num_frames,
+            ext=self._ext,
         )
 
         return waveform, sample_rate
@@ -588,13 +649,15 @@ class Track:
         root = self._root
         subset = self._subset
         name = self.name
-        filename = f"{name}/vocals.wav"
-        path = os.path.join(root, subset, filename)
 
-        waveform, sample_rate = torchaudio.load(
-            path,
+        waveform, sample_rate = _load_single_stream(
+            root,
+            subset,
+            name,
+            instrument="vocals",
             frame_offset=self.frame_offset,
             num_frames=self.num_frames,
+            ext=self._ext,
         )
 
         return waveform, sample_rate
@@ -611,13 +674,14 @@ class Track:
         sample_rate = None
 
         for instrument in accompaniments:
-            filename = f"{name}/{instrument}.wav"
-            path = os.path.join(root, subset, filename)
-
-            _waveform, _sample_rate = torchaudio.load(
-                path,
+            _waveform, _sample_rate = _load_single_stream(
+                root,
+                subset,
+                name,
+                instrument=instrument,
                 frame_offset=self.frame_offset,
                 num_frames=self.num_frames,
+                ext=self._ext,
             )
 
             if sample_rate is None:
@@ -641,11 +705,14 @@ class Track:
         sample_rate = None
 
         for source in ["mixture"] + sources:
-            filename = f"{name}/{source}.wav"
-            path = os.path.join(root, subset, filename)
-
-            _waveform, _sample_rate = torchaudio.load(
-                path, frame_offset=self.frame_offset, num_frames=self.num_frames
+            _waveform, _sample_rate = _load_single_stream(
+                root,
+                subset,
+                name,
+                instrument=source,
+                frame_offset=self.frame_offset,
+                num_frames=self.num_frames,
+                ext=self._ext,
             )
 
             if sample_rate is None:
@@ -658,3 +725,67 @@ class Track:
         waveform = torch.stack(waveform, dim=0)
 
         return waveform, sample_rate
+
+
+def _load_single_stream(
+    root: str,
+    subset: str,
+    name: str,
+    instrument: str,
+    frame_offset: int = 0,
+    num_frames: int = -1,
+    ext: str = "mp4",
+) -> Tuple[torch.Tensor, int]:
+    from . import sources
+
+    streams = ["mixture"] + sources
+
+    if ext in ["wav", ".wav"]:
+        filename = f"{name}/{instrument}.wav"
+        path = os.path.join(root, subset, filename)
+
+        waveform, sample_rate = torchaudio.load(
+            path,
+            frame_offset=frame_offset,
+            num_frames=num_frames,
+        )
+    elif ext in ["mp4", ".mp4", "stem.mp4", ".stem.mp4"]:
+        filename = f"{name}.stem.mp4"
+        stream_idx = streams.index(instrument)
+        path = os.path.join(root, subset, filename)
+        reader = StreamReader(path)
+        stream_info = reader.get_src_stream_info(stream_idx)
+        sample_rate = stream_info.sample_rate
+        timestamp = frame_offset / sample_rate
+
+        assert sample_rate == 44100
+
+        sample_rate = int(sample_rate)
+
+        if num_frames < 0:
+            reader.add_audio_stream(
+                frames_per_chunk=sample_rate,
+                stream_index=stream_idx,
+            )
+
+            waveform = []
+
+            for (chunk,) in reader.stream():
+                waveform.append(chunk)
+
+            waveform = torch.cat(waveform, dim=0)
+        else:
+            reader.add_audio_stream(
+                frames_per_chunk=sample_rate,
+                stream_index=stream_idx,
+            )
+            reader.seek(timestamp)
+            reader.fill_buffer()
+            (waveform,) = reader.pop_chunks()
+
+        waveform = waveform.permute(1, 0)
+        waveform = waveform.contiguous()
+    else:
+        raise ValueError(f"{ext} is not supported as extension.")
+
+    return waveform, sample_rate

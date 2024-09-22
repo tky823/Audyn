@@ -66,7 +66,11 @@ def main(config: DictConfig) -> None:
         subset="${subset}"
 
     """
-    chunk_size = config.chunk_size
+    decode_musdb18(config)
+
+
+def decode_musdb18(config: DictConfig) -> None:
+    frames_per_chunk = config.frames_per_chunk
 
     if config.mp4_root is None:
         assert config.wav_root is None
@@ -79,7 +83,7 @@ def main(config: DictConfig) -> None:
         else:
             wav_path = config.wav_path
 
-        decode_file(mp4_path, wav_path, chunk_size=chunk_size)
+        decode_file(mp4_path, wav_path, frames_per_chunk=frames_per_chunk)
     else:
         assert config.mp4_path is None
         assert config.wav_path is None
@@ -94,7 +98,7 @@ def main(config: DictConfig) -> None:
         subset = config.subset
 
         if subset is None:
-            decode_folder(mp4_root, wav_root, chunk_size=chunk_size)
+            decode_folder(mp4_root, wav_root, frames_per_chunk=frames_per_chunk)
         else:
             if subset == "all":
                 for _subset in ["train", "validation", "test"]:
@@ -105,7 +109,9 @@ def main(config: DictConfig) -> None:
                         mp4_dir = os.path.join(mp4_root, "train")
                         wav_dir = os.path.join(wav_root, "train")
 
-                    decode_folder(mp4_dir, wav_dir, subset=_subset, chunk_size=chunk_size)
+                    decode_folder(
+                        mp4_dir, wav_dir, subset=_subset, frames_per_chunk=frames_per_chunk
+                    )
             else:
                 mp4_dir = os.path.join(mp4_root, subset)
                 wav_dir = os.path.join(wav_root, subset)
@@ -114,11 +120,11 @@ def main(config: DictConfig) -> None:
                     mp4_dir = os.path.join(mp4_root, "train")
                     wav_dir = os.path.join(wav_root, "train")
 
-                decode_folder(mp4_dir, wav_dir, subset=subset, chunk_size=chunk_size)
+                decode_folder(mp4_dir, wav_dir, subset=subset, frames_per_chunk=frames_per_chunk)
 
 
 def decode_folder(
-    mp4_dir: str, wav_dir: str, subset: Optional[str] = None, chunk_size: int = 4096
+    mp4_dir: str, wav_dir: str, subset: Optional[str] = None, frames_per_chunk: int = 4096
 ) -> None:
     """Decode .stem.mp4 files under and encode them as .wav files under wav_dir."""
     mp4_paths = sorted(glob.glob(os.path.join(mp4_dir, "*.stem.mp4")))
@@ -154,13 +160,13 @@ def decode_folder(
         mp4_path = os.path.join(mp4_dir, f"{track_name}.stem.mp4")
         wav_path = os.path.join(wav_dir, track_name, "SOURCE.wav")
 
-        decode_file(mp4_path, wav_path, chunk_size=chunk_size)
+        decode_file(mp4_path, wav_path, frames_per_chunk=frames_per_chunk)
 
     if IS_TQDM_AVAILABLE:
         pbar.close()
 
 
-def decode_file(mp4_path: str, wav_path: str, chunk_size: int = 4096) -> None:
+def decode_file(mp4_path: str, wav_path: str, frames_per_chunk: int = 44100) -> None:
     """Decode .stem.mp4 file and encode it as .wav files."""
     track_dir = os.path.dirname(wav_path)
 
@@ -169,7 +175,7 @@ def decode_file(mp4_path: str, wav_path: str, chunk_size: int = 4096) -> None:
 
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_mp4_path = os.path.join(temp_dir, "raw.stem.mp4")
-        temp_wav_path = os.path.join(temp_dir, "SOURCE.mp4")
+        temp_wav_path = os.path.join(temp_dir, "SOURCE.wav")
 
         shutil.copy2(mp4_path, temp_mp4_path)
 
@@ -185,10 +191,9 @@ def decode_file(mp4_path: str, wav_path: str, chunk_size: int = 4096) -> None:
 
             sample_rate = int(sample_rate)
 
-            reader.add_basic_audio_stream(
-                frames_per_chunk=chunk_size,
+            reader.add_audio_stream(
+                frames_per_chunk=frames_per_chunk,
                 stream_index=stream_idx,
-                format=None,
             )
             writer.add_audio_stream(
                 sample_rate=sample_rate,

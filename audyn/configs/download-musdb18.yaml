@@ -2,7 +2,8 @@ defaults:
   - config
   - _self_
 
-quality: raw
-server_type: mirror
+type:
 root: ???
+musdb18_root:
+unpack:
 chunk_size:

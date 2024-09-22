@@ -26,7 +26,8 @@ def test_musdb18() -> None:
 
     with tempfile.TemporaryDirectory() as temp_dir:
         _save_dummy_musdb18(root=temp_dir, num_frames=num_frames)
-        dataset = MUSDB18(temp_dir, subset="train")
+
+        dataset = MUSDB18(temp_dir, subset="train", ext="wav")
 
         for track in dataset:
             track.frame_offset = num_frames // 4

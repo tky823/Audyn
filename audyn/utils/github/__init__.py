@@ -20,7 +20,7 @@ def download_file_from_github_release(
     url: str,
     path: str,
     force_download: bool = False,
-    chunk_size: int = 1024,
+    chunk_size: int = 8192,
 ) -> None:
     """Download file from github release.
 
