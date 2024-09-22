@@ -2,10 +2,12 @@ import os
 import tempfile
 
 import pytest
+from dummy import allclose
 from omegaconf import OmegaConf
 
 from audyn.bin.decode_musdb18 import decode_musdb18
 from audyn.bin.download_musdb18 import download_musdb18
+from audyn.utils.data.musdb18.dataset import MUSDB18, Track
 
 
 @pytest.mark.slow
@@ -36,3 +38,14 @@ def test_download_musdb18_7s() -> None:
             }
         )
         decode_musdb18(config)
+
+        wav_dataset = MUSDB18(musdb18_dir, subset=subset, ext="wav")
+        mp4_dataset = MUSDB18(musdb18_dir, subset=subset, ext="mp4")
+
+        for wav_track, mp4_track in zip(wav_dataset, mp4_dataset):
+            wav_track: Track
+            mp4_track: Track
+            waveform_wav, _ = wav_track.stems
+            waveform_mp4, _ = mp4_track.stems
+
+            allclose(waveform_wav, waveform_mp4, atol=1e-4)
