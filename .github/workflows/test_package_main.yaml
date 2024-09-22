@@ -92,25 +92,25 @@ jobs:
         run: |
           pytest -vvv tests/torchhub/
       - name: Pytest for releasing package (Windows)
-        if: ${{ inputs.os == 'windows-latest' }} && ${{ startsWith(github.head_ref, 'release/') }}
+        if: inputs.os == 'windows-latest' && startsWith(github.head_ref, 'release/')
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
           pytest -vvv --runslow --cov=audyn/ --cov-report=xml -p no:faulthandler tests/package/
       - name: Pytest for updating package (Windows)
-        if: ${{ inputs.os == 'windows-latest' }} && ${{ ! startsWith(github.head_ref, 'release/') }}
+        if: inputs.os == 'windows-latest' && ${{ ! startsWith(github.head_ref, 'release/') }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
           pytest -vvv --cov=audyn/ --cov-report=xml -p no:faulthandler tests/package/
       - name: Pytest for releasing package (Ubuntu & MacOS)
-        if: ${{ inputs.os != 'windows-latest' }} && ${{ startsWith(github.head_ref, 'release/') }}
+        if: inputs.os != 'windows-latest' && startsWith(github.head_ref, 'release/')
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
           pytest -vvv --runslow --cov=audyn/ --cov-report=xml tests/package/
       - name: Pytest for updating package (Ubuntu & MacOS)
-        if: ${{ inputs.os != 'windows-latest' }} && ${{ ! startsWith(github.head_ref, 'release/') }}
+        if: inputs.os != 'windows-latest' && ${{ ! startsWith(github.head_ref, 'release/') }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
