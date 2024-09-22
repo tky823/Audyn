@@ -30,6 +30,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ inputs.python-version }}
+      - name: Pytest (run all tests including slow ones)
       - name: Install dependencies (Ubuntu)
         if: inputs.os == 'ubuntu-latest'
         run: |
@@ -90,15 +91,26 @@ jobs:
           GITHUB_HEAD_REF: ${{ github.head_ref }}
         run: |
           pytest -vvv tests/torchhub/
-      - name: Pytest for package (Windows)
-        id: windows_pytest
-        if: inputs.os == 'windows-latest'
+      - name: Pytest for releasing package (Windows)
+        if: ${{ inputs.os == 'windows-latest' }} && ${{ startsWith(github.head_ref, 'release/') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: |
+          pytest -vvv --runslow --cov=audyn/ --cov-report=xml -p no:faulthandler tests/package/
+      - name: Pytest for updating package (Windows)
+        if: ${{ inputs.os == 'windows-latest' }} && ${{ ! startsWith(github.head_ref, 'release/') }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
           pytest -vvv --cov=audyn/ --cov-report=xml -p no:faulthandler tests/package/
       - name: Pytest for package (Ubuntu & MacOS)
-        if: steps.windows_pytest.conclusion == 'skipped'
+        if: ${{ inputs.os != 'windows-latest' }} && ${{ startsWith(github.head_ref, 'release/') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: |
+          pytest -vvv --runslow --cov=audyn/ --cov-report=xml tests/package/
+      - name: Pytest for package (Ubuntu & MacOS)
+        if: ${{ inputs.os != 'windows-latest' }} && ${{ ! startsWith(github.head_ref, 'release/') }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
