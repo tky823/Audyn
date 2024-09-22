@@ -30,7 +30,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ inputs.python-version }}
-      - name: Pytest (run all tests including slow ones)
       - name: Install dependencies (Ubuntu)
         if: inputs.os == 'ubuntu-latest'
         run: |
