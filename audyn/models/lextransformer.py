@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from packaging import version
 
 from ..modules.activation import ExtrapolatablePositionalMultiheadAttention
-from .roformer import _get_activation
+from ..modules.transformer import get_activation
 
 __all__ = [
     "LEXTransformerEncoder",
@@ -164,7 +164,7 @@ class LEXTransformerEncoderLayer(nn.Module):
         self.dropout2 = nn.Dropout(dropout)
 
         if isinstance(activation, str):
-            activation = _get_activation(activation)
+            activation = get_activation(activation)
 
         if activation is F.relu or isinstance(activation, nn.ReLU):
             self.activation_relu_or_gelu = 1
@@ -328,7 +328,7 @@ class LEXTransformerDecoderLayer(nn.Module):
         self.dropout3 = nn.Dropout(dropout)
 
         if isinstance(activation, str):
-            activation = _get_activation(activation)
+            activation = get_activation(activation)
 
         self.activation = activation
 

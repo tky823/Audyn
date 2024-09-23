@@ -12,7 +12,7 @@ import torch.nn.functional as F
 from torch.nn.common_types import _size_1_t
 from torch.nn.modules.utils import _single
 
-from ..models.roformer import _get_activation
+from ..modules.transformer import get_activation
 from .normalization import RMSNorm
 
 __all__ = [
@@ -140,7 +140,7 @@ class ConvNeXtBlock1d(nn.Module):
         self.pointwise_conv1d_in = nn.Conv1d(num_features, bottleneck_channels, kernel_size=1)
 
         if isinstance(activation, str):
-            activation = _get_activation(activation)
+            activation = get_activation(activation)
 
         self.activation = activation
         self.pointwise_conv1d_out = nn.Conv1d(bottleneck_channels, num_features, kernel_size=1)
