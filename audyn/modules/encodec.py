@@ -7,6 +7,8 @@ from packaging import version
 from torch.nn.common_types import _size_1_t
 from torch.nn.modules.utils import _single
 
+from .transformer import get_activation
+
 __all__ = ["EncoderBlock", "DecoderBlock", "ResidualUnit1d"]
 
 IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
@@ -53,7 +55,7 @@ class EncoderBlock(nn.Module):
         kernel_size_out = 2 * stride_out
 
         if isinstance(activation, str):
-            activation = _get_activation(activation)
+            activation = get_activation(activation)
 
         self.nonlinear1d = activation
         self.conv1d = nn.Conv1d(
@@ -138,7 +140,7 @@ class DecoderBlock(nn.Module):
         kernel_size_in = 2 * stride_in
 
         if isinstance(activation, str):
-            activation = _get_activation(activation)
+            activation = get_activation(activation)
 
         self.nonlinear1d = activation
         self.conv1d = nn.ConvTranspose1d(
@@ -242,8 +244,8 @@ class ResidualUnit1d(nn.Module):
         assert kernel_size[0] % 2 == 1, "kernel_size should be odd number."
 
         if isinstance(activation, str):
-            activation_in = _get_activation(activation)
-            activation_out = _get_activation(activation)
+            activation_in = get_activation(activation)
+            activation_out = get_activation(activation)
         else:
             activation_in = activation
             activation_out = activation
@@ -307,23 +309,3 @@ class ResidualUnit1d(nn.Module):
 
         self.registered_weight_norms.add("conv1d_in")
         self.registered_weight_norms.add("conv1d_out")
-
-
-def _get_activation(activation: str) -> nn.Module:
-    """Get activation module by str.
-
-    Args:
-        activation (str): Name of activation module.
-
-    Returns:
-        nn.Module: Activation module.
-
-    """
-    if activation == "relu":
-        return nn.ReLU()
-    elif activation == "gelu":
-        return nn.GELU()
-    elif activation == "elu":
-        return nn.ELU()
-
-    raise RuntimeError(f"activation should be relu/gelu/elu, not {activation}")

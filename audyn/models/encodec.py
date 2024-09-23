@@ -7,7 +7,8 @@ from packaging import version
 from torch.nn.common_types import _size_1_t
 from torch.nn.modules.utils import _single
 
-from ..modules.encodec import DecoderBlock, EncoderBlock, _get_activation
+from ..modules.encodec import DecoderBlock, EncoderBlock
+from ..modules.transformer import get_activation
 from .rvqvae import RVQVAE
 
 __all__ = [
@@ -210,7 +211,7 @@ class Encoder(nn.Module):
             )
 
         if isinstance(activation, str):
-            activation = _get_activation(activation)
+            activation = get_activation(activation)
 
         self.nonlinear1d = activation
         self.conv1d_out = nn.Conv1d(
@@ -370,7 +371,7 @@ class Decoder(nn.Module):
         self.backbone = nn.Sequential(*backbone)
 
         if isinstance(activation, str):
-            activation = _get_activation(activation)
+            activation = get_activation(activation)
 
         self.nonlinear1d = activation
         self.conv1d_out = nn.Conv1d(
