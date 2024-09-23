@@ -31,7 +31,7 @@ class BaseAudioSpectrogramTransformer(nn.Module):
 
     def __init__(
         self,
-        embedding: "PositionalPatchEmbedding",
+        embedding: PositionalPatchEmbedding,
         backbone: nn.TransformerEncoder,
     ) -> None:
         super().__init__()
@@ -308,7 +308,7 @@ class AudioSpectrogramTransformer(BaseAudioSpectrogramTransformer):
 
     def __init__(
         self,
-        embedding: "PositionalPatchEmbedding",
+        embedding: PositionalPatchEmbedding,
         backbone: nn.TransformerEncoder,
         aggregator: Optional["Aggregator"] = None,
         head: Optional["Head"] = None,
