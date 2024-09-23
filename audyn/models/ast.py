@@ -159,10 +159,12 @@ class BaseAudioSpectrogramTransformer(nn.Module):
             torch.Tensor: Estimated sequence of shape (batch_size, length, embedding_dim).
 
         """
+        from ..modules.music_tagging_transformer import MusicTaggingTransformerEncoder
+
         if padding_mask is None:
             kwargs = {}
         else:
-            if isinstance(self.backbone, nn.TransformerEncoder):
+            if isinstance(self.backbone, (nn.TransformerEncoder, MusicTaggingTransformerEncoder)):
                 kwargs = {
                     "src_key_padding_mask": padding_mask,
                 }
