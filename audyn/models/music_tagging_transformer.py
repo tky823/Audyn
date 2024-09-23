@@ -9,7 +9,7 @@ from ..modules.music_tagging_transformer import (
     MusicTaggingTransformerEncoder,
     PositionalPatchEmbedding,
 )
-from .ast import BaseAudioSpectrogramTransformer
+from .ast import BaseAudioSpectrogramTransformer, HeadTokensAggregator, MLPHead
 
 __all__ = [
     "MusicTaggingTransformer",
@@ -96,8 +96,77 @@ class MusicTaggingTransformer(BaseAudioSpectrogramTransformer):
         return padding_mask
 
     @classmethod
-    def build_from_default_config(cls) -> "MusicTaggingTransformer":
-        pass
+    def build_from_default_config(cls, is_teacher: bool = True) -> "MusicTaggingTransformer":
+        # PositionalPatchEmbedding
+        hidden_channels = 128
+        kernel_size = 3
+        pool_kernel_size = None
+        pool_stride = None
+        num_embedding_layers = 3
+        num_embedding_blocks = 2
+        insert_cls_token = True
+        insert_dist_token = False
+        embedding_dropout = 0.1
+        max_length = 512
+        support_extrapolation = False
+
+        # MusicTaggingTransformerEncoder
+        if is_teacher:
+            d_model = 256
+        else:
+            d_model = 64
+
+        dim_feedforward = 4 * d_model
+        nhead = 8
+        activation = "gelu"
+        backbone_dropout = 0.1
+        num_backbone_layers = 4
+        layer_norm_eps = 1e-5
+        batch_first = True
+        norm_first = True
+        bias = True
+        norm = None
+
+        n_bins = 128
+        num_classes = 50
+
+        embedding = PositionalPatchEmbedding(
+            d_model,
+            hidden_channels,
+            n_bins,
+            kernel_size=kernel_size,
+            pool_kernel_size=pool_kernel_size,
+            pool_stride=pool_stride,
+            num_layers=num_embedding_layers,
+            num_blocks=num_embedding_blocks,
+            insert_cls_token=insert_cls_token,
+            insert_dist_token=insert_dist_token,
+            dropout=embedding_dropout,
+            max_length=max_length,
+            support_extrapolation=support_extrapolation,
+        )
+        backbone = MusicTaggingTransformerEncoder(
+            d_model,
+            nhead,
+            num_layers=num_backbone_layers,
+            dim_feedforward=dim_feedforward,
+            dropout=backbone_dropout,
+            activation=activation,
+            layer_norm_eps=layer_norm_eps,
+            batch_first=batch_first,
+            norm_first=norm_first,
+            bias=bias,
+            norm=norm,
+        )
+        aggregator = HeadTokensAggregator(
+            insert_cls_token=insert_cls_token,
+            insert_dist_token=insert_dist_token,
+        )
+        head = MLPHead(d_model, num_classes)
+
+        model = cls(embedding, backbone, aggregator=aggregator, head=head)
+
+        return model
 
     @classmethod
     def build_from_pretrained(cls) -> "MusicTaggingTransformer":
