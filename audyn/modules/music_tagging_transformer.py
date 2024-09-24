@@ -595,7 +595,7 @@ class PositionalPatchEmbedding(_PatchEmbedding):
             num_features //= _pool_stride
 
         self.backbone = nn.ModuleList(backbone)
-        self.fc = nn.Linear(num_features * hidden_channels, embedding_dim)
+        self.linear = nn.Linear(num_features * hidden_channels, embedding_dim)
 
         positional_embedding = torch.empty((embedding_dim, max_length), **factory_kwargs)
         self.positional_embedding = nn.Parameter(positional_embedding)
@@ -641,7 +641,7 @@ class PositionalPatchEmbedding(_PatchEmbedding):
 
         x = x.permute(0, 3, 1, 2).contiguous()
         x = x.view(batch_size, length, -1)
-        x = self.fc(x)
+        x = self.linear(x)
 
         if length > max_length and not self.support_extrapolation:
             warnings.warn(
