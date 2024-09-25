@@ -232,6 +232,7 @@ Music Tagging Transformer
     >>> from audyn.transforms import MusicTaggingTransformerMelSpectrogram
     >>> from audyn.models import MusicTaggingTransformer
     >>> from audyn.models.ast import MLPHead
+    >>> from audyn.utils.data.msd import tags
     >>> torch.manual_seed(0)
     >>> transform = MusicTaggingTransformerMelSpectrogram.build_from_pretrained()
     >>> model = MusicTaggingTransformer.build_from_pretrained("music-tagging-transformer_teacher")
@@ -328,6 +329,8 @@ Music Tagging Transformer
     >>> likelihood = F.sigmoid(logit)
     >>> print(likelihood.size())
     torch.Size([4, 50])
+    >>> print(len(tags))
+    50  # 50 classes in MSD dataset
     >>> # set customized head to model
     >>> embedding_dim = model.embedding.embedding_dim
     >>> num_classes = 10
