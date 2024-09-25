@@ -185,7 +185,30 @@ class MusicTaggingTransformer(BaseAudioSpectrogramTransformer):
         """Build pretrained Music Tagging Transformer.
 
         The weights are extracted from official implementation.
-        """
+
+        Examples:
+
+            >>> import torch
+            >>> import torch.nn.functional as F
+            >>> from audyn.transforms import MusicTaggingTransformerMelSpectrogram
+            >>> from audyn.models import MusicTaggingTransformer
+            >>> torch.manual_seed(0)
+            >>> transform = MusicTaggingTransformerMelSpectrogram.build_from_pretrained()
+            >>> model = MusicTaggingTransformer.build_from_pretrained("music-tagging-transformer_teacher")
+            >>> waveform = torch.randn((4, 30 * transform.sample_rate))
+            >>> spectrogram = transform(waveform)
+            >>> logit = model(spectrogram)
+            >>> likelihood = F.sigmoid(logit)
+            >>> print(likelihood.size())
+            torch.Size([4, 50])
+
+        .. note::
+
+            Supported pretrained model names are
+                - music-tagging-transformer_teacher
+                - music-tagging-transformer_student
+
+        """  # noqa: E501
         from ..utils.hydra.utils import instantiate  # to avoid circular import
 
         pretrained_model_configs = _create_pretrained_model_configs()
