@@ -15,6 +15,12 @@ class MusicTaggingTransformerMelSpectrogram(aT.MelSpectrogram):
     """Mel-spectrogram transform for music tagging transformer.
 
     For the details of arguments, see ``torchaudio.transforms.MelSpectrogram``.
+
+    .. note::
+
+        It is recommended to use ``MusicTaggingTransformerMelSpectrogram.build_from_pretrained``
+        if you reproduce official module.
+
     """
 
     def __init__(
