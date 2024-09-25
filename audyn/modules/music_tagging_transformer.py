@@ -782,10 +782,12 @@ class ResidualMaxPool2d(nn.Module):
         for block in self.backbone:
             x = block(x)
 
-        if self.post_block2d is not None:
+        if self.post_block2d is None:
+            residual = input
+        else:
             residual = self.post_block2d(input)
-            x = x + residual
 
+        x = x + residual
         x = self.relu2d(x)
         output = self.pool2d(x)
 
