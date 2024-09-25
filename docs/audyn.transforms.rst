@@ -54,3 +54,10 @@ HuBERT-related modules
 
 .. autoclass:: audyn.transforms.HuBERTMFCC
    :members: forward
+
+
+Music-Tagging-Transformer-related modules
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: audyn.transforms.MusicTaggingTransformerMelSpectrogram
+   :members: forward
