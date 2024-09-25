@@ -101,7 +101,6 @@ class MusicTaggingTransformer(BaseAudioSpectrogramTransformer):
         hidden_channels = 128
         kernel_size = 3
         pool_kernel_size = None
-        pool_stride = None
         num_embedding_layers = 3
         num_embedding_blocks = 2
         insert_cls_token = True
@@ -136,7 +135,6 @@ class MusicTaggingTransformer(BaseAudioSpectrogramTransformer):
             n_bins,
             kernel_size=kernel_size,
             pool_kernel_size=pool_kernel_size,
-            pool_stride=pool_stride,
             num_layers=num_embedding_layers,
             num_blocks=num_embedding_blocks,
             insert_cls_token=insert_cls_token,
