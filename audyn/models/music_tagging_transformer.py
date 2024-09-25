@@ -189,12 +189,12 @@ class MusicTaggingTransformer(BaseAudioSpectrogramTransformer):
             resolved_config = OmegaConf.create(resolved_config)
             pretrained_model_config = resolved_config.model
 
+            target = pretrained_model_config["_target_"]
             old_class_names = [
                 "audyn.models.music_tagging_transformer.MusicTaggingTransformer",
                 "audyn.models.MusicTaggingTransformer",
             ]
             new_class_name = f"{cls.__module__}.{cls.__name__}"
-            target = pretrained_model_config["_target_"]
 
             for old_class_name in old_class_names:
                 target = target.replace(old_class_name, new_class_name)
