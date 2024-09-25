@@ -20,7 +20,13 @@ __all__ = [
 
 
 class MusicTaggingTransformer(BaseAudioSpectrogramTransformer):
-    """Music Tagging Transformer."""
+    """Music Tagging Transformer proposed by [#won2021semi]_.
+
+    .. [#won2021semi]
+        M. Won et al., "Semi-supervised music tagging transformer,"
+        *arXiv preprint arXiv:2111.13457*.
+
+    """
 
     def __init__(
         self,
@@ -176,6 +182,10 @@ class MusicTaggingTransformer(BaseAudioSpectrogramTransformer):
         aggregator: Optional[nn.Module] = None,
         head: Optional[nn.Module] = None,
     ) -> "MusicTaggingTransformer":
+        """Build pretrained Music Tagging Transformer.
+
+        The weights are extracted from official implementation.
+        """
         from ..utils.hydra.utils import instantiate  # to avoid circular import
 
         pretrained_model_configs = _create_pretrained_model_configs()
