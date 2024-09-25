@@ -4,8 +4,14 @@ from .dprnn_tasnet import DPRNNTasNet
 from .encodec import EnCodec
 from .fastspeech import FastSpeech, MultiSpeakerFastSpeech
 from .hifigan import HiFiGANDiscriminator, HiFiGANGenerator, HiFiGANVocoder
+from .music_tagging_transformer import MusicTaggingTransformer
 from .passt import PaSST
-from .roformer import RoFormerDecoder, RoFormerDecoderLayer, RoFormerEncoder, RoFormerEncoderLayer
+from .roformer import (
+    RoFormerDecoder,
+    RoFormerDecoderLayer,
+    RoFormerEncoder,
+    RoFormerEncoderLayer,
+)
 from .rvqvae import RVQVAE
 from .soundstream import SoundStream
 from .ssast import (
@@ -60,4 +66,6 @@ __all__ = [
     "RoFormerDecoderLayer",
     "RoFormerEncoder",
     "RoFormerDecoder",
+    # Music Tagging Transformer
+    "MusicTaggingTransformer",
 ]
