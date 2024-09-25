@@ -1,7 +1,10 @@
+import os
 from typing import Callable, Dict, Optional
 
 import torch
 import torchaudio.transforms as aT
+
+from ..utils.github import download_file_from_github_release
 
 __all__ = [
     "MusicTaggingTransformerMelSpectrogram",
@@ -63,3 +66,24 @@ class MusicTaggingTransformerMelSpectrogram(aT.MelSpectrogram):
         output = self.amplitude_to_db(spectrogram)
 
         return output
+
+    @classmethod
+    def build_from_pretrained(cls) -> "MusicTaggingTransformerMelSpectrogram":
+        from ..utils import model_cache_dir
+
+        sample_rate = 22050
+
+        url = "https://github.com/tky823/Audyn/releases/download/v0.0.2/music-tagging-transformer_melspectrogram-transform.pth"  # noqa: E501
+        path = os.path.join(
+            model_cache_dir,
+            "MusicTaggingTransformer",
+            "music-tagging-transformer_melspectrogram-transform.pth",
+        )
+        download_file_from_github_release(url, path=path)
+
+        state_dict = torch.load(path, map_location=lambda storage, loc: storage)
+
+        transform = cls(sample_rate)
+        transform.load_state_dict(state_dict)
+
+        return transform
