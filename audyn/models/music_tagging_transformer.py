@@ -248,7 +248,7 @@ class MusicTaggingTransformer(BaseAudioSpectrogramTransformer):
             url = config["url"]
             path = config["path"]
             download_file_from_github_release(url, path=path)
-            model = cls.build_from_pretrained(path)
+            model = cls.build_from_pretrained(path, aggregator=aggregator, head=head)
 
             return model
         else:
