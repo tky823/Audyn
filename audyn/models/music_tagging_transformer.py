@@ -1,14 +1,17 @@
+import os
 import warnings
-from typing import Optional
+from typing import Dict, Optional, OrderedDict
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from omegaconf import OmegaConf
 
 from ..modules.music_tagging_transformer import (
     MusicTaggingTransformerEncoder,
     PositionalPatchEmbedding,
 )
+from ..utils.github import download_file_from_github_release
 from .ast import BaseAudioSpectrogramTransformer, HeadTokensAggregator, MLPHead
 
 __all__ = [
@@ -167,5 +170,72 @@ class MusicTaggingTransformer(BaseAudioSpectrogramTransformer):
         return model
 
     @classmethod
-    def build_from_pretrained(cls) -> "MusicTaggingTransformer":
-        pass
+    def build_from_pretrained(
+        cls,
+        pretrained_model_name_or_path: str,
+        aggregator: Optional[nn.Module] = None,
+        head: Optional[nn.Module] = None,
+    ) -> "MusicTaggingTransformer":
+        from ..utils.hydra.utils import instantiate  # to avoid circular import
+
+        pretrained_model_configs = _create_pretrained_model_configs()
+
+        if os.path.exists(pretrained_model_name_or_path):
+            state_dict = torch.load(
+                pretrained_model_name_or_path, map_location=lambda storage, loc: storage
+            )
+            model_state_dict: OrderedDict = state_dict["model"]
+            resolved_config = state_dict["resolved_config"]
+            resolved_config = OmegaConf.create(resolved_config)
+            pretrained_model_config = resolved_config.model
+
+            old_class_names = [
+                "audyn.models.music_tagging_transformer.MusicTaggingTransformer",
+                "audyn.models.MusicTaggingTransformer",
+            ]
+            new_class_name = f"{cls.__module__}.{cls.__name__}"
+            target = pretrained_model_config["_target_"]
+
+            for old_class_name in old_class_names:
+                target = target.replace(old_class_name, new_class_name)
+
+            pretrained_model_config["_target_"] = target
+            model: MusicTaggingTransformer = instantiate(pretrained_model_config)
+            model.load_state_dict(model_state_dict)
+
+            if aggregator is not None:
+                model.aggregator = aggregator
+
+            if head is not None:
+                model.head = head
+
+            return model
+        elif pretrained_model_name_or_path in pretrained_model_configs:
+            config = pretrained_model_configs[pretrained_model_name_or_path]
+            url = config["url"]
+            path = config["path"]
+            download_file_from_github_release(url, path=path)
+            model = cls.build_from_pretrained(path)
+
+            return model
+        else:
+            raise FileNotFoundError(f"{pretrained_model_name_or_path} does not exist.")
+
+
+def _create_pretrained_model_configs() -> Dict[str, Dict[str, str]]:
+    """Create pretrained_model_configs without circular import error."""
+
+    from ..utils import model_cache_dir
+
+    pretrained_model_configs = {
+        "music-tagging-transformer_teacher": {
+            "url": "https://github.com/tky823/Audyn/releases/download/v0.0.2/music-tagging-transformer_teacher.pth",  # noqa: E501
+            "path": os.path.join(
+                model_cache_dir,
+                "MusicTaggingTransformer",
+                "music-tagging-transformer_teacher.pth",
+            ),
+        },
+    }
+
+    return pretrained_model_configs
