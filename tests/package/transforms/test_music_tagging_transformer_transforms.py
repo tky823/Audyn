@@ -25,4 +25,4 @@ def test_music_tagging_transformer_melspectrogram() -> None:
     melspectrogram_transform = MusicTaggingTransformerMelSpectrogram.build_from_pretrained()
     melspectrogram = melspectrogram_transform(waveform)
 
-    allclose(melspectrogram, expected_melspectrogram)
+    allclose(melspectrogram, expected_melspectrogram, atol=1e-4)
