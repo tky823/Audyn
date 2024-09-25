@@ -236,6 +236,14 @@ def _create_pretrained_model_configs() -> Dict[str, Dict[str, str]]:
                 "music-tagging-transformer_teacher.pth",
             ),
         },
+        "music-tagging-transformer_student": {
+            "url": "https://github.com/tky823/Audyn/releases/download/v0.0.2/music-tagging-transformer_student.pth",  # noqa: E501
+            "path": os.path.join(
+                model_cache_dir,
+                "MusicTaggingTransformer",
+                "music-tagging-transformer_student.pth",
+            ),
+        },
     }
 
     return pretrained_model_configs
