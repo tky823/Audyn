@@ -73,11 +73,11 @@ class MusicTaggingTransformerMelSpectrogram(aT.MelSpectrogram):
 
         sample_rate = 22050
 
-        url = "https://github.com/tky823/Audyn/releases/download/v0.0.2/music-tagging-transformer_melspectrogram-transform.pth"  # noqa: E501
+        url = "https://github.com/tky823/Audyn/releases/download/v0.0.2/music-tagging-transformer_melspectrogram.pth"  # noqa: E501
         path = os.path.join(
             model_cache_dir,
             "MusicTaggingTransformer",
-            "music-tagging-transformer_melspectrogram-transform.pth",
+            "music-tagging-transformer_melspectrogram.pth",
         )
         download_file_from_github_release(url, path=path)
 
