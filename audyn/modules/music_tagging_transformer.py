@@ -522,8 +522,7 @@ class PositionalPatchEmbedding(_PatchEmbedding):
         hidden_channels: int,
         n_bins: int,
         kernel_size: _size_2_t = 3,
-        pool_kernel_size: Union[_size_2_t, List[_size_2_t]] = None,
-        pool_stride: Optional[Union[_size_2_t, List[_size_2_t]]] = None,
+        pool_kernel_size: Optional[Union[_size_2_t, List[_size_2_t]]] = None,
         num_layers: int = 3,
         num_blocks: int = 2,
         insert_cls_token: bool = True,
@@ -549,23 +548,14 @@ class PositionalPatchEmbedding(_PatchEmbedding):
         self.max_length = max_length
         self.support_extrapolation = support_extrapolation
 
-        if pool_kernel_size is None and pool_stride is None:
-            pool_kernel_size = [(2, 2)] * num_layers
-            pool_stride = [(2, 2)] * (num_layers - 1)
-            pool_stride.append((2, 1))
+        if pool_kernel_size is None:
+            pool_kernel_size = [(2, 2)] * (num_layers - 1)
+            pool_kernel_size.append((2, 1))
 
         if isinstance(pool_kernel_size, list):
             pass
         else:
             pool_kernel_size = [pool_kernel_size] * num_layers
-
-        if pool_stride is None:
-            pool_stride = [None] * num_layers
-
-        if isinstance(pool_stride, list):
-            pass
-        else:
-            pool_stride = [pool_stride] * num_layers
 
         self.batch_norm = nn.BatchNorm2d(1)
 
@@ -580,14 +570,12 @@ class PositionalPatchEmbedding(_PatchEmbedding):
 
             _out_channels = hidden_channels
             _pool_kernel_size = pool_kernel_size[layer_idx]
-            _pool_stride = pool_stride[layer_idx]
 
             layer = ResidualMaxPool2d(
                 _in_channels,
                 _out_channels,
                 kernel_size=kernel_size,
                 pool_kernel_size=_pool_kernel_size,
-                pool_stride=_pool_stride,
                 num_blocks=num_blocks,
             )
             backbone.append(layer)
@@ -736,7 +724,6 @@ class ResidualMaxPool2d(nn.Module):
         out_channels: int,
         kernel_size: _size_2_t = 3,
         pool_kernel_size: _size_2_t = 2,
-        pool_stride: Optional[_size_2_t] = None,
         num_blocks: int = 2,
     ) -> None:
         super().__init__()
@@ -750,7 +737,18 @@ class ResidualMaxPool2d(nn.Module):
             else:
                 _in_channels = out_channels
 
-            block = ConvBlock2d(_in_channels, out_channels, kernel_size=kernel_size, stride=stride)
+            if block_idx == num_blocks - 1:
+                activation = False
+            else:
+                activation = True
+
+            block = ConvBlock2d(
+                _in_channels,
+                out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                activation=activation,
+            )
             backbone.append(block)
 
         self.backbone = nn.ModuleList(backbone)
@@ -759,11 +757,15 @@ class ResidualMaxPool2d(nn.Module):
             self.post_block2d = None
         else:
             self.post_block2d = ConvBlock2d(
-                in_channels, out_channels, kernel_size=kernel_size, stride=stride
+                in_channels,
+                out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                activation=False,
             )
 
         self.relu2d = nn.ReLU()
-        self.pool2d = nn.MaxPool2d(pool_kernel_size, stride=pool_stride)
+        self.pool2d = nn.MaxPool2d(pool_kernel_size)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         """Forward pass of ResidualMaxPool2d.
@@ -809,11 +811,17 @@ class ConvBlock2d(nn.Module):
         out_channels: int,
         kernel_size: _size_2_t = 3,
         stride: _size_2_t = 1,
+        activation: bool = False,
     ) -> None:
         super().__init__()
 
         self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride)
         self.batch_norm2d = nn.BatchNorm2d(out_channels)
+
+        if activation:
+            self.relu2d = nn.ReLU()
+        else:
+            self.relu2d = None
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         """Forward pass of ConvBlock2d.
@@ -836,6 +844,11 @@ class ConvBlock2d(nn.Module):
 
         x = F.pad(input, (padding_left, padding_right, padding_top, padding_bottom))
         x = self.conv2d(x)
-        output = self.batch_norm2d(x)
+        x = self.batch_norm2d(x)
+
+        if self.relu2d is None:
+            output = x
+        else:
+            output = self.relu2d(x)
 
         return output
