@@ -1,6 +1,8 @@
 import os
 import shutil
 import uuid
+import zipfile
+from typing import Optional
 from urllib.request import Request, urlopen
 
 from omegaconf import DictConfig
@@ -25,12 +27,14 @@ def main(config: DictConfig) -> None:
         server_type="mirror"  # or "origin"
         quality="raw"  # or "low"
         root="./MTG-Jamendo/raw"  # root directory to store
+        unpack=true  # unpack .zip or not
         chunk_size=8192  # chunk size in byte to download
 
         audyn-download-mtg-jamando \
         server_type="${server_type}" \
         quality="${quality}" \
         root="${root}" \
+        unpack=${unpack} \
         chunk_size=${chunk_size}
 
     """
@@ -38,12 +42,13 @@ def main(config: DictConfig) -> None:
 
 
 def download_mtg_jamendo(config: DictConfig) -> None:
-    # ported from https://github.com/MTG/mtg-jamendo-dataset/blob/1b4fa8c32e076c73b5175c1703ae805b4109309d/scripts/download/download.py  # noqa: E501
     num_files = 100
 
     server_type = config.server_type
     quality = config.quality
     root = config.root
+    mtg_jamendo_root = config.mtg_jamendo_root
+    unpack = config.unpack
     chunk_size = config.chunk_size
 
     if server_type == "origin":
@@ -52,6 +57,18 @@ def download_mtg_jamendo(config: DictConfig) -> None:
         url = "https://cdn.freesound.org/mtg-jamendo/raw_30s/"
     else:
         raise ValueError(f"{server_type} is not supported as quality. Use 'origin' or 'mirror'.")
+
+    if root is None:
+        raise ValueError("Set root directory.")
+
+    if unpack is None:
+        unpack = True
+
+    if chunk_size is None:
+        chunk_size = 8192
+
+    if root:
+        os.makedirs(root, exist_ok=True)
 
     if quality == "raw":
         url += "audio/"
@@ -62,39 +79,56 @@ def download_mtg_jamendo(config: DictConfig) -> None:
     else:
         raise ValueError(f"{quality} is not supported as quality. Use 'raw' or 'low'.")
 
-    if root is None:
-        raise ValueError("Set root directory.")
-
-    if chunk_size is None:
-        chunk_size = 8192
-
-    if root:
-        os.makedirs(root, exist_ok=True)
-
     for idx in range(num_files):
         filename = tar_template.format(idx)
         _url = url + filename
         path = os.path.join(root, filename)
-        temp_path = path + str(uuid.uuid4())[:8]
 
-        request = Request(_url)
+        _download_mtg_jamendo(_url, path)
 
-        try:
-            with urlopen(request) as response, open(temp_path, "wb") as f:
-                if IS_TQDM_AVAILABLE:
-                    total_size = int(response.headers["Content-Length"])
+    if unpack:
+        for idx in range(num_files):
+            filename = tar_template.format(idx)
+            path = os.path.join(root, filename)
 
-                    with tqdm(unit="B", unit_scale=True, desc=filename, total=total_size) as pbar:
-                        download_by_response(response, f, chunk_size=chunk_size, pbar=pbar)
-                else:
-                    download_by_response(response, f, chunk_size=chunk_size)
+            _unpack_zip(path, mtg_jamendo_root=mtg_jamendo_root)
 
-            shutil.move(temp_path, path)
-        except (Exception, KeyboardInterrupt) as e:
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
 
-            raise e
+def _download_mtg_jamendo(url: str, path: str, chunk_size: int = 8192) -> None:
+    # ported from https://github.com/MTG/mtg-jamendo-dataset/blob/1b4fa8c32e076c73b5175c1703ae805b4109309d/scripts/download/download.py  # noqa: E501
+    temp_path = path + str(uuid.uuid4())[:8]
+    filename = os.path.basename(url)
+
+    request = Request(url)
+
+    try:
+        with urlopen(request) as response, open(temp_path, "wb") as f:
+            if IS_TQDM_AVAILABLE:
+                total_size = int(response.headers["Content-Length"])
+
+                with tqdm(unit="B", unit_scale=True, desc=filename, total=total_size) as pbar:
+                    download_by_response(response, f, chunk_size=chunk_size, pbar=pbar)
+            else:
+                download_by_response(response, f, chunk_size=chunk_size)
+
+        shutil.move(temp_path, path)
+    except (Exception, KeyboardInterrupt) as e:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+        raise e
+
+
+def _unpack_zip(path: str, mtg_jamendo_root: Optional[str] = None) -> None:
+    root = os.path.dirname(path)
+
+    if mtg_jamendo_root is None:
+        mtg_jamendo_root = root
+
+    os.makedirs(mtg_jamendo_root, exist_ok=True)
+
+    with zipfile.ZipFile(path) as f:
+        f.extractall(mtg_jamendo_root)
 
 
 if __name__ == "__main__":
