@@ -10,6 +10,7 @@ import torch.nn.functional as F
 from packaging import version
 
 from ..modules.activation import RotaryPositionalMultiheadAttention
+from ..modules.transformer import get_activation
 
 __all__ = [
     "RoFormerEncoder",
@@ -163,7 +164,7 @@ class RoFormerEncoderLayer(nn.Module):
         self.dropout2 = nn.Dropout(dropout)
 
         if isinstance(activation, str):
-            activation = _get_activation(activation)
+            activation = get_activation(activation)
 
         if activation is F.relu or isinstance(activation, nn.ReLU):
             self.activation_relu_or_gelu = 1
@@ -327,7 +328,7 @@ class RoFormerDecoderLayer(nn.Module):
         self.dropout3 = nn.Dropout(dropout)
 
         if isinstance(activation, str):
-            activation = _get_activation(activation)
+            activation = get_activation(activation)
 
         self.activation = activation
 
@@ -446,23 +447,3 @@ class RoFormerDecoderLayer(nn.Module):
         x = self.linear2(self.dropout(self.activation(self.linear1(x))))
 
         return self.dropout3(x)
-
-
-def _get_activation(activation: str) -> nn.Module:
-    """Get activation module by str.
-
-    Args:
-        activation (str): Name of activation module.
-
-    Returns:
-        nn.Module: Activation module.
-
-    """
-    if activation == "relu":
-        return nn.ReLU()
-    elif activation == "gelu":
-        return nn.GELU()
-    elif activation == "elu":
-        return nn.ELU()
-
-    raise RuntimeError(f"activation should be relu/gelu/elu, not {activation}")

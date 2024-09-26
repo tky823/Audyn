@@ -31,7 +31,7 @@ class BaseAudioSpectrogramTransformer(nn.Module):
 
     def __init__(
         self,
-        embedding: "PositionalPatchEmbedding",
+        embedding: PositionalPatchEmbedding,
         backbone: nn.TransformerEncoder,
     ) -> None:
         super().__init__()
@@ -159,10 +159,12 @@ class BaseAudioSpectrogramTransformer(nn.Module):
             torch.Tensor: Estimated sequence of shape (batch_size, length, embedding_dim).
 
         """
+        from ..modules.music_tagging_transformer import MusicTaggingTransformerEncoder
+
         if padding_mask is None:
             kwargs = {}
         else:
-            if isinstance(self.backbone, nn.TransformerEncoder):
+            if isinstance(self.backbone, (nn.TransformerEncoder, MusicTaggingTransformerEncoder)):
                 kwargs = {
                     "src_key_padding_mask": padding_mask,
                 }
@@ -308,7 +310,7 @@ class AudioSpectrogramTransformer(BaseAudioSpectrogramTransformer):
 
     def __init__(
         self,
-        embedding: "PositionalPatchEmbedding",
+        embedding: PositionalPatchEmbedding,
         backbone: nn.TransformerEncoder,
         aggregator: Optional["Aggregator"] = None,
         head: Optional["Head"] = None,

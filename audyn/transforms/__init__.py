@@ -4,6 +4,7 @@ from .hifigan import HiFiGANMelSpectrogram
 from .hubert import HuBERTMFCC
 from .kaldi import KaldiMelSpectrogram, KaldiMFCC
 from .librosa import LibrosaMelSpectrogram
+from .music_tagging_transformer import MusicTaggingTransformerMelSpectrogram
 from .slicer import WaveformSlicer
 
 __all__ = [
@@ -24,4 +25,6 @@ __all__ = [
     "ASTMelSpectrogram",
     # HuBERT
     "HuBERTMFCC",
+    # music tagging transformer
+    "MusicTaggingTransformerMelSpectrogram",
 ]
