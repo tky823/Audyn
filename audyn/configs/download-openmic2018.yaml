@@ -2,9 +2,7 @@ defaults:
   - config
   - _self_
 
-quality: raw
-server_type: mirror
 root: ???
-mtg_jamendo_root:
+openmic2018_root:
 unpack:
 chunk_size:

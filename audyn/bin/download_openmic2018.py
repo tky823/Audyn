@@ -1,7 +1,8 @@
 import os
 import shutil
+import tarfile
+import tempfile
 import uuid
-import zipfile
 from typing import Optional
 from urllib.request import Request, urlopen
 
@@ -18,41 +19,37 @@ except ImportError:
     IS_TQDM_AVAILABLE = False
 
 
-@audyn_main(config_name="download-musdb18")
+@audyn_main(config_name="download-openmic2018")
 def main(config: DictConfig) -> None:
-    r"""Download MUSDB18 dataset.
+    """Download OpenMIC-2018 dataset.
 
     .. code-block:: shell
 
-        type="default"  # for MUSDB18
-        # type="hq"  # for MUSDB18-HQ
-        # type="7s"  # for MUSDB18-7s
-
         data_root="./data"  # root directory to save .zip file.
-        musdb18_root="${data_root}/MUSDB18"
-        unpack=true  # unpack .zip or not
+        openmic2018_root="${data_root}/openmic-2018"
+        unpack=true  # unpack .tgz or not
         chunk_size=8192  # chunk size in byte to download
 
-        audyn-download-musdb18 \
-        type="${type}" \
+        audyn-download-openmic2018 \
         root="${data_root}" \
-        musdb18_root="${musdb18_root}" \
+        openmic2018_root="${openmic2018_root}" \
         unpack=${unpack} \
         chunk_size=${chunk_size}
 
     """
-    download_musdb18(config)
+    download_openmic2018(config)
 
 
-def download_musdb18(config: DictConfig) -> None:
-    _type = config.type
+def download_openmic2018(config: DictConfig) -> None:
     root = config.root
-    musdb18_root = config.musdb18_root
+    openmic2018_root = config.openmic2018_root
     unpack = config.unpack
     chunk_size = config.chunk_size
 
-    if _type is None:
-        _type = "default"
+    url = "https://zenodo.org/records/1432913/files/openmic-2018-v1.0.0.tgz"
+
+    if root is None:
+        raise ValueError("Set root directory.")
 
     if unpack is None:
         unpack = True
@@ -60,29 +57,20 @@ def download_musdb18(config: DictConfig) -> None:
     if chunk_size is None:
         chunk_size = 8192
 
-    if _type == "default":
-        url = "https://zenodo.org/records/1117372/files/musdb18.zip"
-    elif _type == "hq":
-        url = "https://zenodo.org/records/3338373/files/musdb18hq.zip"
-    elif _type == "7s":
-        url = "https://zenodo.org/api/files/1ff52183-071a-4a59-923f-7a31c4762d43/MUSDB18-7-STEMS.zip"  # noqa: E501
-    else:
-        raise RuntimeError(f"{_type} is not supported as type. Choose default, hq, or 7s.")
+    if root:
+        os.makedirs(root, exist_ok=True)
 
     filename = os.path.basename(url)
     path = os.path.join(root, filename)
 
-    if root:
-        os.makedirs(root, exist_ok=True)
-
     if not os.path.exists(path):
-        _download_musdb18(url, path, chunk_size=chunk_size)
+        _download_openmic2018(url, path, chunk_size=chunk_size)
 
     if unpack:
-        _unpack_zip(path, musdb18_root=musdb18_root)
+        _unpack_tgz(path, openmic2018_root=openmic2018_root)
 
 
-def _download_musdb18(url: str, path: str, chunk_size: int = 8192) -> None:
+def _download_openmic2018(url: str, path: str, chunk_size: int = 8192) -> None:
     filename = os.path.basename(url)
     temp_path = path + str(uuid.uuid4())[:8]
 
@@ -106,18 +94,21 @@ def _download_musdb18(url: str, path: str, chunk_size: int = 8192) -> None:
         raise e
 
 
-def _unpack_zip(path: str, musdb18_root: Optional[str] = None) -> None:
+def _unpack_tgz(path: str, openmic2018_root: Optional[str] = None) -> None:
     root = os.path.dirname(path)
 
-    if musdb18_root is None:
-        filename = os.path.basename(path)
-        filename, _ = os.path.splitext(filename)
-        musdb18_root = os.path.join(root, filename)
+    if openmic2018_root is None:
+        openmic2018_root = os.path.join(root, "openmic-2018")
 
-    os.makedirs(musdb18_root, exist_ok=True)
+    os.makedirs(openmic2018_root, exist_ok=True)
 
-    with zipfile.ZipFile(path) as f:
-        f.extractall(musdb18_root)
+    with tarfile.open(path, "r:gz") as tar, tempfile.TemporaryDirectory() as temp_dir:
+        tar.extractall(temp_dir)
+        _openmic2018_root = os.path.join(temp_dir, "openmic-2018")
+
+        for _filename in os.listdir(_openmic2018_root):
+            _path = os.path.join(_openmic2018_root, _filename)
+            shutil.move(_path, openmic2018_root)
 
 
 if __name__ == "__main__":
