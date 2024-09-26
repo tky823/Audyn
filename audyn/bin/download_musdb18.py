@@ -80,7 +80,7 @@ def download_musdb18(config: DictConfig) -> None:
         _unpack_zip(path, musdb18_root=musdb18_root)
 
 
-def _download_musdb18(url: str, path: str, chunk_size: int = 1024) -> None:
+def _download_musdb18(url: str, path: str, chunk_size: int = 8192) -> None:
     filename = os.path.basename(url)
     temp_path = path + str(uuid.uuid4())[:8]
 
