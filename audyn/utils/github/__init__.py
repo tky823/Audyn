@@ -78,7 +78,6 @@ def _obtain_metadata(url: str) -> Tuple[str, int]:
     token = os.getenv("GITHUB_TOKEN", None)
 
     parsed_url = urlparse(url)
-    parsed_url.hostname
     _, owner, repo, _, _, tag, _ = parsed_url.path.split("/")
 
     headers = {
