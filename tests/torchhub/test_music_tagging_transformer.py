@@ -41,4 +41,4 @@ def test_music_tagging_transformer(model: str) -> None:
         output = model(spectrogram)
 
     assert spectrogram.size()[:2] == (batch_size, n_bins)
-    assert output.size() == (batch_size, 10)
+    assert output.size() == (batch_size, 50)
