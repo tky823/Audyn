@@ -42,7 +42,7 @@ You can download audio files of MTG-Jamendo dataset by ``audyn-download-mtg-jama
     server_type="mirror"  # or "origin"
     quality="raw"  # or "low"
     root="./MTG-Jamendo/raw"  # root directory to store
-    unpack=true  # unpack .zip or not
+    unpack=true  # unpack .tar or not
     chunk_size=1024  # chunk size in byte to download
 
     audyn-download-mtg-jamando \

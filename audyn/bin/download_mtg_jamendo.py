@@ -1,7 +1,7 @@
 import os
 import shutil
+import tarfile
 import uuid
-import zipfile
 from typing import Optional
 from urllib.request import Request, urlopen
 
@@ -27,7 +27,7 @@ def main(config: DictConfig) -> None:
         server_type="mirror"  # or "origin"
         quality="raw"  # or "low"
         root="./MTG-Jamendo/raw"  # root directory to store
-        unpack=true  # unpack .zip or not
+        unpack=true  # unpack .tar or not
         chunk_size=8192  # chunk size in byte to download
 
         audyn-download-mtg-jamando \
@@ -84,14 +84,15 @@ def download_mtg_jamendo(config: DictConfig) -> None:
         _url = url + filename
         path = os.path.join(root, filename)
 
-        _download_mtg_jamendo(_url, path)
+        if not os.path.exists(path):
+            _download_mtg_jamendo(_url, path)
 
     if unpack:
         for idx in range(num_files):
             filename = tar_template.format(idx)
             path = os.path.join(root, filename)
 
-            _unpack_zip(path, mtg_jamendo_root=mtg_jamendo_root)
+            _unpack_tar(path, mtg_jamendo_root=mtg_jamendo_root)
 
 
 def _download_mtg_jamendo(url: str, path: str, chunk_size: int = 8192) -> None:
@@ -119,7 +120,7 @@ def _download_mtg_jamendo(url: str, path: str, chunk_size: int = 8192) -> None:
         raise e
 
 
-def _unpack_zip(path: str, mtg_jamendo_root: Optional[str] = None) -> None:
+def _unpack_tar(path: str, mtg_jamendo_root: Optional[str] = None) -> None:
     root = os.path.dirname(path)
 
     if mtg_jamendo_root is None:
@@ -127,7 +128,7 @@ def _unpack_zip(path: str, mtg_jamendo_root: Optional[str] = None) -> None:
 
     os.makedirs(mtg_jamendo_root, exist_ok=True)
 
-    with zipfile.ZipFile(path) as f:
+    with tarfile.TarFile(path) as f:
         f.extractall(mtg_jamendo_root)
 
 
