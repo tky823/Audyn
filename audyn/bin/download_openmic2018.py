@@ -1,6 +1,7 @@
 import os
 import shutil
 import tarfile
+import tempfile
 import uuid
 from typing import Optional
 from urllib.request import Request, urlopen
@@ -24,11 +25,15 @@ def main(config: DictConfig) -> None:
 
     .. code-block:: shell
 
-        root="./OpenMIC-2018/raw"  # root directory to store
+        data_root="./data"  # root directory to save .zip file.
+        openmic2018_root="${data_root}/openmic-2018-v1.0.0"
+        unpack=true  # unpack .tgz or not
         chunk_size=8192  # chunk size in byte to download
 
         audyn-download-openmic2018 \
-        root="${root}" \
+        root="${data_root}" \
+        openmic2018_root="${openmic2018_root}" \
+        unpack=${unpack} \
         chunk_size=${chunk_size}
 
     """
@@ -93,14 +98,17 @@ def _unpack_tgz(path: str, openmic2018_root: Optional[str] = None) -> None:
     root = os.path.dirname(path)
 
     if openmic2018_root is None:
-        filename = os.path.basename(path)
-        filename, _ = os.path.splitext(filename)
-        openmic2018_root = os.path.join(root, filename)
+        openmic2018_root = os.path.join(root, "openmic-2018")
 
     os.makedirs(openmic2018_root, exist_ok=True)
 
-    with tarfile.open(path, "r:gz") as tar:
-        tar.extractall(openmic2018_root)
+    with tarfile.open(path, "r:gz") as tar, tempfile.TemporaryDirectory() as temp_dir:
+        tar.extractall(temp_dir)
+        _openmic2018_root = os.path.join(temp_dir, "openmic-2018")
+
+        for _filename in os.listdir(_openmic2018_root):
+            _path = os.path.join(_openmic2018_root, _filename)
+            shutil.move(_path, openmic2018_root)
 
 
 if __name__ == "__main__":
