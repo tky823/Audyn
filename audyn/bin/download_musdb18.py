@@ -30,12 +30,14 @@ def main(config: DictConfig) -> None:
 
         data_root="./data"  # root directory to save .zip file.
         musdb18_root="${data_root}/MUSDB18"
+        unpack=true  # unpack .zip or not
         chunk_size=8192  # chunk size in byte to download
 
         audyn-download-musdb18 \
         type="${type}" \
         root="${data_root}" \
         musdb18_root="${musdb18_root}" \
+        unpack=${unpack} \
         chunk_size=${chunk_size}
 
     """
