@@ -14,7 +14,7 @@ __all__ = [
 ]
 
 
-def music_tagging_transformer_melspectrogram() -> MusicTaggingTransformer:
+def music_tagging_transformer_melspectrogram() -> MusicTaggingTransformerMelSpectrogram:
     """Build MusicTaggingTransformerMelSpectrogram."""
     transform = MusicTaggingTransformerMelSpectrogram.build_from_pretrained()
 
