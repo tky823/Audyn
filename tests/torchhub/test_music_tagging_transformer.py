@@ -15,33 +15,7 @@ def test_music_tagging_transformer(model: str) -> None:
     branch = retrieve_git_branch()
 
     repo = "tky823/Audyn"
-    batch_size = 4
-    timesteps = 30 * 22050
-
-    if branch is not None and branch != "main":
-        repo = repo + ":" + branch
-
-    model = torch.hub.load(
-        repo,
-        model,
-        skip_validation=False,
-    )
-
-    input = torch.randn((batch_size, timesteps))
-
-    with torch.no_grad():
-        output = model(input)
-
-    assert output.size() == (batch_size, 10)
-
-
-def test_music_tagging_transformer_melspectrogram() -> None:
-    torch.manual_seed(0)
-
-    branch = retrieve_git_branch()
-
-    repo = "tky823/Audyn"
-    model = "music_tagging_transformer_melspectrogram"
+    transform = "music_tagging_transformer_melspectrogram"
     batch_size = 4
     timesteps = 30 * 22050
     n_bins = 128
@@ -49,6 +23,11 @@ def test_music_tagging_transformer_melspectrogram() -> None:
     if branch is not None and branch != "main":
         repo = repo + ":" + branch
 
+    transform = torch.hub.load(
+        repo,
+        transform,
+        skip_validation=False,
+    )
     model = torch.hub.load(
         repo,
         model,
@@ -58,6 +37,8 @@ def test_music_tagging_transformer_melspectrogram() -> None:
     input = torch.randn((batch_size, timesteps))
 
     with torch.no_grad():
-        output = model(input)
+        spectrogram = transform(input)
+        output = model(spectrogram)
 
-    assert output.size()[:2] == (batch_size, n_bins)
+    assert spectrogram.size()[:2] == (batch_size, n_bins)
+    assert output.size() == (batch_size, 10)
