@@ -3,11 +3,22 @@ from typing import Optional
 import torch.nn as nn
 
 from ...models.music_tagging_transformer import MusicTaggingTransformer
+from ...transforms.music_tagging_transformer import (
+    MusicTaggingTransformerMelSpectrogram,
+)
 
 __all__ = [
+    "music_tagging_transformer_melspectrogram",
     "teacher_music_tagging_transformer",
     "student_music_tagging_transformer",
 ]
+
+
+def music_tagging_transformer_melspectrogram() -> MusicTaggingTransformer:
+    """Build MusicTaggingTransformerMelSpectrogram."""
+    transform = MusicTaggingTransformerMelSpectrogram.build_from_pretrained()
+
+    return transform
 
 
 def teacher_music_tagging_transformer(
