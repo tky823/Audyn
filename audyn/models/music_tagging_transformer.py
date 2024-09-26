@@ -20,7 +20,13 @@ __all__ = [
 
 
 class MusicTaggingTransformer(BaseAudioSpectrogramTransformer):
-    """Music Tagging Transformer."""
+    """Music Tagging Transformer proposed by [#won2021semi]_.
+
+    .. [#won2021semi]
+        M. Won et al., "Semi-supervised music tagging transformer,"
+        *arXiv preprint arXiv:2111.13457*.
+
+    """
 
     def __init__(
         self,
@@ -176,6 +182,36 @@ class MusicTaggingTransformer(BaseAudioSpectrogramTransformer):
         aggregator: Optional[nn.Module] = None,
         head: Optional[nn.Module] = None,
     ) -> "MusicTaggingTransformer":
+        """Build pretrained Music Tagging Transformer.
+
+        The weights are extracted from official implementation.
+
+        Examples:
+
+            >>> import torch
+            >>> import torch.nn.functional as F
+            >>> from audyn.transforms import MusicTaggingTransformerMelSpectrogram
+            >>> from audyn.models import MusicTaggingTransformer
+            >>> from audyn.utils.data.msd import tags
+            >>> torch.manual_seed(0)
+            >>> transform = MusicTaggingTransformerMelSpectrogram.build_from_pretrained()
+            >>> model = MusicTaggingTransformer.build_from_pretrained("music-tagging-transformer_teacher")
+            >>> waveform = torch.randn((4, 30 * transform.sample_rate))
+            >>> spectrogram = transform(waveform)
+            >>> logit = model(spectrogram)
+            >>> likelihood = F.sigmoid(logit)
+            >>> print(likelihood.size())
+            torch.Size([4, 50])
+            >>> print(len(tags))
+            50  # 50 classes in MSD dataset
+
+        .. note::
+
+            Supported pretrained model names are
+                - music-tagging-transformer_teacher
+                - music-tagging-transformer_student
+
+        """  # noqa: E501
         from ..utils.hydra.utils import instantiate  # to avoid circular import
 
         pretrained_model_configs = _create_pretrained_model_configs()
@@ -215,7 +251,7 @@ class MusicTaggingTransformer(BaseAudioSpectrogramTransformer):
             url = config["url"]
             path = config["path"]
             download_file_from_github_release(url, path=path)
-            model = cls.build_from_pretrained(path)
+            model = cls.build_from_pretrained(path, aggregator=aggregator, head=head)
 
             return model
         else:

@@ -545,6 +545,7 @@ class PositionalPatchEmbedding(_PatchEmbedding):
             **factory_kwargs,
         )
 
+        self.embedding_dim = embedding_dim
         self.max_length = max_length
         self.support_extrapolation = support_extrapolation
 

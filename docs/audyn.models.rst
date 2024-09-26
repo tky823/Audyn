@@ -214,7 +214,129 @@ Patchout faSt Spectrogram Transformer (PaSST)
 
 Rotary Transformer (RoFormer)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 .. autoclass:: audyn.models.RoFormerEncoderLayer
 .. autoclass:: audyn.models.RoFormerDecoderLayer
 .. autoclass:: audyn.models.RoFormerEncoder
 .. autoclass:: audyn.models.RoFormerDecoder
+
+Music Tagging Transformer
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: audyn.models.MusicTaggingTransformer
+
+.. code-block:: python
+
+    >>> import torch
+    >>> import torch.nn.functional as F
+    >>> from audyn.transforms import MusicTaggingTransformerMelSpectrogram
+    >>> from audyn.models import MusicTaggingTransformer
+    >>> from audyn.models.ast import MLPHead
+    >>> from audyn.utils.data.msd import tags
+    >>> torch.manual_seed(0)
+    >>> transform = MusicTaggingTransformerMelSpectrogram.build_from_pretrained()
+    >>> model = MusicTaggingTransformer.build_from_pretrained("music-tagging-transformer_teacher")
+    >>> print(transform)
+    MusicTaggingTransformerMelSpectrogram(
+      (spectrogram): Spectrogram()
+      (mel_scale): MelScale()
+      (amplitude_to_db): AmplitudeToDB()
+    )
+    >>> print(model)
+    MusicTaggingTransformer(
+      (embedding): PositionalPatchEmbedding(
+        (batch_norm): BatchNorm2d(1, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (backbone): ModuleList(
+          (0): ResidualMaxPool2d(
+            (backbone): ModuleList(
+              (0): ConvBlock2d(
+                (conv2d): Conv2d(1, 128, kernel_size=(3, 3), stride=(1, 1))
+                (batch_norm2d): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+                (relu2d): ReLU()
+              )
+              (1): ConvBlock2d(
+                (conv2d): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1))
+                (batch_norm2d): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+              )
+            )
+            (post_block2d): ConvBlock2d(
+              (conv2d): Conv2d(1, 128, kernel_size=(3, 3), stride=(1, 1))
+              (batch_norm2d): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+            )
+            (relu2d): ReLU()
+            (pool2d): MaxPool2d(kernel_size=(2, 2), stride=(2, 2), padding=0, dilation=1, ceil_mode=False)
+          )
+          (1): ResidualMaxPool2d(
+            (backbone): ModuleList(
+              (0): ConvBlock2d(
+                (conv2d): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1))
+                (batch_norm2d): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+                (relu2d): ReLU()
+              )
+              (1): ConvBlock2d(
+                (conv2d): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1))
+                (batch_norm2d): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+              )
+            )
+            (relu2d): ReLU()
+            (pool2d): MaxPool2d(kernel_size=(2, 2), stride=(2, 2), padding=0, dilation=1, ceil_mode=False)
+          )
+          (2): ResidualMaxPool2d(
+            (backbone): ModuleList(
+              (0): ConvBlock2d(
+                (conv2d): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1))
+                (batch_norm2d): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+                (relu2d): ReLU()
+              )
+              (1): ConvBlock2d(
+                (conv2d): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1))
+                (batch_norm2d): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+              )
+            )
+            (relu2d): ReLU()
+            (pool2d): MaxPool2d(kernel_size=(2, 1), stride=(2, 1), padding=0, dilation=1, ceil_mode=False)
+          )
+        )
+        (linear): Linear(in_features=2048, out_features=256, bias=True)
+        (dropout): Dropout(p=0.1, inplace=False)
+      )
+      (backbone): MusicTaggingTransformerEncoder(
+        (layers): ModuleList(
+          (0-3): 4 x MusicTaggingTransformerEncoderLayer(
+            (self_attn): MultiheadAttention(
+              (out_proj): NonDynamicallyQuantizableLinear(in_features=256, out_features=256, bias=True)
+            )
+            (linear1): Linear(in_features=256, out_features=1024, bias=True)
+            (dropout): Dropout(p=0.1, inplace=False)
+            (linear2): Linear(in_features=1024, out_features=256, bias=True)
+            (norm1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+            (norm2): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+            (dropout1): Dropout(p=0.1, inplace=False)
+            (dropout2): Dropout(p=0.1, inplace=False)
+            (activation): GELU(approximate='none')
+          )
+        )
+      )
+      (aggregator): HeadTokensAggregator(cls_token=True)
+      (head): MLPHead(
+        (norm): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+        (linear): Linear(in_features=256, out_features=50, bias=True)
+      )
+    )
+    >>> waveform = torch.randn((4, 30 * transform.sample_rate))
+    >>> spectrogram = transform(waveform)
+    >>> logit = model(spectrogram)
+    >>> likelihood = F.sigmoid(logit)
+    >>> print(likelihood.size())
+    torch.Size([4, 50])
+    >>> print(len(tags))
+    50  # 50 classes in MSD dataset
+    >>> # set customized head to model
+    >>> embedding_dim = model.embedding.embedding_dim
+    >>> num_classes = 10
+    >>> head = MLPHead(embedding_dim, num_classes)
+    >>> model = MusicTaggingTransformer.build_from_pretrained("music-tagging-transformer_teacher", head=head)
+    >>> logit = model(spectrogram)
+    >>> likelihood = F.sigmoid(logit)
+    >>> print(likelihood.size())
+    torch.Size([4, 10])

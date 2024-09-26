@@ -16,6 +16,11 @@ class MusicTaggingTransformerMelSpectrogram(aT.MelSpectrogram):
 
     For the details of arguments, see ``torchaudio.transforms.MelSpectrogram``.
 
+    .. note::
+
+        It is recommended to use ``MusicTaggingTransformerMelSpectrogram.build_from_pretrained``
+        if you reproduce official module.
+
     """
 
     def __init__(
@@ -69,6 +74,26 @@ class MusicTaggingTransformerMelSpectrogram(aT.MelSpectrogram):
 
     @classmethod
     def build_from_pretrained(cls) -> "MusicTaggingTransformerMelSpectrogram":
+        """Build MusicTaggingTransformerMelSpectrogram from pretraind one.
+
+        Due to lack of backward compatibility of ``torchaudio.transforms.MelSpectrogram``,
+        you need to use ``build_from_pretrained`` for official implementation.
+
+        Examples:
+
+            >>> import torch
+            >>> from audyn.transforms import MusicTaggingTransformerMelSpectrogram
+            >>> torch.manual_seed(0)
+            >>> transform = MusicTaggingTransformerMelSpectrogram.build_from_pretrained()
+            >>> sample_rate = transform.sample_rate
+            >>> print(sample_rate)
+            22050
+            >>> waveform = torch.randn((30 * sample_rate))
+            >>> spectrogram = transform(waveform)
+            >>> print(spectrogram.size())
+            torch.Size([128, 1292])
+
+        """
         from ..utils import model_cache_dir
 
         sample_rate = 22050
