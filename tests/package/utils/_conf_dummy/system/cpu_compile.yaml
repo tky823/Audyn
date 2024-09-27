@@ -1,0 +1,6 @@
+defaults:
+  - cpu
+  - _self_
+
+compile:
+  enable: true
