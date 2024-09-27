@@ -37,7 +37,12 @@ from audyn.utils import (
     setup_config,
 )
 from audyn.utils.clip_grad import GANGradClipper
-from audyn.utils.data import BaseDataLoaders, TorchObjectDataset, default_collate_fn, make_noise
+from audyn.utils.data import (
+    BaseDataLoaders,
+    TorchObjectDataset,
+    default_collate_fn,
+    make_noise,
+)
 from audyn.utils.data.dataset import WebDatasetWrapper
 from audyn.utils.driver import (
     BaseGenerator,
@@ -56,7 +61,8 @@ config_name = "config"
 
 
 @pytest.mark.parametrize("use_ema", [True, False])
-def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
+@pytest.mark.parametrize("use_torch_compile", [True, False])
+def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool, use_torch_compile: bool) -> None:
     """Test BaseTrainer and BaseGenerator."""
     DATA_SIZE = 20
     BATCH_SIZE = 2
@@ -72,6 +78,11 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
         model_name = "dummy"
         criterion_name = "dummy"
         lr_scheduler_name = "dummy"
+
+        if use_torch_compile:
+            system_name = "cpu_compile"
+        else:
+            system_name = "defaults"
 
         if use_ema:
             optimizer_name = "dummy"
@@ -91,6 +102,7 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
                     data_size=DATA_SIZE,
                     batch_size=BATCH_SIZE,
                     iterations=INITIAL_ITERATION,
+                    system=system_name,
                     train=train_name,
                     model=model_name,
                     criterion=criterion_name,
