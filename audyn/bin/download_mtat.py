@@ -83,7 +83,7 @@ def download_mtat(config: DictConfig) -> None:
                 with open(path, "rb") as f_in:
                     f_out.write(f_in.read())
 
-        _unpack_zip(path, mtat_root=mtat_root)
+        _unpack_zip(merged_path, mtat_root=mtat_root)
 
 
 def _download_mtat(url: str, path: str, chunk_size: int = 8192) -> None:
@@ -121,8 +121,7 @@ def _unpack_zip(path: str, mtat_root: Optional[str] = None) -> None:
 
     with zipfile.ZipFile(path) as f, tempfile.TemporaryDirectory() as temp_dir:
         f.extractall(temp_dir)
-        _mtat_root = os.path.join(temp_dir, default_name)
 
-        for _filename in os.listdir(_mtat_root):
-            _path = os.path.join(_mtat_root, _filename)
+        for _filename in os.listdir(temp_dir):
+            _path = os.path.join(temp_dir, _filename)
             shutil.move(_path, mtat_root)
