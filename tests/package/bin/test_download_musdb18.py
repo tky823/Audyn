@@ -2,6 +2,7 @@ import os
 import tempfile
 
 import pytest
+import torchaudio
 from dummy import allclose
 from omegaconf import OmegaConf
 
@@ -12,6 +13,9 @@ from audyn.utils.data.musdb18.dataset import MUSDB18, Track
 
 @pytest.mark.slow
 def test_download_musdb18_7s() -> None:
+    if "ffmpeg" not in torchaudio.list_audio_backends():
+        pytest.skip("FFmpeg is not supported.")
+
     with tempfile.TemporaryDirectory() as temp_dir:
         musdb18_dir = os.path.join(temp_dir, "MUSDB18-7s")
         subset = "test"
