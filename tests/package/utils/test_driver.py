@@ -32,11 +32,17 @@ from audyn.utils import (
     instantiate_lr_scheduler,
     instantiate_model,
     instantiate_optimizer,
+    set_compiler_if_necessary,
     set_nodes_if_necessary,
     setup_config,
 )
 from audyn.utils.clip_grad import GANGradClipper
-from audyn.utils.data import BaseDataLoaders, TorchObjectDataset, default_collate_fn, make_noise
+from audyn.utils.data import (
+    BaseDataLoaders,
+    TorchObjectDataset,
+    default_collate_fn,
+    make_noise,
+)
 from audyn.utils.data.dataset import WebDatasetWrapper
 from audyn.utils.driver import (
     BaseGenerator,
@@ -55,7 +61,8 @@ config_name = "config"
 
 
 @pytest.mark.parametrize("use_ema", [True, False])
-def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
+@pytest.mark.parametrize("use_torch_compile", [True, False])
+def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool, use_torch_compile: bool) -> None:
     """Test BaseTrainer and BaseGenerator."""
     DATA_SIZE = 20
     BATCH_SIZE = 2
@@ -71,6 +78,14 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
         model_name = "dummy"
         criterion_name = "dummy"
         lr_scheduler_name = "dummy"
+
+        if use_torch_compile:
+            if IS_WINDOWS:
+                pytest.skip("WINDOWS is not supported by torch.compile.")
+
+            system_name = "cpu_compile"
+        else:
+            system_name = "defaults"
 
         if use_ema:
             optimizer_name = "dummy"
@@ -90,6 +105,7 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
                     data_size=DATA_SIZE,
                     batch_size=BATCH_SIZE,
                     iterations=INITIAL_ITERATION,
+                    system=system_name,
                     train=train_name,
                     model=model_name,
                     criterion=criterion_name,
@@ -100,6 +116,8 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
             )
 
         setup_config(config)
+        set_nodes_if_necessary(config.system)
+        set_compiler_if_necessary(config.system)
 
         train_dataset = instantiate(config.train.dataset.train)
         validation_dataset = instantiate(config.train.dataset.validation)
@@ -125,14 +143,23 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
             accelerator=config.system.accelerator,
             is_distributed=config.system.distributed.enable,
         )
-        optimizer = instantiate_optimizer(config.optimizer, model)
-        lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
         criterion = instantiate_criterion(config.criterion)
         criterion = set_device(
             criterion,
             accelerator=config.system.accelerator,
             is_distributed=config.system.distributed.enable,
         )
+
+        if config.system.compile.enable:
+            compile_kwargs = config.system.compile.kwargs
+
+            if compile_kwargs is None:
+                compile_kwargs = {}
+
+            model = torch.compile(model, **compile_kwargs)
+
+        optimizer = instantiate_optimizer(config.optimizer, model)
+        lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
 
         trainer = BaseTrainer(
             loaders,
@@ -284,6 +311,7 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str) -> None:
         convert_dataset_and_dataloader_format_if_necessary(config)
         convert_dataset_and_dataloader_to_ddp_if_possible(config)
         set_nodes_if_necessary(config.system)
+        set_compiler_if_necessary(config.system)
 
         dist.init_process_group(
             backend=config.system.distributed.backend,
@@ -318,9 +346,18 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str) -> None:
             model = instantiate_model(config.model)
             # NOTE: set_device is unavailable here.
             model = nn.parallel.DistributedDataParallel(model)
+            criterion = instantiate_criterion(config.criterion)
+
+            if config.system.compile.enable:
+                compile_kwargs = config.system.compile.kwargs
+
+                if compile_kwargs is None:
+                    compile_kwargs = {}
+
+                model = torch.compile(model, **compile_kwargs)
+
             optimizer = instantiate_optimizer(config.optimizer, model)
             lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
-            criterion = instantiate_criterion(config.criterion)
 
             trainer = BaseTrainer(
                 loaders,
@@ -461,6 +498,7 @@ def test_base_trainer_ddp_for_audioset(
         convert_dataset_and_dataloader_format_if_necessary(config)
         convert_dataset_and_dataloader_to_ddp_if_possible(config)
         set_nodes_if_necessary(config.system)
+        set_compiler_if_necessary(config.system)
 
         dist.init_process_group(
             backend=config.system.distributed.backend,
@@ -523,9 +561,18 @@ def test_base_trainer_ddp_for_audioset(
         model = instantiate_model(config.model)
         # NOTE: set_device is unavailable here.
         model = nn.parallel.DistributedDataParallel(model)
+        criterion = instantiate_criterion(config.criterion)
+
+        if config.system.compile.enable:
+            compile_kwargs = config.system.compile.kwargs
+
+            if compile_kwargs is None:
+                compile_kwargs = {}
+
+            model = torch.compile(model, **compile_kwargs)
+
         optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
-        criterion = instantiate_criterion(config.criterion)
 
         trainer = BaseTrainer(
             loaders,
@@ -721,6 +768,7 @@ def test_text_to_feat_trainer(
             config = OmegaConf.create(config)
 
         setup_config(config)
+        set_compiler_if_necessary(config.system)
 
         train_dataset = instantiate(config.train.dataset.train)
         validation_dataset = instantiate(config.train.dataset.validation)
@@ -743,8 +791,6 @@ def test_text_to_feat_trainer(
             accelerator=config.system.accelerator,
             is_distributed=config.system.distributed.enable,
         )
-        optimizer = instantiate_optimizer(config.optimizer, model)
-        lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
 
         if is_legacy_grad_clipper and is_legacy_grad_clipper_recipe:
             grad_clipper = None
@@ -757,6 +803,17 @@ def test_text_to_feat_trainer(
             accelerator=config.system.accelerator,
             is_distributed=config.system.distributed.enable,
         )
+
+        if config.system.compile.enable:
+            compile_kwargs = config.system.compile.kwargs
+
+            if compile_kwargs is None:
+                compile_kwargs = {}
+
+            model = torch.compile(model, **compile_kwargs)
+
+        optimizer = instantiate_optimizer(config.optimizer, model)
+        lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
 
         trainer = TextToFeatTrainer(
             loaders,
@@ -1026,6 +1083,21 @@ def test_feat_to_wave_trainer(
             accelerator=config.system.accelerator,
             is_distributed=config.system.distributed.enable,
         )
+        criterion = instantiate_criterion(config.criterion)
+        criterion = set_device(
+            criterion,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
+
+        if config.system.compile.enable:
+            compile_kwargs = config.system.compile.kwargs
+
+            if compile_kwargs is None:
+                compile_kwargs = {}
+
+            model = torch.compile(model, **compile_kwargs)
+
         optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
 
@@ -1033,13 +1105,6 @@ def test_feat_to_wave_trainer(
             grad_clipper = None
         else:
             grad_clipper = instantiate_grad_clipper(config.train.clip_gradient, model.parameters())
-
-        criterion = instantiate_criterion(config.criterion)
-        criterion = set_device(
-            criterion,
-            accelerator=config.system.accelerator,
-            is_distributed=config.system.distributed.enable,
-        )
 
         trainer = FeatToWaveTrainer(
             loaders,
@@ -1565,6 +1630,21 @@ def test_cascade_text_to_wave(monkeypatch: MonkeyPatch) -> None:
             accelerator=config.system.accelerator,
             is_distributed=config.system.distributed.enable,
         )
+        criterion = instantiate_criterion(config.criterion)
+        criterion = set_device(
+            criterion,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
+
+        if config.system.compile.enable:
+            compile_kwargs = config.system.compile.kwargs
+
+            if compile_kwargs is None:
+                compile_kwargs = {}
+
+            model = torch.compile(model, **compile_kwargs)
+
         optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
 
@@ -1572,13 +1652,6 @@ def test_cascade_text_to_wave(monkeypatch: MonkeyPatch) -> None:
             grad_clipper = instantiate_grad_clipper(config.train.clip_gradient, model.parameters())
         else:
             grad_clipper = None
-
-        criterion = instantiate_criterion(config.criterion)
-        criterion = set_device(
-            criterion,
-            accelerator=config.system.accelerator,
-            is_distributed=config.system.distributed.enable,
-        )
 
         trainer = TextToFeatTrainer(
             loaders,
@@ -1635,14 +1708,23 @@ def test_cascade_text_to_wave(monkeypatch: MonkeyPatch) -> None:
             accelerator=config.system.accelerator,
             is_distributed=config.system.distributed.enable,
         )
-        optimizer = instantiate_optimizer(config.optimizer, model)
-        lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
         criterion = instantiate_criterion(config.criterion)
         criterion = set_device(
             criterion,
             accelerator=config.system.accelerator,
             is_distributed=config.system.distributed.enable,
         )
+
+        if config.system.compile.enable:
+            compile_kwargs = config.system.compile.kwargs
+
+            if compile_kwargs is None:
+                compile_kwargs = {}
+
+            model = torch.compile(model, **compile_kwargs)
+
+        optimizer = instantiate_optimizer(config.optimizer, model)
+        lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
 
         trainer = FeatToWaveTrainer(
             loaders,

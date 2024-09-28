@@ -1,11 +1,11 @@
-from audyn.utils.torchhub.ast import ast_base
-from audyn.utils.torchhub.music_tagging_transformer import (
+from audyn.utils._torchhub.ast import ast_base
+from audyn.utils._torchhub.music_tagging_transformer import (
     music_tagging_transformer_melspectrogram,
     student_music_tagging_transformer,
     teacher_music_tagging_transformer,
 )
-from audyn.utils.torchhub.passt import passt_base
-from audyn.utils.torchhub.ssast import multitask_ssast_base_400, ssast_base_400
+from audyn.utils._torchhub.passt import passt_base
+from audyn.utils._torchhub.ssast import multitask_ssast_base_400, ssast_base_400
 
 __all__ = [
     "ast_base",

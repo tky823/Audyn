@@ -91,7 +91,19 @@ If you use mixed precision training, please set ``system=cuda_ddp_amp``.
     cudnn:
         ...
 
-    amp:
-        ...
 
-    accelerator:
+Use of ``torch.compile``
+------------------------
+
+``torch.compile`` optimizes training of models by TorchDynamo.
+By default, this feature is deactivated in ``Audyn``.
+To activate this feature, please set ``config.system.compile=true`` in your config.
+
+.. code-block:: yaml
+
+    # system/*.yaml
+    accelerator: ...
+
+    compile:
+        enable: true
+        kwargs:  # keyword arguments fed to torch.compile

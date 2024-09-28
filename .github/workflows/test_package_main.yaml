@@ -40,6 +40,7 @@ jobs:
         if: inputs.os == 'macos-13'
         run: |
           brew install ffmpeg
+          brew install libomp
       - name: Overwrite torch version in pyproject.toml (Windows)
         id: windows_torch_installation
         if: inputs.os == 'windows-latest'

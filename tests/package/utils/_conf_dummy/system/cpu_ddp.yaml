@@ -22,3 +22,7 @@ amp:
   dtype:
 
 accelerator: cpu
+
+compile:
+  enable:
+  kwargs:  # keyword arguments fed to torch.compile
