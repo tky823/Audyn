@@ -154,7 +154,6 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool, use_torch_compile
                 compile_kwargs = {}
 
             model = torch.compile(model, **compile_kwargs)
-            criterion = torch.compile(criterion, **compile_kwargs)
 
         optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
@@ -353,7 +352,6 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str) -> None:
                     compile_kwargs = {}
 
                 model = torch.compile(model, **compile_kwargs)
-                criterion = torch.compile(criterion, **compile_kwargs)
 
             optimizer = instantiate_optimizer(config.optimizer, model)
             lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
@@ -569,7 +567,6 @@ def test_base_trainer_ddp_for_audioset(
                 compile_kwargs = {}
 
             model = torch.compile(model, **compile_kwargs)
-            criterion = torch.compile(criterion, **compile_kwargs)
 
         optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
@@ -811,7 +808,6 @@ def test_text_to_feat_trainer(
                 compile_kwargs = {}
 
             model = torch.compile(model, **compile_kwargs)
-            criterion = torch.compile(criterion, **compile_kwargs)
 
         optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
@@ -1098,7 +1094,6 @@ def test_feat_to_wave_trainer(
                 compile_kwargs = {}
 
             model = torch.compile(model, **compile_kwargs)
-            criterion = torch.compile(criterion, **compile_kwargs)
 
         optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
@@ -1646,7 +1641,6 @@ def test_cascade_text_to_wave(monkeypatch: MonkeyPatch) -> None:
                 compile_kwargs = {}
 
             model = torch.compile(model, **compile_kwargs)
-            criterion = torch.compile(criterion, **compile_kwargs)
 
         optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
@@ -1725,7 +1719,6 @@ def test_cascade_text_to_wave(monkeypatch: MonkeyPatch) -> None:
                 compile_kwargs = {}
 
             model = torch.compile(model, **compile_kwargs)
-            criterion = torch.compile(criterion, **compile_kwargs)
 
         optimizer = instantiate_optimizer(config.optimizer, model)
         lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)

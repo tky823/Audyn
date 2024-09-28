@@ -403,7 +403,6 @@ class BaseTrainer(BaseDriver):
                 kwargs = {}
 
             model = torch.compile(model, **kwargs)
-            criterion = torch.compile(criterion, **kwargs)
 
         # TODO: support model and criterion by instantiate_optimizer.
         optimizer = instantiate_optimizer(config.optimizer, model)
