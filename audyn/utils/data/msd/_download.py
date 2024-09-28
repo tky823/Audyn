@@ -18,7 +18,7 @@ def download_tags(
         chunk_size (int): Chunk size to download file.
 
     Returns:
-        dict: 50 tags of MSD>
+        list: 50 tags of MSD.
 
     Examples:
 
