@@ -35,7 +35,7 @@ You can decode .stem.mp4 file(s) into .wav files for MUSDB18 dataset by ``audyn-
 Download MTG-Jamendo dataset
 ----------------------------
 
-You can download audio files of MTG-Jamendo dataset by ``audyn-download-mtg-jamando``.
+You can download audio files of MTG-Jamendo dataset by ``audyn-download-mtg-jamendo``.
 
 .. code-block:: shell
 
@@ -45,7 +45,7 @@ You can download audio files of MTG-Jamendo dataset by ``audyn-download-mtg-jama
     unpack=true  # unpack .tar or not
     chunk_size=1024  # chunk size in byte to download
 
-    audyn-download-mtg-jamando \
+    audyn-download-mtg-jamendo \
     server_type="${server_type}" \
     quality="${quality}" \
     root="${root}" \
