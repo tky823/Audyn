@@ -4,7 +4,7 @@ Pretrained models via torch.hub
 Audio spectrogram transformer (AST)
 -----------------------------------
 
-- Provided weights are extracted from the original implementation.
+- The weights are extracted from the original implementation.
 
 .. code-block:: python
    
@@ -19,7 +19,7 @@ Audio spectrogram transformer (AST)
 
 Self-supervised audio spectrogram transformer (SSAST)
 -----------------------------------------------------
-- Provided weights are extracted from the original implementation.
+- The weights are extracted from the original implementation.
 - SSAST for pretraining
 
 .. code-block:: python
@@ -71,12 +71,56 @@ Self-supervised audio spectrogram transformer (SSAST)
 Patchout faSt Spectrogram Transformer (PaSST)
 ---------------------------------------------
 
+- The weights are extracted from the original implementation.
+
 .. code-block:: python
 
     >>> import torch
     >>> repo = "tky823/Audyn"
     >>> model = "passt_base"
     >>> passt = torch.hub.load(
+    ...     repo,
+    ...     model,
+    ...     skip_validation=False,
+    ... )
+
+Music Tagging Transformer
+-------------------------
+
+- The weights are extracted from the original implementation.
+- In terms of reproducibility, it is recommended to load predefined Mel-spectrogram transform as well.
+- Teacher model trained by Million Song Dataset (MSD).
+
+.. code-block:: python
+
+    >>> import torch
+    >>> repo = "tky823/Audyn"
+    >>> model = "teacher_music_tagging_transformer"
+    >>> teacher_music_tagging_transformer = torch.hub.load(
+    ...     repo,
+    ...     model,
+    ...     skip_validation=False,
+    ... )
+
+.. code-block:: python
+
+    >>> import torch
+    >>> repo = "tky823/Audyn"
+    >>> transform = "music_tagging_transformer_melspectrogram"
+    >>> music_tagging_transformer_melspectrogram = torch.hub.load(
+    ...     repo,
+    ...     transform,
+    ...     skip_validation=False,
+    ... )
+
+- Student model trained by MSD.
+
+.. code-block:: python
+
+    >>> import torch
+    >>> repo = "tky823/Audyn"
+    >>> model = "student_music_tagging_transformer"
+    >>> student_music_tagging_transformer = torch.hub.load(
     ...     repo,
     ...     model,
     ...     skip_validation=False,
