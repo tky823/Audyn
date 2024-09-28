@@ -565,7 +565,7 @@ def set_compiler_if_necessary(config: DictConfig) -> None:
         This function may overwrite config.compile.
 
     """
-    from ._torch.compile import is_gpu_supported
+    from ._torch.compile import is_gpu_supported, is_supported
 
     if config.compile.enable is None:
         OmegaConf.update(
@@ -574,6 +574,19 @@ def set_compiler_if_necessary(config: DictConfig) -> None:
             False,
         )
     else:
+        if config.compile.enable and not is_supported():
+            warnings.warn(
+                "Since torch.compile is not available on your system, "
+                "we overwrite config.compile.enable=False.",
+                UserWarning,
+                stacklevel=2,
+            )
+            OmegaConf.update(
+                config,
+                "compile.enable",
+                False,
+            )
+
         if config.compile.enable and config.accelerator in ["gpu", "cuda"]:
             if not is_gpu_supported():
                 warnings.warn(
