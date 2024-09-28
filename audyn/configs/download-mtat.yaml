@@ -1,0 +1,8 @@
+defaults:
+  - config
+  - _self_
+
+root: ???
+mtat_root:
+unpack:
+chunk_size:
