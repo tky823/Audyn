@@ -7,6 +7,16 @@ def download_tags() -> List[str]:
     Returns:
         list: List of tags.
 
+    Examples:
+
+        >>> from audyn.utils.data.mtat import tags
+        >>> len(tags)
+        50
+        >>> tags[0]
+        'guitar'
+        >>> tags[-1]
+        'choral'
+
     """
     tags = [
         "guitar",
