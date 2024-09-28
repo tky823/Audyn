@@ -9,7 +9,7 @@ from .utils.hydra import main
 
 __all__ = ["__version__", "main"]
 
-__version__ = "0.0.3"
+__version__ = "0.0.4.dev0"
 
 # for resolver
 _whitespace_re = re.compile(r"\s+")
