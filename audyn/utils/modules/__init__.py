@@ -5,6 +5,7 @@ from torch.nn.parallel import DataParallel, DistributedDataParallel
 
 from ...criterion.base import MultiCriteria
 from ...metrics.base import StatefulMetric
+from ..compile import is_compiled_module
 from ..data import select_device
 from ..parallel import is_dp_or_ddp
 
@@ -65,8 +66,10 @@ def set_device(
 
 def unwrap(module: nn.Module) -> nn.Module:
     """Unwrap nn.DataParallel and nn.DistributedDataParallel."""
-    if is_dp_or_ddp(module):
+    if is_compiled_module(module):
+        return unwrap(module._orig_mod)
+    elif is_dp_or_ddp(module):
         module: Union[DataParallel, DistributedDataParallel]
-        return module.module
+        return unwrap(module.module)
     else:
         return module
