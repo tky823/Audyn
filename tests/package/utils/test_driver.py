@@ -80,6 +80,9 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool, use_torch_compile
         lr_scheduler_name = "dummy"
 
         if use_torch_compile:
+            if IS_WINDOWS:
+                pytest.skip("WINDOWS is not supported by torch.compile.")
+
             system_name = "cpu_compile"
         else:
             system_name = "defaults"
