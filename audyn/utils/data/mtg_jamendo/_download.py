@@ -507,96 +507,128 @@ def download_all_metadata(
 
 def download_top50_metadata(
     root: Optional[str] = None,
+    split: int = 0,
     force_download: bool = False,
     chunk_size: int = 1024,
 ) -> List[Dict[str, Any]]:
-    url = "https://raw.githubusercontent.com/MTG/mtg-jamendo-dataset/master/data/autotagging_top50tags.tsv"  # noqa: E501
-    filename = "autotagging_top50tags.tsv"
+    base_url = f"https://raw.githubusercontent.com/MTG/mtg-jamendo-dataset/master/data/splits/split-{split}"  # noqa: E501
+    base_url += "/autotagging_top50tags-{subset}.tsv"  # noqa: E501
+    metadata = []
 
-    if root is None:
-        root = os.path.join(audyn_cache_dir, "data", "mtg-jamendo")
+    for subset in ["train", "validation", "test"]:
+        url = base_url.format(subset=subset)
+        filename = "{subset}.tsv".format(subset=subset)
 
-    path = os.path.join(root, filename)
+        if root is None:
+            root = os.path.join(audyn_cache_dir, "data", "mtg-jamendo", "top50", f"split-{split}")
 
-    download_file(
-        url,
-        path,
-        force_download=force_download,
-        chunk_size=chunk_size,
-    )
-    metadata = _load_metadata(path)
+        path = os.path.join(root, filename)
+
+        download_file(
+            url,
+            path,
+            force_download=force_download,
+            chunk_size=chunk_size,
+        )
+        _metadata = _load_metadata(path, subset=subset)
+        metadata.extend(_metadata)
 
     return metadata
 
 
 def download_genre_metadata(
     root: Optional[str] = None,
+    split: int = 0,
     force_download: bool = False,
     chunk_size: int = 1024,
 ) -> List[Dict[str, Any]]:
-    url = "https://raw.githubusercontent.com/MTG/mtg-jamendo-dataset/master/data/autotagging_genre.tsv"  # noqa: E501
-    filename = "autotagging_genre.tsv"
+    base_url = f"https://raw.githubusercontent.com/MTG/mtg-jamendo-dataset/master/data/splits/split-{split}"  # noqa: E501
+    base_url += "/autotagging_genre-{subset}.tsv"  # noqa: E501
+    metadata = []
 
-    if root is None:
-        root = os.path.join(audyn_cache_dir, "data", "mtg-jamendo")
+    for subset in ["train", "validation", "test"]:
+        url = base_url.format(subset=subset)
+        filename = "{subset}.tsv".format(subset=subset)
 
-    path = os.path.join(root, filename)
+        if root is None:
+            root = os.path.join(audyn_cache_dir, "data", "mtg-jamendo", "genre", f"split-{split}")
 
-    download_file(
-        url,
-        path,
-        force_download=force_download,
-        chunk_size=chunk_size,
-    )
-    metadata = _load_metadata(path)
+        path = os.path.join(root, filename)
+
+        download_file(
+            url,
+            path,
+            force_download=force_download,
+            chunk_size=chunk_size,
+        )
+        _metadata = _load_metadata(path, subset=subset)
+        metadata.extend(_metadata)
 
     return metadata
 
 
 def download_instrument_metadata(
     root: Optional[str] = None,
+    split: int = 0,
     force_download: bool = False,
     chunk_size: int = 1024,
 ) -> List[Dict[str, Any]]:
-    url = "https://raw.githubusercontent.com/MTG/mtg-jamendo-dataset/master/data/autotagging_instrument.tsv"  # noqa: E501
-    filename = "autotagging_instrument.tsv"
+    base_url = f"https://raw.githubusercontent.com/MTG/mtg-jamendo-dataset/master/data/splits/split-{split}"  # noqa: E501
+    base_url += "/autotagging_instrument-{subset}.tsv"  # noqa: E501
+    metadata = []
 
-    if root is None:
-        root = os.path.join(audyn_cache_dir, "data", "mtg-jamendo")
+    for subset in ["train", "validation", "test"]:
+        url = base_url.format(subset=subset)
+        filename = "{subset}.tsv".format(subset=subset)
 
-    path = os.path.join(root, filename)
+        if root is None:
+            root = os.path.join(
+                audyn_cache_dir, "data", "mtg-jamendo", "instrument", f"split-{split}"
+            )
 
-    download_file(
-        url,
-        path,
-        force_download=force_download,
-        chunk_size=chunk_size,
-    )
-    metadata = _load_metadata(path)
+        path = os.path.join(root, filename)
+
+        download_file(
+            url,
+            path,
+            force_download=force_download,
+            chunk_size=chunk_size,
+        )
+        _metadata = _load_metadata(path, subset=subset)
+        metadata.extend(_metadata)
 
     return metadata
 
 
 def download_moodtheme_metadata(
     root: Optional[str] = None,
+    split: int = 0,
     force_download: bool = False,
     chunk_size: int = 1024,
 ) -> List[Dict[str, Any]]:
-    url = "https://raw.githubusercontent.com/MTG/mtg-jamendo-dataset/master/data/autotagging_moodtheme.tsv"  # noqa: E501
-    filename = "autotagging_moodtheme.tsv"
+    base_url = f"https://raw.githubusercontent.com/MTG/mtg-jamendo-dataset/master/data/splits/split-{split}"  # noqa: E501
+    base_url += "/autotagging_moodtheme-{subset}.tsv"  # noqa: E501
+    metadata = []
 
-    if root is None:
-        root = os.path.join(audyn_cache_dir, "data", "mtg-jamendo")
+    for subset in ["train", "validation", "test"]:
+        url = base_url.format(subset=subset)
+        filename = "{subset}.tsv".format(subset=subset)
 
-    path = os.path.join(root, filename)
+        if root is None:
+            root = os.path.join(
+                audyn_cache_dir, "data", "mtg-jamendo", "moodtheme", f"split-{split}"
+            )
 
-    download_file(
-        url,
-        path,
-        force_download=force_download,
-        chunk_size=chunk_size,
-    )
-    metadata = _load_metadata(path)
+        path = os.path.join(root, filename)
+
+        download_file(
+            url,
+            path,
+            force_download=force_download,
+            chunk_size=chunk_size,
+        )
+        _metadata = _load_metadata(path, subset=subset)
+        metadata.extend(_metadata)
 
     return metadata
 
