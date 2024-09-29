@@ -1,8 +1,13 @@
 from ._download import (
+    download_all_metadata,
     download_all_tags,
+    download_genre_metadata,
     download_genre_tags,
+    download_instrument_metadata,
     download_instrument_tags,
+    download_moodtheme_metadata,
     download_moodtheme_tags,
+    download_top50_metadata,
     download_top50_tags,
 )
 
@@ -17,6 +22,11 @@ __all__ = [
     "num_genre_tags",
     "num_instrument_tags",
     "num_moodtheme_tags",
+    "download_all_metadata",
+    "download_top50_metadata",
+    "download_genre_metadata",
+    "download_instrument_metadata",
+    "download_moodtheme_metadata",
 ]
 
 all_tags = download_all_tags()
