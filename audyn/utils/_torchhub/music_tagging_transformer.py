@@ -9,8 +9,7 @@ from ...transforms.music_tagging_transformer import (
 
 __all__ = [
     "music_tagging_transformer_melspectrogram",
-    "teacher_music_tagging_transformer",
-    "student_music_tagging_transformer",
+    "music_tagging_transformer",
 ]
 
 
@@ -21,67 +20,25 @@ def music_tagging_transformer_melspectrogram() -> MusicTaggingTransformerMelSpec
     return transform
 
 
-def teacher_music_tagging_transformer(
-    aggregator: Optional[nn.Module] = None,
-    head: Optional[nn.Module] = None,
-) -> MusicTaggingTransformer:
-    """Build teacher MusicTaggingTransformer.
-
-    Args:
-        aggregator (nn.Module, optional): Aggregator module.
-        head (nn.Module, optional): Head module.
-
-    """
-    is_teacher = True
-
-    model = _music_tagging_transformer(
-        is_teacher,
-        aggregator=aggregator,
-        head=head,
-    )
-
-    return model
-
-
-def student_music_tagging_transformer(
-    aggregator: Optional[nn.Module] = None,
-    head: Optional[nn.Module] = None,
-) -> MusicTaggingTransformer:
-    """Build student MusicTaggingTransformer.
-
-    Args:
-        aggregator (nn.Module, optional): Aggregator module.
-        head (nn.Module, optional): Head module.
-
-    """
-    is_teacher = False
-
-    model = _music_tagging_transformer(
-        is_teacher,
-        aggregator=aggregator,
-        head=head,
-    )
-
-    return model
-
-
-def _music_tagging_transformer(
-    is_teacher: bool,
+def music_tagging_transformer(
+    role: str,
     aggregator: Optional[nn.Module] = None,
     head: Optional[nn.Module] = None,
 ) -> MusicTaggingTransformer:
     """Build MusicTaggingTransformer.
 
     Args:
-        is_teacher (bool): Teacher model or not.
+        role (str): ``teacher`` or ``student``.
         aggregator (nn.Module, optional): Aggregator module.
         head (nn.Module, optional): Head module.
 
     """
-    if is_teacher:
+    if role == "teacher":
         pretrained_model_name = "music-tagging-transformer_teacher"
-    else:
+    elif role == "student":
         pretrained_model_name = "music-tagging-transformer_student"
+    else:
+        raise ValueError(f"{role} is not supported as role.")
 
     model = MusicTaggingTransformer.build_from_pretrained(
         pretrained_model_name,
