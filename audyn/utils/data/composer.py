@@ -12,6 +12,8 @@ __all__ = [
     "SequentialComposer",
     "LogarithmTaker",
     "SynchronousWaveformSlicer",
+    "LabelToOnehot",
+    "LabelsToMultihot",
 ]
 
 
@@ -399,5 +401,95 @@ class Stacker(Composer):
             output.append(sample[input_key])
 
         sample[output_key] = torch.stack(output, dim=dim)
+
+        return sample
+
+
+class LabelToOnehot(Composer):
+    """Composer for classification task.
+
+    Args:
+        label_key (str): Key of label in classification.
+        feature_key (str): Key to store one-hot feature.
+        labels (list): List of labels.
+
+    """
+
+    def __init__(
+        self,
+        label_key: str,
+        feature_key: str,
+        labels: List[str],
+        decode_audio_as_waveform: bool = True,
+        decode_audio_as_monoral: bool = True,
+    ) -> None:
+        super().__init__(
+            decode_audio_as_waveform=decode_audio_as_waveform,
+            decode_audio_as_monoral=decode_audio_as_monoral,
+        )
+
+        self.label_key = label_key
+        self.feature_key = feature_key
+        self.labels = labels
+
+    def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        label_key = self.label_key
+        feature_key = self.feature_key
+        labels = self.labels
+        num_labels = len(labels)
+
+        sample = super().process(sample)
+
+        label = sample[label_key]
+        onehot = torch.zeros((num_labels,))
+        index = labels.index(label)
+        onehot[index] = 1
+        sample[feature_key] = onehot
+
+        return sample
+
+
+class LabelsToMultihot(Composer):
+    """Composer for multi-label classification.
+
+    Args:
+        labels_key (str): Key of labels in multi-label classification.
+        feature_key (str): Key to store multi-hot feature.
+        labels (list): List of labels.
+
+    """
+
+    def __init__(
+        self,
+        label_key: str,
+        feature_key: str,
+        labels: List[str],
+        decode_audio_as_waveform: bool = True,
+        decode_audio_as_monoral: bool = True,
+    ) -> None:
+        super().__init__(
+            decode_audio_as_waveform=decode_audio_as_waveform,
+            decode_audio_as_monoral=decode_audio_as_monoral,
+        )
+
+        self.label_key = label_key
+        self.feature_key = feature_key
+        self.labels = labels
+
+    def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        label_key = self.label_key
+        feature_key = self.feature_key
+        labels = self.labels
+        num_labels = len(labels)
+
+        sample = super().process(sample)
+
+        multihot = torch.zeros((num_labels,))
+
+        for label in sample[label_key]:
+            index = labels.index(label)
+            multihot[index] = 1
+
+        sample[feature_key] = multihot
 
         return sample

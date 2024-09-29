@@ -9,6 +9,8 @@ from .collator import Collator, default_collate_fn, rename_webdataset_keys
 from .composer import (
     AudioFeatureExtractionComposer,
     Composer,
+    LabelsToMultihot,
+    LabelToOnehot,
     LogarithmTaker,
     Mixer,
     SequentialComposer,
@@ -47,6 +49,8 @@ __all__ = [
     "SynchronousWaveformSlicer",
     "Mixer",
     "Stacker",
+    "LabelToOnehot",
+    "LabelsToMultihot",
     "Collator",
     "slice_feautures",
     "take_log_features",
