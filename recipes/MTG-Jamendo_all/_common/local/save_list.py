@@ -13,7 +13,7 @@ def main(config: DictConfig) -> None:
 
     dump_format = config.preprocess.dump_format
     list_path = config.preprocess.list_path
-    mtg_jamendo_root = config.preprocess.mtg_jamendo_root
+    wav_dir = config.preprocess.wav_dir
     split = config.preprocess.split
     subset = config.preprocess.subset
 
@@ -28,7 +28,7 @@ def main(config: DictConfig) -> None:
         for annotation in annotations:
             path = annotation["path"]
             filename = path.replace(".mp3", "")
-            path = os.path.join(mtg_jamendo_root, path)
+            path = os.path.join(wav_dir, path)
 
             if annotation["subset"] == subset and os.path.exists(path):
                 f.write(filename + "\n")

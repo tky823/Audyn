@@ -2,6 +2,5 @@ defaults:
   - defaults
   - _self_
 
-mtg_jamendo_root:
 split: 0
 subset:
