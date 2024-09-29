@@ -16,6 +16,7 @@ from .ast import BaseAudioSpectrogramTransformer, HeadTokensAggregator, MLPHead
 
 __all__ = [
     "MusicTaggingTransformer",
+    "MusicTaggingTransformerLinearProbing",
 ]
 
 
@@ -35,7 +36,7 @@ class MusicTaggingTransformer(BaseAudioSpectrogramTransformer):
         aggregator: Optional[nn.Module] = None,
         head: Optional[nn.Module] = None,
     ) -> None:
-        super().__init__(embedding, backbone)
+        super().__init__(embedding=embedding, backbone=backbone)
 
         self.aggregator = aggregator
         self.head = head
@@ -256,6 +257,36 @@ class MusicTaggingTransformer(BaseAudioSpectrogramTransformer):
             return model
         else:
             raise FileNotFoundError(f"{pretrained_model_name_or_path} does not exist.")
+
+
+class MusicTaggingTransformerLinearProbing(MusicTaggingTransformer):
+    """Music Tagging Transformer [#won2021semi]_ for linear probing."""
+
+    def __init__(
+        self,
+        embedding: PositionalPatchEmbedding,
+        backbone: MusicTaggingTransformerEncoder,
+        aggregator: Optional[nn.Module] = None,
+        head: Optional[nn.Module] = None,
+    ) -> None:
+        super().__init__(
+            embedding=embedding,
+            backbone=backbone,
+            aggregator=aggregator,
+            head=head,
+        )
+
+        for p in self.embedding.parameters():
+            p.requires_grad = False
+            p.grad = None
+
+        for p in self.backbone.parameters():
+            p.requires_grad = False
+            p.grad = None
+
+        for p in self.aggregator.parameters():
+            p.requires_grad = False
+            p.grad = None
 
 
 def _create_pretrained_model_configs() -> Dict[str, Dict[str, str]]:
