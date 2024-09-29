@@ -1,0 +1,6 @@
+_target_: audyn.models.MusicTaggingTransformerLinearProbing.build_from_pretrained
+pretrained_model_name_or_path: music-tagging-transformer_student
+head:
+  _target_: audyn.models.ast.MLPHead
+  in_channels: 64
+  out_channels: ${const:data.tag.num_tags}

@@ -260,7 +260,11 @@ class MusicTaggingTransformer(BaseAudioSpectrogramTransformer):
 
 
 class MusicTaggingTransformerLinearProbing(MusicTaggingTransformer):
-    """Music Tagging Transformer [#won2021semi]_ for linear probing."""
+    """Music Tagging Transformer [#won2021semi]_ for linear probing.
+
+    Unlike ``MusicTaggingTransformer``, gradients of ``embedding``, ``backbone``,
+    and ``aggregator`` are removed.
+    """
 
     def __init__(
         self,
