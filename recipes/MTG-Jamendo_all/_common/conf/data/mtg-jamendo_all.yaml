@@ -1,0 +1,6 @@
+defaults:
+  - mtg-jamendo
+  - _self_
+
+tag:
+  num_tags: ${const:audyn.utils.data.mtg_jamendo.num_all_tags}
