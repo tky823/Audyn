@@ -28,13 +28,26 @@ criterion="mtg-jamendo"
 
 . ../../_common/parse_options.sh || exit 1;
 
-mtg_jamendo_root="${data_root}/MTG-Jamendo/audio"
-
 if [ ${stage} -le -1 ] && [ ${stop_stage} -ge -1 ]; then
     echo "Stage -1"
 
     (
         . ../_common/download.sh \
         --data-root "${data_root}"
+    )
+fi
+
+if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
+    echo "Stage 0: Preprocess dataset"
+
+    (
+        . ../_common/preprocess.sh \
+        --stage 1 \
+        --stop-stage 2 \
+        --data-root "${data_root}" \
+        --dump-root "${dump_root}" \
+        --dump-format "${dump_format}" \
+        --preprocess "${preprocess}" \
+        --data "${data}"
     )
 fi
