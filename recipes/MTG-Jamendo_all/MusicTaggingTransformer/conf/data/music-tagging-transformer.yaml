@@ -4,4 +4,4 @@ defaults:
 
 audio:
   sample_rate: 22050
-  duration: 30
+  duration: 10
