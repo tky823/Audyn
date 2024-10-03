@@ -57,15 +57,13 @@ class MusicTaggingTransformer(BaseAudioSpectrogramTransformer):
         input = self.pad_by_length(input, length=length)
         x = self.embedding(input)
         padding_mask = self.compute_padding_mask(input, length=length)
-        x = self.transformer_forward(x, padding_mask=padding_mask)
+        output = self.transformer_forward(x, padding_mask=padding_mask)
 
         if self.aggregator is not None:
-            x = self.aggregator(x)
+            output = self.aggregator(output)
 
         if self.head is not None:
-            x = self.head(x)
-
-        output = x
+            output = self.head(output)
 
         return output
 
