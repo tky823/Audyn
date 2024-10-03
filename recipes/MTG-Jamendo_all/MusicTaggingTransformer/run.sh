@@ -22,7 +22,7 @@ preprocess="mtg-jamendo"
 data="music-tagging-transformer"
 train="music-tagging-transformer_linear-probing"
 model="music-tagging-transformer_student_linear-probing"
-optimizer="defaults"
+optimizer="music-tagging-transformer_linear-probing"
 lr_scheduler="defaults"
 criterion="mtg-jamendo"
 
