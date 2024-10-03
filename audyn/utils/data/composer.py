@@ -3,6 +3,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 
 import torch
 import torch.nn.functional as F
+import torchaudio.functional as aF
 
 from .webdataset import decode_audio, supported_audio_extensions
 
@@ -491,5 +492,51 @@ class LabelsToMultihot(Composer):
             multihot[index] = 1
 
         sample[feature_key] = multihot
+
+        return sample
+
+
+class ResamplingComposer(Composer):
+    """Composer for multi-label classification.
+
+    Args:
+        new_freq (int): Target sampling rate.
+        audio_key (str): Key of audio in given sample.
+        sample_rate_key (str): Key of sampling rate in given sample.
+
+    """
+
+    def __init__(
+        self,
+        new_freq: int,
+        audio_key: str,
+        sample_rate_key: str,
+        decode_audio_as_waveform: bool = True,
+        decode_audio_as_monoral: bool = True,
+    ) -> None:
+        super().__init__(
+            decode_audio_as_waveform=decode_audio_as_waveform,
+            decode_audio_as_monoral=decode_audio_as_monoral,
+        )
+
+        self.new_freq = new_freq
+        self.audio_key = audio_key
+        self.sample_rate_key = sample_rate_key
+
+    def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        new_freq = self.new_freq
+        audio_key = self.audio_key
+        sample_rate_key = self.sample_rate_key
+
+        sample = super().process(sample)
+
+        waveform = sample[audio_key]
+        sample_rate = sample[sample_rate_key]
+
+        if sample_rate != new_freq:
+            waveform = aF.resample(waveform, sample_rate, new_freq)
+
+        sample[audio_key] = waveform
+        sample[sample_rate_key] = torch.tensor(new_freq, dtype=torch.long)
 
         return sample
