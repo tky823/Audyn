@@ -2003,9 +2003,9 @@ def test_trainer_for_dump_format_conversion(
                 subset_feature_dir = os.path.join(feature_dir, subset)
                 tar_path = os.path.join(subset_feature_dir, "%d.tar")
 
-            if IS_WINDOWS:
-                # https://stackoverflow.com/questions/68299665/valueerror-no-gopen-handler-defined
-                tar_path = "file:" + tar_path
+                if IS_WINDOWS:
+                    # https://stackoverflow.com/questions/68299665/valueerror-no-gopen-handler-defined
+                    tar_path = "file:" + tar_path
 
                 identifiers = []
 
