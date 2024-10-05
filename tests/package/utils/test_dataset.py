@@ -22,7 +22,7 @@ def test_torch_object_dataset() -> None:
     key = "input"
     list_path = "tests/mock/dataset/torch_object/sample.txt"
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         feature_dir = os.path.join(temp_dir, "feature")
 
         os.makedirs(feature_dir, exist_ok=True)
@@ -47,7 +47,7 @@ def test_sortable_torch_object_dataset(sort_key: str) -> None:
 
     list_path = "tests/mock/dataset/torch_object/sample.txt"
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         feature_dir = os.path.join(temp_dir, "feature")
 
         os.makedirs(feature_dir, exist_ok=True)
@@ -92,7 +92,7 @@ def test_webdataset_dataset() -> None:
     sample_rate = 16000
     batch_size = 2
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         feature_dir = os.path.join(temp_dir, "feature")
         tar_path = os.path.join(feature_dir, "%d.tar")
 

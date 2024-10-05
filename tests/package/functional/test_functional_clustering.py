@@ -65,7 +65,7 @@ def test_kmeans_clustering_ddp() -> None:
     batch_size, embedding_dim = 10, 4
     n_iter = 10
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         processes = []
 
         for rank in range(world_size):
@@ -124,7 +124,7 @@ def test_minibatch_kmeans_clustering_ddp() -> None:
     batch_size, embedding_dim = 3, 4
     n_iter = 10
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         processes = []
 
         for rank in range(world_size):

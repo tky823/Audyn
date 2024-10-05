@@ -56,7 +56,7 @@ def test_weighted_audioset_webdataset(
         expected_samples_per_epoch = 5
         batch_size = 3
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         audio_dir = os.path.join(temp_dir, "audio")
         list_dir = os.path.join(temp_dir, "list")
         feature_dir = os.path.join(temp_dir, "feature")
@@ -185,7 +185,7 @@ def test_distributed_weighted_audioset_webdataset_sampler(
         expected_samples_per_epoch = 10
         batch_size = 3
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         audio_dir = os.path.join(temp_dir, "audio")
         list_dir = os.path.join(temp_dir, "list")
         feature_dir = os.path.join(temp_dir, "feature")
