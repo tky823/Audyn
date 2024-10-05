@@ -2,6 +2,7 @@ import importlib
 import os
 import sys
 import tempfile
+import warnings
 from datetime import timedelta
 from os.path import dirname, join, realpath, relpath
 from typing import Any, Dict, List, Optional, Tuple
@@ -55,6 +56,7 @@ from audyn.utils.driver import (
 from audyn.utils.modules import set_device
 
 IS_WINDOWS = sys.platform == "win32"
+
 
 config_template_path = join(dirname(realpath(audyn.__file__)), "configs")
 config_name = "config"
@@ -152,6 +154,8 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool, use_torch_compile
         )
 
         if config.system.compile.enable:
+            warnings.warn(config.system)
+            warnings.warn(config.system.compile.enable)
             compile_kwargs = config.system.compile.kwargs
 
             if compile_kwargs is None:
