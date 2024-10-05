@@ -5,7 +5,7 @@ Audyn is PyTorch toolkit for audio synthesis.
 
 ## Build Status
 
-| Python/PyTorch | Ubuntu | MacOS | Windows |
+| Python/PyTorch | Ubuntu | MacOS (x86_64/arm64) | Windows |
 |:-:|:-:|:-:|:-:|
 | 3.9/2.0 | [![ubuntu-latest/3.9/2.0](https://github.com/tky823/Audyn/actions/workflows/test_package_ubuntu-latest_python-3.9_torch-2.0.yaml/badge.svg?branch=main)](https://github.com/tky823/Audyn/actions/workflows/test_package_ubuntu-latest_python-3.9_torch-2.0.yaml) | [![macos-13/3.9/2.0](https://github.com/tky823/Audyn/actions/workflows/test_package_macos-13_python-3.9_torch-2.0.yaml/badge.svg?branch=main)](https://github.com/tky823/Audyn/actions/workflows/test_package_macos-13_python-3.9_torch-2.0.yaml) | [![windows-latest/3.9/2.0](https://github.com/tky823/Audyn/actions/workflows/test_package_windows-latest_python-3.9_torch-2.0.yaml/badge.svg?branch=main)](https://github.com/tky823/Audyn/actions/workflows/test_package_windows-latest_python-3.9_torch-2.0.yaml) |
 | 3.9/2.1 | [![ubuntu-latest/3.9/2.1](https://github.com/tky823/Audyn/actions/workflows/test_package_ubuntu-latest_python-3.9_torch-2.1.yaml/badge.svg?branch=main)](https://github.com/tky823/Audyn/actions/workflows/test_package_ubuntu-latest_python-3.9_torch-2.1.yaml) | [![macos-13/3.9/2.1](https://github.com/tky823/Audyn/actions/workflows/test_package_macos-13_python-3.9_torch-2.1.yaml/badge.svg?branch=main)](https://github.com/tky823/Audyn/actions/workflows/test_package_macos-13_python-3.9_torch-2.1.yaml) | [![windows-latest/3.9/2.1](https://github.com/tky823/Audyn/actions/workflows/test_package_windows-latest_python-3.9_torch-2.1.yaml/badge.svg?branch=main)](https://github.com/tky823/Audyn/actions/workflows/test_package_windows-latest_python-3.9_torch-2.1.yaml) |
