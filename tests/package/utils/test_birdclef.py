@@ -112,9 +112,10 @@ def test_birdclef2024_primary_label_composer(
         path = os.path.join(audio_dir, "audio.ogg")
         download_file_from_github_release(url, path)
 
-        with wds.ShardWriter(tar_path, maxcount=max_shard_count) as sink, open(
-            list_path, mode="w"
-        ) as f_list:
+        with (
+            wds.ShardWriter(tar_path, maxcount=max_shard_count) as sink,
+            open(list_path, mode="w") as f_list,
+        ):
             for filename in sorted(birdclef2024_samples.keys()):
                 sample = birdclef2024_samples[filename]
                 sample_rate = sample["sample_rate"]
