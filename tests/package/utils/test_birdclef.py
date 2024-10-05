@@ -108,11 +108,6 @@ def test_birdclef2024_primary_label_composer(
         list_path = os.path.join(list_dir, "train.txt")
         tar_path = os.path.join(feature_dir, "%d.tar")
 
-        if IS_WINDOWS:
-            # https://stackoverflow.com/questions/68299665/valueerror-no-gopen-handler-defined
-            feature_dir = "file:" + feature_dir
-            tar_path = "file:" + tar_path
-
         audio_dir = os.path.join(temp_dir, "audio")
         path = os.path.join(audio_dir, "audio.ogg")
         download_file_from_github_release(url, path)

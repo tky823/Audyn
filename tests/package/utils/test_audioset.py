@@ -68,11 +68,6 @@ def test_weighted_audioset_webdataset(
         list_path = os.path.join(list_dir, "train.txt")
         tar_path = os.path.join(feature_dir, "%d.tar")
 
-        if IS_WINDOWS:
-            # https://stackoverflow.com/questions/68299665/valueerror-no-gopen-handler-defined
-            feature_dir = "file:" + feature_dir
-            tar_path = "file:" + tar_path
-
         with (
             wds.ShardWriter(tar_path, maxcount=max_shard_count) as sink,
             open(list_path, mode="w") as f_list,
@@ -201,11 +196,6 @@ def test_distributed_weighted_audioset_webdataset_sampler(
 
         list_path = os.path.join(list_dir, "train.txt")
         tar_path = os.path.join(feature_dir, "%d.tar")
-
-        if IS_WINDOWS:
-            # https://stackoverflow.com/questions/68299665/valueerror-no-gopen-handler-defined
-            feature_dir = "file:" + feature_dir
-            tar_path = "file:" + tar_path
 
         with (
             wds.ShardWriter(tar_path, maxcount=max_shard_count) as sink,

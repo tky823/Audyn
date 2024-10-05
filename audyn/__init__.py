@@ -1,15 +1,19 @@
 import importlib
 import operator
 import re
+import sys
 from typing import Any
 
 from omegaconf import OmegaConf
+from webdataset.gopen import gopen_file, gopen_schemes
 
 from .utils.hydra import main
 
 __all__ = ["__version__", "main"]
 
 __version__ = "0.0.4.dev0"
+
+IS_WINDOWS = sys.platform == "win32"
 
 # for resolver
 _whitespace_re = re.compile(r"\s+")
@@ -59,3 +63,7 @@ def _resolve(full_var_name: str) -> Any:
 
 
 OmegaConf.register_new_resolver("const", _constant_resolver)
+
+if IS_WINDOWS:
+    # https://stackoverflow.com/questions/68299665/valueerror-no-gopen-handler-defined
+    gopen_schemes["d"] = gopen_file

@@ -100,11 +100,6 @@ def test_webdataset_dataset() -> None:
 
         max_shard_size = 5000
 
-        if IS_WINDOWS:
-            # https://stackoverflow.com/questions/68299665/valueerror-no-gopen-handler-defined
-            feature_dir = "file:" + feature_dir
-            tar_path = "file:" + tar_path
-
         with wds.ShardWriter(tar_path, maxsize=max_shard_size) as sink, open(list_path) as f:
             for line in f:
                 idx = int(line.strip())
