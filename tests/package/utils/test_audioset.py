@@ -70,6 +70,7 @@ def test_weighted_audioset_webdataset(
 
         if IS_WINDOWS:
             # https://stackoverflow.com/questions/68299665/valueerror-no-gopen-handler-defined
+            feature_dir = "file:" + feature_dir
             tar_path = "file:" + tar_path
 
         with (
@@ -203,6 +204,7 @@ def test_distributed_weighted_audioset_webdataset_sampler(
 
         if IS_WINDOWS:
             # https://stackoverflow.com/questions/68299665/valueerror-no-gopen-handler-defined
+            feature_dir = "file:" + feature_dir
             tar_path = "file:" + tar_path
 
         with (

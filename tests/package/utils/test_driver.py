@@ -420,6 +420,7 @@ def test_base_trainer_ddp_for_audioset(
 
         if IS_WINDOWS:
             # https://stackoverflow.com/questions/68299665/valueerror-no-gopen-handler-defined
+            feature_dir = "file:" + feature_dir
             tar_path = "file:" + tar_path
 
         with (
@@ -2003,13 +2004,14 @@ def test_trainer_for_dump_format_conversion(
                 subset_feature_dir = os.path.join(feature_dir, subset)
                 tar_path = os.path.join(subset_feature_dir, "%d.tar")
 
+                os.makedirs(subset_feature_dir, exist_ok=True)
+
                 if IS_WINDOWS:
                     # https://stackoverflow.com/questions/68299665/valueerror-no-gopen-handler-defined
+                    subset_feature_dir = "file:" + subset_feature_dir
                     tar_path = "file:" + tar_path
 
                 identifiers = []
-
-                os.makedirs(subset_feature_dir, exist_ok=True)
 
                 with wds.ShardWriter(tar_path, maxsize=MAX_SHARD_SIZE) as sink:
                     for idx in range(DATA_SIZE):
