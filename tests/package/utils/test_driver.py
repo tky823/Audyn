@@ -418,9 +418,10 @@ def test_base_trainer_ddp_for_audioset(
         list_path = os.path.join(list_dir, "dataset.txt")
         tar_path = os.path.join(feature_dir, "%d.tar")
 
-        with wds.ShardWriter(tar_path, maxcount=max_shard_count) as sink, open(
-            list_path, mode="w"
-        ) as f_list:
+        with (
+            wds.ShardWriter(tar_path, maxcount=max_shard_count) as sink,
+            open(list_path, mode="w") as f_list,
+        ):
             for ytid in sorted(audioset_samples.keys()):
                 sample = audioset_samples[ytid]
                 sample_rate = sample["sample_rate"]

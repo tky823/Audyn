@@ -65,9 +65,10 @@ def test_weighted_audioset_webdataset(
         list_path = os.path.join(list_dir, "train.txt")
         tar_path = os.path.join(feature_dir, "%d.tar")
 
-        with wds.ShardWriter(tar_path, maxcount=max_shard_count) as sink, open(
-            list_path, mode="w"
-        ) as f_list:
+        with (
+            wds.ShardWriter(tar_path, maxcount=max_shard_count) as sink,
+            open(list_path, mode="w") as f_list,
+        ):
             for ytid in sorted(audioset_samples.keys()):
                 sample = audioset_samples[ytid]
                 sample_rate = sample["sample_rate"]
@@ -193,9 +194,10 @@ def test_distributed_weighted_audioset_webdataset_sampler(
         list_path = os.path.join(list_dir, "train.txt")
         tar_path = os.path.join(feature_dir, "%d.tar")
 
-        with wds.ShardWriter(tar_path, maxcount=max_shard_count) as sink, open(
-            list_path, mode="w"
-        ) as f_list:
+        with (
+            wds.ShardWriter(tar_path, maxcount=max_shard_count) as sink,
+            open(list_path, mode="w") as f_list,
+        ):
             for ytid in sorted(audioset_samples.keys()):
                 sample = audioset_samples[ytid]
                 sample_rate = sample["sample_rate"]

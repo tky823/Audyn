@@ -16,7 +16,9 @@ from audyn.utils.data.birdclef.birdclef2024 import (
     num_primary_labels as num_birdclef2024_primary_labels,
 )
 from audyn.utils.data.birdclef.birdclef2024.collator import BirdCLEF2024BaselineCollator
-from audyn.utils.data.birdclef.birdclef2024.composer import BirdCLEF2024PrimaryLabelComposer
+from audyn.utils.data.birdclef.birdclef2024.composer import (
+    BirdCLEF2024PrimaryLabelComposer,
+)
 from audyn.utils.github import download_file_from_github_release
 
 IS_WINDOWS = sys.platform == "win32"
