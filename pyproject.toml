@@ -23,7 +23,7 @@ dependencies = [
     "matplotlib; sys_platform != 'win32'",
     "torch",
     "torchaudio",
-    "torchtext",
+    "torchtext >= 0.10",
     "torchvision",
     "tensorboard",
     "numpy < 2.0",  # for tensorboard
