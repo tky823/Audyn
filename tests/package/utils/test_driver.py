@@ -81,6 +81,7 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool, use_torch_compile
 
         if use_torch_compile:
             if IS_WINDOWS:
+                monkeypatch.undo()
                 pytest.skip("WINDOWS is not supported by torch.compile.")
 
             system_name = "cpu_compile"
