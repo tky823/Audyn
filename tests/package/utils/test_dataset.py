@@ -94,13 +94,17 @@ def test_webdataset_dataset() -> None:
 
     with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         feature_dir = os.path.join(temp_dir, "feature")
-        template_path = os.path.join(feature_dir, "%d.tar")
+        tar_path = os.path.join(feature_dir, "%d.tar")
 
         os.makedirs(feature_dir, exist_ok=True)
 
         max_shard_size = 5000
 
-        with wds.ShardWriter(template_path, maxsize=max_shard_size) as sink, open(list_path) as f:
+        if IS_WINDOWS:
+            # https://stackoverflow.com/questions/68299665/valueerror-no-gopen-handler-defined
+            tar_path = "file:" + tar_path
+
+        with wds.ShardWriter(tar_path, maxsize=max_shard_size) as sink, open(list_path) as f:
             for line in f:
                 idx = int(line.strip())
                 feature = {

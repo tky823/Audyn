@@ -1,4 +1,5 @@
 import os
+import sys
 import tempfile
 from datetime import timedelta
 from typing import Any, Dict, Optional
@@ -25,6 +26,8 @@ from audyn.utils.data.audioset.dataset import (
     WeightedAudioSetWebDataset,
 )
 from audyn.utils.data.collator import Collator
+
+IS_WINDOWS = sys.platform == "win32"
 
 
 @pytest.mark.parametrize("dataset_type", [None, "PaSST"])
@@ -64,6 +67,10 @@ def test_weighted_audioset_webdataset(
 
         list_path = os.path.join(list_dir, "train.txt")
         tar_path = os.path.join(feature_dir, "%d.tar")
+
+        if IS_WINDOWS:
+            # https://stackoverflow.com/questions/68299665/valueerror-no-gopen-handler-defined
+            tar_path = "file:" + tar_path
 
         with (
             wds.ShardWriter(tar_path, maxcount=max_shard_count) as sink,
@@ -193,6 +200,10 @@ def test_distributed_weighted_audioset_webdataset_sampler(
 
         list_path = os.path.join(list_dir, "train.txt")
         tar_path = os.path.join(feature_dir, "%d.tar")
+
+        if IS_WINDOWS:
+            # https://stackoverflow.com/questions/68299665/valueerror-no-gopen-handler-defined
+            tar_path = "file:" + tar_path
 
         with (
             wds.ShardWriter(tar_path, maxcount=max_shard_count) as sink,
