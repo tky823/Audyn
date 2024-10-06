@@ -2,19 +2,20 @@ import pytest
 import torch
 from dummy.utils.github import retrieve_git_branch
 
-model_parameters = [
-    "teacher_music_tagging_transformer",
-    "student_music_tagging_transformer",
+role_parameters = [
+    "teacher",
+    "student",
 ]
 
 
-@pytest.mark.parametrize("model", model_parameters)
-def test_music_tagging_transformer(model: str) -> None:
+@pytest.mark.parametrize("role", role_parameters)
+def test_music_tagging_transformer(role: str) -> None:
     torch.manual_seed(0)
 
     branch = retrieve_git_branch()
 
     repo = "tky823/Audyn"
+    model = "music_tagging_transformer"
     transform = "music_tagging_transformer_melspectrogram"
     batch_size = 4
     timesteps = 30 * 22050
@@ -32,6 +33,7 @@ def test_music_tagging_transformer(model: str) -> None:
         repo,
         model,
         skip_validation=False,
+        role=role,
     )
 
     input = torch.randn((batch_size, timesteps))
