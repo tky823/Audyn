@@ -1,52 +1,52 @@
 from audyn.utils.data.mtg_jamendo import (
-    genre_metadata,
+    download_genre_metadata,
+    download_instrument_metadata,
+    download_moodtheme_metadata,
+    download_top50_metadata,
     genre_tags,
-    instrument_metadata,
     instrument_tags,
-    moodtheme_metadata,
     moodtheme_tags,
     num_genre_tags,
     num_instrument_tags,
     num_moodtheme_tags,
     num_top50_tags,
-    top50_metadata,
     top50_tags,
 )
 
 
 def test_mtg_jamendo() -> None:
+    top50_metadata = download_top50_metadata()
+    genre_metadata = download_genre_metadata()
+    instrument_metadata = download_instrument_metadata()
+    moodtheme_metadata = download_moodtheme_metadata()
+
     assert len(top50_tags) == num_top50_tags
     assert len(genre_tags) == num_genre_tags
     assert len(instrument_tags) == num_instrument_tags
     assert len(moodtheme_tags) == num_moodtheme_tags
 
-    sample = top50_metadata[30000]
+    sample = top50_metadata[15000]
 
-    assert sample["track"] == "track_1098504"
-    assert sample["artist"] == "artist_432966"
-    assert sample["album"] == "album_131024"
-    assert sample["path"] == "04/1098504.mp3"
-    assert sample["duration"] == 254.0
+    assert sample["track"] == "track_1031094"
+    assert sample["artist"] == "artist_433491"
+    assert sample["album"] == "album_121295"
+    assert sample["path"] == "94/1031094.mp3"
+    assert sample["duration"] == 198.6
     assert sample["tags"] == [
-        "genre---chillout",
-        "genre---easylistening",
         "genre---electronic",
-        "genre---funk",
-        "genre---lounge",
-        "instrument---bass",
-        "instrument---electricpiano",
+        "genre---experimental",
         "instrument---piano",
-        "mood/theme---relaxing",
+        "instrument---synthesizer",
     ]
 
     sample = genre_metadata[0]
 
-    assert sample["track"] == "track_0000214"
-    assert sample["artist"] == "artist_000014"
-    assert sample["album"] == "album_000031"
-    assert sample["path"] == "14/214.mp3"
-    assert sample["duration"] == 124.6
-    assert sample["tags"] == ["genre---punkrock"]
+    assert sample["track"] == "track_0000241"
+    assert sample["artist"] == "artist_000005"
+    assert sample["album"] == "album_000033"
+    assert sample["path"] == "41/241.mp3"
+    assert sample["duration"] == 340.1
+    assert sample["tags"] == ["genre---rock"]
 
     sample = instrument_metadata[0]
 
