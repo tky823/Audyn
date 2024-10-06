@@ -38,7 +38,7 @@ jobs:
           sudo apt install ffmpeg
           ffmpeg -version
       - name: Install dependencies (MacOS)
-        if: inputs.os == 'macos-13'
+        if: inputs.os == 'macos-13' || inputs.os == 'macos-latest'
         run: |
           brew install ffmpeg
           brew install libomp
@@ -141,7 +141,7 @@ jobs:
           sudo apt install ffmpeg
           ffmpeg -version
       - name: Install dependencies (MacOS)
-        if: inputs.os == 'macos-13'
+        if: inputs.os == 'macos-13' || inputs.os == 'macos-latest'
         run: |
           brew install ffmpeg
       - name: Overwrite torch version in pyproject.toml (Windows)
