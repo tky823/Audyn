@@ -25,3 +25,6 @@ jobs:
     secrets:
       ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+# NOTE: torch-2.3 does not support binary for MacOS x86_64
+#       https://github.com/pytorch/pytorch/issues/114602

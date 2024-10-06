@@ -2,6 +2,7 @@ import importlib
 import os
 import sys
 import tempfile
+import warnings
 from datetime import timedelta
 from os.path import dirname, join, realpath, relpath
 from typing import Any, Dict, List, Optional, Tuple
@@ -56,6 +57,7 @@ from audyn.utils.modules import set_device
 
 IS_WINDOWS = sys.platform == "win32"
 
+
 config_template_path = join(dirname(realpath(audyn.__file__)), "configs")
 config_name = "config"
 
@@ -81,6 +83,7 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool, use_torch_compile
 
         if use_torch_compile:
             if IS_WINDOWS:
+                monkeypatch.undo()
                 pytest.skip("WINDOWS is not supported by torch.compile.")
 
             system_name = "cpu_compile"
@@ -151,6 +154,8 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool, use_torch_compile
         )
 
         if config.system.compile.enable:
+            warnings.warn(config.system)
+            warnings.warn(config.system.compile.enable)
             compile_kwargs = config.system.compile.kwargs
 
             if compile_kwargs is None:
@@ -418,9 +423,10 @@ def test_base_trainer_ddp_for_audioset(
         list_path = os.path.join(list_dir, "dataset.txt")
         tar_path = os.path.join(feature_dir, "%d.tar")
 
-        with wds.ShardWriter(tar_path, maxcount=max_shard_count) as sink, open(
-            list_path, mode="w"
-        ) as f_list:
+        with (
+            wds.ShardWriter(tar_path, maxcount=max_shard_count) as sink,
+            open(list_path, mode="w") as f_list,
+        ):
             for ytid in sorted(audioset_samples.keys()):
                 sample = audioset_samples[ytid]
                 sample_rate = sample["sample_rate"]
@@ -1996,12 +2002,13 @@ def test_trainer_for_dump_format_conversion(
         elif preprocess_dump_format == "webdataset":
             for subset in ["train", "validation"]:
                 subset_feature_dir = os.path.join(feature_dir, subset)
-                template_path = os.path.join(subset_feature_dir, "%d.tar")
-                identifiers = []
+                tar_path = os.path.join(subset_feature_dir, "%d.tar")
 
                 os.makedirs(subset_feature_dir, exist_ok=True)
 
-                with wds.ShardWriter(template_path, maxsize=MAX_SHARD_SIZE) as sink:
+                identifiers = []
+
+                with wds.ShardWriter(tar_path, maxsize=MAX_SHARD_SIZE) as sink:
                     for idx in range(DATA_SIZE):
                         min_length = config.model.kernel_size + 1 + idx + 1
 

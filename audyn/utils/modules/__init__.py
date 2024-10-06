@@ -5,7 +5,7 @@ from torch.nn.parallel import DataParallel, DistributedDataParallel
 
 from ...criterion.base import MultiCriteria
 from ...metrics.base import StatefulMetric
-from ..compile import is_compiled_module
+from .._torch.compile import is_compiled_module
 from ..data import select_device
 from ..parallel import is_dp_or_ddp
 

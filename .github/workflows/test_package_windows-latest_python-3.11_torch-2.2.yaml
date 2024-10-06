@@ -1,4 +1,4 @@
-name: ubuntu-latest/3.8/2.1
+name: windows-latest/3.11/2.2
 on:
   push:
     branches:
@@ -8,10 +8,10 @@ on:
       - main
 jobs:
   package:
-    uses: ./.github/workflows/test_package_ubuntu-latest.yaml
+    uses: ./.github/workflows/test_package_windows-latest.yaml
     with:
-      python-version: "3.8"
-      torch-version: "2.1.0"
+      python-version: "3.11"
+      torch-version: "2.2.2"
     secrets:
       ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

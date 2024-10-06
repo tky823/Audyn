@@ -80,9 +80,13 @@ def test_dataloader_for_composer(decode_audio_as_waveform, decode_audio_as_monor
 
                 f.write(f"{idx}\n")
 
-        template_path = os.path.join(feature_dir, "%02d.tar")
+        tar_path = os.path.join(feature_dir, "%02d.tar")
 
-        with wds.ShardWriter(template_path, maxsize=max_shard_size) as sink:
+        if IS_WINDOWS:
+            # https://stackoverflow.com/questions/68299665/valueerror-no-gopen-handler-defined
+            tar_path = "file:" + tar_path
+
+        with wds.ShardWriter(tar_path, maxsize=max_shard_size) as sink:
             for idx in range(num_files):
                 path = os.path.join(audio_dir, f"{idx}.flac")
 

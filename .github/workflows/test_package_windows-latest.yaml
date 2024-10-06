@@ -23,3 +23,8 @@ jobs:
     secrets:
       ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+# NOTE: torch-2.2 on Windows
+#       https://github.com/pytorch/pytorch/issues/116056
+# NOTE: torch-2.3 on Windows
+#       https://github.com/pytorch/pytorch/issues/125109

@@ -14,10 +14,8 @@ description = "A PyTorch toolkit for audio synthesis."
 readme = "README.md"
 license = {file = "LICENSE"}
 urls = {url = "https://github.com/tky823/Audyn"}
-requires-python = ">=3.8, <4"
+requires-python = ">=3.9, <4"
 dependencies = [
-    # https://github.com/facebookresearch/hydra/issues/2870
-    "importlib_resources < 6.2; python_version == '3.8'",
     "omegaconf",
     "hydra-core",
     # https://github.com/tky823/Audyn/pull/199#issuecomment-2267236196
@@ -25,7 +23,7 @@ dependencies = [
     "matplotlib; sys_platform != 'win32'",
     "torch",
     "torchaudio",
-    "torchtext",
+    "torchtext >= 0.10",
     "torchvision",
     "tensorboard",
     "numpy < 2.0",  # for tensorboard

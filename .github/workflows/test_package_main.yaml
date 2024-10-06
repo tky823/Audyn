@@ -23,6 +23,7 @@ jobs:
   package:
     name: Run package tests
     runs-on: ${{ inputs.os }}
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -85,7 +86,7 @@ jobs:
           python -c "import torchaudio; print(torchaudio.list_audio_backends())"
           python -c "import torchaudio; assert len(torchaudio.list_audio_backends()) > 0"
       - name: Pytest for torch.hub
-        if: inputs.python-version == '3.8' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.1.0'
+        if: inputs.python-version == '3.9' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.1.0'
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           GITHUB_HEAD_REF: ${{ github.head_ref }}
@@ -116,7 +117,7 @@ jobs:
         run: |
           pytest -vvv --cov=audyn/ --cov-report=xml tests/package/
       - name: Upload coverage reports to Codecov
-        if: inputs.python-version == '3.8' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.1.0'
+        if: inputs.python-version == '3.9' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.1.0'
         uses: codecov/codecov-action@v3
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
