@@ -30,7 +30,7 @@ def main(config: DictConfig) -> None:
         unpack=true  # unpack .tar or not
         chunk_size=8192  # chunk size in byte to download
 
-        audyn-download-mtg-jamando \
+        audyn-download-mtg-jamendo \
         server_type="${server_type}" \
         quality="${quality}" \
         root="${root}" \

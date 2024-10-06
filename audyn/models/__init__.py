@@ -4,7 +4,10 @@ from .dprnn_tasnet import DPRNNTasNet
 from .encodec import EnCodec
 from .fastspeech import FastSpeech, MultiSpeakerFastSpeech
 from .hifigan import HiFiGANDiscriminator, HiFiGANGenerator, HiFiGANVocoder
-from .music_tagging_transformer import MusicTaggingTransformer
+from .music_tagging_transformer import (
+    MusicTaggingTransformer,
+    MusicTaggingTransformerLinearProbing,
+)
 from .passt import PaSST
 from .roformer import (
     RoFormerDecoder,
@@ -68,4 +71,5 @@ __all__ = [
     "RoFormerDecoder",
     # Music Tagging Transformer
     "MusicTaggingTransformer",
+    "MusicTaggingTransformerLinearProbing",
 ]

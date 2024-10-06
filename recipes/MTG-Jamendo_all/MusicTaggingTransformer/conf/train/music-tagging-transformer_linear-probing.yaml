@@ -1,0 +1,40 @@
+defaults:
+  - defaults
+  - override dataloader: mtg_jamendo
+  - override dataset: webdataset
+  - _self_
+
+trainer:
+  
+key_mapping:
+  train:
+    input:
+      input: melspectrogram_slice
+    output: logit
+  validation: ${.train}
+  inference: ${.train}
+
+ddp_kwargs:
+
+resume:
+  continue_from:
+
+output:
+  exp_dir: "./exp"
+  tensorboard_dir: "./tensorboard"
+  save_checkpoint:
+    iteration:
+      every: 10000
+      path: ${...exp_dir}/model/iteration{iteration}.pth
+    epoch:
+      every: 20
+      path: ${...exp_dir}/model/epoch{epoch}.pth
+    last:
+      path: ${...exp_dir}/model/last.pth
+    best_epoch:
+      path: ${...exp_dir}/model/best_epoch.pth
+
+steps:
+  epochs: 100
+  iterations:
+  lr_scheduler:

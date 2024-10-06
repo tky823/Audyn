@@ -16,6 +16,7 @@ from .ast import BaseAudioSpectrogramTransformer, HeadTokensAggregator, MLPHead
 
 __all__ = [
     "MusicTaggingTransformer",
+    "MusicTaggingTransformerLinearProbing",
 ]
 
 
@@ -35,7 +36,7 @@ class MusicTaggingTransformer(BaseAudioSpectrogramTransformer):
         aggregator: Optional[nn.Module] = None,
         head: Optional[nn.Module] = None,
     ) -> None:
-        super().__init__(embedding, backbone)
+        super().__init__(embedding=embedding, backbone=backbone)
 
         self.aggregator = aggregator
         self.head = head
@@ -56,15 +57,13 @@ class MusicTaggingTransformer(BaseAudioSpectrogramTransformer):
         input = self.pad_by_length(input, length=length)
         x = self.embedding(input)
         padding_mask = self.compute_padding_mask(input, length=length)
-        x = self.transformer_forward(x, padding_mask=padding_mask)
+        output = self.transformer_forward(x, padding_mask=padding_mask)
 
         if self.aggregator is not None:
-            x = self.aggregator(x)
+            output = self.aggregator(output)
 
         if self.head is not None:
-            x = self.head(x)
-
-        output = x
+            output = self.head(output)
 
         return output
 
@@ -256,6 +255,40 @@ class MusicTaggingTransformer(BaseAudioSpectrogramTransformer):
             return model
         else:
             raise FileNotFoundError(f"{pretrained_model_name_or_path} does not exist.")
+
+
+class MusicTaggingTransformerLinearProbing(MusicTaggingTransformer):
+    """Music Tagging Transformer [#won2021semi]_ for linear probing.
+
+    Unlike ``MusicTaggingTransformer``, gradients of ``embedding``, ``backbone``,
+    and ``aggregator`` are removed.
+    """
+
+    def __init__(
+        self,
+        embedding: PositionalPatchEmbedding,
+        backbone: MusicTaggingTransformerEncoder,
+        aggregator: Optional[nn.Module] = None,
+        head: Optional[nn.Module] = None,
+    ) -> None:
+        super().__init__(
+            embedding=embedding,
+            backbone=backbone,
+            aggregator=aggregator,
+            head=head,
+        )
+
+        for p in self.embedding.parameters():
+            p.requires_grad = False
+            p.grad = None
+
+        for p in self.backbone.parameters():
+            p.requires_grad = False
+            p.grad = None
+
+        for p in self.aggregator.parameters():
+            p.requires_grad = False
+            p.grad = None
 
 
 def _create_pretrained_model_configs() -> Dict[str, Dict[str, str]]:

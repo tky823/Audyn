@@ -95,11 +95,13 @@ Music Tagging Transformer
 
     >>> import torch
     >>> repo = "tky823/Audyn"
-    >>> model = "teacher_music_tagging_transformer"
+    >>> model = "music_tagging_transformer"
+    >>> role = "teacher"
     >>> teacher_music_tagging_transformer = torch.hub.load(
     ...     repo,
     ...     model,
     ...     skip_validation=False,
+    ...     role=role,
     ... )
 
 .. code-block:: python
@@ -119,9 +121,11 @@ Music Tagging Transformer
 
     >>> import torch
     >>> repo = "tky823/Audyn"
-    >>> model = "student_music_tagging_transformer"
+    >>> model = "music_tagging_transformer"
+    >>> role = "student"
     >>> student_music_tagging_transformer = torch.hub.load(
     ...     repo,
     ...     model,
     ...     skip_validation=False,
+    ...     role=role,
     ... )
