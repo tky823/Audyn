@@ -1,9 +1,10 @@
 import os
 from concurrent.futures import ProcessPoolExecutor
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import torch
 import torchaudio
+import torchaudio.functional as aF
 import webdataset as wds
 from omegaconf import DictConfig
 from tqdm import tqdm
@@ -22,6 +23,7 @@ def main(config: DictConfig) -> None:
     wav_dir = config.preprocess.wav_dir
     feature_dir = config.preprocess.feature_dir
     split = config.preprocess.split
+    sample_rate = config.data.audio.sample_rate
 
     assert list_path is not None, "Specify preprocess.list_path."
     assert wav_dir is not None, "Specify preprocess.wav_dir."
@@ -66,6 +68,7 @@ def main(config: DictConfig) -> None:
                             mp3_path=mp3_path,
                             feature_path=feature_path,
                             metadata=_metadata,
+                            sample_rate=sample_rate,
                         )
                         futures.append(future)
 
@@ -84,15 +87,33 @@ def main(config: DictConfig) -> None:
                         wav_path=mp3_path,
                         feature_path=feature_path,
                         metadata=_metadata,
+                        sample_rate=sample_rate,
                     )
     else:
-        template_path = os.path.join(feature_dir, "%d.tar")
-
+        seed = config.system.seed
+        subset = config.preprocess.subset
         max_shard_size = config.preprocess.max_shard_size
 
-        with wds.ShardWriter(template_path, maxsize=max_shard_size) as sink, open(list_path) as f:
-            for line in tqdm(f):
+        assert subset is not None, "Specify preprocess.subset."
+
+        template_path = os.path.join(feature_dir, "%d.tar")
+        filenames = []
+
+        with open(list_path) as f:
+            for line in f:
                 filename = line.strip()
+                filenames.append(filename)
+
+        if subset == "train":
+            g = torch.Generator()
+            g.manual_seed(seed)
+            indices = torch.randperm(len(filenames), generator=g).tolist()
+        else:
+            indices = torch.arange(len(filenames)).tolist()
+
+        with wds.ShardWriter(template_path, maxsize=max_shard_size) as sink:
+            for idx in indices:
+                filename = filenames[idx]
                 wav_path = os.path.join(wav_dir, f"{filename}.mp3")
                 _metadata = metadata_by_filename[filename]
 
@@ -101,16 +122,25 @@ def main(config: DictConfig) -> None:
                     filename=filename,
                     wav_path=wav_path,
                     metadata=_metadata,
+                    sample_rate=sample_rate,
                 )
 
 
 def process_torch(
-    filename: str, wav_path: str, feature_path: str, metadata: Dict[str, Any]
+    filename: str,
+    wav_path: str,
+    feature_path: str,
+    metadata: Dict[str, Any],
+    sample_rate: Optional[int] = None,
 ) -> None:
     feature = {}
 
-    waveform, sample_rate = torchaudio.load(wav_path)
+    waveform, _sample_rate = torchaudio.load(wav_path)
     waveform = waveform.mean(dim=0)
+
+    if sample_rate is not None and _sample_rate != sample_rate:
+        waveform = aF.resample(waveform, _sample_rate, sample_rate)
+        _sample_rate = sample_rate
 
     track = metadata["track"]
     artist = metadata["artist"]
@@ -119,7 +149,7 @@ def process_torch(
     tags = metadata["tags"]
 
     feature["waveform"] = waveform
-    feature["sample_rate"] = torch.tensor(sample_rate, dtype=torch.long)
+    feature["sample_rate"] = torch.tensor(_sample_rate, dtype=torch.long)
     feature["track"] = track
     feature["artist"] = artist
     feature["album"] = album
@@ -133,12 +163,20 @@ def process_torch(
 
 
 def process_webdataset(
-    sink: wds.ShardWriter, filename: str, wav_path: str, metadata: Dict[str, Any]
+    sink: wds.ShardWriter,
+    filename: str,
+    wav_path: str,
+    metadata: Dict[str, Any],
+    sample_rate: Optional[int] = None,
 ) -> None:
     feature = {}
 
-    waveform, sample_rate = torchaudio.load(wav_path)
+    waveform, _sample_rate = torchaudio.load(wav_path)
     waveform = waveform.mean(dim=0)
+
+    if sample_rate is not None and _sample_rate != sample_rate:
+        waveform = aF.resample(waveform, _sample_rate, sample_rate)
+        _sample_rate = sample_rate
 
     track = metadata["track"]
     artist = metadata["artist"]
@@ -148,7 +186,7 @@ def process_webdataset(
 
     feature["__key__"] = filename
     feature["waveform.pth"] = waveform
-    feature["sample_rate.pth"] = torch.tensor(sample_rate, dtype=torch.long)
+    feature["sample_rate.pth"] = torch.tensor(_sample_rate, dtype=torch.long)
     feature["track.txt"] = track
     feature["artist.txt"] = artist
     feature["album.txt"] = album
