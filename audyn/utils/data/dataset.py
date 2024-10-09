@@ -108,7 +108,7 @@ class WebDatasetWrapper(wds.WebDataset):
     ``WebDatasetWrapper.instantiate_dataset`` is typically called for instantiation.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
     @classmethod
@@ -189,7 +189,8 @@ class WebDatasetWrapper(wds.WebDataset):
             workersplitter=workersplitter,
             **kwargs,
         )
-        dataset = dataset.with_epoch(length).with_length(length)
+        dataset = dataset.with_epoch(length)
+        dataset = dataset.with_length(length)
 
         if shuffle_size is not None:
             if not detshuffle:
