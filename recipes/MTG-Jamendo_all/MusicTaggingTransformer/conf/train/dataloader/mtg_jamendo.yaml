@@ -44,4 +44,38 @@ train:
 validation:
   batch_size: 32
   collate_fn:
-    _target_: ${...train.collate_fn._target_}
+    _target_: audyn.utils.data.Collator
+    composer:
+      _target_: ${....train.collate_fn.composer._target_}
+      _args_:
+        - _target_: audyn.utils.data.ResamplingComposer
+          new_freq: ${data.audio.sample_rate}
+          audio_key: waveform
+          sample_rate_key: sample_rate
+          decode_audio_as_waveform: true
+          decode_audio_as_monoral: true
+        - _target_: audyn.utils.data.SynchronousWaveformSlicer
+          input_keys:
+            - waveform
+          output_keys:
+            - waveform
+          length:
+          duration: ${data.audio.duration}
+          sample_rate: ${data.audio.sample_rate}
+          seed: ${system.seed}
+          training: false
+          decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
+          decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
+        - _target_: audyn.utils.data.composer.AudioFeatureExtractionComposer
+          feature_extractor:
+            _target_: audyn.transforms.MusicTaggingTransformerMelSpectrogram.build_from_pretrained
+          audio_key: ${..1.output_keys.0}
+          feature_key: melspectrogram
+          decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
+          decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
+        - _target_: audyn.utils.data.LabelsToMultihot
+          label_key: tags
+          feature_key: tags
+          labels: ${data.tag.tags}
+          decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
+          decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
