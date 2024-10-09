@@ -374,11 +374,12 @@ class BaseTrainer(BaseDriver):
             BaseTrainer: Built trainer.
 
         """
-        train_dataset = instantiate(config.train.dataset.train)
-        validation_dataset = instantiate(config.train.dataset.validation)
-
-        train_loader = instantiate(config.train.dataloader.train, train_dataset)
-        validation_loader = instantiate(config.train.dataloader.validation, validation_dataset)
+        dataset_config = config.train.dataset
+        dataloader_config = config.train.dataloader
+        train_dataset = instantiate(dataset_config.train)
+        validation_dataset = instantiate(dataset_config.validation)
+        train_loader = instantiate(dataloader_config.train, train_dataset)
+        validation_loader = instantiate(dataloader_config.validation, validation_dataset)
         loaders = BaseDataLoaders(train_loader, validation_loader)
 
         model = instantiate_model(config.model)
