@@ -2285,12 +2285,16 @@ class BaseTrainer(BaseDriver):
         self.writer.add_image(tag, image, global_step=global_step)
 
     def set_epoch_if_necessary(self, epoch: int) -> None:
+        train_loader = self.loaders.train
         sampler = None
 
-        if self.loaders.train.sampler is not None:
-            sampler = self.loaders.train.sampler
-        elif self.loaders.train.batch_sampler is not None:
-            sampler = self.loaders.train.batch_sampler
+        if hasattr(train_loader, "sampler") and train_loader.sampler is not None:
+            sampler = train_loader.sampler
+        elif hasattr(train_loader, "batch_sampler") and train_loader.batch_sampler is not None:
+            sampler = train_loader.batch_sampler
+        else:
+            # e.g. wds.WebLoader
+            pass
 
         if sampler is not None and hasattr(sampler, "set_epoch"):
             sampler.set_epoch(epoch)
