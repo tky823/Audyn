@@ -19,7 +19,7 @@ train:
           input_keys:
             - waveform
           output_keys:
-            - waveform_slice
+            - waveform
           length:
           duration: ${data.audio.duration}
           sample_rate: ${data.audio.sample_rate}
@@ -30,8 +30,8 @@ train:
         - _target_: audyn.utils.data.composer.AudioFeatureExtractionComposer
           feature_extractor:
             _target_: audyn.transforms.MusicTaggingTransformerMelSpectrogram.build_from_pretrained
-          audio_key: waveform_slice
-          feature_key: melspectrogram_slice
+          audio_key: ${..1.output_keys.0}
+          feature_key: melspectrogram
           decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
           decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
         - _target_: audyn.utils.data.LabelsToMultihot

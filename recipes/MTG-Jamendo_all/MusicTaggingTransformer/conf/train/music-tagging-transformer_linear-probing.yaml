@@ -9,7 +9,7 @@ trainer:
 key_mapping:
   train:
     input:
-      input: melspectrogram_slice
+      input: melspectrogram
     output: logit
   validation: ${.train}
   inference: ${.train}
