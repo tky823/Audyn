@@ -24,6 +24,7 @@ from .dataloader import (
     DistributedSequentialBatchDataLoader,
     DynamicBatchDataLoader,
     SequentialBatchDataLoader,
+    WebLoaderWrapper,
 )
 from .dataset import (
     SortableTorchObjectDataset,
@@ -43,6 +44,7 @@ __all__ = [
     "DistributedSequentialBatchDataLoader",
     "DynamicBatchDataLoader",
     "DistributedDynamicBatchDataLoader",
+    "WebLoaderWrapper",
     "Composer",
     "AudioFeatureExtractionComposer",
     "SequentialComposer",

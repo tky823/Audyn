@@ -688,6 +688,7 @@ def _search_webdataset_format_dataloader(config: DictConfig) -> Tuple[str, Dict[
                 logger.info(
                     "shuffle=True is replaced with shuffle=False in config of data loader."
                 )
+            target = "audyn.utils.data.WebLoaderWrapper.instantiate_dataloader"
         else:
             warnings.warn(
                 f"{cls.__name__} cannot be converted for WebDataset.",
