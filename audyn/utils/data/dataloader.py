@@ -327,6 +327,7 @@ class WebLoaderWrapper(wds.WebLoader):
             num_samples += batch_size * num_replicas - num_drops
 
         num_samples_per_rank = num_samples // num_replicas
+        num_batches_per_rank = num_samples_per_rank // batch_size
 
         dataloader = cls(
             dataset,
@@ -334,8 +335,8 @@ class WebLoaderWrapper(wds.WebLoader):
             batch_size=batch_size,
             **kwargs,
         )
-        dataloader = dataloader.with_epoch(num_samples_per_rank)
-        dataloader = dataloader.with_length(num_samples_per_rank)
+        dataloader = dataloader.with_epoch(num_batches_per_rank)
+        dataloader = dataloader.with_length(num_batches_per_rank)
 
         return dataloader
 
