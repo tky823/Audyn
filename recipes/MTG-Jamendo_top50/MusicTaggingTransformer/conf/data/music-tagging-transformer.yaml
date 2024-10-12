@@ -1,0 +1,7 @@
+defaults:
+  - mtg-jamendo_top50
+  - _self_
+
+audio:
+  sample_rate: 22050
+  duration: 10
