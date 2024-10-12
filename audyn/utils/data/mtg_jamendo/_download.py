@@ -508,7 +508,7 @@ def download_all_metadata(
             force_download=force_download,
             chunk_size=chunk_size,
         )
-        _metadata = _load_metadata(path, subset=subset)
+        _metadata = _load_metadata(path)
         metadata.extend(_metadata)
 
     return metadata

@@ -30,7 +30,7 @@ def main(config: DictConfig) -> None:
             filename = path.replace(".mp3", "")
             path = os.path.join(wav_dir, path)
 
-            if annotation["subset"] == subset and os.path.exists(path):
+            if os.path.exists(path):
                 f.write(filename + "\n")
 
 
