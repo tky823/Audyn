@@ -2,7 +2,8 @@ _target_: audyn.criterion.MultiCriteria
 binary_cross_entropy:
   _target_: audyn.criterion.BaseCriterionWrapper
   criterion:
-    _target_: torch.nn.BCEWithLogitsLoss
+    _target_: audyn.criterion.tagging.TaggingBCEWithLogitsLoss
+    evaluation_mean: arithmetic
     reduction: mean
   weight: 1
   key_mapping:
