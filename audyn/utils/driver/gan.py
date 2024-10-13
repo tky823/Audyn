@@ -27,7 +27,12 @@ from ...utils.modules import set_device
 from ..clip_grad import GANGradClipper
 from ..data import BaseDataLoaders
 from ..modules import unwrap
-from .base import BaseGenerator, BaseTrainer, _is_audyn_clip_gradient, _is_torch_clip_gradient
+from .base import (
+    BaseGenerator,
+    BaseTrainer,
+    _is_audyn_clip_gradient,
+    _is_torch_clip_gradient,
+)
 
 
 class GANTrainer(BaseTrainer):
@@ -317,6 +322,12 @@ class GANTrainer(BaseTrainer):
 
         self.unwrapped_model.generator.eval()
         self.unwrapped_model.discriminator.eval()
+
+        for criterion_name in generator_criterion_names:
+            self.criterion.generator[criterion_name].eval()
+
+        for criterion_name in discriminator_criterion_names:
+            self.criterion.discriminator[criterion_name].eval()
 
         for batch_idx, named_data in enumerate(self.loaders.validation):
             generator_mean_metrics, discriminator_mean_metrics = self.validate_one_iteration(

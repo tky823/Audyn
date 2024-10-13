@@ -585,6 +585,9 @@ class BaseTrainer(BaseDriver):
         self.set_epoch_if_necessary(self.epoch_idx)
         self.model.train()
 
+        for criterion_name in criterion_names:
+            self.criterion[criterion_name].train()
+
         for named_data in self.loaders.train:
             if n_remain > 0:
                 # When checkpoint is a specific iteration,
@@ -618,6 +621,9 @@ class BaseTrainer(BaseDriver):
         }
 
         self.model.eval()
+
+        for criterion_name in criterion_names:
+            self.criterion[criterion_name].eval()
 
         for batch_idx, named_data in enumerate(self.loaders.validation):
             mean_metrics = self.validate_one_iteration(
