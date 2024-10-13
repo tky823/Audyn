@@ -5,3 +5,4 @@ defaults:
 audio:
   sample_rate: 22050
   duration: 10
+  num_evaluation_slices: 8
