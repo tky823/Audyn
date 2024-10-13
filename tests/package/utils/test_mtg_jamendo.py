@@ -8,8 +8,8 @@ import torchaudio
 import webdataset as wds
 
 from audyn.utils.data import WebDatasetWrapper, WebLoaderWrapper
-from audyn.utils.data.collator import Collator
 from audyn.utils.data.mtg_jamendo import (
+    MTGJamendoCollator,
     MTGJamendoEvaluationWaveformSliceComposer,
     download_all_metadata,
     download_genre_metadata,
@@ -88,7 +88,7 @@ def test_mtg_jamendo_composer(mtg_jamendo_samples: List[Dict[str, Any]]) -> None
 
     max_shard_count = 4
     audio_key, waveform_key = "audio", "waveform"
-    batch_size = 5
+    batch_size = 1
 
     with tempfile.TemporaryDirectory() as temp_dir:
         audio_dir = os.path.join(temp_dir, "audio")
@@ -128,8 +128,8 @@ def test_mtg_jamendo_composer(mtg_jamendo_samples: List[Dict[str, Any]]) -> None
                 feature = {
                     "__key__": filename,
                     "track.txt": track,
-                    "album.txt": album,
                     "artist.txt": artist,
+                    "album.txt": album,
                     "duration.pth": torch.tensor(duration, dtype=torch.float),
                     "audio.wav": audio,
                     "sample_rate.pth": torch.tensor(sample_rate, dtype=torch.long),
@@ -147,7 +147,20 @@ def test_mtg_jamendo_composer(mtg_jamendo_samples: List[Dict[str, Any]]) -> None
         composer = MTGJamendoEvaluationWaveformSliceComposer(
             audio_key, waveform_key, duration=10, sample_rate=22050, num_slices=8
         )
-        collator = Collator(composer=composer)
+        collator = MTGJamendoCollator(
+            composer=composer,
+            squeezed_key=[
+                "__key__",
+                "track",
+                "artist",
+                "album",
+                "duration",
+                "audio",
+                "sample_rate",
+                "tags",
+                "filename",
+            ],
+        )
         dataset = WebDatasetWrapper.instantiate_dataset(list_path, feature_dir)
         dataloader = WebLoaderWrapper.instantiate_dataloader(
             dataset,
@@ -155,12 +168,12 @@ def test_mtg_jamendo_composer(mtg_jamendo_samples: List[Dict[str, Any]]) -> None
             collate_fn=collator,
         )
 
-        samples_per_epoch = 0
+        batches_per_epoch = 0
 
         for sample in dataloader:
-            samples_per_epoch += len(sample["filename"])
+            batches_per_epoch += 1
 
-        assert samples_per_epoch == len(mtg_jamendo_samples)
+        assert batches_per_epoch == len(mtg_jamendo_samples)
 
 
 @pytest.fixture
