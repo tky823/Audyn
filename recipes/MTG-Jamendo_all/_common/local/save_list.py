@@ -22,7 +22,7 @@ def main(config: DictConfig) -> None:
     assert split is not None, "Specify preprocess.split."
     assert subset is not None, "Specify preprocess.subset."
 
-    annotations = download_all_metadata(split=split)
+    annotations = download_all_metadata(split=split, subset=subset)
 
     with open(list_path, mode="w") as f:
         for annotation in annotations:
