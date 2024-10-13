@@ -10,6 +10,7 @@ from ._download import (
     download_top50_metadata,
     download_top50_tags,
 )
+from .collater import MTGJamendoCollator
 from .composer import MTGJamendoEvaluationWaveformSliceComposer
 
 __all__ = [
@@ -29,6 +30,7 @@ __all__ = [
     "download_instrument_metadata",
     "download_moodtheme_metadata",
     "MTGJamendoEvaluationWaveformSliceComposer",
+    "MTGJamendoCollator",
 ]
 
 all_tags = download_all_tags()

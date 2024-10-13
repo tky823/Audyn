@@ -1,5 +1,6 @@
 from typing import Any, Dict, Optional
 
+import torch
 import torch.nn.functional as F
 
 from ..composer import Composer
@@ -71,5 +72,24 @@ class MTGJamendoEvaluationWaveformSliceComposer(Composer):
         waveform = waveform.view(num_slices, *batch_shape, length)
 
         sample[output_key] = waveform
+
+        keys = set(sample.keys()) - {input_key, output_key}
+
+        for key in keys:
+            value = sample[key]
+            repeated_value = [value for _ in range(num_slices)]
+
+            if isinstance(value, (str, int, float)):
+                # primitive types
+                pass
+            elif isinstance(value, (list, dict)):
+                # structured types
+                pass
+            elif isinstance(value, torch.Tensor):
+                repeated_value = torch.stack(repeated_value, dim=0)
+            else:
+                raise ValueError(f"{type(value)} is not supported.")
+
+            sample[key] = repeated_value
 
         return sample
