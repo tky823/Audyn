@@ -9,7 +9,7 @@ import webdataset as wds
 
 from audyn.utils.data import WebDatasetWrapper, WebLoaderWrapper
 from audyn.utils.data.mtg_jamendo import (
-    MTGJamendoCollator,
+    MTGJamendoEvaluationCollator,
     MTGJamendoEvaluationWaveformSliceComposer,
     download_all_metadata,
     download_genre_metadata,
@@ -152,7 +152,7 @@ def test_mtg_jamendo_composer(mtg_jamendo_samples: List[Dict[str, Any]]) -> None
             sample_rate=22050,
             num_slices=num_slices,
         )
-        collator = MTGJamendoCollator(
+        collator = MTGJamendoEvaluationCollator(
             composer=composer,
             squeezed_key=[
                 "__key__",
