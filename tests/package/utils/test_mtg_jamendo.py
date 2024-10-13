@@ -87,8 +87,9 @@ def test_mtg_jamendo_composer(mtg_jamendo_samples: List[Dict[str, Any]]) -> None
     torch.manual_seed(seed)
 
     max_shard_count = 4
-    audio_key, waveform_key = "audio", "waveform"
+    waveform_key = "audio"
     batch_size = 1
+    num_slices = 8
 
     with tempfile.TemporaryDirectory() as temp_dir:
         audio_dir = os.path.join(temp_dir, "audio")
@@ -145,7 +146,11 @@ def test_mtg_jamendo_composer(mtg_jamendo_samples: List[Dict[str, Any]]) -> None
         )
 
         composer = MTGJamendoEvaluationWaveformSliceComposer(
-            audio_key, waveform_key, duration=10, sample_rate=22050, num_slices=8
+            waveform_key,
+            waveform_key,
+            duration=10,
+            sample_rate=22050,
+            num_slices=num_slices,
         )
         collator = MTGJamendoCollator(
             composer=composer,
@@ -171,6 +176,12 @@ def test_mtg_jamendo_composer(mtg_jamendo_samples: List[Dict[str, Any]]) -> None
         batches_per_epoch = 0
 
         for sample in dataloader:
+            for key, value in sample.items():
+                if key in ["__url__", "__local_path__"]:
+                    continue
+
+                assert len(value) == num_slices, key
+
             batches_per_epoch += 1
 
         assert batches_per_epoch == len(mtg_jamendo_samples)
