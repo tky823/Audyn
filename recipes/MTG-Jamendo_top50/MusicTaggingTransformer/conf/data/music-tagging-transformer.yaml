@@ -1,5 +1,5 @@
 defaults:
-  - mtg-jamendo_all
+  - mtg-jamendo_top50
   - _self_
 
 audio:

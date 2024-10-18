@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 import audyn
 from audyn.utils import setup_config
-from audyn.utils.data.mtg_jamendo import download_all_metadata
+from audyn.utils.data.mtg_jamendo import download_top50_metadata
 
 
 @audyn.main()
@@ -32,7 +32,7 @@ def main(config: DictConfig) -> None:
 
     os.makedirs(feature_dir, exist_ok=True)
 
-    metadata = download_all_metadata(split=split)
+    metadata = download_top50_metadata(split=split)
     metadata_by_filename = {}
     filenames = []
 

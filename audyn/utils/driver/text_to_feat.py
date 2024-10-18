@@ -142,6 +142,9 @@ class TextToFeatTrainer(BaseTrainer):
 
         self.model.eval()
 
+        for criterion_name in criterion_names:
+            self.criterion[criterion_name].eval()
+
         if self.feat_to_wave is not None:
             self.feat_to_wave.eval()
 

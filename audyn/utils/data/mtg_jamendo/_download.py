@@ -1,6 +1,6 @@
 import csv
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from ... import audyn_cache_dir
 from ..download import download_file
@@ -477,14 +477,23 @@ def download_moodtheme_tags() -> List[str]:
 def download_all_metadata(
     root: Optional[str] = None,
     split: int = 0,
+    subset: Optional[Union[str, List[str]]] = None,
     force_download: bool = False,
     chunk_size: int = 1024,
 ) -> List[Dict[str, Any]]:
     base_url = f"https://raw.githubusercontent.com/MTG/mtg-jamendo-dataset/master/data/splits/split-{split}"  # noqa: E501
     base_url += "/autotagging-{subset}.tsv"
+
+    if subset is None:
+        subsets = ["train", "validation", "test"]
+    elif isinstance(subset, str):
+        subsets = [subset]
+    else:
+        subsets = subset
+
     metadata = []
 
-    for subset in ["train", "validation", "test"]:
+    for subset in subsets:
         url = base_url.format(subset=subset)
         filename = "{subset}.tsv".format(subset=subset)
 
@@ -499,7 +508,7 @@ def download_all_metadata(
             force_download=force_download,
             chunk_size=chunk_size,
         )
-        _metadata = _load_metadata(path, subset=subset)
+        _metadata = _load_metadata(path)
         metadata.extend(_metadata)
 
     return metadata
@@ -508,14 +517,23 @@ def download_all_metadata(
 def download_top50_metadata(
     root: Optional[str] = None,
     split: int = 0,
+    subset: Optional[Union[str, List[str]]] = None,
     force_download: bool = False,
     chunk_size: int = 1024,
 ) -> List[Dict[str, Any]]:
     base_url = f"https://raw.githubusercontent.com/MTG/mtg-jamendo-dataset/master/data/splits/split-{split}"  # noqa: E501
     base_url += "/autotagging_top50tags-{subset}.tsv"  # noqa: E501
+
+    if subset is None:
+        subsets = ["train", "validation", "test"]
+    elif isinstance(subset, str):
+        subsets = [subset]
+    else:
+        subsets = subset
+
     metadata = []
 
-    for subset in ["train", "validation", "test"]:
+    for subset in subsets:
         url = base_url.format(subset=subset)
         filename = "{subset}.tsv".format(subset=subset)
 
@@ -530,7 +548,7 @@ def download_top50_metadata(
             force_download=force_download,
             chunk_size=chunk_size,
         )
-        _metadata = _load_metadata(path, subset=subset)
+        _metadata = _load_metadata(path)
         metadata.extend(_metadata)
 
     return metadata
@@ -539,14 +557,23 @@ def download_top50_metadata(
 def download_genre_metadata(
     root: Optional[str] = None,
     split: int = 0,
+    subset: Optional[Union[str, List[str]]] = None,
     force_download: bool = False,
     chunk_size: int = 1024,
 ) -> List[Dict[str, Any]]:
     base_url = f"https://raw.githubusercontent.com/MTG/mtg-jamendo-dataset/master/data/splits/split-{split}"  # noqa: E501
     base_url += "/autotagging_genre-{subset}.tsv"  # noqa: E501
+
+    if subset is None:
+        subsets = ["train", "validation", "test"]
+    elif isinstance(subset, str):
+        subsets = [subset]
+    else:
+        subsets = subset
+
     metadata = []
 
-    for subset in ["train", "validation", "test"]:
+    for subset in subsets:
         url = base_url.format(subset=subset)
         filename = "{subset}.tsv".format(subset=subset)
 
@@ -561,7 +588,7 @@ def download_genre_metadata(
             force_download=force_download,
             chunk_size=chunk_size,
         )
-        _metadata = _load_metadata(path, subset=subset)
+        _metadata = _load_metadata(path)
         metadata.extend(_metadata)
 
     return metadata
@@ -570,14 +597,23 @@ def download_genre_metadata(
 def download_instrument_metadata(
     root: Optional[str] = None,
     split: int = 0,
+    subset: Optional[Union[str, List[str]]] = None,
     force_download: bool = False,
     chunk_size: int = 1024,
 ) -> List[Dict[str, Any]]:
     base_url = f"https://raw.githubusercontent.com/MTG/mtg-jamendo-dataset/master/data/splits/split-{split}"  # noqa: E501
     base_url += "/autotagging_instrument-{subset}.tsv"  # noqa: E501
+
+    if subset is None:
+        subsets = ["train", "validation", "test"]
+    elif isinstance(subset, str):
+        subsets = [subset]
+    else:
+        subsets = subset
+
     metadata = []
 
-    for subset in ["train", "validation", "test"]:
+    for subset in subsets:
         url = base_url.format(subset=subset)
         filename = "{subset}.tsv".format(subset=subset)
 
@@ -594,7 +630,7 @@ def download_instrument_metadata(
             force_download=force_download,
             chunk_size=chunk_size,
         )
-        _metadata = _load_metadata(path, subset=subset)
+        _metadata = _load_metadata(path)
         metadata.extend(_metadata)
 
     return metadata
@@ -603,14 +639,23 @@ def download_instrument_metadata(
 def download_moodtheme_metadata(
     root: Optional[str] = None,
     split: int = 0,
+    subset: Optional[Union[str, List[str]]] = None,
     force_download: bool = False,
     chunk_size: int = 1024,
 ) -> List[Dict[str, Any]]:
     base_url = f"https://raw.githubusercontent.com/MTG/mtg-jamendo-dataset/master/data/splits/split-{split}"  # noqa: E501
     base_url += "/autotagging_moodtheme-{subset}.tsv"  # noqa: E501
+
+    if subset is None:
+        subsets = ["train", "validation", "test"]
+    elif isinstance(subset, str):
+        subsets = [subset]
+    else:
+        subsets = subset
+
     metadata = []
 
-    for subset in ["train", "validation", "test"]:
+    for subset in subsets:
         url = base_url.format(subset=subset)
         filename = "{subset}.tsv".format(subset=subset)
 
@@ -627,13 +672,13 @@ def download_moodtheme_metadata(
             force_download=force_download,
             chunk_size=chunk_size,
         )
-        _metadata = _load_metadata(path, subset=subset)
+        _metadata = _load_metadata(path)
         metadata.extend(_metadata)
 
     return metadata
 
 
-def _load_metadata(path: str, subset: Optional[str] = None) -> List[Dict[str, Any]]:
+def _load_metadata(path: str) -> List[Dict[str, Any]]:
     metadata = []
 
     with open(path) as f:
@@ -651,10 +696,6 @@ def _load_metadata(path: str, subset: Optional[str] = None) -> List[Dict[str, An
                 "duration": float(duration),
                 "tags": list(tags),
             }
-
-            if subset is not None:
-                data["subset"] = subset
-
             metadata.append(data)
 
     return metadata

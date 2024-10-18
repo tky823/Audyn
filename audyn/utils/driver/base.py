@@ -374,11 +374,12 @@ class BaseTrainer(BaseDriver):
             BaseTrainer: Built trainer.
 
         """
-        train_dataset = instantiate(config.train.dataset.train)
-        validation_dataset = instantiate(config.train.dataset.validation)
-
-        train_loader = instantiate(config.train.dataloader.train, train_dataset)
-        validation_loader = instantiate(config.train.dataloader.validation, validation_dataset)
+        dataset_config = config.train.dataset
+        dataloader_config = config.train.dataloader
+        train_dataset = instantiate(dataset_config.train)
+        validation_dataset = instantiate(dataset_config.validation)
+        train_loader = instantiate(dataloader_config.train, train_dataset)
+        validation_loader = instantiate(dataloader_config.validation, validation_dataset)
         loaders = BaseDataLoaders(train_loader, validation_loader)
 
         model = instantiate_model(config.model)
@@ -584,6 +585,9 @@ class BaseTrainer(BaseDriver):
         self.set_epoch_if_necessary(self.epoch_idx)
         self.model.train()
 
+        for criterion_name in criterion_names:
+            self.criterion[criterion_name].train()
+
         for named_data in self.loaders.train:
             if n_remain > 0:
                 # When checkpoint is a specific iteration,
@@ -617,6 +621,9 @@ class BaseTrainer(BaseDriver):
         }
 
         self.model.eval()
+
+        for criterion_name in criterion_names:
+            self.criterion[criterion_name].eval()
 
         for batch_idx, named_data in enumerate(self.loaders.validation):
             mean_metrics = self.validate_one_iteration(
@@ -2284,12 +2291,16 @@ class BaseTrainer(BaseDriver):
         self.writer.add_image(tag, image, global_step=global_step)
 
     def set_epoch_if_necessary(self, epoch: int) -> None:
+        train_loader = self.loaders.train
         sampler = None
 
-        if self.loaders.train.sampler is not None:
-            sampler = self.loaders.train.sampler
-        elif self.loaders.train.batch_sampler is not None:
-            sampler = self.loaders.train.batch_sampler
+        if hasattr(train_loader, "sampler") and train_loader.sampler is not None:
+            sampler = train_loader.sampler
+        elif hasattr(train_loader, "batch_sampler") and train_loader.batch_sampler is not None:
+            sampler = train_loader.batch_sampler
+        else:
+            # e.g. wds.WebLoader
+            pass
 
         if sampler is not None and hasattr(sampler, "set_epoch"):
             sampler.set_epoch(epoch)

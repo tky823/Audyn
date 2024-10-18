@@ -204,7 +204,7 @@ class SynchronousWaveformSlicer(Composer):
 
     Args:
         input_keys (list): Keys of tensor to slice waveforms.
-        output_keys (str): Keys of tensor to store sliced waveforms.
+        output_keys (list): Keys of tensor to store sliced waveforms.
         length (int, optional): Length of waveform slice.
         duration (float, optional): Duration of waveform slice.
         sample_rate (int, optional): Sampling rate of waveform.
@@ -230,9 +230,7 @@ class SynchronousWaveformSlicer(Composer):
             decode_audio_as_monoral=decode_audio_as_monoral,
         )
 
-        self.input_keys = input_keys
-        self.output_keys = output_keys
-        self.training = training
+        assert len(input_keys) == len(output_keys)
 
         if length is None:
             assert duration is not None and sample_rate is not None
@@ -240,6 +238,10 @@ class SynchronousWaveformSlicer(Composer):
             length = int(sample_rate * duration)
         else:
             assert duration is None and sample_rate is None
+
+        self.input_keys = input_keys
+        self.output_keys = output_keys
+        self.training = training
 
         self.length = length
         self.duration = duration
@@ -251,6 +253,7 @@ class SynchronousWaveformSlicer(Composer):
     def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
         input_keys = self.input_keys
         output_keys = self.output_keys
+        g = self.generator
 
         sample = super().process(sample)
 
@@ -263,12 +266,7 @@ class SynchronousWaveformSlicer(Composer):
 
         if self.training:
             if padding > 0:
-                padding_left = torch.randint(
-                    0,
-                    padding,
-                    (),
-                    generator=self.generator,
-                ).item()
+                padding_left = torch.randint(0, padding, (), generator=g).item()
                 padding_right = padding - padding_left
 
                 for input_key, output_key in zip(input_keys, output_keys):
@@ -277,12 +275,7 @@ class SynchronousWaveformSlicer(Composer):
                     sample[output_key] = waveform_slice
             elif padding < 0:
                 trimming = -padding
-                start_idx = torch.randint(
-                    0,
-                    trimming,
-                    (),
-                    generator=self.generator,
-                ).item()
+                start_idx = torch.randint(0, trimming, (), generator=g).item()
                 end_idx = start_idx + length
 
                 for input_key, output_key in zip(input_keys, output_keys):

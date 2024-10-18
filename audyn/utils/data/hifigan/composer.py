@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import Any, Dict, Union
 
 import torch
 import torch.nn as nn
@@ -74,7 +74,7 @@ class HiFiGANComposer(Composer):
             ):
                 self.melspectrogram_transform.eval()
 
-    def process(self, sample: Dict[str, torch.Any]) -> Dict[str, torch.Any]:
+    def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
         waveform_key = self.waveform_key
         sample_rate_key = self.sample_rate_key
         melspectrogram_key = self.melspectrogram_key

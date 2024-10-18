@@ -19,7 +19,7 @@ train:
           input_keys:
             - waveform
           output_keys:
-            - waveform_slice
+            - waveform
           length:
           duration: ${data.audio.duration}
           sample_rate: ${data.audio.sample_rate}
@@ -30,8 +30,8 @@ train:
         - _target_: audyn.utils.data.composer.AudioFeatureExtractionComposer
           feature_extractor:
             _target_: audyn.transforms.MusicTaggingTransformerMelSpectrogram.build_from_pretrained
-          audio_key: waveform_slice
-          feature_key: melspectrogram_slice
+          audio_key: ${..1.output_keys.0}
+          feature_key: melspectrogram
           decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
           decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
         - _target_: audyn.utils.data.LabelsToMultihot
@@ -42,6 +42,46 @@ train:
           decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
 
 validation:
-  batch_size: 32
+  batch_size: 1  # sample-wise evaluation
   collate_fn:
-    _target_: ${...train.collate_fn._target_}
+    _target_: audyn.utils.data.mtg_jamendo.MTGJamendoEvaluationCollator
+    composer:
+      _target_: audyn.utils.data.SequentialComposer
+      _args_:
+        - _target_: audyn.utils.data.ResamplingComposer
+          new_freq: ${data.audio.sample_rate}
+          audio_key: waveform
+          sample_rate_key: sample_rate
+          decode_audio_as_waveform: true
+          decode_audio_as_monoral: true
+        - _target_: audyn.utils.data.LabelsToMultihot
+          label_key: tags
+          feature_key: tags
+          labels: ${data.tag.tags}
+          decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
+          decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
+        - _target_: audyn.utils.data.mtg_jamendo.MTGJamendoEvaluationWaveformSliceComposer
+          input_key: ${..0.audio_key}
+          output_key: ${..0.audio_key}
+          length:
+          duration: ${data.audio.duration}
+          sample_rate: ${data.audio.sample_rate}
+          num_slices: ${data.audio.num_evaluation_slices}
+          decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
+          decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
+        - _target_: audyn.utils.data.composer.AudioFeatureExtractionComposer
+          feature_extractor:
+            _target_: audyn.transforms.MusicTaggingTransformerMelSpectrogram.build_from_pretrained
+          audio_key: ${..2.output_key}
+          feature_key: melspectrogram
+          decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
+          decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
+    squeezed_key:
+      - track
+      - artist
+      - album
+      - duration
+      - tags
+      - filename
+      - melspectrogram
+      - sample_rate

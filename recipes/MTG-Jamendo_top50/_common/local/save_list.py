@@ -4,7 +4,7 @@ from omegaconf import DictConfig
 
 import audyn
 from audyn.utils import setup_config
-from audyn.utils.data.mtg_jamendo import download_all_metadata
+from audyn.utils.data.mtg_jamendo import download_top50_metadata
 
 
 @audyn.main()
@@ -22,7 +22,7 @@ def main(config: DictConfig) -> None:
     assert split is not None, "Specify preprocess.split."
     assert subset is not None, "Specify preprocess.subset."
 
-    annotations = download_all_metadata(split=split, subset=subset)
+    annotations = download_top50_metadata(split=split, subset=subset)
 
     with open(list_path, mode="w") as f:
         for annotation in annotations:

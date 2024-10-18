@@ -1,12 +1,18 @@
 from typing import Any, Dict, Optional
 
 import torch
+import torch.distributed as dist
+import webdataset as wds
 from packaging import version
 from torch.utils.data.dataloader import DataLoader, _collate_fn_t, _worker_init_fn_t
 from torch.utils.data.dataset import Dataset
 from torch.utils.data.distributed import DistributedSampler
 
-from .distributed import DistributedDynamicBatchSampler, DistributedSequentialBatchSampler
+from .dataset import WebDatasetWrapper
+from .distributed import (
+    DistributedDynamicBatchSampler,
+    DistributedSequentialBatchSampler,
+)
 from .sampler import DynamicBatchSampler, SequentialBatchSampler
 
 __all__ = [
@@ -277,6 +283,62 @@ class DistributedDynamicBatchDataLoader(DataLoader):
             persistent_workers=persistent_workers,
             **kwargs,
         )
+
+
+class WebLoaderWrapper(wds.WebLoader):
+    """Wrapper class of wds.WebLoader."""
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+    @classmethod
+    def instantiate_dataloader(
+        cls,
+        dataset: WebDatasetWrapper,
+        *args,
+        batch_size: int = 1,
+        num_replicas: Optional[int] = None,
+        drop_last: bool = False,
+        **kwargs,
+    ) -> "WebLoaderWrapper":
+        """Instantiate WebLoaderWrapper.
+
+        Args:
+            args: Positional arguments given to WebDataset.
+            kwargs: Keyword arguments given to WebDataset.
+
+        Returns:
+            WebLoaderWrapper: Wrapper of WebLoader. ``with_epoch`` and ``with_length``
+                are called if necessary.
+
+        """
+        if num_replicas is None:
+            is_distributed = dist.is_available() and dist.is_initialized()
+
+            if is_distributed:
+                num_replicas = dist.get_world_size()
+            else:
+                num_replicas = 1
+
+        num_samples = len(dataset)
+        num_drops = num_samples % (batch_size * num_replicas)
+
+        if num_drops > 0 and not drop_last:
+            num_samples += batch_size * num_replicas - num_drops
+
+        num_samples_per_rank = num_samples // num_replicas
+        num_batches_per_rank = num_samples_per_rank // batch_size
+
+        dataloader = cls(
+            dataset,
+            *args,
+            batch_size=batch_size,
+            **kwargs,
+        )
+        dataloader = dataloader.with_epoch(num_batches_per_rank)
+        dataloader = dataloader.with_length(num_batches_per_rank)
+
+        return dataloader
 
 
 def _validate_dataloader_kwargs(kwargs: Dict[str, Any]) -> None:

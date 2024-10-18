@@ -81,7 +81,7 @@ def test_birdclef2024_primary_label_composer(
     if IS_WINDOWS:
         pytest.skip(".ogg file is not supported by Windows.")
 
-    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
+    with tempfile.TemporaryDirectory() as temp_dir:
         # save dummy audio to check usage of .ogg file.
         audio_dir = os.path.join(temp_dir, "audio")
         path = os.path.join(audio_dir, "audio.ogg")
@@ -96,7 +96,7 @@ def test_birdclef2024_primary_label_composer(
     if not is_ogg_supported:
         pytest.skip(".ogg file is not supported by environment.")
 
-    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
+    with tempfile.TemporaryDirectory() as temp_dir:
         audio_dir = os.path.join(temp_dir, "audio")
         list_dir = os.path.join(temp_dir, "list")
         feature_dir = os.path.join(temp_dir, "feature")

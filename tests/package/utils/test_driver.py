@@ -17,6 +17,7 @@ import webdataset as wds
 from dummy import allclose
 from omegaconf import DictConfig, OmegaConf
 from pytest import MonkeyPatch
+from torch.utils.data import DataLoader
 
 import audyn
 from audyn.criterion.gan import GANCriterion
@@ -394,6 +395,16 @@ def test_base_trainer_ddp_for_audioset(
     composer_pattern: int,
 ) -> None:
     """Test BaseTrainer for DDP."""
+
+    def close_all(dataloader: DataLoader) -> None:
+        if hasattr(dataloader, "dataset"):
+            dataset = dataloader.dataset
+        else:
+            dataset = None
+
+        if hasattr(dataset, "close_all") and callable(dataset.close_all):
+            dataset.close_all()
+
     BATCH_SIZE = 3
     ITERATIONS = 3
 
@@ -537,7 +548,10 @@ def test_base_trainer_ddp_for_audioset(
             == "audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset"
         )
         assert config.train.dataloader.train._target_ == "torch.utils.data.DataLoader"
-        assert config.train.dataloader.validation._target_ == "torch.utils.data.DataLoader"
+        assert (
+            config.train.dataloader.validation._target_
+            == "audyn.utils.data.WebLoaderWrapper.instantiate_dataloader"
+        )
 
         train_dataset = instantiate(config.train.dataset.train)
         validation_dataset = instantiate(config.train.dataset.validation)
@@ -591,15 +605,8 @@ def test_base_trainer_ddp_for_audioset(
         trainer.run()
         trainer.writer.flush()
 
-        if hasattr(trainer.loaders.train.dataset, "close_all") and callable(
-            trainer.loaders.train.dataset.close_all
-        ):
-            trainer.loaders.train.dataset.close_all()
-
-        if hasattr(trainer.loaders.validation.dataset, "close_all") and callable(
-            trainer.loaders.validation.dataset.close_all
-        ):
-            trainer.loaders.validation.dataset.close_all()
+        close_all(trainer.loaders.train)
+        close_all(trainer.loaders.validation)
 
         dist.destroy_process_group()
 
