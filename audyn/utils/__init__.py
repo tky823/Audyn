@@ -18,6 +18,7 @@ from .data.dataloader import (
     DistributedSequentialBatchDataLoader,
     DynamicBatchDataLoader,
     SequentialBatchDataLoader,
+    WebLoaderWrapper,
 )
 from .data.dataset import (
     SortableTorchObjectDataset,
@@ -316,10 +317,20 @@ def convert_dataset_and_dataloader_to_ddp_if_possible(config: DictConfig) -> Non
             ".", maxsplit=1
         )
         dataloader_package_name, *_ = dataloader_mod_name.split(".", maxsplit=1)
-        dataloader_cls = getattr(importlib.import_module(dataloader_mod_name), dataloader_var_name)
+
+        try:
+            dataloader_fn_name = None
+            imported_dataloader_module = importlib.import_module(dataloader_mod_name)
+            dataloader_factory_fn = getattr(imported_dataloader_module, dataloader_var_name)
+        except ModuleNotFoundError:
+            dataloader_fn_name = dataloader_var_name
+            dataloader_mod_name, dataloader_var_name = dataloader_mod_name.rsplit(".", maxsplit=1)
+            imported_dataloader_module = importlib.import_module(dataloader_mod_name)
+            dataloader_cls = getattr(imported_dataloader_module, dataloader_var_name)
+            dataloader_factory_fn = getattr(dataloader_cls, dataloader_fn_name)
 
         if dataloader_package_name == "torch":
-            if dataloader_cls is DataLoader:
+            if dataloader_factory_fn is DataLoader:
                 # may be converted to distributed data loader
                 if "sampler" in dataloader_config.keys():
                     sampler = dataloader_config.sampler
@@ -435,11 +446,11 @@ def convert_dataset_and_dataloader_to_ddp_if_possible(config: DictConfig) -> Non
                         config, f"train.dataloader.{subset}", dataloader_config, merge=False
                     )
             else:
-                _warn_unexpected_dataloader_for_ddp(dataloader_cls)
+                _warn_unexpected_dataloader_for_ddp(dataloader_factory_fn)
         elif dataloader_package_name == "audyn":
             if (
-                dataloader_cls is SequentialBatchDataLoader
-                or dataloader_cls is DynamicBatchDataLoader
+                dataloader_factory_fn is SequentialBatchDataLoader
+                or dataloader_factory_fn is DynamicBatchDataLoader
             ):
                 dataloader_config = OmegaConf.to_container(dataloader_config)
 
@@ -452,7 +463,7 @@ def convert_dataset_and_dataloader_to_ddp_if_possible(config: DictConfig) -> Non
                 # SequentialBatchDataLoader -> DistributedSequentialBatchDataLoader
                 # DynamicBatchDataLoader -> DistributedDynamicBatchDataLoader
                 ddp_target = ".".join(
-                    [dataloader_mod_name, "Distributed" + dataloader_cls.__name__]
+                    [dataloader_mod_name, "Distributed" + dataloader_factory_fn.__name__]
                 )
                 additional_ddp_config = {
                     "_target_": ddp_target,
@@ -465,16 +476,18 @@ def convert_dataset_and_dataloader_to_ddp_if_possible(config: DictConfig) -> Non
                     config, f"train.dataloader.{subset}", dataloader_config, merge=False
                 )
             elif (
-                dataloader_cls is DistributedDataLoader
-                or dataloader_cls is DistributedSequentialBatchDataLoader
-                or dataloader_cls is DistributedDynamicBatchDataLoader
+                dataloader_factory_fn is DistributedDataLoader
+                or dataloader_factory_fn is DistributedSequentialBatchDataLoader
+                or dataloader_factory_fn is DistributedDynamicBatchDataLoader
             ):
                 # These data loaders support DDP.
                 pass
+            elif dataloader_factory_fn == WebLoaderWrapper.instantiate_dataloader:
+                pass
             else:
-                _warn_unexpected_dataloader_for_ddp(dataloader_cls)
+                _warn_unexpected_dataloader_for_ddp(dataloader_factory_fn)
         else:
-            _warn_unexpected_dataloader_for_ddp(dataloader_cls)
+            _warn_unexpected_dataloader_for_ddp(dataloader_factory_fn)
 
 
 def convert_dataset_and_dataloader_format_if_necessary(config: DictConfig) -> None:
@@ -487,28 +500,77 @@ def convert_dataset_and_dataloader_format_if_necessary(config: DictConfig) -> No
         This function may overwrite config.train.dataset and config.train.dataloader.
 
     """
+    from .data.audioset.dataset import (
+        DistributedPaSSTAudioSetWebDataset,
+        DistributedWeightedAudioSetWebDataset,
+        PaSSTAudioSetWebDataset,
+        WeightedAudioSetWebDataset,
+    )
+
+    logger = get_logger(convert_dataset_and_dataloader_format_if_necessary.__name__)
+
     dump_format = config.preprocess.dump_format
     dataset_config = config.train.dataset
     dataloader_config = config.train.dataloader
 
     if dump_format == "webdataset":
-        # dataset
-        train_dataset_target, train_dataset_kwargs = _search_webdataset_format_dataset(
-            dataset_config.train
-        )
-        validation_dataset_target, validation_dataset_kwargs = _search_webdataset_format_dataset(
+        _, train_dataset_cls, _ = _load_package_class_function_from_config(dataset_config.train)
+        _, validation_dataset_cls, _ = _load_package_class_function_from_config(
             dataset_config.validation
         )
 
-        # dataloader
-        (
-            train_dataloader_target,
-            train_dataloader_kwargs,
-        ) = _search_webdataset_format_dataloader(dataloader_config.train)
-        (
-            validation_dataloader_target,
-            validation_dataloader_kwargs,
-        ) = _search_webdataset_format_dataloader(dataloader_config.validation)
+        if (
+            train_dataset_cls is WeightedAudioSetWebDataset
+            or train_dataset_cls is PaSSTAudioSetWebDataset
+            or train_dataset_cls is DistributedWeightedAudioSetWebDataset
+            or train_dataset_cls is DistributedPaSSTAudioSetWebDataset
+        ):
+            train_dataset_kwargs = OmegaConf.to_container(dataset_config.train)
+            train_dataset_target = train_dataset_kwargs.pop("_target_")
+            train_dataloader_kwargs = OmegaConf.to_container(dataloader_config.train)
+            train_dataloader_target = train_dataloader_kwargs.pop("_target_")
+
+            if "shuffle" in train_dataloader_kwargs and train_dataloader_kwargs["shuffle"]:
+                train_dataloader_kwargs["shuffle"] = False
+                logger.info(
+                    "shuffle=True is replaced with shuffle=False in config of data loader."
+                )
+        else:
+            train_dataset_target, train_dataset_kwargs = _search_webdataset_format_dataset(
+                dataset_config.train
+            )
+            (
+                train_dataloader_target,
+                train_dataloader_kwargs,
+            ) = _search_webdataset_format_dataloader(dataloader_config.train)
+
+        if (
+            validation_dataset_cls is WeightedAudioSetWebDataset
+            or validation_dataset_cls is PaSSTAudioSetWebDataset
+            or validation_dataset_cls is DistributedWeightedAudioSetWebDataset
+            or validation_dataset_cls is DistributedPaSSTAudioSetWebDataset
+        ):
+            validation_dataset_kwargs = OmegaConf.to_container(dataset_config.validation)
+            validation_dataset_target = validation_dataset_kwargs.pop("_target_")
+            validation_dataloader_kwargs = OmegaConf.to_container(dataloader_config.validation)
+            validation_dataloader_target = validation_dataloader_kwargs.pop("_target_")
+
+            if (
+                "shuffle" in validation_dataloader_kwargs
+                and validation_dataloader_kwargs["shuffle"]
+            ):
+                validation_dataloader_kwargs["shuffle"] = False
+                logger.info(
+                    "shuffle=True is replaced with shuffle=False in config of data loader."
+                )
+        else:
+            validation_dataset_target, validation_dataset_kwargs = (
+                _search_webdataset_format_dataset(dataset_config.validation)
+            )
+            (
+                validation_dataloader_target,
+                validation_dataloader_kwargs,
+            ) = _search_webdataset_format_dataloader(dataloader_config.validation)
 
         OmegaConf.update(
             config,
@@ -622,26 +684,15 @@ def _search_webdataset_format_dataset(config: DictConfig) -> Tuple[str, Dict[str
     #     mod_name: audyn.utils.data.dataset
     #     var_name: WebDatasetWrapper
     #      fn_name: instantiate_dataset
+    pkg, cls, fn = _load_package_class_function_from_config(config)
     config = OmegaConf.to_container(config)
     target = config.pop("_target_")
-    mod_name, var_name = target.rsplit(".", maxsplit=1)
-    package_name, *_ = mod_name.split(".", maxsplit=1)
 
-    try:
-        fn_name = None
-        imported_module = importlib.import_module(mod_name)
-    except ModuleNotFoundError:
-        fn_name = var_name
-        mod_name, var_name = mod_name.rsplit(".", maxsplit=1)
-        imported_module = importlib.import_module(mod_name)
-
-    cls = getattr(imported_module, var_name)
-
-    if package_name == "torch":
-        assert fn_name is None
+    if pkg.__name__ == "torch":
+        assert fn is None
 
         _warn_unexpected_dataset_for_webdataset(cls)
-    elif package_name == "audyn":
+    elif pkg.__name__ == "audyn":
         # NOTE: WebDatasetWrapper.instantiate_dataset is not a class.
         if (
             cls is WebDatasetWrapper
@@ -674,13 +725,11 @@ def _search_webdataset_format_dataloader(config: DictConfig) -> Tuple[str, Dict[
     # package_name: audyn
     #     mod_name: audyn.utils.data
     #     var_name: SequentialBatchDataLoader
+    pkg, cls, _ = _load_package_class_function_from_config(config)
     config = OmegaConf.to_container(config)
     target = config.pop("_target_")
-    mod_name, var_name = target.rsplit(".", maxsplit=1)
-    package_name, *_ = mod_name.split(".", maxsplit=1)
-    cls = getattr(importlib.import_module(mod_name), var_name)
 
-    if package_name == "torch":
+    if pkg.__name__ == "torch":
         if cls is DataLoader:
             # WebDataset is supported by DataLoader.
             if "shuffle" in config and config["shuffle"]:
@@ -695,7 +744,7 @@ def _search_webdataset_format_dataloader(config: DictConfig) -> Tuple[str, Dict[
                 UserWarning,
                 stacklevel=2,
             )
-    elif package_name == "audyn":
+    elif pkg.__name__ == "audyn":
         if (
             cls is DistributedDataLoader
             or cls is SequentialBatchDataLoader
@@ -716,6 +765,31 @@ def _search_webdataset_format_dataloader(config: DictConfig) -> Tuple[str, Dict[
         _warn_unexpected_dataloader_for_webdataset(cls)
 
     return target, config
+
+
+def _load_package_class_function_from_config(config: DictConfig) -> Tuple[Any, Any, Any]:
+    config = OmegaConf.to_container(config)
+    target = config.pop("_target_")
+    mod_name, var_name = target.rsplit(".", maxsplit=1)
+    package_name, *_ = mod_name.split(".", maxsplit=1)
+    pkg = importlib.import_module(package_name)
+
+    try:
+        fn_name = None
+        imported_module = importlib.import_module(mod_name)
+    except ModuleNotFoundError:
+        fn_name = var_name
+        mod_name, var_name = mod_name.rsplit(".", maxsplit=1)
+        imported_module = importlib.import_module(mod_name)
+
+    cls = getattr(imported_module, var_name)
+
+    if fn_name is None:
+        fn = None
+    else:
+        fn = getattr(cls, fn_name)
+
+    return pkg, cls, fn
 
 
 def _warn_unexpected_dataset_for_webdataset(module: Any) -> None:
