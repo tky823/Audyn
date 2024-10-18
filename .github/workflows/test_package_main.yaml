@@ -19,6 +19,9 @@ on:
         required: true
       CODECOV_TOKEN:
         required: true
+defaults:
+  run:
+    shell: /bin/bash -le {0}
 jobs:
   package:
     name: Run package tests
@@ -40,8 +43,14 @@ jobs:
       - name: Install dependencies (MacOS)
         if: inputs.os == 'macos-13' || inputs.os == 'macos-latest'
         run: |
-          brew install ffmpeg
+          brew install ffmpeg@6
           brew install libomp
+          echo 'export PATH="/opt/homebrew/opt/ffmpeg@6/bin:$PATH"' >> ~/.bash_profile
+          echo 'export LDFLAGS="-L/opt/homebrew/opt/ffmpeg@6/lib"' >> ~/.bash_profile
+          echo 'export CPPFLAGS="-I/opt/homebrew/opt/ffmpeg@6/include"' >> ~/.bash_profile
+          echo 'export PKG_CONFIG_PATH="/opt/homebrew/opt/ffmpeg@6/lib/pkgconfig:$PKG_CONFIG_PATH"' >> ~/.bash_profile
+          source ~/.bash_profile
+          ffmpeg -version
       - name: Overwrite torch version in pyproject.toml (Windows)
         id: windows_torch_installation
         if: inputs.os == 'windows-latest'
@@ -56,8 +65,6 @@ jobs:
         run: |
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
       - name: Install dependencies
-        env:
-          MACOSX_DEPLOYMENT_TARGET: '10.13'
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev,tests]"
@@ -143,7 +150,7 @@ jobs:
       - name: Install dependencies (MacOS)
         if: inputs.os == 'macos-13' || inputs.os == 'macos-latest'
         run: |
-          brew install ffmpeg
+          brew install ffmpeg@6
       - name: Overwrite torch version in pyproject.toml (Windows)
         id: windows_torch_installation
         if: inputs.os == 'windows-latest'
