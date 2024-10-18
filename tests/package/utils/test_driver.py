@@ -71,7 +71,7 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool, use_torch_compile
     BATCH_SIZE = 2
     INITIAL_ITERATION = 3
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         monkeypatch.chdir(temp_dir)
 
         overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
@@ -269,7 +269,7 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str) -> None:
     BATCH_SIZE = 2
     ITERATIONS = 3
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         monkeypatch.chdir(temp_dir)
 
         # set environmental variables
@@ -410,7 +410,7 @@ def test_base_trainer_ddp_for_audioset(
 
     max_shard_count = 4
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         monkeypatch.chdir(temp_dir)
 
         # set environmental variables
@@ -620,7 +620,7 @@ def test_base_driver_build_from_config(monkeypatch: MonkeyPatch, use_ema: bool) 
     BATCH_SIZE = 2
     INITIAL_ITERATION = 3
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         monkeypatch.chdir(temp_dir)
 
         overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
@@ -739,7 +739,7 @@ def test_text_to_feat_trainer(
     else:
         train_name = "dummy_text-to-feat"
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         monkeypatch.chdir(temp_dir)
 
         overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
@@ -852,7 +852,7 @@ def test_text_to_feat_with_pretrained_feat_to_wave_trainer(monkeypatch: MonkeyPa
     N_MELS = 5
     TEXT_TO_FEAT_UP_SCALE = 2
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         monkeypatch.chdir(temp_dir)
 
         overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
@@ -1019,7 +1019,7 @@ def test_feat_to_wave_trainer(
     BATCH_SIZE = 2
     INITIAL_ITERATION = 3
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         monkeypatch.chdir(temp_dir)
 
         overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
@@ -1153,7 +1153,7 @@ def test_gan_trainer(
     BATCH_SIZE = 2
     INITIAL_ITERATION = 3
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         monkeypatch.chdir(temp_dir)
 
         overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
@@ -1329,7 +1329,7 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str, dataloader_t
     BATCH_SIZE = 2
     INITIAL_ITERATION = 3
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         monkeypatch.chdir(temp_dir)
 
         # set environmental variables
@@ -1590,7 +1590,7 @@ def test_cascade_text_to_wave(monkeypatch: MonkeyPatch) -> None:
     TEXT_TO_FEAT_UP_SCALE = 2
     FEAT_TO_WAVE_UP_SCALE = 2
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         monkeypatch.chdir(temp_dir)
 
         overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
@@ -1817,7 +1817,7 @@ def test_trainer_for_dataloader(monkeypatch: MonkeyPatch, dataloader: str) -> No
     BATCH_SIZE = 2
     ITERATIONS = 3
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         monkeypatch.chdir(temp_dir)
 
         overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
@@ -1904,7 +1904,7 @@ def test_trainer_for_dump_format_conversion(
             "is not supported."
         )
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         monkeypatch.chdir(temp_dir)
 
         overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
@@ -2107,7 +2107,7 @@ def test_trainer_for_list_optimizer(monkeypatch: MonkeyPatch) -> None:
     BATCH_SIZE = 2
     ITERATIONS = 3
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         monkeypatch.chdir(temp_dir)
 
         overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
@@ -2188,7 +2188,7 @@ def test_trainer_for_reduce_lr_on_plateau(monkeypatch: MonkeyPatch) -> None:
     ITERATIONS = 40
     lr_scheduler = "dummy_reduce_lr_on_plateau"
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
         monkeypatch.chdir(temp_dir)
 
         overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
