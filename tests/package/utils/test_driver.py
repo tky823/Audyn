@@ -548,7 +548,10 @@ def test_base_trainer_ddp_for_audioset(
             == "audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset"
         )
         assert config.train.dataloader.train._target_ == "torch.utils.data.DataLoader"
-        assert config.train.dataloader.validation._target_ == "audyn.utils.data.WebLoaderWrapper.instantiate_dataloader"
+        assert (
+            config.train.dataloader.validation._target_
+            == "audyn.utils.data.WebLoaderWrapper.instantiate_dataloader"
+        )
 
         train_dataset = instantiate(config.train.dataset.train)
         validation_dataset = instantiate(config.train.dataset.validation)
