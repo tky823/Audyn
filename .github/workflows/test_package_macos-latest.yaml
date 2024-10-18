@@ -1,4 +1,4 @@
-name: macos-13
+name: macos-latest
 on:
   workflow_call:
     inputs:
@@ -19,12 +19,9 @@ jobs:
     with:
       # macos-13: x86_64, macos-latest: arm
       # See https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners
-      os: macos-13
+      os: macos-latest
       python-version: ${{ inputs.python-version }}
       torch-version: ${{ inputs.torch-version }}
     secrets:
       ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
-# NOTE: torch-2.3 does not support binary for MacOS x86_64
-#       https://github.com/pytorch/pytorch/issues/114602
