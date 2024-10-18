@@ -66,4 +66,5 @@ OmegaConf.register_new_resolver("const", _constant_resolver)
 
 if IS_WINDOWS:
     # https://stackoverflow.com/questions/68299665/valueerror-no-gopen-handler-defined
+    gopen_schemes["c"] = gopen_file
     gopen_schemes["d"] = gopen_file
