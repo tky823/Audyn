@@ -19,9 +19,6 @@ on:
         required: true
       CODECOV_TOKEN:
         required: true
-defaults:
-  run:
-    shell: /bin/bash -le {0}
 jobs:
   package:
     name: Run package tests
