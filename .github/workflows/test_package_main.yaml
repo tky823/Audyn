@@ -50,6 +50,9 @@ jobs:
           echo 'export CPPFLAGS="-I/opt/homebrew/opt/ffmpeg@6/include"' >> ~/.bash_profile
           source ~/.bash_profile
           ffmpeg -version
+          ls "/opt/homebrew/opt/ffmpeg@6/bin"
+          ls "/opt/homebrew/opt/ffmpeg@6/lib"
+          ls "/opt/homebrew/opt/ffmpeg@6/include"
       - name: Overwrite torch version in pyproject.toml (Windows)
         id: windows_torch_installation
         if: inputs.os == 'windows-latest'
