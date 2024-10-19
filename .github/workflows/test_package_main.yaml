@@ -40,8 +40,10 @@ jobs:
       - name: Install dependencies (MacOS)
         if: inputs.os == 'macos-13' || inputs.os == 'macos-latest'
         run: |
+          brew install sox
           brew install ffmpeg
           brew install libomp
+          sox --version
           ffmpeg -version
       - name: Overwrite torch version in pyproject.toml (Windows)
         id: windows_torch_installation
