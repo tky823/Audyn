@@ -69,6 +69,18 @@ class _PatchEmbedding(nn.Module):
         return self.dist_token is not None
 
     @abstractmethod
+    def compute_patch_embedding(self, input: torch.Tensor) -> torch.Tensor:
+        """Compute patch embeddings of input feature.
+
+        Args:
+            input (torch.Tensor): Spectrogram-like feature of shape (batch_size, n_bins, n_frames).
+
+        Returns:
+            torch.Tensor: Embedded features of shape (batch_size, embedding_dim, height, width).
+
+        """
+
+    @abstractmethod
     def spectrogram_to_patches(self, input: torch.Tensor) -> torch.Tensor:
         """Convert spectrogram to patches."""
 
@@ -98,6 +110,30 @@ class _PatchEmbedding(nn.Module):
             raise ValueError("Only 3D and 4D tensors are supported.")
 
         return output
+
+    def prepend_head_tokens(self, sequence: torch.Tensor) -> torch.Tensor:
+        """Prepend [CLS] and [DIST] tokens to sequence.
+
+        Args:
+            sequence (torch.Tensor): Sequence of shape (batch_size, height * width, embedding_dim).
+
+        Returns:
+            torch.Tensor: Sequence of shape
+                (batch_size, height * width + num_head_tokens, embedding_dim),
+                where `num_head_tokens` represents number of tokens for [CLS] and [DIST].
+
+        """
+        batch_size = sequence.size(0)
+
+        if self.insert_dist_token:
+            dist_token = self.dist_token.expand((batch_size, 1, -1))
+            sequence = torch.cat([dist_token, sequence], dim=-2)
+
+        if self.insert_cls_token:
+            cls_token = self.cls_token.expand((batch_size, 1, -1))
+            sequence = torch.cat([cls_token, sequence], dim=-2)
+
+        return sequence
 
     def split_sequence(self, sequence: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """Split sequence to head tokens and content tokens.
@@ -256,6 +292,21 @@ class PositionalPatchEmbedding(_PatchEmbedding):
             x = torch.cat([cls_token, x], dim=-2)
 
         output = self.dropout(x)
+
+        return output
+
+    def compute_patch_embedding(self, input: torch.Tensor) -> torch.Tensor:
+        """Compute patch embeddings of input feature.
+
+        Args:
+            input (torch.Tensor): Spectrogram-like feature of shape (batch_size, n_bins, n_frames).
+
+        Returns:
+            torch.Tensor: Embedded features of shape (batch_size, embedding_dim, height, width).
+
+        """
+        x = input.unsqueeze(dim=-3)
+        output = self.conv2d(x)
 
         return output
 
