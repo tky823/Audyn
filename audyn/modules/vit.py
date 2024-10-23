@@ -472,6 +472,21 @@ class PatchEmbedding(_PatchEmbedding):
 
         return output
 
+    def compute_patch_embedding(self, input: torch.Tensor) -> torch.Tensor:
+        """Compute patch embeddings of input feature.
+
+        Args:
+            input (torch.Tensor): Spectrogram-like feature of shape (batch_size, n_bins, n_frames).
+
+        Returns:
+            torch.Tensor: Embedded features of shape (batch_size, embedding_dim, height, width).
+
+        """
+        x = input.unsqueeze(dim=-3)
+        output = self.conv2d(x)
+
+        return output
+
     def spectrogram_to_patches(self, input: torch.Tensor) -> torch.Tensor:
         """Convert spectrogram to patches."""
         conv2d = self.conv2d
