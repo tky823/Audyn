@@ -273,24 +273,14 @@ class PositionalPatchEmbedding(_PatchEmbedding):
         """
         positional_embedding = self.positional_embedding
         _, n_bins, n_frames = input.size()
-        x = input.unsqueeze(dim=-3)
-        x = self.conv2d(x)
+        x = self.compute_patch_embedding(input)
         x = x + self.resample_positional_embedding(
             positional_embedding,
             n_bins,
             n_frames,
         )
         x = self.patches_to_sequence(x)
-        batch_size = x.size(0)
-
-        if self.insert_dist_token:
-            dist_token = self.dist_token.expand((batch_size, 1, -1))
-            x = torch.cat([dist_token, x], dim=-2)
-
-        if self.insert_cls_token:
-            cls_token = self.cls_token.expand((batch_size, 1, -1))
-            x = torch.cat([cls_token, x], dim=-2)
-
+        x = self.prepend_head_tokens(x)
         output = self.dropout(x)
 
         return output
@@ -475,19 +465,9 @@ class PatchEmbedding(_PatchEmbedding):
                 where `num_head_tokens` represents number of tokens for [CLS] and [DIST].
 
         """
-        x = input.unsqueeze(dim=-3)
-        x = self.conv2d(x)
+        x = self.compute_patch_embedding(input)
         x = self.patches_to_sequence(x)
-        batch_size = x.size(0)
-
-        if self.insert_dist_token:
-            dist_token = self.dist_token.expand((batch_size, 1, -1))
-            x = torch.cat([dist_token, x], dim=-2)
-
-        if self.insert_cls_token:
-            cls_token = self.cls_token.expand((batch_size, 1, -1))
-            x = torch.cat([cls_token, x], dim=-2)
-
+        x = self.prepend_head_tokens(x)
         output = self.dropout(x)
 
         return output
