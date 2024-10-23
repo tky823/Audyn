@@ -66,6 +66,53 @@ class BaseAudioSpectrogramTransformer(nn.Module):
 
         return output
 
+    def compute_patch_embedding(self, input: torch.Tensor) -> torch.Tensor:
+        """Compute output shape from shape of spectrogram."""
+        output = self.embedding.compute_patch_embedding(input)
+
+        return output
+
+    def apply_positional_embedding(
+        self,
+        input: torch.Tensor,
+        n_bins: int,
+        n_frames: int,
+    ) -> torch.Tensor:
+        """Apply positional embedding.
+
+        Args:
+            input (torch.Tensor): Patches of shape (batch_size, embedding_dim, height, width).
+            n_bins (int): Number of bins, not height.
+            n_frames (int): Number of frames, not width.
+
+        Returns:
+            torch.Tensor: Resampled positional embedding of shape (embedding_dim, height', width').
+
+        """
+        positional_embedding = self.embedding.positional_embedding
+
+        output = input + self.embedding.resample_positional_embedding(
+            positional_embedding,
+            n_bins,
+            n_frames,
+        )
+
+        return output
+
+    def dropout_embedding(self, input: torch.Tensor) -> torch.Tensor:
+        """Dropout embedding.
+
+        Args:
+            input (torch.Tensor): Sequence of shape (batch_size, height * width + num_head_tokens).
+
+        Returns:
+            torch.Tensor: Sequence of shape (batch_size, height * width + num_head_tokens).
+
+        """
+        output = self.embedding.dropout(input)
+
+        return output
+
     def compute_padding_mask(
         self,
         input: torch.Tensor,
@@ -268,6 +315,9 @@ class BaseAudioSpectrogramTransformer(nn.Module):
             sequence = sequence.squeeze(dim=-1)
 
         return head_tokens, sequence
+
+    def prepend_head_tokens(self, sequence: torch.Tensor) -> torch.Tensor:
+        return self.embedding.prepend_head_tokens(sequence)
 
     def prepend_tokens(
         self, sequence: torch.Tensor, tokens: Optional[torch.Tensor] = None

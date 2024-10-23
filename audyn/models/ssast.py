@@ -15,7 +15,13 @@ from torch.nn.common_types import _size_2_t
 
 from ..modules.vit import PositionalPatchEmbedding
 from ..utils.github import download_file_from_github_release
-from .ast import Aggregator, BaseAudioSpectrogramTransformer, Head, MLPHead, _align_patch_embedding
+from .ast import (
+    Aggregator,
+    BaseAudioSpectrogramTransformer,
+    Head,
+    MLPHead,
+    _align_patch_embedding,
+)
 
 __all__ = [
     "SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel",
@@ -422,14 +428,12 @@ class MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
 
         """
         input = self.pad_by_length(input, length=length)
-        x = self.embedding(input)
+        x_patch = self.compute_patch_embedding(input)
         target = self.spectrogram_to_patches(input)
         padding_mask = self.compute_padding_mask(input, length=length)
 
+        _, n_bins, n_frames = input.size()
         _, _, height, width = target.size()
-
-        head_tokens, x = self.split_sequence(x)
-        x_patch = self.sequence_to_patches(x, height=height, width=width)
 
         if padding_mask is None:
             patch_padding_mask = None
@@ -441,8 +445,10 @@ class MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
 
         # for reconstruction
         x, masking_mask = self.masker(x_patch, padding_mask=patch_padding_mask)
+        x = self.apply_positional_embedding(x, n_bins=n_bins, n_frames=n_frames)
         x = self.patches_to_sequence(x)
-        x = self.prepend_tokens(x, tokens=head_tokens)
+        x = self.prepend_head_tokens(x)
+        x = self.dropout_embedding(x)
         x = self.transformer_forward(x, padding_mask=padding_mask)
         _, x = self.split_sequence(x)
         x = self.sequence_to_patches(x, height=height, width=width)
@@ -457,8 +463,10 @@ class MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
 
         # for classification
         x, masking_mask = self.masker(x_patch, padding_mask=patch_padding_mask)
+        x = self.apply_positional_embedding(x, n_bins=n_bins, n_frames=n_frames)
         x = self.patches_to_sequence(x)
-        x = self.prepend_tokens(x, tokens=head_tokens)
+        x = self.prepend_head_tokens(x)
+        x = self.dropout_embedding(x)
         x = self.transformer_forward(x, padding_mask=padding_mask)
         _, x = self.split_sequence(x)
         x = self.sequence_to_patches(x, height=height, width=width)

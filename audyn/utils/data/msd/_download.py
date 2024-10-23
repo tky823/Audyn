@@ -4,11 +4,6 @@ from typing import Dict, List
 def download_tags() -> List[Dict[str, str]]:
     """Download tags of Million Song Dataset (MSD).
 
-    Args:
-        root (str, optional): Root directory to download tags.
-        force_download (str): If ``True``, existing file is overwritten by new one.
-        chunk_size (int): Chunk size to download file.
-
     Returns:
         list: 50 tags of MSD.
 
