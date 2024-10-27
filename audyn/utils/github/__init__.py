@@ -63,7 +63,7 @@ def download_file_from_github_release(
     try:
         with urlopen(request) as response, open(path, "wb") as f:
             if IS_TQDM_AVAILABLE:
-                description = f"Download file to {path}"
+                description = f"Downloading file to {path}"
 
                 with tqdm(unit="B", unit_scale=True, desc=description, total=total_size) as pbar:
                     download_by_response(response, f, chunk_size=chunk_size, pbar=pbar)
