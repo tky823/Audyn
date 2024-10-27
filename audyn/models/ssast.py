@@ -14,7 +14,7 @@ from omegaconf import OmegaConf
 from torch.nn.common_types import _size_2_t
 
 from ..modules.vit import PositionalPatchEmbedding
-from ..utils.github import download_file_from_github_release
+from ..utils._github import download_file_from_github_release
 from .ast import (
     Aggregator,
     BaseAudioSpectrogramTransformer,
@@ -193,7 +193,7 @@ class SelfSupervisedAudioSpectrogramTransformer(BaseAudioSpectrogramTransformer)
                 - multitask-ssast-frame-base-400
 
         """  # noqa: E501
-        from ..utils.hydra.utils import instantiate  # to avoid circular import
+        from ..utils._hydra.utils import instantiate  # to avoid circular import
 
         pretrained_model_configs = _create_pretrained_model_configs()
 
@@ -350,7 +350,7 @@ class MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel(
                 - multitask-ssast-frame-base-400
 
         """  # noqa: E501
-        from ..utils.hydra.utils import instantiate  # to avoid circular import
+        from ..utils._hydra.utils import instantiate  # to avoid circular import
 
         pretrained_model_configs = _create_pretrained_model_configs()
 

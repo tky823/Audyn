@@ -9,7 +9,7 @@ from omegaconf import OmegaConf
 from torch.nn.common_types import _size_2_t
 
 from ..modules.passt import DisentangledPositionalPatchEmbedding, Patchout
-from ..utils.github import download_file_from_github_release
+from ..utils._github import download_file_from_github_release
 from .ast import Aggregator, BaseAudioSpectrogramTransformer, Head
 
 __all__ = [

@@ -14,7 +14,7 @@ from ...metrics import MeanMetric
 from ...models.gan import BaseGAN
 from ...optim.lr_scheduler import GANLRScheduler
 from ...optim.optimizer import GANOptimizer, MovingAverageWrapper, MultiOptimizers
-from ...utils.hydra.utils import (
+from ...utils._hydra.utils import (
     instantiate,
     instantiate_criterion,
     instantiate_gan_discriminator,

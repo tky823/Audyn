@@ -7,13 +7,13 @@ from typing import Optional
 from omegaconf import DictConfig
 from torchaudio.io import StreamReader, StreamWriter
 
+from ..utils._hydra import main as audyn_main
 from ..utils.data.musdb18 import (
     sources,
     test_track_names,
     train_track_names,
     validation_track_names,
 )
-from ..utils.hydra import main as audyn_main
 
 try:
     from tqdm import tqdm

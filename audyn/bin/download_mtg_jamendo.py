@@ -7,8 +7,8 @@ from urllib.request import Request, urlopen
 
 from omegaconf import DictConfig
 
+from ..utils._hydra import main as audyn_main
 from ..utils.data.download import download_by_response
-from ..utils.hydra import main as audyn_main
 
 try:
     from tqdm import tqdm

@@ -24,7 +24,7 @@ from ...optim.optimizer import (
     MovingAverageWrapper,
     MultiOptimizers,
 )
-from ...utils.hydra.utils import (
+from ...utils._hydra.utils import (
     instantiate,
     instantiate_criterion,
     instantiate_grad_clipper,
@@ -33,11 +33,11 @@ from ...utils.hydra.utils import (
     instantiate_optimizer,
 )
 from ...utils.modules import set_device
+from .._hydra.utils import TORCH_CLIP_GRAD_FN
 from ..alignment import expand_by_duration
 from ..clip_grad import GradClipper
 from ..data import BaseDataLoaders, select_device
 from ..distributed import select_global_rank, select_local_rank
-from ..hydra.utils import TORCH_CLIP_GRAD_FN
 from ..logging import get_logger
 from ..modules import unwrap
 from ..tensorboard import get_summary_writer

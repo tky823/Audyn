@@ -11,7 +11,7 @@ from ..modules.music_tagging_transformer import (
     MusicTaggingTransformerEncoder,
     PositionalPatchEmbedding,
 )
-from ..utils.github import download_file_from_github_release
+from ..utils._github import download_file_from_github_release
 from .ast import BaseAudioSpectrogramTransformer, HeadTokensAggregator, MLPHead
 
 __all__ = [
@@ -211,7 +211,7 @@ class MusicTaggingTransformer(BaseAudioSpectrogramTransformer):
                 - music-tagging-transformer_student
 
         """  # noqa: E501
-        from ..utils.hydra.utils import instantiate  # to avoid circular import
+        from ..utils._hydra.utils import instantiate  # to avoid circular import
 
         pretrained_model_configs = _create_pretrained_model_configs()
 

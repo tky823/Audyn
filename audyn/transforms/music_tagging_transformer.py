@@ -4,7 +4,7 @@ from typing import Callable, Dict, Optional
 import torch
 import torchaudio.transforms as aT
 
-from ..utils.github import download_file_from_github_release
+from ..utils._github import download_file_from_github_release
 
 __all__ = [
     "MusicTaggingTransformerMelSpectrogram",
