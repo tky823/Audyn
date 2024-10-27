@@ -11,7 +11,7 @@ from ..modules.music_tagging_transformer import (
     MusicTaggingTransformerEncoder,
     PositionalPatchEmbedding,
 )
-from ..utils.github import download_file_from_github_release
+from ..utils._github import download_file_from_github_release
 from .ast import BaseAudioSpectrogramTransformer, HeadTokensAggregator, MLPHead
 
 __all__ = [
