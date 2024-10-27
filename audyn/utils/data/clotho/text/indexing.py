@@ -4,7 +4,7 @@ from typing import Iterable, List, Optional
 from torchtext.vocab import build_vocab_from_iterator
 
 from .....utils import audyn_cache_dir
-from .....utils.github import download_file_from_github_release
+from .....utils._github import download_file_from_github_release
 from ....text.indexing import BaseTextIndexer
 from .symbols import BOS_SYMBOL, EOS_SYMBOL, MASK_SYMBOL, vocab_size
 
