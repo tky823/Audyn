@@ -9,7 +9,7 @@ from dummy import allclose
 from audyn.models.ast import HeadTokensAggregator, MLPHead
 from audyn.models.passt import DisentangledPositionalPatchEmbedding, PaSST
 from audyn.modules.passt import StructuredPatchout, UnstructuredPatchout
-from audyn.utils.github import download_file_from_github_release
+from audyn.utils._github import download_file_from_github_release
 
 
 @pytest.mark.parametrize(

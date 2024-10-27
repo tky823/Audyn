@@ -7,7 +7,7 @@ from dummy import allclose
 from audyn.transforms.music_tagging_transformer import (
     MusicTaggingTransformerMelSpectrogram,
 )
-from audyn.utils.github import download_file_from_github_release
+from audyn.utils._github import download_file_from_github_release
 
 
 def test_music_tagging_transformer_melspectrogram() -> None:

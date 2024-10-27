@@ -19,7 +19,7 @@ from audyn.models.ssast import (
     SelfSupervisedAudioSpectrogramTransformer,
 )
 from audyn.modules.vit import PatchEmbedding, PositionalPatchEmbedding
-from audyn.utils.github import download_file_from_github_release
+from audyn.utils._github import download_file_from_github_release
 
 
 @pytest.mark.parametrize(

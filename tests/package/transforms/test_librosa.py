@@ -7,7 +7,7 @@ import torchaudio
 from dummy import allclose
 
 from audyn.transforms.librosa import LibrosaMelSpectrogram
-from audyn.utils.github import download_file_from_github_release
+from audyn.utils._github import download_file_from_github_release
 
 
 def test_librosa_melspectrogram() -> None:

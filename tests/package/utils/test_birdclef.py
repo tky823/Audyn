@@ -10,6 +10,7 @@ import webdataset as wds
 from torch.utils.data import DataLoader
 
 from audyn.transforms.birdclef import BirdCLEF2024BaselineMelSpectrogram
+from audyn.utils._github import download_file_from_github_release
 from audyn.utils.data import WebDatasetWrapper
 from audyn.utils.data.birdclef.birdclef2024 import decode_csv_line
 from audyn.utils.data.birdclef.birdclef2024 import (
@@ -19,7 +20,6 @@ from audyn.utils.data.birdclef.birdclef2024.collator import BirdCLEF2024Baseline
 from audyn.utils.data.birdclef.birdclef2024.composer import (
     BirdCLEF2024PrimaryLabelComposer,
 )
-from audyn.utils.github import download_file_from_github_release
 
 IS_WINDOWS = sys.platform == "win32"
 

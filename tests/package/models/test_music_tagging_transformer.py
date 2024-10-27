@@ -14,7 +14,7 @@ from audyn.modules.music_tagging_transformer import (
 from audyn.transforms.music_tagging_transformer import (
     MusicTaggingTransformerMelSpectrogram,
 )
-from audyn.utils.github import download_file_from_github_release
+from audyn.utils._github import download_file_from_github_release
 
 
 def test_official_music_tagging_transformer() -> None:

@@ -3,7 +3,7 @@ import os
 from typing import Dict, List, Optional
 
 from ... import audyn_cache_dir
-from ...github import download_file_from_github_release
+from ..._github import download_file_from_github_release
 
 
 def download_tags(
