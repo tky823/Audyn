@@ -7,9 +7,9 @@ from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 
 from ...metrics import MeanMetric
+from .._hydra.utils import instantiate_model
 from ..clip_grad import GradClipper
 from ..data import BaseDataLoaders
-from ..hydra.utils import instantiate_model
 from ..modules import set_device, unwrap
 from .base import BaseTrainer
 

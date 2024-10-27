@@ -7,7 +7,7 @@ from typing import Any
 from omegaconf import OmegaConf
 from webdataset.gopen import gopen_file, gopen_schemes
 
-from .utils.hydra import main
+from .utils._hydra import main
 
 __all__ = ["__version__", "main"]
 

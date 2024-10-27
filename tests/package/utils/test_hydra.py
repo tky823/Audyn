@@ -9,7 +9,7 @@ from torch.optim import SGD
 from audyn.criterion import MultiCriteria
 from audyn.modules.vqvae import VectorQuantizer
 from audyn.optim.lr_scheduler import _DummyLRScheduler
-from audyn.utils.hydra.utils import (
+from audyn.utils._hydra.utils import (
     instantiate_criterion,
     instantiate_lr_scheduler,
     instantiate_optimizer,

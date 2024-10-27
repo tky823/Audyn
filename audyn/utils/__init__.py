@@ -10,6 +10,18 @@ from omegaconf import DictConfig, ListConfig, OmegaConf
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 
+from ._hydra.utils import (
+    instantiate,
+    instantiate_cascade_text_to_wave,
+    instantiate_criterion,
+    instantiate_gan_discriminator,
+    instantiate_gan_generator,
+    instantiate_grad_clipper,
+    instantiate_lr_scheduler,
+    instantiate_metrics,
+    instantiate_model,
+    instantiate_optimizer,
+)
 from .clip_grad import GANGradClipper, GradClipper
 from .data import select_accelerator
 from .data.dataloader import (
@@ -27,18 +39,6 @@ from .data.dataset import (
     available_dump_formats,
 )
 from .distributed import is_distributed, setup_distributed
-from .hydra.utils import (
-    instantiate,
-    instantiate_cascade_text_to_wave,
-    instantiate_criterion,
-    instantiate_gan_discriminator,
-    instantiate_gan_generator,
-    instantiate_grad_clipper,
-    instantiate_lr_scheduler,
-    instantiate_metrics,
-    instantiate_model,
-    instantiate_optimizer,
-)
 from .logging import get_logger
 
 __all__ = [

@@ -1,8 +1,8 @@
 import os
 import shutil
+import tarfile
 import tempfile
 import uuid
-import zipfile
 from typing import Optional
 from urllib.request import Request, urlopen
 
@@ -19,37 +19,36 @@ except ImportError:
     IS_TQDM_AVAILABLE = False
 
 
-@audyn_main(config_name="download-mtat")
+@audyn_main(config_name="download-clotho")
 def main(config: DictConfig) -> None:
-    """Download MagnaTagATune (MTAT) dataset.
+    """Download Clotho dataset.
 
     .. code-block:: shell
 
         data_root="./data"  # root directory to save .zip file.
-        mtat_root="${data_root}/MTAT"
+        clotho_root="${data_root}/Clotho"
+        clotho_version="2.1"
         unpack=true  # unpack .tgz or not
         chunk_size=8192  # chunk size in byte to download
 
-        audyn-download-mtat \
+        audyn-download-clotho \
         root="${data_root}" \
-        mtat_root="${mtat_root}" \
+        clotho_root="${clotho_root}" \
+        version="${clotho_version}" \
         unpack=${unpack} \
         chunk_size=${chunk_size}
 
     """
-    download_mtat(config)
+    download_clotho(config)
 
 
-def download_mtat(config: DictConfig) -> None:
+def download_clotho(config: DictConfig) -> None:
     root = config.root
-    mtat_root = config.mtat_root
+    openmic2018_root = config.openmic2018_root
     unpack = config.unpack
     chunk_size = config.chunk_size
 
-    num_files = 3
-
-    url = "https://mirg.city.ac.uk/datasets/magnatagatune/"
-    zip_template = "mp3.zip.{:03d}"
+    url = "https://zenodo.org/records/1432913/files/openmic-2018-v1.0.0.tgz"
 
     if root is None:
         raise ValueError("Set root directory.")
@@ -63,30 +62,17 @@ def download_mtat(config: DictConfig) -> None:
     if root:
         os.makedirs(root, exist_ok=True)
 
-    for idx in range(num_files):
-        filename = zip_template.format(idx + 1)
-        _url = url + filename
-        path = os.path.join(root, filename)
+    filename = os.path.basename(url)
+    path = os.path.join(root, filename)
 
-        if not os.path.exists(path):
-            _download_mtat(_url, path, chunk_size=chunk_size)
+    if not os.path.exists(path):
+        _download_openmic2018(url, path, chunk_size=chunk_size)
 
     if unpack:
-        merged_path = zip_template.format(0)
-        merged_path = merged_path[:-4]
-
-        with open(merged_path, "wb") as f_out:
-            for idx in range(num_files):
-                filename = zip_template.format(idx + 1)
-                path = os.path.join(root, filename)
-
-                with open(path, "rb") as f_in:
-                    f_out.write(f_in.read())
-
-        _unpack_zip(merged_path, mtat_root=mtat_root)
+        _unpack_tgz(path, openmic2018_root=openmic2018_root)
 
 
-def _download_mtat(url: str, path: str, chunk_size: int = 8192) -> None:
+def _download_openmic2018(url: str, path: str, chunk_size: int = 8192) -> None:
     filename = os.path.basename(url)
     temp_path = path + str(uuid.uuid4())[:8]
 
@@ -110,18 +96,22 @@ def _download_mtat(url: str, path: str, chunk_size: int = 8192) -> None:
         raise e
 
 
-def _unpack_zip(path: str, mtat_root: Optional[str] = None) -> None:
+def _unpack_tgz(path: str, openmic2018_root: Optional[str] = None) -> None:
     root = os.path.dirname(path)
-    default_name = "MTAT"
 
-    if mtat_root is None:
-        mtat_root = os.path.join(root, default_name)
+    if openmic2018_root is None:
+        openmic2018_root = os.path.join(root, "openmic-2018")
 
-    os.makedirs(mtat_root, exist_ok=True)
+    os.makedirs(openmic2018_root, exist_ok=True)
 
-    with zipfile.ZipFile(path) as f, tempfile.TemporaryDirectory() as temp_dir:
-        f.extractall(temp_dir)
+    with tarfile.open(path, "r:gz") as tar, tempfile.TemporaryDirectory() as temp_dir:
+        tar.extractall(temp_dir)
+        _openmic2018_root = os.path.join(temp_dir, "openmic-2018")
 
-        for _filename in os.listdir(temp_dir):
-            _path = os.path.join(temp_dir, _filename)
-            shutil.move(_path, mtat_root)
+        for _filename in os.listdir(_openmic2018_root):
+            _path = os.path.join(_openmic2018_root, _filename)
+            shutil.move(_path, openmic2018_root)
+
+
+if __name__ == "__main__":
+    main()

@@ -11,10 +11,10 @@ from torch.optim import Optimizer
 from ... import __version__ as _version
 from ...criterion.gan import GANCriterion
 from ...metrics import MeanMetric
-from ...models.gan import BaseGAN
+from ...models.distillation import BaseDistillation
 from ...optim.lr_scheduler import GANLRScheduler
 from ...optim.optimizer import GANOptimizer, MovingAverageWrapper, MultiOptimizers
-from ...utils._hydra.utils import (
+from ...utils.hydra.utils import (
     instantiate,
     instantiate_criterion,
     instantiate_gan_discriminator,
@@ -27,20 +27,15 @@ from ...utils.modules import set_device
 from ..clip_grad import GANGradClipper
 from ..data import BaseDataLoaders
 from ..modules import unwrap
-from .base import (
-    BaseGenerator,
-    BaseTrainer,
-    _is_audyn_clip_gradient,
-    _is_torch_clip_gradient,
-)
+from .base import BaseTrainer, _is_audyn_clip_gradient, _is_torch_clip_gradient
 
 
-class GANTrainer(BaseTrainer):
-    model: BaseGAN
-    optimizer: GANOptimizer
-    lr_scheduler: GANLRScheduler
-    grad_clipper: GANGradClipper
-    criterion: GANCriterion
+class DistillationTrainer(BaseTrainer):
+    model: BaseDistillation
+    optimizer: DistillationOptimizer
+    lr_scheduler: DistillationLRScheduler
+    grad_clipper: DistillationGradClipper
+    criterion: DistillationCriterion
 
     def __init__(
         self,
@@ -322,12 +317,6 @@ class GANTrainer(BaseTrainer):
 
         self.unwrapped_model.generator.eval()
         self.unwrapped_model.discriminator.eval()
-
-        for criterion_name in generator_criterion_names:
-            self.criterion.generator[criterion_name].eval()
-
-        for criterion_name in discriminator_criterion_names:
-            self.criterion.discriminator[criterion_name].eval()
 
         for batch_idx, named_data in enumerate(self.loaders.validation):
             generator_mean_metrics, discriminator_mean_metrics = self.validate_one_iteration(
@@ -1172,41 +1161,3 @@ class GANTrainer(BaseTrainer):
 
         s = f"Save model: {save_path}."
         self.logger.info(s)
-
-
-class GANGenerator(BaseGenerator):
-    """Waveform synthesis using generator of GAN."""
-
-    def load_checkpoint(self, path: str) -> None:
-        state_dict = torch.load(path, map_location=self.device)
-
-        unwrapped_generator = unwrap(self.unwrapped_model.generator)
-        unwrapped_discriminator = unwrap(self.unwrapped_model.discriminator)
-
-        unwrapped_generator.load_state_dict(state_dict["model"]["generator"])
-        unwrapped_discriminator.load_state_dict(state_dict["model"]["discriminator"])
-
-    @torch.no_grad()
-    def run(self) -> None:
-        test_config = self.config.test
-        key_mapping = test_config.key_mapping.inference
-
-        self.model.eval()
-
-        unwrapped_generator = unwrap(self.unwrapped_model.generator)
-
-        for named_data in self.loader:
-            named_data = self.move_data_to_device(named_data, self.device)
-            named_input = self.map_to_named_input(named_data, key_mapping=key_mapping)
-            named_identifier = self.map_to_named_identifier(named_data, key_mapping=key_mapping)
-
-            if hasattr(unwrapped_generator, "inference"):
-                output = unwrapped_generator.inference(**named_input)
-            else:
-                output = unwrapped_generator(**named_input)
-
-            named_output = self.map_to_named_output(output, key_mapping=key_mapping)
-
-            self.save_inference_audio_if_necessary(
-                named_output, named_data, named_identifier, config=test_config.output
-            )
