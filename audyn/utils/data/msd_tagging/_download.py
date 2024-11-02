@@ -14,7 +14,7 @@ def download_tags() -> List[Dict[str, str]]:
 
     Examples:
 
-        >>> from audyn.utils.data.msd import tags
+        >>> from audyn.utils.data.msd_tagging import tags
         >>> len(tags)
         50
         >>> tags[0]
@@ -95,7 +95,7 @@ def download_interactions(
 
     Examples:
 
-        >>> from audyn.utils.data.msd import download_interactions
+        >>> from audyn.utils.data.msd_tagging import download_interactions
         >>> interactions = download_interactions("user20-track200", subset="validate-visible")
         >>> len(interactions)
         50000
