@@ -35,7 +35,7 @@ def download_interactions(
 
     """
     if root is None:
-        root = os.path.join(audyn_cache_dir, "data", "msd")
+        root = os.path.join(audyn_cache_dir, "data", "msd-recommend")
 
     interactions = {}
 
