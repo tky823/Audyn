@@ -105,7 +105,7 @@ def download_metadata(
     base_url = "https://github.com/tky823/Audyn/releases/download/v0.0.3/msd_{subset}.jsonl"
 
     if subset is None:
-        subsets = ["train", "validation", "test"]
+        subsets = ["labeled-train", "unlabeled-train", "validate", "evaluate"]
     elif isinstance(subset, str):
         subsets = [subset]
     else:
