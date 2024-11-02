@@ -1,4 +1,4 @@
-from audyn.utils.data.msd import download_interactions, num_tags, tags
+from audyn.utils.data.msd_tagging import download_interactions, num_tags, tags
 
 
 def test_msd() -> None:
