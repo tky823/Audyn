@@ -232,7 +232,7 @@ Music Tagging Transformer
     >>> from audyn.transforms import MusicTaggingTransformerMelSpectrogram
     >>> from audyn.models import MusicTaggingTransformer
     >>> from audyn.models.ast import MLPHead
-    >>> from audyn.utils.data.msd import tags
+    >>> from audyn.utils.data.msd_tagging import tags
     >>> torch.manual_seed(0)
     >>> transform = MusicTaggingTransformerMelSpectrogram.build_from_pretrained()
     >>> model = MusicTaggingTransformer.build_from_pretrained("music-tagging-transformer_teacher")

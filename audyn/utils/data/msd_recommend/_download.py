@@ -6,79 +6,6 @@ from ... import audyn_cache_dir
 from ..._github import download_file_from_github_release
 
 
-def download_tags() -> List[Dict[str, str]]:
-    """Download tags of Million Song Dataset (MSD).
-
-    Returns:
-        list: 50 tags of MSD.
-
-    Examples:
-
-        >>> from audyn.utils.data.msd import tags
-        >>> len(tags)
-        50
-        >>> tags[0]
-        'rock'
-        >>> tags[-1]
-        'progressive metal'
-
-    """
-    tags = [
-        "rock",
-        "pop",
-        "indie",
-        "alternative",
-        "electronic",
-        "hip-hop",
-        "metal",
-        "jazz",
-        "punk",
-        "folk",
-        "alternative rock",
-        "indie rock",
-        "dance",
-        "hard rock",
-        "00s",
-        "soul",
-        "hardcore",
-        "80s",
-        "country",
-        "classic rock",
-        "punk rock",
-        "blues",
-        "chillout",
-        "experimental",
-        "heavy metal",
-        "death metal",
-        "90s",
-        "reggae",
-        "progressive rock",
-        "ambient",
-        "acoustic",
-        "beautiful",
-        "british",
-        "rnb",
-        "funk",
-        "metalcore",
-        "mellow",
-        "world",
-        "guitar",
-        "trance",
-        "indie pop",
-        "christian",
-        "house",
-        "spanish",
-        "latin",
-        "psychedelic",
-        "electro",
-        "piano",
-        "70s",
-        "progressive metal",
-    ]
-
-    return tags
-
-
 def download_interactions(
     type: str, root: Optional[str] = None, subset: Optional[Union[str, List[str]]] = None
 ) -> Dict[str, Dict[str, int]]:
@@ -95,7 +22,7 @@ def download_interactions(
 
     Examples:
 
-        >>> from audyn.utils.data.msd import download_interactions
+        >>> from audyn.utils.data.msd_recommend import download_interactions
         >>> interactions = download_interactions("user20-track200", subset="validate-visible")
         >>> len(interactions)
         50000
@@ -108,7 +35,7 @@ def download_interactions(
 
     """
     if root is None:
-        root = os.path.join(audyn_cache_dir, "data", "msd")
+        root = os.path.join(audyn_cache_dir, "data", "msd-recommend")
 
     interactions = {}
 
