@@ -38,10 +38,13 @@ jobs:
           sudo apt install ffmpeg
           ffmpeg -version
       - name: Install dependencies (MacOS)
-        if: inputs.os == 'macos-13'
+        if: inputs.os == 'macos-13' || inputs.os == 'macos-latest'
         run: |
+          brew install sox
           brew install ffmpeg
           brew install libomp
+          sox --version
+          ffmpeg -version
       - name: Overwrite torch version in pyproject.toml (Windows)
         id: windows_torch_installation
         if: inputs.os == 'windows-latest'
@@ -56,8 +59,6 @@ jobs:
         run: |
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
       - name: Install dependencies
-        env:
-          MACOSX_DEPLOYMENT_TARGET: '10.13'
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev,tests]"
@@ -141,7 +142,7 @@ jobs:
           sudo apt install ffmpeg
           ffmpeg -version
       - name: Install dependencies (MacOS)
-        if: inputs.os == 'macos-13'
+        if: inputs.os == 'macos-13' || inputs.os == 'macos-latest'
         run: |
           brew install ffmpeg
       - name: Overwrite torch version in pyproject.toml (Windows)
