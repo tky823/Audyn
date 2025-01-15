@@ -2,4 +2,4 @@
 
 # FFmpeg
 choco install ffmpeg --version=6.1.0
-refreshenv
+echo "C:\ProgramData\chocolatey\bin" >> $GITHUB_PATH
