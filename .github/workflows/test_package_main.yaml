@@ -31,6 +31,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ inputs.python-version }}
+      - name: Install dependencies (Windows)
+        if: inputs.os == 'windows-latest'
+        run: |
+          . tests/scripts/install_windows_dependencies.sh
       - name: Install dependencies (Ubuntu)
         if: inputs.os == 'ubuntu-latest'
         run: |
@@ -39,6 +43,9 @@ jobs:
         if: inputs.os == 'macos-13' || inputs.os == 'macos-latest'
         run: |
           . tests/scripts/install_macos_dependencies.sh
+      - name: Show version of FFmpeg
+        run: |
+          ffmpeg -version
       - name: Overwrite torch version in pyproject.toml (Windows)
         id: windows_torch_installation
         if: inputs.os == 'windows-latest'
@@ -131,6 +138,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ inputs.python-version }}
+      - name: Install dependencies (Windows)
+        if: inputs.os == 'windows-latest'
+        run: |
+          . tests/scripts/install_windows_dependencies.sh
       - name: Install dependencies (Ubuntu)
         if: inputs.os == 'ubuntu-latest'
         run: |
@@ -139,6 +150,9 @@ jobs:
         if: inputs.os == 'macos-13' || inputs.os == 'macos-latest'
         run: |
           . tests/scripts/install_macos_dependencies.sh
+      - name: Show version of FFmpeg
+        run: |
+          ffmpeg -version
       - name: Overwrite torch version in pyproject.toml (Windows)
         id: windows_torch_installation
         if: inputs.os == 'windows-latest'
