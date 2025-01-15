@@ -1,10 +1,7 @@
-from collections import OrderedDict
 from typing import List
 
-from torchtext.vocab import vocab as build_vocab
-
 from ...text.indexing import BaseTextIndexer
-from . import SPECIALS
+from ...text.vocab import Vocab
 from . import full_symbols as cmudict_full_symbols
 
 __all__ = ["CMUDictIndexer"]
@@ -14,15 +11,13 @@ class CMUDictIndexer(BaseTextIndexer):
     def __init__(self) -> None:
         super().__init__()
 
-        table = []
+        self.vocab = Vocab()
 
-        # To be compatible with order of full_symbols,
-        # - set start=1
-        # - set special_first=False.
-        for idx, symbol in enumerate(cmudict_full_symbols, start=1):
-            table.append((symbol, idx))
+        vocab_idx = 0
 
-        self.vocab = build_vocab(OrderedDict(table), specials=SPECIALS, special_first=False)
+        for symbol in cmudict_full_symbols:
+            self.vocab[symbol] = vocab_idx
+            vocab_idx += 1
 
     def index(self, phonemes: List[str]) -> List[int]:
         """Map each phoneme to corresponding index.
