@@ -1,7 +1,7 @@
 # To create status badge per os, python-version, and torch-version, we use workflow call.
 # https://github.com/orgs/community/discussions/52616
 
-name: test package
+name: Test
 on:
   workflow_call:
     inputs:
@@ -34,14 +34,11 @@ jobs:
       - name: Install dependencies (Ubuntu)
         if: inputs.os == 'ubuntu-latest'
         run: |
-          sudo apt update
-          sudo apt install ffmpeg
-          ffmpeg -version
+          . tests/scripts/install_ubuntu_dependencies.sh
       - name: Install dependencies (MacOS)
         if: inputs.os == 'macos-13' || inputs.os == 'macos-latest'
         run: |
-          brew install ffmpeg
-          brew install libomp
+          . tests/scripts/install_macos_dependencies.sh
       - name: Overwrite torch version in pyproject.toml (Windows)
         id: windows_torch_installation
         if: inputs.os == 'windows-latest'
@@ -137,14 +134,11 @@ jobs:
       - name: Install dependencies (Ubuntu)
         if: inputs.os == 'ubuntu-latest'
         run: |
-          sudo apt update
-          sudo apt install ffmpeg
-          ffmpeg -version
+          . tests/scripts/install_ubuntu_dependencies.sh
       - name: Install dependencies (MacOS)
         if: inputs.os == 'macos-13' || inputs.os == 'macos-latest'
         run: |
-          brew install ffmpeg
-          brew install libomp
+          . tests/scripts/install_macos_dependencies.sh
       - name: Overwrite torch version in pyproject.toml (Windows)
         id: windows_torch_installation
         if: inputs.os == 'windows-latest'
