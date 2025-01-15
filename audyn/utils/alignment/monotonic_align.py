@@ -2,7 +2,7 @@ from typing import Optional
 
 import torch
 
-from ..._cpp_extensions import monotonic_align as monotonic_align_cpp
+from ..._C import monotonic_align as monotonic_align_cpp
 
 __all__ = ["search_monotonic_alignment_by_viterbi"]
 

@@ -99,9 +99,9 @@ def get_cxx_compiler() -> str:
 class BuildExtension(_BuildExtension):
     cpp_extensions = [
         {
-            "name": "audyn._cpp_extensions.monotonic_align",
+            "name": "audyn._C.monotonic_align",
             "sources": [
-                "cpp_extensions/monotonic_align/monotonic_align.cpp",
+                "csrc/monotonic_align.cpp",
             ],
         },
     ]
