@@ -34,7 +34,7 @@ jobs:
       - name: Install dependencies (Windows)
         if: inputs.os == 'windows-latest'
         run: |
-          . tests/scripts/install_windows_dependencies.sh
+          powershell -File tests/scripts/install_windows_dependencies.ps1
       - name: Install dependencies (Ubuntu)
         if: inputs.os == 'ubuntu-latest'
         run: |
@@ -141,7 +141,7 @@ jobs:
       - name: Install dependencies (Windows)
         if: inputs.os == 'windows-latest'
         run: |
-          . tests/scripts/install_windows_dependencies.sh
+          powershell -File tests/scripts/install_windows_dependencies.ps1
       - name: Install dependencies (Ubuntu)
         if: inputs.os == 'ubuntu-latest'
         run: |
