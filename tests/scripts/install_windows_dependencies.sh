@@ -2,3 +2,4 @@
 
 # FFmpeg
 choco install ffmpeg --version=6.1.0
+refreshenv
