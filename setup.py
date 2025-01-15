@@ -3,6 +3,8 @@ import subprocess
 import sys
 import tempfile
 
+import torch
+from packaging import version
 from setuptools import setup
 from setuptools.extension import Extension
 from torch.utils.cpp_extension import BuildExtension as _BuildExtension
@@ -11,6 +13,8 @@ from torch.utils.cpp_extension import CppExtension
 IS_WINDOWS = sys.platform == "win32"
 IS_MACOS = sys.platform.startswith("darwin")
 IS_LINUX = sys.platform.startswith("linux")
+
+IS_TORCH_LE_2_4 = version.parse(torch.__version__) >= version.parse("2.4")
 
 
 SUBPROCESS_DECODE_ARGS = ("oem",) if IS_WINDOWS else ()
@@ -97,14 +101,30 @@ def get_cxx_compiler() -> str:
 
 
 class BuildExtension(_BuildExtension):
-    cpp_extensions = [
-        {
-            "name": "audyn._C.monotonic_align",
-            "sources": [
-                "csrc/monotonic_align.cpp",
-            ],
-        },
-    ]
+    cpp_extensions = []
+
+    if version.parse(torch.__version__) >= version.parse("2.4.0"):
+        cpp_extensions.append(
+            [
+                {
+                    "name": "audyn._C.monotonic_align",
+                    "sources": [
+                        "csrc/monotonic_align.cpp",
+                    ],
+                },
+            ]
+        )
+    else:
+        cpp_extensions.append(
+            [
+                {
+                    "name": "audyn._C.monotonic_align",
+                    "sources": [
+                        "csrc/monotonic_align_torch_2_4.cpp",
+                    ],
+                },
+            ]
+        )
 
     def run(self) -> None:
         if self.editable_mode:

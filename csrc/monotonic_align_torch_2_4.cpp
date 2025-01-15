@@ -1,5 +1,5 @@
 /*
-    for C++ extension with torch < 2.4
+    for C++ extension with torch >= 2.4
 */
 
 #include "audyn.h"
@@ -96,8 +96,14 @@ namespace audyn
     }
 }
 
-PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
+PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {}
+
+TORCH_LIBRARY(audyn, m)
 {
-    m.def("search_monotonic_alignment_by_viterbi", &audyn::search_monotonic_alignment_by_viterbi,
-          "Search monotonic alignment by Viterbi algorithm");
+    m.def("search_monotonic_alignment_by_viterbi(Tensor probs, Tensor tgt_lengths, Tensor src_lengths, bool take_log) -> Tensor");
+}
+
+TORCH_LIBRARY_IMPL(audyn, CPU, m)
+{
+    m.impl("search_monotonic_alignment_by_viterbi", &audyn::search_monotonic_alignment_by_viterbi);
 }
