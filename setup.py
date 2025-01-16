@@ -108,7 +108,7 @@ class BuildExtension(_BuildExtension):
             {
                 "name": "audyn._C.monotonic_align",
                 "sources": [
-                    "csrc/monotonic_align.cpp",
+                    "csrc/monotonic_align_torch_2_4.cpp",
                 ],
             },
         )
@@ -117,7 +117,7 @@ class BuildExtension(_BuildExtension):
             {
                 "name": "audyn._C.monotonic_align",
                 "sources": [
-                    "csrc/monotonic_align_torch_2_4.cpp",
+                    "csrc/monotonic_align.cpp",
                 ],
             },
         )
