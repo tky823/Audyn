@@ -1,10 +1,13 @@
 from typing import Optional
 
 import torch
+from packaging import version
 
-from ..._cpp_extensions import monotonic_align as monotonic_align_cpp
+from ..._C import monotonic_align as monotonic_align_cpp
 
 __all__ = ["search_monotonic_alignment_by_viterbi"]
+
+IS_TORCH_GE_2_4 = version.parse(torch.__version__) >= version.parse("2.4")
 
 
 @torch.no_grad()
@@ -58,7 +61,16 @@ def search_monotonic_alignment_by_viterbi(
         tgt_length = torch.full((batch_size,), max_tgt_length, **factory_kwargs)
         src_length = torch.full((batch_size,), max_src_length, **factory_kwargs)
 
-    hard_alignment = monotonic_align_cpp.search_monotonic_alignment_by_viterbi(
+    if IS_TORCH_GE_2_4:
+        _search_monotonic_alignment_by_viterbi = (
+            torch.ops.audyn.search_monotonic_alignment_by_viterbi.default
+        )
+    else:
+        _search_monotonic_alignment_by_viterbi = (
+            monotonic_align_cpp.search_monotonic_alignment_by_viterbi
+        )
+
+    hard_alignment = _search_monotonic_alignment_by_viterbi(
         probs, tgt_length, src_length, take_log
     )
     hard_alignment = hard_alignment.to(src_device)
