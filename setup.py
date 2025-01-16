@@ -105,25 +105,21 @@ class BuildExtension(_BuildExtension):
 
     if version.parse(torch.__version__) >= version.parse("2.4.0"):
         cpp_extensions.append(
-            [
-                {
-                    "name": "audyn._C.monotonic_align",
-                    "sources": [
-                        "csrc/monotonic_align.cpp",
-                    ],
-                },
-            ]
+            {
+                "name": "audyn._C.monotonic_align",
+                "sources": [
+                    "csrc/monotonic_align.cpp",
+                ],
+            },
         )
     else:
         cpp_extensions.append(
-            [
-                {
-                    "name": "audyn._C.monotonic_align",
-                    "sources": [
-                        "csrc/monotonic_align_torch_2_4.cpp",
-                    ],
-                },
-            ]
+            {
+                "name": "audyn._C.monotonic_align",
+                "sources": [
+                    "csrc/monotonic_align_torch_2_4.cpp",
+                ],
+            },
         )
 
     def run(self) -> None:
