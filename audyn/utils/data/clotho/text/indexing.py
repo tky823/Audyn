@@ -1,11 +1,10 @@
 import os
 from typing import Iterable, List, Optional
 
-from torchtext.vocab import build_vocab_from_iterator
-
 from .....utils import audyn_cache_dir
 from .....utils._github import download_file_from_github_release
 from ....text.indexing import BaseTextIndexer
+from ....text.vocab import Vocab
 from .symbols import BOS_SYMBOL, EOS_SYMBOL, MASK_SYMBOL, vocab_size
 
 __all__ = ["ClothoTextIndexer"]
@@ -47,10 +46,32 @@ class ClothoTextIndexer(BaseTextIndexer):
         if include_mask_token:
             specials.insert(0, MASK_SYMBOL)
 
-        self.vocab = build_vocab_from_iterator(
-            self.build_vocab(path, include_mask_token=include_mask_token),
-            specials=specials,
-        )
+        self.vocab = Vocab()
+
+        vocab_idx = 0
+
+        for token in specials:
+            if token in self.vocab:
+                continue
+
+            self.vocab[token] = vocab_idx
+            vocab_idx += 1
+
+        tokens = set()
+
+        for document in self.build_vocab(path, include_mask_token=include_mask_token):
+            for token in document:
+                if token in specials:
+                    # specials first
+                    continue
+
+                tokens.add(token)
+
+        tokens = sorted(list(tokens))
+
+        for token in tokens:
+            self.vocab[token] = vocab_idx
+            vocab_idx += 1
 
         actual_vocab_size = vocab_size + 1 if include_mask_token else vocab_size
 

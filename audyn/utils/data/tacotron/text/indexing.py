@@ -1,9 +1,7 @@
-from collections import OrderedDict
 from typing import List
 
-from torchtext.vocab import vocab as build_vocab
-
 from ....text.indexing import BaseTextIndexer
+from ....text.vocab import Vocab
 from .symbols import PAD_SYMBOL, SPECIAL_SYMBOL, full_symbols
 
 
@@ -11,12 +9,21 @@ class TacotronIndexer(BaseTextIndexer):
     def __init__(self) -> None:
         super().__init__()
 
-        table = []
+        self.vocab = Vocab()
 
-        for idx, symbol in enumerate(full_symbols):
-            table.append((symbol, idx))
+        specials = [PAD_SYMBOL, SPECIAL_SYMBOL]
+        vocab_idx = 0
 
-        self.vocab = build_vocab(OrderedDict(table), specials=[PAD_SYMBOL, SPECIAL_SYMBOL])
+        for symbol in specials:
+            self.vocab[symbol] = vocab_idx
+            vocab_idx += 1
+
+        for symbol in full_symbols:
+            if symbol in specials:
+                continue
+
+            self.vocab[symbol] = vocab_idx
+            vocab_idx += 1
 
     def index(self, phonemes: List[str]) -> List[int]:
         """Map each phoneme to corresponding index.
