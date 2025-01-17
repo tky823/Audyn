@@ -453,7 +453,7 @@ class BitLinear158Inference(nn.Module):
         else:
             self.register_buffer("bias", bias)
 
-        self.in_features, self.out_features = weight.size()
+        self.out_features, self.in_features = weight.size()
         self.dim = dim
         self.bits = bits
         self.eps = eps
