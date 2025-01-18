@@ -1,0 +1,6 @@
+defaults:
+  - config
+  - _self_
+
+singmos_root: ???
+chunk_size:
