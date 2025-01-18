@@ -61,6 +61,7 @@ audyn-decode-musdb18 = "audyn.bin.decode_musdb18:main"
 audyn-download-mtg-jamendo = "audyn.bin.download_mtg_jamendo:main"
 audyn-download-openmic2018 = "audyn.bin.download_openmic2018:main"
 audyn-download-mtat = "audyn.bin.download_mtat:main"
+audyn-download-singmos = "audyn.bin.download_singmos:main"
 
 [tool.setuptools.dynamic]
 version = {attr = "audyn.__version__"}
