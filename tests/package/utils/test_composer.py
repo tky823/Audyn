@@ -4,10 +4,15 @@ import pytest
 import torch
 import torchaudio.transforms as aT
 
+from audyn.transforms.clap import (
+    LAIONAudioEncoder2023MelSpectrogram,
+    LAIONAudioEncoder2023MelSpectrogramFusion,
+)
 from audyn.transforms.hubert import HuBERTMFCC
 from audyn.transforms.slicer import WaveformSlicer
 from audyn.utils.data.audioset import num_tags as num_audioset_tags
 from audyn.utils.data.audioset import tags as audioset_tags
+from audyn.utils.data.clap.composer import LAIONAudioEncoder2023Composer
 from audyn.utils.data.composer import (
     AudioFeatureExtractionComposer,
     LabelsToMultihot,
@@ -176,6 +181,41 @@ def test_hifigan_composer(audioset_samples: Dict[str, Dict[str, Any]]) -> None:
             "melspectrogram_slice",
         } == set(sample.keys())
         assert sample["waveform_slice"].size(-1) == length
+
+
+def test_laion_clap_composer(audioset_samples: Dict[str, Dict[str, Any]]) -> None:
+    audio_key = "audio"
+    sample_rate = 48000
+    n_mels = 64
+    chunk_size = 301
+    num_chunks = 3
+    list_batch = []
+
+    melspectrogram_transform = LAIONAudioEncoder2023MelSpectrogram(sample_rate, n_mels=n_mels)
+    fusion_transform = LAIONAudioEncoder2023MelSpectrogramFusion(
+        chunk_size=chunk_size, num_chunks=num_chunks
+    )
+
+    for key, sample in audioset_samples.items():
+        sample["__key__"] = key
+        list_batch.append(sample)
+
+    composer = LAIONAudioEncoder2023Composer(
+        melspectrogram_transform=melspectrogram_transform,
+        fusion_transform=fusion_transform,
+        waveform_key=audio_key,
+    )
+    list_batch = composer(list_batch)
+
+    for sample in list_batch:
+        assert {
+            audio_key,
+            "sample_rate",
+            "melspectrogram",
+            "fused_melspectrogram",
+        } == set(sample.keys())
+
+        assert sample["fused_melspectrogram"].size() == (num_chunks + 1, n_mels, chunk_size)
 
 
 @pytest.fixture
