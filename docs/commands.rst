@@ -52,6 +52,26 @@ You can download audio files of MTG-Jamendo dataset by ``audyn-download-mtg-jame
     unpack=${unpack} \
     chunk_size=${chunk_size}
 
+
+Download MagnaTagATune (MTAT) dataset
+-------------------------------------
+
+You can download audio files of MTAT dataset by ``audyn-download-mtat``.
+
+.. code-block:: shell
+
+    data_root="./data"  # root directory to save .zip file.
+    mtat_root="${data_root}/MTAT"
+    unpack=true  # unpack .zip or not
+    chunk_size=8192  # chunk size in byte to download
+
+    audyn-download-mtat \
+    root="${data_root}" \
+    mtat_root="${mtat_root}" \
+    unpack=${unpack} \
+    chunk_size=${chunk_size}
+
+
 Download OpenMIC-2018
 ---------------------
 
