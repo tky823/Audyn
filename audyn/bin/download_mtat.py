@@ -27,7 +27,7 @@ def main(config: DictConfig) -> None:
 
         data_root="./data"  # root directory to save .zip file.
         mtat_root="${data_root}/MTAT"
-        unpack=true  # unpack .tgz or not
+        unpack=true  # unpack .zip or not
         chunk_size=8192  # chunk size in byte to download
 
         audyn-download-mtat \
@@ -63,6 +63,15 @@ def download_mtat(config: DictConfig) -> None:
     if root:
         os.makedirs(root, exist_ok=True)
 
+    # annotation
+    _url = "https://github.com/tky823/Audyn/releases/download/v0.0.4/annotation.zip"
+    filename = os.path.basename(_url)
+    annotation_path = os.path.join(root, filename)
+
+    if not os.path.exists(annotation_path):
+        _download_mtat(_url, annotation_path, chunk_size=chunk_size)
+
+    # audio
     for idx in range(num_files):
         filename = zip_template.format(idx + 1)
         _url = url + filename
@@ -83,7 +92,16 @@ def download_mtat(config: DictConfig) -> None:
                 with open(path, "rb") as f_in:
                     f_out.write(f_in.read())
 
-        _unpack_zip(merged_path, mtat_root=mtat_root)
+        root = os.path.dirname(path)
+        default_name = "MTAT"
+
+        if mtat_root is None:
+            mtat_root = os.path.join(root, default_name)
+
+        _unpack_zip(annotation_path, unpacked_root=mtat_root)
+
+        unpacked_root = os.path.join(mtat_root, "audio")
+        _unpack_zip(merged_path, unpacked_root=unpacked_root)
 
 
 def _download_mtat(url: str, path: str, chunk_size: int = 8192) -> None:
@@ -110,18 +128,12 @@ def _download_mtat(url: str, path: str, chunk_size: int = 8192) -> None:
         raise e
 
 
-def _unpack_zip(path: str, mtat_root: Optional[str] = None) -> None:
-    root = os.path.dirname(path)
-    default_name = "MTAT"
-
-    if mtat_root is None:
-        mtat_root = os.path.join(root, default_name)
-
-    os.makedirs(mtat_root, exist_ok=True)
+def _unpack_zip(path: str, unpacked_root: Optional[str] = None) -> None:
+    os.makedirs(unpacked_root, exist_ok=True)
 
     with zipfile.ZipFile(path) as f, tempfile.TemporaryDirectory() as temp_dir:
         f.extractall(temp_dir)
 
         for _filename in os.listdir(temp_dir):
             _path = os.path.join(temp_dir, _filename)
-            shutil.move(_path, mtat_root)
+            shutil.move(_path, unpacked_root)
