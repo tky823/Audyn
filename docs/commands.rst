@@ -72,8 +72,8 @@ You can download audio files of MTAT dataset by ``audyn-download-mtat``.
     chunk_size=${chunk_size}
 
 
-Download OpenMIC-2018
----------------------
+Download OpenMIC-2018 dataset
+-----------------------------
 
 You can download OpenMIC-2018 dataset by ``audyn-download-openmic2018``.
 
@@ -88,4 +88,20 @@ You can download OpenMIC-2018 dataset by ``audyn-download-openmic2018``.
     root="${data_root}" \
     openmic2018_root="${openmic2018_root}" \
     unpack=${unpack} \
+    chunk_size=${chunk_size}
+
+
+Download SingMOS dataset
+------------------------
+
+You can download SingMOS dataset by ``audyn-download-singmos``.
+
+.. code-block:: shell
+
+    data_root="./data"
+    singmos_root="${data_root}/SingMOS"
+    chunk_size=8192  # chunk size in byte to download
+
+    audyn-download-singmos \
+    singmos_root="${singmos_root}" \
     chunk_size=${chunk_size}
