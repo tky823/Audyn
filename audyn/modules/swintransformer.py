@@ -1,5 +1,5 @@
 import math
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -9,12 +9,213 @@ from torch.nn.common_types import _size_2_t
 from torch.nn.modules.utils import _pair
 
 from ..modules.activation import _MultiheadAttention
+from .transformer import get_activation
 
 __all__ = [
+    "SwinTransformerEncoderLayer",
     "SwinRelativePositionalMultiheadAttention",
 ]
 
 IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
+
+
+class SwinTransformerEncoderLayer(nn.Module):
+    """Encoder layer of SwinTransformer."""
+
+    def __init__(
+        self,
+        d_model: int,
+        nhead: int,
+        dim_feedforward: int = 2048,
+        dropout: float = 0.1,
+        activation: Callable[[torch.Tensor], torch.Tensor] = F.relu,
+        layer_norm_eps: float = 1e-5,
+        height: int = 256,
+        width: int = 256,
+        window_size: _size_2_t = None,
+        shift_size: _size_2_t = 0,
+        share_heads: bool = True,
+        batch_first: bool = False,
+        norm_first: bool = False,
+        bias: bool = True,
+        device: torch.device = None,
+        dtype: torch.dtype = None,
+    ) -> None:
+        factory_kwargs = {
+            "device": device,
+            "dtype": dtype,
+        }
+
+        super().__init__()
+
+        self.height = height
+        self.width = width
+        self.window_size = window_size
+        self.shift_size = shift_size
+        self.batch_first = batch_first
+        self.norm_first = norm_first
+        self.bias = bias
+
+        if IS_TORCH_LT_2_1:
+            assert bias, "Only bias=True is supported for torch < 2.1."
+
+            layer_norm_kwargs = {}
+        else:
+            layer_norm_kwargs = {"bias": bias}
+
+        self.self_attn = SwinRelativePositionalMultiheadAttention(
+            d_model,
+            nhead,
+            dropout=dropout,
+            bias=bias,
+            window_size=window_size,
+            share_heads=share_heads,
+            batch_first=batch_first,
+            **factory_kwargs,
+        )
+
+        self.linear1 = nn.Linear(d_model, dim_feedforward, bias=bias, **factory_kwargs)
+        self.dropout = nn.Dropout(dropout)
+        self.linear2 = nn.Linear(dim_feedforward, d_model, bias=bias, **factory_kwargs)
+
+        self.norm_first = norm_first
+        self.norm1 = nn.LayerNorm(
+            d_model, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs
+        )
+        self.norm2 = nn.LayerNorm(
+            d_model, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs
+        )
+        self.dropout1 = nn.Dropout(dropout)
+        self.dropout2 = nn.Dropout(dropout)
+
+        if isinstance(activation, str):
+            activation = get_activation(activation)
+
+        if activation is F.relu or isinstance(activation, nn.ReLU):
+            self.activation_relu_or_gelu = 1
+        elif activation is F.gelu or isinstance(activation, nn.GELU):
+            self.activation_relu_or_gelu = 2
+        else:
+            self.activation_relu_or_gelu = 0
+
+        self.activation = activation
+
+    def forward(self, src: torch.Tensor) -> torch.Tensor:
+        """Forward pass of SwinTransformerEncoderLayer.
+
+        Args:
+            src (torch.Tensor): the sequence to the encoder layer.
+
+        Returns:
+            torch.Tensor: Sequence of as same shape as input.
+
+        """
+        x = src
+
+        if self.norm_first:
+            x = x + self._sa_block(self.norm1(x))
+            x = x + self._ff_block(self.norm2(x))
+        else:
+            x = self.norm1(x + self._sa_block(x))
+            x = self.norm2(x + self._ff_block(x))
+
+        return x
+
+    def _sa_block(
+        self,
+        x: torch.Tensor,
+    ) -> torch.Tensor:
+        shift_size = _pair(self.shift_size)
+        height = self.height
+        width = self.width
+        window_height, window_width = _pair(self.window_size)
+        batch_first = self.batch_first
+
+        if batch_first:
+            batch_size, _, d_model = x.size()
+            x = x.view(batch_size, height, width, d_model)
+        else:
+            _, batch_size, d_model = x.size()
+            x = x.view(height, width, batch_size, d_model)
+
+        shift_height, shift_width = shift_size
+        shift_dims = (-3, -2) if batch_first else (-4, -3)
+        x = torch.roll(x, shifts=(-shift_height, -shift_width), dims=shift_dims)
+
+        if batch_first:
+            x = x.view(
+                batch_size,
+                height // window_height,
+                window_height,
+                width // window_width,
+                window_width,
+                d_model,
+            )
+            x = x.permute(0, 1, 3, 2, 4, 5).contiguous()
+            x = x.view(
+                batch_size * (height // window_height) * (width // window_width),
+                window_height * window_width,
+                d_model,
+            )
+        else:
+            x = x.view(
+                height // window_height,
+                window_height,
+                width // window_width,
+                window_width,
+                batch_size,
+                d_model,
+            )
+            x = x.permute(1, 3, 4, 0, 2, 5).contiguous()
+            x = x.view(
+                window_height * window_width,
+                batch_size * (height // window_height) * (width // window_width),
+                d_model,
+            )
+
+        x, _ = self.self_attn(
+            x,
+            x,
+            x,
+            need_weights=False,
+        )
+
+        if batch_first:
+            x = x.view(
+                batch_size,
+                height // window_height,
+                width // window_width,
+                window_height,
+                window_width,
+                d_model,
+            )
+            x = x.permute(0, 1, 3, 2, 4, 5).contiguous()
+            x = x.view(batch_size, height, width, d_model)
+        else:
+            x = x.view(
+                window_height,
+                window_width,
+                batch_size,
+                height // window_height,
+                width // window_width,
+                d_model,
+            )
+            x = x.permute(3, 0, 4, 1, 2, 5).contiguous()
+            x = x.view(height, width, batch_size, d_model)
+
+        x = torch.roll(x, shifts=(shift_height, shift_width), dims=shift_dims)
+
+        if batch_first:
+            x = x.view(batch_size, height * width, d_model)
+        else:
+            x = x.view(height * width, batch_size, d_model)
+
+        return self.dropout1(x)
+
+    def _ff_block(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.linear2(self.dropout(self.activation(self.linear1(x))))
+
+        return self.dropout2(x)
 
 
 class SwinRelativePositionalMultiheadAttention(_MultiheadAttention):
@@ -31,7 +232,7 @@ class SwinRelativePositionalMultiheadAttention(_MultiheadAttention):
         kdim: Optional[int] = None,
         vdim: Optional[int] = None,
         window_size: _size_2_t = None,
-        share_heads: bool = False,
+        share_heads: bool = True,
         batch_first: bool = False,
         device: Optional[torch.device] = None,
         dtype: Optional[torch.dtype] = None,
