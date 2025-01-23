@@ -12,11 +12,162 @@ from ..modules.activation import _MultiheadAttention
 from .transformer import get_activation
 
 __all__ = [
+    "StackedSwinTransformerEncoderLayer",
+    "PatchMerge",
     "SwinTransformerEncoderLayer",
     "SwinRelativePositionalMultiheadAttention",
 ]
 
 IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
+
+
+class StackedSwinTransformerEncoderLayer(nn.Module):
+    """Stacked encoder layer of SwinTransformer."""
+
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        nhead: int,
+        dim_feedforward: int = 2048,
+        num_layers: int = 2,
+        dropout: float = 0.1,
+        activation: Callable[[torch.Tensor], torch.Tensor] = F.relu,
+        layer_norm_eps: float = 1e-5,
+        height: int = 256,
+        width: int = 256,
+        window_size: _size_2_t = None,
+        share_heads: bool = True,
+        batch_first: bool = False,
+        norm_first: bool = False,
+        bias: bool = True,
+        device: torch.device = None,
+        dtype: torch.dtype = None,
+    ) -> None:
+        factory_kwargs = {
+            "device": device,
+            "dtype": dtype,
+        }
+
+        super().__init__()
+
+        backbone = []
+
+        for layer_idx in range(num_layers):
+            if layer_idx % 2 == 0:
+                shift_size = (0, 0)
+            else:
+                window_height, window_width = _pair(window_size)
+                shift_size = (window_height // 2, window_width // 2)
+
+            layer = SwinTransformerEncoderLayer(
+                in_channels,
+                nhead,
+                dim_feedforward=dim_feedforward,
+                dropout=dropout,
+                activation=activation,
+                layer_norm_eps=layer_norm_eps,
+                height=height,
+                width=width,
+                window_size=window_size,
+                shift_size=shift_size,
+                share_heads=share_heads,
+                batch_first=batch_first,
+                norm_first=norm_first,
+                bias=bias,
+                **factory_kwargs,
+            )
+            backbone.append(layer)
+
+        self.backbone = nn.ModuleList(backbone)
+        self.downsample = PatchMerge(
+            4 * in_channels,
+            out_channels,
+            height=height,
+            width=width,
+            layer_norm_eps=layer_norm_eps,
+            batch_first=batch_first,
+            bias=False,
+            **factory_kwargs,
+        )
+
+        self.num_layers = num_layers
+
+    def forward(self, src: torch.Tensor) -> torch.Tensor:
+        x = src
+
+        for layer in self.backbone:
+            x = layer(x)
+
+        output = self.downsample(x)
+
+        return output
+
+
+class PatchMerge(nn.Module):
+    """Patch merging layer for SwinTransformer."""
+
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        height: int = 256,
+        width: int = 256,
+        layer_norm_eps: float = 1e-5,
+        batch_first: bool = False,
+        bias: bool = False,
+        device: torch.device = None,
+        dtype: torch.dtype = None,
+    ) -> None:
+        factory_kwargs = {
+            "device": device,
+            "dtype": dtype,
+        }
+        super().__init__()
+
+        self.in_channels = in_channels
+        self.height = height
+        self.width = width
+        self.batch_first = batch_first
+
+        self.norm = nn.LayerNorm(
+            in_channels,
+            eps=layer_norm_eps,
+            **factory_kwargs,
+        )
+        self.linear = nn.Linear(
+            in_channels,
+            out_channels,
+            bias=bias,
+            **factory_kwargs,
+        )
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        height = self.height
+        width = self.width
+        batch_first = self.batch_first
+
+        if batch_first:
+            batch_size, length, embed_dim = input.size()
+        else:
+            length, batch_size, embed_dim = input.size()
+
+        assert length == height * width
+
+        if batch_first:
+            x = input.view(batch_size, height // 2, 2, width // 2, 2, embed_dim)
+            x = x.permute(0, 1, 3, 4, 2, 5).contiguous()
+            x = x.view(batch_size, (height // 2) * (width // 2), 4 * embed_dim)
+        else:
+            x = input.view(height // 2, 2, width // 2, 2, batch_size, embed_dim)
+            x = x.permute(0, 2, 4, 3, 1, 5).contiguous()
+            x = x.view((height // 2) * (width // 2), batch_size, 4 * embed_dim)
+
+        x = self.norm(x)
+        # NOTE: identical to nn.Conv2d
+        output = self.linear(x)
+
+        return output
 
 
 class SwinTransformerEncoderLayer(nn.Module):
@@ -129,6 +280,7 @@ class SwinTransformerEncoderLayer(nn.Module):
         height = self.height
         width = self.width
         window_height, window_width = _pair(self.window_size)
+        num_heads = self.self_attn.num_heads
         batch_first = self.batch_first
 
         if batch_first:
@@ -141,6 +293,23 @@ class SwinTransformerEncoderLayer(nn.Module):
         shift_height, shift_width = shift_size
         shift_dims = (-3, -2) if batch_first else (-4, -3)
         x = torch.roll(x, shifts=(-shift_height, -shift_width), dims=shift_dims)
+
+        window_padding_mask = self._create_window_padding_mask(
+            height,
+            width,
+            window_size=(window_height, window_width),
+            shift_size=shift_size,
+            device=x.device,
+        )
+        window_padding_mask = window_padding_mask.unsqueeze(dim=-3)
+        window_padding_mask = window_padding_mask.expand(batch_size, -1, num_heads, -1, -1)
+        window_padding_mask = window_padding_mask.contiguous()
+        window_padding_mask = window_padding_mask.view(
+            batch_size * (height // window_height) * (width // window_width),
+            num_heads,
+            window_height * window_width,
+            window_height * window_width,
+        )
 
         if batch_first:
             x = x.view(
@@ -178,6 +347,7 @@ class SwinTransformerEncoderLayer(nn.Module):
             x,
             x,
             need_weights=False,
+            attn_mask=window_padding_mask,
         )
 
         if batch_first:
@@ -216,6 +386,117 @@ class SwinTransformerEncoderLayer(nn.Module):
         x = self.linear2(self.dropout(self.activation(self.linear1(x))))
 
         return self.dropout2(x)
+
+    @staticmethod
+    def _create_window_padding_mask(
+        height: int,
+        width: int,
+        window_size: _size_2_t,
+        shift_size: _size_2_t,
+        device: Optional[torch.device] = None,
+    ) -> torch.BoolTensor:
+        """Create window padding mask.
+
+        Returns:
+            Padding mask of shape (num_patches, window_height * window_width, window_height * window_width),
+            where ``num_patches = (height // window_height) * (width // window_width)``.
+
+        """  # noqa: E501
+        window_height, window_width = _pair(window_size)
+        shift_height, shift_width = _pair(shift_size)
+
+        if shift_height == 0:
+            assert shift_width == 0
+
+            padding_mask = torch.zeros(
+                (
+                    (height // window_height) * (width // window_width),
+                    window_height * window_width,
+                    window_height * window_width,
+                ),
+                dtype=torch.bool,
+            )
+        else:
+            assert shift_height > 0, "Shift height should be positive."
+            assert shift_width > 0, "Shift width should be positive."
+
+            _height_mask = torch.arange(window_height) >= window_height - shift_height
+            _width_mask = torch.arange(window_width) >= window_width - shift_width
+            _height_mask = _height_mask.unsqueeze(dim=-1)
+
+            # top left
+            top_left_mask = torch.zeros(
+                (
+                    height // window_height - 1,
+                    width // window_width - 1,
+                    window_height,
+                    window_width,
+                    window_height * window_width,
+                ),
+                dtype=torch.bool,
+            )
+
+            # top right
+            _left_mask = _width_mask.expand(window_height, -1)
+            _left_mask = _left_mask.contiguous()
+            _right_mask = torch.logical_not(_left_mask)
+            _left_mask = _left_mask.view(window_height * window_width)
+            _right_mask = _right_mask.view(window_height * window_width)
+            _left_mask = _left_mask.expand(window_height, window_width - shift_width, -1)
+            _right_mask = _right_mask.expand(window_height, shift_width, -1)
+            _mask = torch.cat([_left_mask, _right_mask], dim=-2)
+            top_right_mask = _mask.expand(height // window_height - 1, 1, -1, -1, -1)
+
+            # bottom left
+            _top_mask = _height_mask.expand(-1, window_width)
+            _top_mask = _top_mask.contiguous()
+            _bottom_mask = torch.logical_not(_top_mask)
+            _top_mask = _top_mask.view(window_height * window_width)
+            _bottom_mask = _bottom_mask.view(window_height * window_width)
+            _top_mask = _top_mask.expand(window_height - shift_height, window_width, -1)
+            _bottom_mask = _bottom_mask.expand(shift_height, window_width, -1)
+            _mask = torch.cat([_top_mask, _bottom_mask], dim=-3)
+            bottom_left_mask = _mask.expand(1, width // window_width - 1, -1, -1, -1)
+
+            # bottom right
+            _top_left_mask = _height_mask | _width_mask
+            _top_right_mask = _height_mask | torch.logical_not(_width_mask)
+            _bottom_left_mask = torch.logical_not(_height_mask) | _width_mask
+            _bottom_right_mask = torch.logical_not(_height_mask) | torch.logical_not(_width_mask)
+            _top_left_mask = _top_left_mask.view(window_height * window_width)
+            _top_right_mask = _top_right_mask.view(window_height * window_width)
+            _bottom_left_mask = _bottom_left_mask.view(window_height * window_width)
+            _bottom_right_mask = _bottom_right_mask.view(window_height * window_width)
+            _top_left_mask = _top_left_mask.expand(
+                (window_height - shift_height), (window_width - shift_width), -1
+            )
+            _top_right_mask = _top_right_mask.expand(
+                (window_height - shift_height), shift_width, -1
+            )
+            _bottom_left_mask = _bottom_left_mask.expand(
+                shift_height, (window_width - shift_width), -1
+            )
+            _bottom_right_mask = _bottom_right_mask.expand(shift_height, shift_width, -1)
+            _top_mask = torch.cat([_top_left_mask, _top_right_mask], dim=-2)
+            _bottom_mask = torch.cat([_bottom_left_mask, _bottom_right_mask], dim=-2)
+            _mask = torch.cat([_top_mask, _bottom_mask], dim=-3)
+            bottom_right_mask = _mask.view(
+                1, 1, window_height, window_width, window_height * window_width
+            )
+
+            top_mask = torch.cat([top_left_mask, top_right_mask], dim=-4)
+            bottom_mask = torch.cat([bottom_left_mask, bottom_right_mask], dim=-4)
+            padding_mask = torch.cat([top_mask, bottom_mask], dim=-5)
+
+            padding_mask = padding_mask.view(
+                (height // window_height) * (width // window_width),
+                window_height * window_width,
+                window_height * window_width,
+            )
+
+        padding_mask = padding_mask.to(device)
+
+        return padding_mask
 
 
 class SwinRelativePositionalMultiheadAttention(_MultiheadAttention):
@@ -288,6 +569,7 @@ class SwinRelativePositionalMultiheadAttention(_MultiheadAttention):
         key: torch.Tensor,
         value: torch.Tensor,
         need_weights: bool = True,
+        attn_mask: Optional[torch.Tensor] = None,
         average_attn_weights: bool = True,
         **kwargs,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
@@ -315,7 +597,6 @@ class SwinRelativePositionalMultiheadAttention(_MultiheadAttention):
 
         """  # noqa: E501
         key_padding_mask = None
-        attn_mask = None
 
         self.validate_kwargs(kwargs)
 
