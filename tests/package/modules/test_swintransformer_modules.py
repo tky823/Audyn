@@ -2,17 +2,23 @@ import pytest
 import torch
 import torch.nn as nn
 from dummy import allclose
+from packaging import version
 
 from audyn.modules.swintransformer import (
     SwinRelativePositionalMultiheadAttention,
     SwinTransformerEncoderLayer,
 )
 
+IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
+
 
 @pytest.mark.parametrize("bias", [True, False])
 @pytest.mark.parametrize("batch_first", [True, False])
 @pytest.mark.parametrize("share_heads", [True, False])
 def test_swin_transformer_encoder_layer(bias: bool, batch_first: bool, share_heads: bool) -> None:
+    if IS_TORCH_LT_2_1 and not bias:
+        pytest.skip("torch < 2.1 does not support bias parameter in SwinTransformerEncoderLayer.")
+
     torch.manual_seed(0)
 
     batch_size = 5
