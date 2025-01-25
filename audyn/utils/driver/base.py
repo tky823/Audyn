@@ -12,12 +12,13 @@ import torch.nn.functional as F
 import torchaudio
 from omegaconf import DictConfig, OmegaConf
 from packaging import version
-from torch.cuda.amp import GradScaler, autocast
+from torch.cuda.amp import GradScaler
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import ReduceLROnPlateau, _LRScheduler
 from torch.utils.data import DataLoader
 
 from ... import __version__ as _version
+from ...amp import autocast, get_autocast_device_type
 from ...metrics import MeanMetric
 from ...optim.optimizer import (
     ExponentialMovingAverageCodebookOptimizer,
@@ -670,7 +671,9 @@ class BaseTrainer(BaseDriver):
         )
         named_target = self.map_to_named_target(named_data)
 
-        with autocast(enabled=self.enable_amp, dtype=self.amp_dtype):
+        device_type = get_autocast_device_type()
+
+        with autocast(device_type, enabled=self.enable_amp, dtype=self.amp_dtype):
             output = self.model(**named_input)
 
             named_output = self.map_to_named_output(

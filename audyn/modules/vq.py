@@ -6,9 +6,9 @@ import torch
 import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.cuda.amp import autocast
 from torch.nn.modules.module import _IncompatibleKeys
 
+from ..amp import autocast, get_autocast_device_type
 from ..functional.vector_quantization import quantize_vector
 
 __all__ = ["VectorQuantizer"]
@@ -225,7 +225,9 @@ class VectorQuantizer(BaseVectorQuantizer):
 
             raise RuntimeError(msg)
 
-        with autocast(enabled=False):
+        device_type = get_autocast_device_type(encoded)
+
+        with autocast(device_type, enabled=False):
             indices = torch.randperm(
                 num_grids,
                 generator=g,

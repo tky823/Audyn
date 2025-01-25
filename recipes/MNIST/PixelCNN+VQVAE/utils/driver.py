@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig, OmegaConf
-from torch.cuda.amp import autocast
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from utils.models.cascade import PixelCNNVQVAE
@@ -17,6 +16,7 @@ try:
 except ImportError:
     IS_TQDM_AVAILABLE = False
 
+from audyn.amp import autocast, get_autocast_device_type
 from audyn.utils import instantiate
 from audyn.utils.driver import BaseGenerator
 from audyn.utils.driver._decorator import run_only_global_master_rank
@@ -74,7 +74,9 @@ class PriorSaver(BaseDriver):
                 named_batch, key_mapping=train_config.key_mapping
             )
 
-            with autocast(enabled=self.enable_amp, dtype=self.amp_dtype):
+            device_type = get_autocast_device_type()
+
+            with autocast(device_type, enabled=self.enable_amp, dtype=self.amp_dtype):
                 output = self.model(**named_input)
 
             named_output = self.map_to_named_output(
