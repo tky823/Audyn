@@ -1,4 +1,5 @@
 from .ast import AST, AudioSpectrogramTransformer
+from .clap import LAIONAudioEncoder2023
 from .conv_tasnet import ConvTasNet
 from .dprnn_tasnet import DPRNNTasNet
 from .encodec import EnCodec
@@ -64,6 +65,8 @@ __all__ = [
     "SSAST",
     # PaSST
     "PaSST",
+    # CLAP
+    "LAIONAudioEncoder2023",
     # RoFormer
     "RoFormerEncoderLayer",
     "RoFormerDecoderLayer",
