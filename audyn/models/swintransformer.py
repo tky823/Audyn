@@ -49,20 +49,20 @@ class SwinTransformerEncoder(nn.Module):
         }
         super().__init__()
 
-        if isinstance(nhead, list):
-            assert len(nhead) == num_blocks
-        else:
+        if isinstance(nhead, int):
             nhead = [nhead] * num_blocks
-
-        if isinstance(dim_feedforward, list):
-            assert len(dim_feedforward) == num_blocks
         else:
+            assert len(nhead) == num_blocks
+
+        if isinstance(dim_feedforward, int):
             dim_feedforward = [dim_feedforward] * num_blocks
-
-        if isinstance(num_layers, list):
-            assert len(num_layers) == num_blocks
         else:
+            assert len(dim_feedforward) == num_blocks
+
+        if isinstance(num_layers, int):
             num_layers = [num_layers] * num_blocks
+        else:
+            assert len(num_layers) == num_blocks
 
         assert len(window_size) == num_blocks
 
