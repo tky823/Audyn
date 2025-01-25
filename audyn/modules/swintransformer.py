@@ -412,102 +412,94 @@ class SwinTransformerEncoderLayer(nn.Module):
     ) -> torch.BoolTensor:
         """Create window padding mask.
 
+        Args:
+            height (int): Height of image.
+            width (int): Width of image.
+            window_size (_size_2_t): Window size.
+            shift_size (_size_2_t): Shift size, which is tipically 0 or window_size // 2.
+
         Returns:
-            Padding mask of shape (num_patches, window_height * window_width, window_height * window_width),
-            where ``num_patches = (height // window_height) * (width // window_width)``.
+            torch.BoolTensor: Padding mask of shape (num_patches, window_height * window_width, window_height * window_width),
+                where ``num_patches = (height // window_height) * (width // window_width)``.
 
         """  # noqa: E501
         window_height, window_width = _pair(window_size)
         shift_height, shift_width = _pair(shift_size)
 
-        if shift_height == 0:
-            assert shift_width == 0
+        assert 0 <= shift_height < window_height, f"Shift height should in [0, {window_height}]."
+        assert 0 <= shift_width < window_width, f"Shift width should be in [0, {window_width}]."
 
-            padding_mask = torch.zeros(
-                (
-                    (height // window_height) * (width // window_width),
-                    window_height * window_width,
-                    window_height * window_width,
-                ),
-                dtype=torch.bool,
-            )
-        else:
-            assert shift_height > 0, "Shift height should be positive."
-            assert shift_width > 0, "Shift width should be positive."
+        _height_mask = torch.arange(window_height) >= window_height - shift_height
+        _width_mask = torch.arange(window_width) >= window_width - shift_width
+        _height_mask = _height_mask.unsqueeze(dim=-1)
 
-            _height_mask = torch.arange(window_height) >= window_height - shift_height
-            _width_mask = torch.arange(window_width) >= window_width - shift_width
-            _height_mask = _height_mask.unsqueeze(dim=-1)
-
-            # top left
-            top_left_mask = torch.zeros(
-                (
-                    height // window_height - 1,
-                    width // window_width - 1,
-                    window_height,
-                    window_width,
-                    window_height * window_width,
-                ),
-                dtype=torch.bool,
-            )
-
-            # top right
-            _left_mask = _width_mask.expand(window_height, -1)
-            _left_mask = _left_mask.contiguous()
-            _right_mask = torch.logical_not(_left_mask)
-            _left_mask = _left_mask.view(window_height * window_width)
-            _right_mask = _right_mask.view(window_height * window_width)
-            _left_mask = _left_mask.expand(window_height, window_width - shift_width, -1)
-            _right_mask = _right_mask.expand(window_height, shift_width, -1)
-            _mask = torch.cat([_left_mask, _right_mask], dim=-2)
-            top_right_mask = _mask.expand(height // window_height - 1, 1, -1, -1, -1)
-
-            # bottom left
-            _top_mask = _height_mask.expand(-1, window_width)
-            _top_mask = _top_mask.contiguous()
-            _bottom_mask = torch.logical_not(_top_mask)
-            _top_mask = _top_mask.view(window_height * window_width)
-            _bottom_mask = _bottom_mask.view(window_height * window_width)
-            _top_mask = _top_mask.expand(window_height - shift_height, window_width, -1)
-            _bottom_mask = _bottom_mask.expand(shift_height, window_width, -1)
-            _mask = torch.cat([_top_mask, _bottom_mask], dim=-3)
-            bottom_left_mask = _mask.expand(1, width // window_width - 1, -1, -1, -1)
-
-            # bottom right
-            _top_left_mask = _height_mask | _width_mask
-            _top_right_mask = _height_mask | torch.logical_not(_width_mask)
-            _bottom_left_mask = torch.logical_not(_height_mask) | _width_mask
-            _bottom_right_mask = torch.logical_not(_height_mask) | torch.logical_not(_width_mask)
-            _top_left_mask = _top_left_mask.view(window_height * window_width)
-            _top_right_mask = _top_right_mask.view(window_height * window_width)
-            _bottom_left_mask = _bottom_left_mask.view(window_height * window_width)
-            _bottom_right_mask = _bottom_right_mask.view(window_height * window_width)
-            _top_left_mask = _top_left_mask.expand(
-                (window_height - shift_height), (window_width - shift_width), -1
-            )
-            _top_right_mask = _top_right_mask.expand(
-                (window_height - shift_height), shift_width, -1
-            )
-            _bottom_left_mask = _bottom_left_mask.expand(
-                shift_height, (window_width - shift_width), -1
-            )
-            _bottom_right_mask = _bottom_right_mask.expand(shift_height, shift_width, -1)
-            _top_mask = torch.cat([_top_left_mask, _top_right_mask], dim=-2)
-            _bottom_mask = torch.cat([_bottom_left_mask, _bottom_right_mask], dim=-2)
-            _mask = torch.cat([_top_mask, _bottom_mask], dim=-3)
-            bottom_right_mask = _mask.view(
-                1, 1, window_height, window_width, window_height * window_width
-            )
-
-            top_mask = torch.cat([top_left_mask, top_right_mask], dim=-4)
-            bottom_mask = torch.cat([bottom_left_mask, bottom_right_mask], dim=-4)
-            padding_mask = torch.cat([top_mask, bottom_mask], dim=-5)
-
-            padding_mask = padding_mask.view(
-                (height // window_height) * (width // window_width),
+        # top left
+        top_left_mask = torch.zeros(
+            (
+                height // window_height - 1,
+                width // window_width - 1,
+                window_height,
+                window_width,
                 window_height * window_width,
-                window_height * window_width,
-            )
+            ),
+            dtype=torch.bool,
+        )
+
+        # top right
+        _left_mask = _width_mask.expand(window_height, -1)
+        _left_mask = _left_mask.contiguous()
+        _right_mask = torch.logical_not(_left_mask)
+        _left_mask = _left_mask.view(window_height * window_width)
+        _right_mask = _right_mask.view(window_height * window_width)
+        _left_mask = _left_mask.expand(window_height, window_width - shift_width, -1)
+        _right_mask = _right_mask.expand(window_height, shift_width, -1)
+        _mask = torch.cat([_left_mask, _right_mask], dim=-2)
+        top_right_mask = _mask.expand(height // window_height - 1, 1, -1, -1, -1)
+
+        # bottom left
+        _top_mask = _height_mask.expand(-1, window_width)
+        _top_mask = _top_mask.contiguous()
+        _bottom_mask = torch.logical_not(_top_mask)
+        _top_mask = _top_mask.view(window_height * window_width)
+        _bottom_mask = _bottom_mask.view(window_height * window_width)
+        _top_mask = _top_mask.expand(window_height - shift_height, window_width, -1)
+        _bottom_mask = _bottom_mask.expand(shift_height, window_width, -1)
+        _mask = torch.cat([_top_mask, _bottom_mask], dim=-3)
+        bottom_left_mask = _mask.expand(1, width // window_width - 1, -1, -1, -1)
+
+        # bottom right
+        _top_left_mask = _height_mask | _width_mask
+        _top_right_mask = _height_mask | torch.logical_not(_width_mask)
+        _bottom_left_mask = torch.logical_not(_height_mask) | _width_mask
+        _bottom_right_mask = torch.logical_not(_height_mask) | torch.logical_not(_width_mask)
+        _top_left_mask = _top_left_mask.view(window_height * window_width)
+        _top_right_mask = _top_right_mask.view(window_height * window_width)
+        _bottom_left_mask = _bottom_left_mask.view(window_height * window_width)
+        _bottom_right_mask = _bottom_right_mask.view(window_height * window_width)
+        _top_left_mask = _top_left_mask.expand(
+            (window_height - shift_height), (window_width - shift_width), -1
+        )
+        _top_right_mask = _top_right_mask.expand((window_height - shift_height), shift_width, -1)
+        _bottom_left_mask = _bottom_left_mask.expand(
+            shift_height, (window_width - shift_width), -1
+        )
+        _bottom_right_mask = _bottom_right_mask.expand(shift_height, shift_width, -1)
+        _top_mask = torch.cat([_top_left_mask, _top_right_mask], dim=-2)
+        _bottom_mask = torch.cat([_bottom_left_mask, _bottom_right_mask], dim=-2)
+        _mask = torch.cat([_top_mask, _bottom_mask], dim=-3)
+        bottom_right_mask = _mask.view(
+            1, 1, window_height, window_width, window_height * window_width
+        )
+
+        top_mask = torch.cat([top_left_mask, top_right_mask], dim=-4)
+        bottom_mask = torch.cat([bottom_left_mask, bottom_right_mask], dim=-4)
+        padding_mask = torch.cat([top_mask, bottom_mask], dim=-5)
+
+        padding_mask = padding_mask.view(
+            (height // window_height) * (width // window_width),
+            window_height * window_width,
+            window_height * window_width,
+        )
 
         padding_mask = padding_mask.to(device)
 
