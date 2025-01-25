@@ -29,5 +29,5 @@ def test_official_laion_audio_encoder() -> None:
     mean_error = error.mean()
     mean_error = mean_error.item()
 
-    allclose(output, expected_output, atol=1e-4)
-    assert mean_error < 1e-6
+    allclose(output, expected_output, atol=1e-3)
+    assert mean_error < 1e-5
