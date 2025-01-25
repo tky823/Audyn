@@ -8,6 +8,8 @@ from torch.nn.modules.utils import _pair
 
 from .vit import _PatchEmbedding
 
+__all__ = ["PatchEmbedding"]
+
 
 class PatchEmbedding(_PatchEmbedding):
     """Patch embedding w/o positional embedding.
