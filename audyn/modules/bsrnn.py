@@ -168,7 +168,7 @@ class BandMergeBlock(nn.Module):
         super().__init__()
 
         self.norm = nn.LayerNorm(embed_dim)
-        self.linear = nn.Linear(embed_dim, n_bins)
+        self.linear = nn.Linear(embed_dim, n_bins * 2)
 
         self.n_bins = n_bins
         self.embed_dim = embed_dim
@@ -180,7 +180,7 @@ class BandMergeBlock(nn.Module):
             input (torch.Tensor): Band feature of shape (*, embed_dim, n_frames).
 
         Returns:
-            torch.Tensor: Merged feature of shape (*, n_bins, n_frames).
+            torch.Tensor: Merged complex feature of shape (*, n_bins, n_frames).
 
         """
         n_bins = self.n_bins
@@ -190,6 +190,8 @@ class BandMergeBlock(nn.Module):
         x = x.permute(0, 2, 1).contiguous()
         x = self.norm(x)
         x = self.linear(x)
+        x = x.view(-1, n_frames, n_bins, 2)
+        x = torch.view_as_complex(x)
         x = x.permute(0, 2, 1).contiguous()
         output = x.view(*batch_shape, n_bins, n_frames)
 
