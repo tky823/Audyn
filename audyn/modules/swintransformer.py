@@ -12,7 +12,7 @@ from ..modules.activation import _MultiheadAttention
 from .transformer import get_activation
 
 __all__ = [
-    "StackedSwinTransformerEncoderLayer",
+    "SwinTransformerEncoderBlock",
     "PatchMerge",
     "SwinTransformerEncoderLayer",
     "SwinRelativePositionalMultiheadAttention",
@@ -21,13 +21,13 @@ __all__ = [
 IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
 
-class StackedSwinTransformerEncoderLayer(nn.Module):
+class SwinTransformerEncoderBlock(nn.Module):
     """Stacked encoder layer of SwinTransformer."""
 
     def __init__(
         self,
         in_channels: int,
-        out_channels: int,
+        out_channels: Optional[int],
         nhead: int,
         dim_feedforward: int = 2048,
         num_layers: int = 2,
@@ -55,10 +55,20 @@ class StackedSwinTransformerEncoderLayer(nn.Module):
 
         for layer_idx in range(num_layers):
             if layer_idx % 2 == 0:
-                shift_size = (0, 0)
+                shift_height = 0
+                shift_width = 0
             else:
                 window_height, window_width = _pair(window_size)
-                shift_size = (window_height // 2, window_width // 2)
+                shift_height = window_height // 2
+                shift_width = window_width // 2
+
+                if height == window_height:
+                    shift_height = 0
+
+                if width == window_width:
+                    shift_width = 0
+
+            shift_size = (shift_height, shift_width)
 
             layer = SwinTransformerEncoderLayer(
                 in_channels,
@@ -80,18 +90,20 @@ class StackedSwinTransformerEncoderLayer(nn.Module):
             backbone.append(layer)
 
         self.backbone = nn.ModuleList(backbone)
-        self.downsample = PatchMerge(
-            4 * in_channels,
-            out_channels,
-            height=height,
-            width=width,
-            layer_norm_eps=layer_norm_eps,
-            batch_first=batch_first,
-            bias=False,
-            **factory_kwargs,
-        )
 
-        self.num_layers = num_layers
+        if out_channels is None:
+            self.downsample = None
+        else:
+            self.downsample = PatchMerge(
+                4 * in_channels,
+                out_channels,
+                height=height,
+                width=width,
+                layer_norm_eps=layer_norm_eps,
+                batch_first=batch_first,
+                bias=False,
+                **factory_kwargs,
+            )
 
     def forward(self, src: torch.Tensor) -> torch.Tensor:
         x = src
@@ -99,7 +111,10 @@ class StackedSwinTransformerEncoderLayer(nn.Module):
         for layer in self.backbone:
             x = layer(x)
 
-        output = self.downsample(x)
+        if self.downsample is None:
+            output = x
+        else:
+            output = self.downsample(x)
 
         return output
 
@@ -111,8 +126,8 @@ class PatchMerge(nn.Module):
         self,
         in_channels: int,
         out_channels: int,
-        height: int = 256,
-        width: int = 256,
+        height: int = 64,
+        width: int = 64,
         layer_norm_eps: float = 1e-5,
         batch_first: bool = False,
         bias: bool = False,
@@ -181,8 +196,8 @@ class SwinTransformerEncoderLayer(nn.Module):
         dropout: float = 0.1,
         activation: Callable[[torch.Tensor], torch.Tensor] = F.relu,
         layer_norm_eps: float = 1e-5,
-        height: int = 256,
-        width: int = 256,
+        height: int = 64,
+        width: int = 64,
         window_size: _size_2_t = None,
         shift_size: _size_2_t = 0,
         share_heads: bool = True,
