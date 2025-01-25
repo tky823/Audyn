@@ -323,7 +323,7 @@ Contrastive Language-Audio Pretraining (CLAP)
    >>> print(output.size())
    torch.Size([4, 64, 768])
 
-.. autoclass:: audyn.models.PaSST
+.. autoclass:: audyn.models.LAIONAudioEncoder2023
 
 Rotary Transformer (RoFormer)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
