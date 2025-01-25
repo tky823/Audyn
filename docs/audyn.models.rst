@@ -15,6 +15,7 @@ Submodules
    audyn.models.ast
    audyn.models.ssast
    audyn.models.passt
+   audyn.models.clap
    audyn.models.roformer
 
 Classes
@@ -209,6 +210,118 @@ Patchout faSt Spectrogram Transformer (PaSST)
    >>> output = model(input)
    >>> print(output.size())
    torch.Size([4, 602, 768])  # Patchout is not applied during evaluation.
+
+.. autoclass:: audyn.models.PaSST
+
+Contrastive Language-Audio Pretraining (CLAP)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: python
+
+   >>> import torch
+   >>> from audyn.models import LAIONAudioEncoder2023
+   >>> torch.manual_seed(0)
+   >>> batch_size, n_bins, n_frames = 4, 64, 1001
+   >>> model = LAIONAudioEncoder2023.build_from_pretrained("laion-clap-htsat-fused")
+   >>> print(model)
+   LAIONAudioEncoder2023(
+     (embedding): PatchEmbedding(
+       (norm1): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+       (conv2d): Conv2d(1, 96, kernel_size=(4, 4), stride=(4, 4))
+       (norm2): LayerNorm((96,), eps=1e-05, elementwise_affine=True)
+       (dropout): Dropout(p=0, inplace=False)
+     )
+     (backbone): SwinTransformerEncoder(
+       (backbone): ModuleList(
+         (0): SwinTransformerEncoderBlock(
+           (backbone): ModuleList(
+             (0-1): 2 x SwinTransformerEncoderLayer(
+               (self_attn): SwinRelativePositionalMultiheadAttention(
+                 (out_proj): NonDynamicallyQuantizableLinear(in_features=96, out_features=96, bias=True)
+               )
+               (linear1): Linear(in_features=96, out_features=384, bias=True)
+               (dropout): Dropout(p=0.1, inplace=False)
+               (linear2): Linear(in_features=384, out_features=96, bias=True)
+               (norm1): LayerNorm((96,), eps=1e-05, elementwise_affine=True)
+               (norm2): LayerNorm((96,), eps=1e-05, elementwise_affine=True)
+               (dropout1): Dropout(p=0.1, inplace=False)
+               (dropout2): Dropout(p=0.1, inplace=False)
+               (activation): GELU(approximate='none')
+             )
+           )
+           (downsample): PatchMerge(
+             (norm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+             (linear): Linear(in_features=384, out_features=192, bias=False)
+           )
+         )
+         (1): SwinTransformerEncoderBlock(
+           (backbone): ModuleList(
+             (0-1): 2 x SwinTransformerEncoderLayer(
+               (self_attn): SwinRelativePositionalMultiheadAttention(
+                 (out_proj): NonDynamicallyQuantizableLinear(in_features=192, out_features=192, bias=True)
+               )
+               (linear1): Linear(in_features=192, out_features=768, bias=True)
+               (dropout): Dropout(p=0.1, inplace=False)
+               (linear2): Linear(in_features=768, out_features=192, bias=True)
+               (norm1): LayerNorm((192,), eps=1e-05, elementwise_affine=True)
+               (norm2): LayerNorm((192,), eps=1e-05, elementwise_affine=True)
+               (dropout1): Dropout(p=0.1, inplace=False)
+               (dropout2): Dropout(p=0.1, inplace=False)
+               (activation): GELU(approximate='none')
+             )
+           )
+           (downsample): PatchMerge(
+             (norm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+             (linear): Linear(in_features=768, out_features=384, bias=False)
+           )
+         )
+         (2): SwinTransformerEncoderBlock(
+           (backbone): ModuleList(
+             (0-5): 6 x SwinTransformerEncoderLayer(
+               (self_attn): SwinRelativePositionalMultiheadAttention(
+                 (out_proj): NonDynamicallyQuantizableLinear(in_features=384, out_features=384, bias=True)
+               )
+               (linear1): Linear(in_features=384, out_features=1536, bias=True)
+               (dropout): Dropout(p=0.1, inplace=False)
+               (linear2): Linear(in_features=1536, out_features=384, bias=True)
+               (norm1): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+               (norm2): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+               (dropout1): Dropout(p=0.1, inplace=False)
+               (dropout2): Dropout(p=0.1, inplace=False)
+               (activation): GELU(approximate='none')
+             )
+           )
+           (downsample): PatchMerge(
+             (norm): LayerNorm((1536,), eps=1e-05, elementwise_affine=True)
+             (linear): Linear(in_features=1536, out_features=768, bias=False)
+           )
+         )
+         (3): SwinTransformerEncoderBlock(
+           (backbone): ModuleList(
+             (0-1): 2 x SwinTransformerEncoderLayer(
+               (self_attn): SwinRelativePositionalMultiheadAttention(
+                 (out_proj): NonDynamicallyQuantizableLinear(in_features=768, out_features=768, bias=True)
+               )
+               (linear1): Linear(in_features=768, out_features=3072, bias=True)
+               (dropout): Dropout(p=0.1, inplace=False)
+               (linear2): Linear(in_features=3072, out_features=768, bias=True)
+               (norm1): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+               (norm2): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+               (dropout1): Dropout(p=0.1, inplace=False)
+               (dropout2): Dropout(p=0.1, inplace=False)
+               (activation): GELU(approximate='none')
+             )
+           )
+         )
+       )
+       (norm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+     )
+   )
+   >>> input = torch.randn((batch_size, n_bins, n_frames))
+   >>> input = input.unsqueeze(dim=-3)
+   >>> output = model(input)
+   >>> print(output.size())
+   torch.Size([4, 64, 768])
 
 .. autoclass:: audyn.models.PaSST
 
