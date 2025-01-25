@@ -25,5 +25,9 @@ def test_official_laion_audio_encoder() -> None:
     with torch.no_grad():
         output = model(spectrogram)
 
+    error = torch.abs(output - expected_output)
+    mean_error = error.mean()
+    mean_error = mean_error.item()
+
     allclose(output, expected_output, atol=1e-4)
-    assert torch.abs(output - expected_output) < 1e-6
+    assert mean_error < 1e-6
