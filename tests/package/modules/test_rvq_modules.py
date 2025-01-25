@@ -11,8 +11,8 @@ import torch.multiprocessing as mp
 import torch.nn as nn
 from dummy.utils.ddp import retry_on_file_not_found, set_ddp_environment
 from omegaconf import OmegaConf
-from torch.cuda.amp import autocast
 
+from audyn.amp import autocast, get_autocast_device_type
 from audyn.functional.vector_quantization import quantize_vector
 from audyn.modules.rvq import ResidualVectorQuantizer
 
@@ -188,7 +188,9 @@ class CustomResidualVectorQuantizer(ResidualVectorQuantizer):
         num_grids = encoded.size(0)
         reconstructed = 0
 
-        with autocast(enabled=False):
+        device_type = get_autocast_device_type()
+
+        with autocast(device_type, enabled=False):
             for codebook in self.codebooks:
                 # select ``codebook_size`` embeddings from encoded features
                 codebook: nn.Embedding

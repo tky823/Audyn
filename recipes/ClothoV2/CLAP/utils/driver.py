@@ -5,11 +5,11 @@ from typing import Dict, List, Optional, Union
 
 import torch
 from omegaconf import DictConfig, OmegaConf
-from torch.cuda.amp import autocast
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from utils.models.clap import CLAP
 
+from audyn.amp import autocast, get_autocast_device_type
 from audyn.metrics import MultiMetrics, StatefulMetric
 from audyn.utils.driver.base import BaseDriver
 from audyn.utils.logging import get_logger
@@ -61,7 +61,9 @@ class EmbeddingSaver(BaseDriver):
             named_data = self.move_data_to_device(named_data, self.device)
             named_input = self.map_to_named_input(named_data, key_mapping=test_key_mapping)
 
-            with autocast(enabled=self.enable_amp, dtype=self.amp_dtype):
+            device_type = get_autocast_device_type()
+
+            with autocast(device_type, enabled=self.enable_amp, dtype=self.amp_dtype):
                 output = self.model(**named_input)
 
             named_output = self.map_to_named_output(

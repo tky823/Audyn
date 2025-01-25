@@ -3,8 +3,8 @@ from typing import Tuple
 import torch
 import torch.distributed as dist
 import torch.nn as nn
-from torch.cuda.amp import autocast
 
+from ..amp import autocast, get_autocast_device_type
 from ..functional.vector_quantization import quantize_residual_vector, quantize_vector
 from .vq import BaseVectorQuantizer
 
@@ -120,7 +120,9 @@ class ResidualVectorQuantizer(BaseVectorQuantizer):
         num_grids = encoded.size(0)
         reconstructed = 0
 
-        with autocast(enabled=False):
+        device_type = get_autocast_device_type(encoded)
+
+        with autocast(device_type, enabled=False):
             for codebook in self.codebooks:
                 # select ``codebook_size`` embeddings from encoded features
                 codebook: nn.Embedding

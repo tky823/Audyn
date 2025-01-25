@@ -13,3 +13,4 @@ Submodules
    audyn.criterion
    audyn.optim
    audyn.utils
+   audyn.amp
