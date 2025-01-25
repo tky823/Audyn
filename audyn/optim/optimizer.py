@@ -1035,21 +1035,22 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             if len(param_group["params"]) > 1 and not is_rvq:
                 raise ValueError('Length of param_group["params"] is invalid.')
 
-            device_type = get_autocast_device_type(param_group["params"])
+            # NOTE: Due to dropout of codebooks, len(stacked_quantized)
+            #       might be smaller than len(param_group["params"]).
+            num_stages = len(stacked_quantized)
 
-            with autocast(device_type, enabled=False):
-                # NOTE: Due to dropout of codebooks, len(stacked_quantized)
-                #       might be smaller than len(param_group["params"]).
-                num_stages = len(stacked_quantized)
+            assert len(stacked_indices) == num_stages
+            assert len(param_group["params"]) >= num_stages
 
-                assert len(stacked_indices) == num_stages
-                assert len(param_group["params"]) >= num_stages
+            residual_group = []
+            reconstructed = 0
 
-                residual_group = []
-                reconstructed = 0
+            for idx in range(num_stages):
+                param = param_group["params"][idx]
 
-                for idx in range(num_stages):
-                    param = param_group["params"][idx]
+                device_type = get_autocast_device_type(param)
+
+                with autocast(device_type, enabled=False):
                     codebook_size, embedding_dim = param.data.size()
                     quantized = stacked_quantized[idx]
                     indices = stacked_indices[idx]
@@ -1078,11 +1079,12 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                         num_accumulated[idx].data.add_(one_hot_sum.data)
 
                     reconstructed = reconstructed + quantized
-                    residual_group.append(residual.transpose(1, 0).contiguous())
 
-                # residual_group: (num_stages, num_grids, embedding_dim)
-                residual_group = torch.stack(residual_group, dim=0)
-                residual_groups.append(residual_group)
+                residual_group.append(residual.transpose(1, 0).contiguous())
+
+            # residual_group: (num_stages, num_grids, embedding_dim)
+            residual_group = torch.stack(residual_group, dim=0)
+            residual_groups.append(residual_group)
 
             self.residual_groups = residual_groups
 
