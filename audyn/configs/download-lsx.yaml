@@ -1,0 +1,8 @@
+defaults:
+  - config
+  - _self_
+
+root: ???
+lsx_root:
+unpack:
+chunk_size:
