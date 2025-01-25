@@ -19,6 +19,8 @@ class autocast(_autocast):
     ) -> None:
         if device_type == "mps":
             _device_type = "cpu"
+        else:
+            _device_type = device_type
 
         super().__init__(
             device_type=_device_type,
