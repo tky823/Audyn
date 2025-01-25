@@ -14,7 +14,7 @@ class autocast(_autocast):
         self,
         device_type: str,
         enabled: bool = True,
-        dtype: torch.dtype = torch.float16,
+        dtype: torch.dtype = None,
         cache_enabled: bool = True,
     ) -> None:
         if device_type == "mps":
