@@ -1,4 +1,5 @@
 from .ast import AST, AudioSpectrogramTransformer
+from .bsrnn import BSRNN, BandSplitRNN
 from .clap import LAIONAudioEncoder2023
 from .conv_tasnet import ConvTasNet
 from .dprnn_tasnet import DPRNNTasNet
@@ -35,6 +36,9 @@ __all__ = [
     "ConvTasNet",
     # DPRNN-TasNet
     "DPRNNTasNet",
+    # BandSplitRNN
+    "BandSplitRNN",
+    "BSRNN",
     # WaveNet
     "WaveNet",
     "MultiSpeakerWaveNet",
