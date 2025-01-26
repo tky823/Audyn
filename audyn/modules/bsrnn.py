@@ -1,3 +1,4 @@
+from abc import ABC
 from typing import Any, Callable, List, Optional, Tuple, Union
 
 import torch
@@ -18,7 +19,87 @@ __all__ = [
 ]
 
 
-class BandSplitModule(nn.Module):
+class _BandSplitModule(nn.Module, ABC):
+    """Base class of band split module."""
+
+    bins: List[int]
+    backbone: nn.ModuleList
+
+    def __init__(self, *args, **kwargs) -> None:
+        """Define backbone."""
+        super().__init__(*args, **kwargs)
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of BandSplitModule.
+
+        Args:
+            input (torch.Tensor): Spectrogram-like feature of shape (*, n_bins, n_frames).
+
+        Returns:
+            torch.Tensor: Split feature of shape (*, embed_dim, len(bins), n_frames).
+
+        """
+        bins = self.bins
+
+        n_bins = input.size(-2)
+
+        assert sum(bins) == n_bins
+
+        x = torch.split(input, bins, dim=-2)
+        x_stacked = []
+
+        for band_idx in range(len(bins)):
+            x_band = x[band_idx]
+            block = self.backbone[band_idx]
+            x_band = block(x_band)
+            x_stacked.append(x_band)
+
+        output = torch.stack(x_stacked, dim=-2)
+
+        return output
+
+
+class _BandMergeModule(nn.Module):
+    """Base class of band merge module."""
+
+    bins: List[int]
+    backbone: nn.ModuleList
+
+    def __init__(self, *args, **kwargs) -> None:
+        """Define backbone."""
+        super().__init__(*args, **kwargs)
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of BandMergeModule.
+
+        Args:
+            input (torch.Tensor): Split feature of shape  (*, embed_dim, len(bins), n_frames).
+
+        Returns:
+            torch.Tensor: Spectrogram-like feature of shape (*, n_bins, n_frames).
+
+        """
+        bins = self.bins
+
+        n_bands = input.size(-2)
+
+        assert len(bins) == n_bands
+
+        x = torch.unbind(input, dim=-2)
+        x_stacked = []
+
+        for band_idx in range(n_bands):
+            x_band = x[band_idx]
+            block = self.backbone[band_idx]
+            x_band = block(x_band)
+            x_stacked.append(x_band)
+
+        output = torch.cat(x_stacked, dim=-2)
+
+        return output
+
+
+class BandSplitModule(_BandSplitModule):
     """Band split module."""
 
     def __init__(self, bins: List[int], embed_dim: int) -> None:
@@ -35,41 +116,8 @@ class BandSplitModule(nn.Module):
 
         self.backbone = nn.ModuleList(backbone)
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
-        """Forward pass of BandSplitModule.
 
-        Args:
-            input (torch.Tensor): Spectrogram-like feature of shape (*, n_bins, n_frames).
-
-        Returns:
-            torch.Tensor: Split feature of shape (*, embed_dim, len(bins), n_frames).
-
-        """
-        bins = self.bins
-        embed_dim = self.embed_dim
-
-        *batch_shape, n_bins, n_frames = input.size()
-
-        assert sum(bins) == n_bins
-
-        x = input.view(-1, n_bins, n_frames)
-        x = torch.split(x, bins, dim=-2)
-
-        x_stacked = []
-
-        for band_idx in range(len(bins)):
-            x_band = x[band_idx]
-            block = self.backbone[band_idx]
-            x_band = block(x_band)
-            x_stacked.append(x_band)
-
-        x = torch.stack(x_stacked, dim=-2)
-        output = x.view(*batch_shape, embed_dim, len(bins), n_frames)
-
-        return output
-
-
-class BandMergeModule(nn.Module):
+class BandMergeModule(_BandMergeModule):
     """Band merge module."""
 
     def __init__(
@@ -97,37 +145,56 @@ class BandMergeModule(nn.Module):
 
         self.backbone = nn.ModuleList(backbone)
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
-        """Forward pass of BandMergeModule.
 
-        Args:
-            input (torch.Tensor): Split feature of shape  (*, embed_dim, len(bins), n_frames).
+class MultichannelBandSplitModule(_BandSplitModule):
+    """Band split module for multichannel input."""
 
-        Returns:
-            torch.Tensor: Spectrogram-like feature of shape (*, n_bins, n_frames).
+    def __init__(self, in_channels: int, bins: List[int], embed_dim: int) -> None:
+        super().__init__()
 
-        """
-        bins = self.bins
+        self.in_channels = in_channels
+        self.bins = bins
+        self.embed_dim = embed_dim
 
-        *batch_shape, embed_dim, n_bands, n_frames = input.size()
+        backbone = []
 
-        assert len(bins) == n_bands
+        for n_bins in bins:
+            block = MultichannelBandSplitBlock(in_channels, n_bins, embed_dim)
+            backbone.append(block)
 
-        x = input.view(-1, embed_dim, n_bands, n_frames)
-        x = torch.unbind(x, dim=-2)
+        self.backbone = nn.ModuleList(backbone)
 
-        x_stacked = []
 
-        for band_idx in range(n_bands):
-            x_band = x[band_idx]
-            block = self.backbone[band_idx]
-            x_band = block(x_band)
-            x_stacked.append(x_band)
+class MultichannelBandMergeModule(_BandMergeModule):
+    """Band merge module for multichannel output."""
 
-        x = torch.cat(x_stacked, dim=-2)
-        output = x.view(*batch_shape, sum(bins), n_frames)
+    def __init__(
+        self,
+        out_channels: int,
+        bins: List[int],
+        embed_dim: int,
+        hidden_channels: int = 512,
+        num_layers: int = 2,
+    ) -> None:
+        super().__init__()
 
-        return output
+        self.out_channels = out_channels
+        self.bins = bins
+        self.embed_dim = embed_dim
+
+        backbone = []
+
+        for n_bins in bins:
+            block = MultichannelBandMergeBlock(
+                out_channels,
+                n_bins,
+                embed_dim,
+                hidden_channels=hidden_channels,
+                num_layers=num_layers,
+            )
+            backbone.append(block)
+
+        self.backbone = nn.ModuleList(backbone)
 
 
 class BandSplitBlock(nn.Module):
@@ -152,7 +219,7 @@ class BandSplitBlock(nn.Module):
         """Forward pass of BandSplitBlock.
 
         Args:
-            input (torch.Tensor): Band of complex spectrogram of shape (*, n_bins, n_frames).
+            input (torch.Tensor): Complex spectrogram of shape (*, n_bins, n_frames).
 
         Returns:
             torch.Tensor: Transformed feature of shape (*, embed_dim, n_frames).
@@ -166,10 +233,9 @@ class BandSplitBlock(nn.Module):
         x = input.view(-1, n_bins, n_frames)
         x = torch.view_as_real(x)
         x = x.permute(0, 2, 1, 3).contiguous()
-        x = x.view(-1, n_bins * 2)
+        x = x.view(-1, n_frames, n_bins * 2)
         x = self.norm(x)
         x = self.linear(x)
-        x = x.view(-1, n_frames, embed_dim)
         x = x.permute(0, 2, 1).contiguous()
         output = x.view(*batch_shape, embed_dim, n_frames)
 
@@ -213,7 +279,7 @@ class BandMergeBlock(nn.Module):
                 in_channels = hidden_channels
 
             if layer_idx == num_layers - 1:
-                out_channels = n_bins * 2
+                out_channels = 2 * n_bins
             else:
                 out_channels = hidden_channels
 
@@ -250,6 +316,136 @@ class BandMergeBlock(nn.Module):
         x = torch.view_as_complex(x)
         x = x.permute(0, 2, 1).contiguous()
         output = x.view(*batch_shape, n_bins, n_frames)
+
+        return output
+
+
+class MultichannelBandSplitBlock(nn.Module):
+    """MultichannelBandSplitBlock composed of layer norm and linear.
+
+    Args:
+        in_channels (int): Number of input channels.
+        n_bins (int): Number of bins in band.
+        embed_dim (int): Embedding dimension.
+
+    """
+
+    def __init__(self, in_channels: int, n_bins: int, embed_dim: int) -> None:
+        super().__init__()
+
+        self.norm = nn.LayerNorm(2 * in_channels * n_bins)
+        self.linear = nn.Linear(2 * in_channels * n_bins, embed_dim)
+
+        self.in_channels = in_channels
+        self.n_bins = n_bins
+        self.embed_dim = embed_dim
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of MultichannelBandSplitBlock.
+
+        Args:
+            input (torch.Tensor): Complex spectrogram of shape (*, in_channels, n_bins, n_frames).
+
+        Returns:
+            torch.Tensor: Transformed feature of shape (*, embed_dim, n_frames).
+
+        """
+        assert torch.is_complex(input), "Complex spectrogram is expected."
+
+        embed_dim = self.embed_dim
+        *batch_shape, in_channels, n_bins, n_frames = input.size()
+
+        x = input.contiguous()
+        x = x.view(-1, in_channels * n_bins, n_frames)
+        x = torch.view_as_real(x)
+        x = x.permute(0, 2, 1, 3).contiguous()
+        x = x.view(-1, n_frames, in_channels * n_bins * 2)
+        x = self.norm(x)
+        x = self.linear(x)
+        x = x.permute(0, 2, 1).contiguous()
+        output = x.view(*batch_shape, embed_dim, n_frames)
+
+        return output
+
+
+class MultichannelBandMergeBlock(nn.Module):
+    """MultichannelBandMergeBlock composed of layer norm and multi-layer perceptron (MLP).
+
+    Args:
+        out_channels (int): Number of output channels.
+        n_bins (int): Number of bins in band.
+        embed_dim (int): Embedding dimension.
+        num_layers (int): Number of layers in MLP.
+
+    The implementation is based on [#luo2023music]_.
+
+    .. [#luo2023music]
+        Y. Luo et al., "Music source separation with band-split RNN,"
+        *IEEE/ACM Transactions on Audio, Speech, and Language Processing*,
+        vol. 31, pp.1893-1901, 2023.
+
+    """
+
+    def __init__(
+        self,
+        out_channels: int,
+        n_bins: int,
+        embed_dim: int,
+        hidden_channels: int = 512,
+        num_layers: int = 2,
+    ) -> None:
+        super().__init__()
+
+        self.norm = nn.LayerNorm(embed_dim)
+
+        mlp = []
+
+        for layer_idx in range(num_layers):
+            if layer_idx == 0:
+                _in_channels = embed_dim
+            else:
+                _in_channels = hidden_channels
+
+            if layer_idx == num_layers - 1:
+                _out_channels = 2 * out_channels * n_bins
+            else:
+                _out_channels = hidden_channels
+
+            mlp.append(nn.Linear(_in_channels, _out_channels))
+
+            if layer_idx == num_layers - 1:
+                mlp.append(GLU(_out_channels, _out_channels))
+            else:
+                mlp.append(nn.Tanh())
+
+        self.mlp = nn.Sequential(*mlp)
+
+        self.out_channels = out_channels
+        self.n_bins = n_bins
+        self.embed_dim = embed_dim
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of MultichannelBandMergeBlock.
+
+        Args:
+            input (torch.Tensor): Band feature of shape (*, embed_dim, n_frames).
+
+        Returns:
+            torch.Tensor: Merged complex feature of shape (*, out_channels, n_bins, n_frames).
+
+        """
+        out_channels = self.out_channels
+        n_bins = self.n_bins
+        *batch_shape, embed_dim, n_frames = input.size()
+
+        x = input.view(-1, embed_dim, n_frames)
+        x = x.permute(0, 2, 1).contiguous()
+        x = self.norm(x)
+        x = self.mlp(x)
+        x = x.view(-1, n_frames, out_channels * n_bins, 2)
+        x = torch.view_as_complex(x)
+        x = x.permute(0, 2, 1).contiguous()
+        output = x.view(*batch_shape, out_channels, n_bins, n_frames)
 
         return output
 
