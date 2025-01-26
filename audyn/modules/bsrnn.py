@@ -1,7 +1,9 @@
-from typing import List
+from typing import Any, Callable, List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
+
+from .dprnn import get_rnn
 
 __all__ = [
     "BandSplitModule",
@@ -194,5 +196,254 @@ class BandMergeBlock(nn.Module):
         x = torch.view_as_complex(x)
         x = x.permute(0, 2, 1).contiguous()
         output = x.view(*batch_shape, n_bins, n_frames)
+
+        return output
+
+
+class BandSplitRNNBackbone(nn.Module):
+    """Backbone of BandSplitRNN."""
+
+    def __init__(
+        self,
+        num_features: int,
+        hidden_channels: int,
+        num_blocks: int = 6,
+        is_causal: bool = False,
+        norm: Optional[Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]] = True,
+        rnn: Union[str, nn.Module, Callable[[torch.Tensor], torch.Tensor]] = "lstm",
+        eps: float = 1e-5,
+    ) -> None:
+        super().__init__()
+
+        backbone = []
+
+        for _ in range(num_blocks):
+            backbone.append(
+                BandSplitRNNBlock(
+                    num_features,
+                    hidden_channels,
+                    norm=norm,
+                    is_causal=is_causal,
+                    rnn=rnn,
+                    eps=eps,
+                )
+            )
+
+        self.backbone = nn.Sequential(*backbone)
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of dual-path RNN.
+
+        Args:
+            input (torch.Tensor): Input feature of shape
+                (batch_size, num_features, inter_length, chunk_size).
+
+        Returns:
+            torch.Tensor: Output feature of shape
+                (batch_size, num_features, inter_length, chunk_size).
+
+        """
+        output = self.backbone(input)
+
+        return output
+
+
+class BandSplitRNNBlock(nn.Module):
+    """RNN block for band and sequence modeling."""
+
+    def __init__(
+        self,
+        num_features: int,
+        hidden_channels: int,
+        is_causal: bool = False,
+        norm: Optional[Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]] = True,
+        rnn: Union[str, nn.Module, Callable[[torch.Tensor], Tuple[torch.Tensor, Any]]] = "lstm",
+        eps: float = 1e-5,
+    ) -> None:
+        super().__init__()
+
+        self.band_block = IntraRNN(num_features, hidden_channels, norm=norm, rnn=rnn, eps=eps)
+        self.temporal_block = InterRNN(
+            num_features, hidden_channels, norm=norm, is_causal=is_causal, rnn=rnn, eps=eps
+        )
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of RNN block for BandSplitRNN.
+
+        Args:
+            input (torch.Tensor): Input feature of shape
+                (batch_size, num_features, n_bands, n_frames).
+
+        Returns:
+            torch.Tensor: Output feature of shape
+                (batch_size, num_features, n_bands, n_frames).
+
+        """
+        x = self.band_block(input)
+        output = self.temporal_block(x)
+
+        return output
+
+
+class IntraRNN(nn.Module):
+    """RNN for band modeling in BandSplitRNN."""
+
+    def __init__(
+        self,
+        num_features: int,
+        hidden_channels: int,
+        norm: Optional[Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]] = True,
+        rnn: Union[str, nn.Module, Callable[[torch.Tensor], Tuple[torch.Tensor, Any]]] = "lstm",
+        eps: float = 1e-5,
+    ) -> None:
+        super().__init__()
+
+        self.num_features = num_features
+        self.hidden_channels = hidden_channels
+
+        num_directions = 2
+
+        self.rnn = get_rnn(
+            rnn,
+            input_size=num_features,
+            hidden_size=hidden_channels,
+            batch_first=True,
+            bidirectional=True,
+        )
+
+        self.fc = nn.Linear(num_directions * hidden_channels, num_features)
+
+        if norm is None:
+            self.norm = None
+        elif isinstance(norm, str):
+            assert norm.upper() == "LN", "Only layer normalization is supported."
+
+            self.norm = nn.LayerNorm(num_features, eps=eps)
+        elif isinstance(norm, bool):
+            if norm:
+                self.norm = nn.LayerNorm(num_features, eps=eps)
+            else:
+                self.norm = None
+        else:
+            raise ValueError(f"{type(norm)} is not supported as norm.")
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of band RNN block.
+
+        Args:
+            input (torch.Tensor): Input feature of shape
+                (batch_size, num_features, n_bands, n_frames).
+
+        Returns:
+            torch.Tensor: Output feature of shape
+                (batch_size, num_features, n_bands, n_frames)
+
+        """
+        num_features = self.num_features
+        batch_size, _, n_bands, n_frames = input.size()
+
+        self.rnn.flatten_parameters()
+
+        residual = input
+        x = input.permute(0, 3, 2, 1).contiguous()
+        x = x.view(batch_size * n_frames, n_bands, num_features)
+
+        if self.norm is not None:
+            x = self.norm(x)
+
+        x, _ = self.rnn(x)
+        x = self.fc(x)
+        x = x.view(batch_size, n_frames, n_bands, num_features)
+        x = x.permute(0, 3, 2, 1)
+
+        output = x + residual
+
+        return output
+
+
+class InterRNN(nn.Module):
+    """RNN for sequence modeling in BandSplitRNN."""
+
+    def __init__(
+        self,
+        num_features: int,
+        hidden_channels: int,
+        is_causal: bool = False,
+        norm: Optional[Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]] = True,
+        rnn: Union[str, nn.Module, Callable[[torch.Tensor], Tuple[torch.Tensor, Any]]] = "lstm",
+        eps: float = 1e-5,
+    ) -> None:
+        super().__init__()
+
+        self.num_features = num_features
+        self.hidden_channels = hidden_channels
+
+        if is_causal:
+            # uni-direction
+            num_directions = 1
+            self.rnn = get_rnn(
+                rnn,
+                input_size=num_features,
+                hidden_size=hidden_channels,
+                batch_first=True,
+                bidirectional=False,
+            )
+        else:
+            # bi-direction
+            num_directions = 2
+            self.rnn = get_rnn(
+                rnn,
+                input_size=num_features,
+                hidden_size=hidden_channels,
+                batch_first=True,
+                bidirectional=True,
+            )
+
+        self.fc = nn.Linear(num_directions * hidden_channels, num_features)
+
+        if norm is None:
+            self.norm = None
+        elif isinstance(norm, str):
+            assert norm.upper() == "LN", "Only layer normalization is supported."
+
+            self.norm = nn.LayerNorm(num_features, eps=eps)
+        elif isinstance(norm, bool):
+            if norm:
+                self.norm = nn.LayerNorm(num_features, eps=eps)
+            else:
+                self.norm = None
+        else:
+            raise ValueError(f"{type(norm)} is not supported as norm.")
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of temporal RNN block.
+
+        Args:
+            input (torch.Tensor): Input feature of shape
+                (batch_size, num_features, n_bands, n_frames).
+
+        Returns:
+            torch.Tensor: Output feature of shape
+                (batch_size, num_features, n_bands, n_frames).
+
+        """
+        num_features = self.num_features
+        batch_size, _, n_bands, n_frames = input.size()
+
+        self.rnn.flatten_parameters()
+
+        residual = input
+        x = input.permute(0, 2, 3, 1).contiguous()
+        x = x.view(batch_size * n_bands, n_frames, num_features)
+
+        if self.norm is not None:
+            x = self.norm(x)
+
+        x, _ = self.rnn(x)
+        x = self.fc(x)
+        x = x.view(batch_size, n_bands, n_frames, num_features)
+        x = x.permute(0, 3, 1, 2)
+
+        output = x + residual
 
         return output
