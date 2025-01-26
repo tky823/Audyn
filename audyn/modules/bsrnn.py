@@ -10,6 +10,10 @@ __all__ = [
     "BandMergeModule",
     "BandSplitBlock",
     "BandMergeBlock",
+    "BandSplitRNNBackbone",
+    "BandSplitRNNBlock",
+    "IntraRNN",
+    "InterRNN",
 ]
 
 
