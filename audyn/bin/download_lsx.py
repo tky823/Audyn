@@ -1,5 +1,7 @@
+import glob
 import os
 import shutil
+import tempfile
 import uuid
 import zipfile
 
@@ -16,7 +18,7 @@ def main(config: DictConfig) -> None:
     .. code-block:: shell
 
         data_root="./data"  # root directory to save .zip file.
-        lsx_root="${data_root}/LSX"
+        lsx_root="${data_root}/lsx"
         unpack=true  # unpack .zip or not
         chunk_size=8192  # chunk size in byte to download
 
@@ -58,7 +60,7 @@ def download_lsx(config: DictConfig) -> None:
 
     if unpack:
         if lsx_root is None:
-            lsx_root = os.path.join(root, "LSX")
+            lsx_root = os.path.join(root, "lsx")
 
         _unpack_zip(zip_path, lsx_root=lsx_root)
 
@@ -77,5 +79,9 @@ def _download_lsx(url: str, path: str, chunk_size: int = 8192) -> None:
 
 
 def _unpack_zip(path: str, lsx_root: str) -> None:
-    with zipfile.ZipFile(path, "r") as f:
-        f.extractall(lsx_root)
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with zipfile.ZipFile(path, "r") as f:
+            f.extractall(temp_dir)
+
+        for temp_path in glob.glob(os.path.join(temp_dir, "*")):
+            shutil.move(temp_path, lsx_root)
