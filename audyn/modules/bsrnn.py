@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 
 from .dprnn import get_rnn
+from .glu import GLU
 
 __all__ = [
     "BandSplitModule",
@@ -172,11 +173,7 @@ class BandMergeBlock(nn.Module):
         embed_dim (int): Embedding dimension.
         num_layers (int): Number of layers in MLP.
 
-    The implementation is based on [#li2022use]_ cited in [#luo2023music]_.
-
-    .. [#li2022use]
-        K. Li et al., "On the use of deep mask estimation module for neural source separation
-        systems," *arXiv preprint arXiv:2206.07347*.
+    The implementation is based on [#luo2023music]_.
 
     .. [#luo2023music]
         Y. Luo et al., "Music source separation with band-split RNN,"
@@ -190,7 +187,7 @@ class BandMergeBlock(nn.Module):
         n_bins: int,
         embed_dim: int,
         hidden_channels: int = 64,
-        num_layers: int = 3,
+        num_layers: int = 2,
     ) -> None:
         super().__init__()
 
@@ -211,7 +208,9 @@ class BandMergeBlock(nn.Module):
 
             mlp.append(nn.Linear(in_channels, out_channels))
 
-            if layer_idx < num_layers - 1:
+            if layer_idx == num_layers - 1:
+                mlp.append(GLU(out_channels, out_channels))
+            else:
                 mlp.append(nn.Tanh())
 
         self.mlp = nn.Sequential(*mlp)
