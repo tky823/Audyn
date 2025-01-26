@@ -14,6 +14,8 @@ __all__ = [
 
 
 class BandSplitModule(nn.Module):
+    """Band split module."""
+
     def __init__(self, bins: List[int], embed_dim: int) -> None:
         super().__init__()
 
@@ -63,6 +65,7 @@ class BandSplitModule(nn.Module):
 
 
 class BandMergeModule(nn.Module):
+    """Band merge module."""
 
     def __init__(self, bins: List[int], embed_dim: int) -> None:
         super().__init__()
@@ -158,19 +161,56 @@ class BandSplitBlock(nn.Module):
 
 
 class BandMergeBlock(nn.Module):
-    """BandMergeBlock composed of layer norm and linear.
+    """BandMergeBlock composed of layer norm and multi-layer perceptron (MLP).
 
     Args:
         n_bins (int): Number of bins in band.
         embed_dim (int): Embedding dimension.
+        num_layers (int): Number of layers in MLP.
+
+    The implementation is based on [#li2022use]_ cited in [#luo2023music]_.
+
+    .. [#li2022use]
+        K. Li et al., "On the use of deep mask estimation module for neural source separation
+        systems," *arXiv preprint arXiv:2206.07347*.
+
+    .. [#luo2023music]
+        Y. Luo et al., "Music source separation with band-split RNN,"
+        *IEEE/ACM Transactions on Audio, Speech, and Language Processing*,
+        vol. 31, pp.1893-1901, 2023.
 
     """
 
-    def __init__(self, n_bins: int, embed_dim: int) -> None:
+    def __init__(
+        self,
+        n_bins: int,
+        embed_dim: int,
+        hidden_channels: int = 64,
+        num_layers: int = 3,
+    ) -> None:
         super().__init__()
 
         self.norm = nn.LayerNorm(embed_dim)
-        self.linear = nn.Linear(embed_dim, n_bins * 2)
+
+        mlp = []
+
+        for layer_idx in range(num_layers):
+            if layer_idx == 0:
+                in_channels = embed_dim
+            else:
+                in_channels = hidden_channels
+
+            if layer_idx == num_layers - 1:
+                out_channels = n_bins * 2
+            else:
+                out_channels = hidden_channels
+
+            mlp.append(nn.Linear(in_channels, out_channels))
+
+            if layer_idx < num_layers - 1:
+                mlp.append(nn.Tanh())
+
+        self.mlp = nn.Sequential(*mlp)
 
         self.n_bins = n_bins
         self.embed_dim = embed_dim
@@ -191,7 +231,7 @@ class BandMergeBlock(nn.Module):
         x = input.view(-1, embed_dim, n_frames)
         x = x.permute(0, 2, 1).contiguous()
         x = self.norm(x)
-        x = self.linear(x)
+        x = self.mlp(x)
         x = x.view(-1, n_frames, n_bins, 2)
         x = torch.view_as_complex(x)
         x = x.permute(0, 2, 1).contiguous()
