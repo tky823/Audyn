@@ -232,7 +232,7 @@ class BandSplitRNNBackbone(nn.Module):
         self.backbone = nn.Sequential(*backbone)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        """Forward pass of dual-path RNN.
+        """Forward pass of BandSplitRNNBackbone.
 
         Args:
             input (torch.Tensor): Input feature of shape
