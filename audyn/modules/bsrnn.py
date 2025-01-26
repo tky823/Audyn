@@ -72,7 +72,13 @@ class BandSplitModule(nn.Module):
 class BandMergeModule(nn.Module):
     """Band merge module."""
 
-    def __init__(self, bins: List[int], embed_dim: int) -> None:
+    def __init__(
+        self,
+        bins: List[int],
+        embed_dim: int,
+        hidden_channels: int = 512,
+        num_layers: int = 2,
+    ) -> None:
         super().__init__()
 
         self.bins = bins
@@ -81,7 +87,12 @@ class BandMergeModule(nn.Module):
         backbone = []
 
         for n_bins in bins:
-            block = BandMergeBlock(n_bins, embed_dim)
+            block = BandMergeBlock(
+                n_bins,
+                embed_dim,
+                hidden_channels=hidden_channels,
+                num_layers=num_layers,
+            )
             backbone.append(block)
 
         self.backbone = nn.ModuleList(backbone)
@@ -186,7 +197,7 @@ class BandMergeBlock(nn.Module):
         self,
         n_bins: int,
         embed_dim: int,
-        hidden_channels: int = 64,
+        hidden_channels: int = 512,
         num_layers: int = 2,
     ) -> None:
         super().__init__()
