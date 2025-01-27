@@ -2146,6 +2146,13 @@ class BaseTrainer(BaseDriver):
     def write_audio(
         self, tag: str, waveform: torch.Tensor, global_step: Any = 1, sample_rate: int = 44100
     ) -> None:
+        """Write out audio to tensorboard.
+
+        Args:
+            waveform (torch.Tensor): Waveform of shape (length,) or (1, length). Stereo is not
+                supported due to restriction of tensorboard.
+
+        """
         if waveform.dim() == 2:
             assert (
                 waveform.size(0) == 1
