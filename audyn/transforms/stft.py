@@ -53,14 +53,14 @@ class InverseShortTimeFourierTransform(nn.Module):
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         window = self.window
 
-        *batch_shape, length = input.size()
+        *batch_shape, n_bins, n_frames = input.size()
 
         x = input.contiguous()
-        x = x.view(-1, length)
+        x = x.view(-1, n_bins, n_frames)
         x = torch.istft(x, window=window, **self.kwargs)
         *_, n_bins, n_frames = x.size()
         x = x.contiguous()
-        output = x.view(*batch_shape, n_bins, n_frames)
+        output = x.view(*batch_shape, -1)
 
         return output
 
