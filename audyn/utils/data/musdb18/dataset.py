@@ -484,7 +484,7 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
             yield feature
 
     def __len__(self) -> int:
-        return len(self.filenames)
+        return self.num_total_samples
 
     def _validate_tracks(self) -> None:
         from . import sources
