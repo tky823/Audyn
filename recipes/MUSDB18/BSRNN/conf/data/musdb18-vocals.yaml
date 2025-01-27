@@ -1,0 +1,6 @@
+defaults:
+  - musdb18
+  - _self_
+
+sources:
+  target: vocals
