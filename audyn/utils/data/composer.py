@@ -314,13 +314,69 @@ class SynchronousWaveformSlicer(Composer):
         return sample
 
 
+class Rescaler(Composer):
+    """Rescale waveform by maximum absolute value.
+
+    Args:
+        input_key (str or list): Input key(s) to rescale.
+        output_key (str or list): Output key(s) to store rescaled waveform.
+        eps (float): Tiny value to avoid zero division.
+        decode_audio_as_monoral (bool): Whether to decode audio as monoral. Default: ``True``.
+
+    """
+
+    def __init__(
+        self,
+        input_key: Union[str, List[str]],
+        output_key: Union[str, List[str]],
+        eps: float = 1e-8,
+        decode_audio_as_waveform: bool = True,
+        decode_audio_as_monoral: bool = True,
+    ) -> None:
+        super().__init__(
+            decode_audio_as_waveform=decode_audio_as_waveform,
+            decode_audio_as_monoral=decode_audio_as_monoral,
+        )
+
+        self.input_key = input_key
+        self.output_key = output_key
+        self.eps = eps
+
+    def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        input_key = self.input_key
+        output_key = self.output_key
+
+        sample = super().process(sample)
+
+        if isinstance(input_key, str):
+            input_keys = [input_key]
+        else:
+            input_keys = input_key
+
+        if isinstance(output_key, str):
+            output_keys = [output_key]
+        else:
+            output_keys = output_key
+
+        assert len(output_keys) == len(input_keys)
+
+        for input_key, output_key in zip(input_keys, output_keys):
+            waveform = sample[input_key]
+            amplitude = torch.abs(waveform)
+            max_amplitude = torch.max(amplitude)
+            max_amplitude = torch.clamp(max_amplitude, min=self.eps)
+            sample[output_key] = waveform / max_amplitude
+
+        return sample
+
+
 class Mixer(Composer):
     """Mixer for training of source separation.
 
     Args:
         input_keys (list): Input keys to mix.
         output_key (str): Output key to store mixture.
-        decode_audio_as_monoral (bool): Whether to decode audio as monoral. Default: ``False``.
+        decode_audio_as_monoral (bool): Whether to decode audio as monoral. Default: ``True``.
 
     """
 
@@ -351,6 +407,59 @@ class Mixer(Composer):
             mixture = mixture + sample[input_key]
 
         sample[output_key] = mixture
+
+        return sample
+
+
+class RescaledMixer(Composer):
+    """Mixer for training of source separation.
+
+    Args:
+        input_keys (list): Input keys to mix.
+        output_key (str): Output key to store mixture.
+        eps (float): Tiny value to avoid zero division.
+        decode_audio_as_monoral (bool): Whether to decode audio as monoral. Default: ``True``.
+
+    Unlike ``audyn.utils.data.Mixer``, amplitude is rescaled by maximum absolute value.
+    This operation may change entries of ``input_keys``.
+
+    """
+
+    def __init__(
+        self,
+        input_keys: List[str],
+        output_key: str,
+        eps: float = 1e-8,
+        decode_audio_as_waveform: bool = True,
+        decode_audio_as_monoral: bool = True,
+    ) -> None:
+        super().__init__(
+            decode_audio_as_waveform=decode_audio_as_waveform,
+            decode_audio_as_monoral=decode_audio_as_monoral,
+        )
+
+        self.input_keys = input_keys
+        self.output_key = output_key
+        self.eps = eps
+
+    def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        input_keys = self.input_keys
+        output_key = self.output_key
+
+        sample = super().process(sample)
+
+        mixture = 0
+
+        for input_key in input_keys:
+            mixture = mixture + sample[input_key]
+
+        amplitude = torch.abs(mixture)
+        max_amplitude = torch.max(amplitude)
+        max_amplitude = torch.clamp(max_amplitude, min=self.eps)
+        sample[output_key] = mixture / max_amplitude
+
+        for input_key in input_keys:
+            sample[input_key] = sample[input_key] / max_amplitude
 
         return sample
 
