@@ -7,6 +7,7 @@ audio:
       output:
         extracted_spectrogram: "Extracted source (iteration)"
       reference:
+        mixture: "Mixture (iteration)"
         source_spectrogram: "Target source (iteration)"
     transforms:
       output:
@@ -24,6 +25,10 @@ audio:
                 _partial_: true
                 dim: -2
       reference:
+        mixture:
+          _target_: torch.mean
+          _partial_: true
+          dim: -2
         source_spectrogram: ${..output.extracted_spectrogram}
   epoch:
     every: 1
@@ -34,10 +39,12 @@ audio:
         output:
           extracted_spectrogram: "Extracted source (epoch)"
         reference:
+          mixture: "Mixture (epoch)"
           source_spectrogram: "Target source (epoch)"
     transforms:
       validation:
         output:
           extracted_spectrogram: ${.....iteration.transforms.output.extracted_spectrogram}
         reference:
+          mixture: ${.....iteration.transforms.reference.mixture}
           source_spectrogram: ${.....iteration.transforms.reference.source_spectrogram}
