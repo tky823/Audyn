@@ -320,6 +320,7 @@ class Rescaler(Composer):
     Args:
         input_key (str or list): Input key(s) to rescale.
         output_key (str or list): Output key(s) to store rescaled waveform.
+        scale (float): Target scale. Default: ``1``.
         eps (float): Tiny value to avoid zero division.
         decode_audio_as_monoral (bool): Whether to decode audio as monoral. Default: ``True``.
 
@@ -329,6 +330,7 @@ class Rescaler(Composer):
         self,
         input_key: Union[str, List[str]],
         output_key: Union[str, List[str]],
+        scale: float = 1,
         eps: float = 1e-8,
         decode_audio_as_waveform: bool = True,
         decode_audio_as_monoral: bool = True,
@@ -340,11 +342,13 @@ class Rescaler(Composer):
 
         self.input_key = input_key
         self.output_key = output_key
+        self.scale = scale
         self.eps = eps
 
     def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
         input_key = self.input_key
         output_key = self.output_key
+        scale = self.scale
 
         sample = super().process(sample)
 
@@ -365,7 +369,7 @@ class Rescaler(Composer):
             amplitude = torch.abs(waveform)
             max_amplitude = torch.max(amplitude)
             max_amplitude = torch.clamp(max_amplitude, min=self.eps)
-            sample[output_key] = waveform / max_amplitude
+            sample[output_key] = scale * (waveform / max_amplitude)
 
         return sample
 
@@ -417,6 +421,7 @@ class RescaledMixer(Composer):
     Args:
         input_keys (list): Input keys to mix.
         output_key (str): Output key to store mixture.
+        scale (float): Target scale. Default: ``1``.
         eps (float): Tiny value to avoid zero division.
         decode_audio_as_monoral (bool): Whether to decode audio as monoral. Default: ``True``.
 
@@ -429,6 +434,7 @@ class RescaledMixer(Composer):
         self,
         input_keys: List[str],
         output_key: str,
+        scale: float = 1,
         eps: float = 1e-8,
         decode_audio_as_waveform: bool = True,
         decode_audio_as_monoral: bool = True,
@@ -440,11 +446,13 @@ class RescaledMixer(Composer):
 
         self.input_keys = input_keys
         self.output_key = output_key
+        self.scale = scale
         self.eps = eps
 
     def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
         input_keys = self.input_keys
         output_key = self.output_key
+        scale = self.scale
 
         sample = super().process(sample)
 
@@ -459,7 +467,7 @@ class RescaledMixer(Composer):
         sample[output_key] = mixture / max_amplitude
 
         for input_key in input_keys:
-            sample[input_key] = sample[input_key] / max_amplitude
+            sample[input_key] = scale * (sample[input_key] / max_amplitude)
 
         return sample
 
