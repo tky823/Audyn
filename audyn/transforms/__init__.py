@@ -7,10 +7,21 @@ from .kaldi import KaldiMelSpectrogram, KaldiMFCC
 from .librosa import LibrosaMelSpectrogram
 from .music_tagging_transformer import MusicTaggingTransformerMelSpectrogram
 from .slicer import WaveformSlicer
+from .stft import (
+    ISTFT,
+    STFT,
+    InverseShortTimeFourierTransform,
+    ShortTimeFourierTransform,
+)
 
 __all__ = [
     # slice
     "WaveformSlicer",
+    # STFT
+    "ShortTimeFourierTransform",
+    "InverseShortTimeFourierTransform",
+    "STFT",
+    "ISTFT",
     # CQT
     "ConstantQTransform",
     "CQT",
