@@ -146,7 +146,7 @@ class BandMergeModule(_BandMergeModule):
         self.backbone = nn.ModuleList(backbone)
 
 
-class MultichannelBandSplitModule(_BandSplitModule):
+class MultiChannelBandSplitModule(_BandSplitModule):
     """Band split module for multichannel input."""
 
     def __init__(self, in_channels: int, bins: List[int], embed_dim: int) -> None:
@@ -159,13 +159,13 @@ class MultichannelBandSplitModule(_BandSplitModule):
         backbone = []
 
         for n_bins in bins:
-            block = MultichannelBandSplitBlock(in_channels, n_bins, embed_dim)
+            block = MultiChannelBandSplitBlock(in_channels, n_bins, embed_dim)
             backbone.append(block)
 
         self.backbone = nn.ModuleList(backbone)
 
 
-class MultichannelBandMergeModule(_BandMergeModule):
+class MultiChannelBandMergeModule(_BandMergeModule):
     """Band merge module for multichannel output."""
 
     def __init__(
@@ -185,7 +185,7 @@ class MultichannelBandMergeModule(_BandMergeModule):
         backbone = []
 
         for n_bins in bins:
-            block = MultichannelBandMergeBlock(
+            block = MultiChannelBandMergeBlock(
                 out_channels,
                 n_bins,
                 embed_dim,
@@ -230,7 +230,8 @@ class BandSplitBlock(nn.Module):
         embed_dim = self.embed_dim
         *batch_shape, n_bins, n_frames = input.size()
 
-        x = input.view(-1, n_bins, n_frames)
+        x = input.contiguous()
+        x = x.view(-1, n_bins, n_frames)
         x = torch.view_as_real(x)
         x = x.permute(0, 2, 1, 3).contiguous()
         x = x.view(-1, n_frames, n_bins * 2)
@@ -308,7 +309,8 @@ class BandMergeBlock(nn.Module):
         n_bins = self.n_bins
         *batch_shape, embed_dim, n_frames = input.size()
 
-        x = input.view(-1, embed_dim, n_frames)
+        x = input.contiguous()
+        x = x.view(-1, embed_dim, n_frames)
         x = x.permute(0, 2, 1).contiguous()
         x = self.norm(x)
         x = self.mlp(x)
@@ -320,8 +322,8 @@ class BandMergeBlock(nn.Module):
         return output
 
 
-class MultichannelBandSplitBlock(nn.Module):
-    """MultichannelBandSplitBlock composed of layer norm and linear.
+class MultiChannelBandSplitBlock(nn.Module):
+    """MultiChannelBandSplitBlock composed of layer norm and linear.
 
     Args:
         in_channels (int): Number of input channels.
@@ -341,7 +343,7 @@ class MultichannelBandSplitBlock(nn.Module):
         self.embed_dim = embed_dim
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        """Forward pass of MultichannelBandSplitBlock.
+        """Forward pass of MultiChannelBandSplitBlock.
 
         Args:
             input (torch.Tensor): Complex spectrogram of shape (*, in_channels, n_bins, n_frames).
@@ -368,8 +370,8 @@ class MultichannelBandSplitBlock(nn.Module):
         return output
 
 
-class MultichannelBandMergeBlock(nn.Module):
-    """MultichannelBandMergeBlock composed of layer norm and multi-layer perceptron (MLP).
+class MultiChannelBandMergeBlock(nn.Module):
+    """MultiChannelBandMergeBlock composed of layer norm and multi-layer perceptron (MLP).
 
     Args:
         out_channels (int): Number of output channels.
@@ -425,7 +427,7 @@ class MultichannelBandMergeBlock(nn.Module):
         self.embed_dim = embed_dim
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        """Forward pass of MultichannelBandMergeBlock.
+        """Forward pass of MultiChannelBandMergeBlock.
 
         Args:
             input (torch.Tensor): Band feature of shape (*, embed_dim, n_frames).
@@ -438,7 +440,8 @@ class MultichannelBandMergeBlock(nn.Module):
         n_bins = self.n_bins
         *batch_shape, embed_dim, n_frames = input.size()
 
-        x = input.view(-1, embed_dim, n_frames)
+        x = input.contiguous()
+        x = x.view(-1, embed_dim, n_frames)
         x = x.permute(0, 2, 1).contiguous()
         x = self.norm(x)
         x = self.mlp(x)

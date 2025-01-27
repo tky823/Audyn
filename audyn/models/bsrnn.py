@@ -3,7 +3,13 @@ from typing import Union
 import torch
 import torch.nn as nn
 
-from ..modules.bsrnn import BandMergeModule, BandSplitModule, BandSplitRNNBackbone
+from ..modules.bsrnn import (
+    BandMergeModule,
+    BandSplitModule,
+    BandSplitRNNBackbone,
+    MultiChannelBandMergeModule,
+    MultiChannelBandSplitModule,
+)
 
 __all__ = [
     "BandSplitRNN",
@@ -16,8 +22,8 @@ class BandSplitRNN(nn.Module):
 
     def __init__(
         self,
-        bandsplit: Union[nn.Module, BandSplitModule],
-        bandmerge: Union[nn.Module, BandMergeModule],
+        bandsplit: Union[nn.Module, BandSplitModule, MultiChannelBandSplitModule],
+        bandmerge: Union[nn.Module, BandMergeModule, MultiChannelBandMergeModule],
         backbone: Union[BandSplitRNNBackbone, nn.Module],
     ) -> None:
         super().__init__()
