@@ -27,6 +27,9 @@ class ShortTimeFourierTransform(nn.Module):
 
         *batch_shape, length = input.size()
 
+        if window is not None:
+            window = window.to(input.device)
+
         x = input.contiguous()
         x = x.view(-1, length)
         x = torch.stft(x, window=window, **self.kwargs)
@@ -54,6 +57,9 @@ class InverseShortTimeFourierTransform(nn.Module):
         window = self.window
 
         *batch_shape, n_bins, n_frames = input.size()
+
+        if window is not None:
+            window = window.to(input.device)
 
         x = input.contiguous()
         x = x.view(-1, n_bins, n_frames)
