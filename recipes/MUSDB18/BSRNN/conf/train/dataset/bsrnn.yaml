@@ -1,0 +1,11 @@
+defaults:
+  - random-stems-musdb18
+  - _self_
+
+train:
+  duration: ${data.audio.duration}
+  num_samples: 10000
+  decode_audio_as_monoral: false
+validation:
+  duration: ${..train.duration}
+  decode_audio_as_monoral: ${..train.decode_audio_as_monoral}
