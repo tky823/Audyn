@@ -9,8 +9,8 @@ from audyn.modules.bsrnn import (
     BandSplitRNNBlock,
     InterRNN,
     IntraRNN,
-    MultichannelBandMergeModule,
-    MultichannelBandSplitModule,
+    MultiChannelBandMergeModule,
+    MultiChannelBandSplitModule,
 )
 
 
@@ -138,7 +138,7 @@ def test_bsrnn_multichannel_bandsplit_module() -> None:
     embed_dim = 8
     shape = (batch_size, in_channels, sum(bins), n_frames)
 
-    model = MultichannelBandSplitModule(in_channels, bins, embed_dim)
+    model = MultiChannelBandSplitModule(in_channels, bins, embed_dim)
     input = torch.randn(shape) + 1j * torch.randn(shape)
     output = model(input)
 
@@ -153,7 +153,7 @@ def test_bsrnn_multichannel_bandmerge_module() -> None:
     bins, n_frames = [10, 8, 5], 128
     embed_dim = 8
 
-    model = MultichannelBandMergeModule(out_channels, bins, embed_dim)
+    model = MultiChannelBandMergeModule(out_channels, bins, embed_dim)
     input = torch.randn((batch_size, embed_dim, len(bins), n_frames))
     output = model(input)
 
