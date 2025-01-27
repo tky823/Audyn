@@ -12,7 +12,7 @@ continue_from=""
 
 dump_format="torch"
 
-system="default"
+system="defaults"
 preprocess="musdb18"
 data="musdb18"
 train="bsrnn"
