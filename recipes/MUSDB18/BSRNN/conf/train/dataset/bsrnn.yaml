@@ -4,7 +4,7 @@ defaults:
 
 train:
   duration: ${data.audio.duration}
-  num_samples: 10000
+  num_samples: 160000
   decode_audio_as_monoral: false
 validation:
   duration: ${..train.duration}
