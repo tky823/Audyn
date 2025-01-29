@@ -10,7 +10,7 @@ tensorboard_root="./tensorboard"
 tag=""
 continue_from=""
 
-dump_format="torch"
+dump_format="musdb18"
 
 system="defaults"
 preprocess="musdb18"
