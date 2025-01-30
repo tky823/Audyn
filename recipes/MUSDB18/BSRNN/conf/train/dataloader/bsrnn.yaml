@@ -9,15 +9,6 @@ train:
     composer:
       _target_: audyn.utils.data.SequentialComposer
       _args_:
-        - _target_: audyn.utils.data.Rescaler
-          input_key:
-            - drums
-            - bass
-            - other
-            - vocals
-          output_key: ${.input_key}
-          decode_audio_as_waveform: true
-          decode_audio_as_monoral: false
         - _target_: audyn.utils.data.RescaledMixer
           input_keys:
             - drums
@@ -25,8 +16,8 @@ train:
             - other
             - vocals
           output_key: mixture
-          decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
-          decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
+          decode_audio_as_waveform: true
+          decode_audio_as_monoral: false
         - _target_: audyn.utils.data.composer.AudioFeatureExtractionComposer
           feature_extractor:
             _target_: audyn.transforms.STFT
@@ -37,7 +28,7 @@ train:
             normalized: ${data.spectrogram.normalized}
             onesided: ${data.spectrogram.onesided}
             return_complex: true
-          audio_key: ${..1.output_key}
+          audio_key: ${..0.output_key}
           feature_key: mixture_spectrogram
           decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
           decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
@@ -58,19 +49,4 @@ train:
   shuffle:
 validation:
   batch_size: 16
-  collate_fn:
-    _target_: audyn.utils.data.Collator
-    composer:
-      _target_: audyn.utils.data.SequentialComposer
-      _args_:
-        - _target_: audyn.utils.data.Mixer
-          input_keys:
-            - drums
-            - bass
-            - other
-            - vocals
-          output_key: mixture
-          decode_audio_as_waveform: true
-          decode_audio_as_monoral: false
-        - ${.....train.collate_fn.composer._args_.2}
-        - ${.....train.collate_fn.composer._args_.3}
+  collate_fn: ${..train.collate_fn}
