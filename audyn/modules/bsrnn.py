@@ -158,7 +158,11 @@ class _BandMergeModule(nn.Module):
         for band_idx, (start_bin, end_bin) in enumerate(bins):
             assignment[band_idx, start_bin:end_bin] = 1
 
-        assignment = assignment / assignment.sum(dim=0)
+        bands_per_bin = assignment.sum(dim=0)
+
+        assert torch.all(bands_per_bin > 0), "Each bin should be assigned to at least one band."
+
+        assignment = assignment / bands_per_bin
 
         return assignment
 
