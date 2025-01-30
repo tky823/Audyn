@@ -1,0 +1,47 @@
+audio:
+  iteration:
+    every: 1000
+    sample_size: 1
+    sample_rate: ${data.audio.sample_rate}
+    key_mapping:
+      output:
+        extracted_spectrogram: "Extracted source (iteration)"
+      reference:
+        mixture_spectrogram: "Mixture (iteration)"
+        source_spectrogram: "Target source (iteration)"
+    transforms:
+      output:
+        extracted_spectrogram:
+          _target_: torchvision.transforms.Compose
+          _args_:
+            - - _target_: audyn.transforms.ISTFT
+                n_fft: ${data.spectrogram.n_fft}
+                hop_length: ${data.spectrogram.hop_length}
+                window: ${data.spectrogram.window}
+                center: ${data.spectrogram.center}
+                normalized: ${data.spectrogram.normalized}
+                onesided: ${data.spectrogram.onesided}
+              - _target_: torch.mean
+                _partial_: true
+                dim: -2
+      reference:
+        mixture_spectrogram: ${..output.extracted_spectrogram}
+        source_spectrogram: ${..output.extracted_spectrogram}
+  epoch:
+    every: 1
+    sample_size: 1
+    sample_rate: ${data.audio.sample_rate}
+    key_mapping:
+      validation:
+        output:
+          extracted_spectrogram: "Extracted source (epoch)"
+        reference:
+          mixture_spectrogram: "Mixture (epoch)"
+          source_spectrogram: "Target source (epoch)"
+    transforms:
+      validation:
+        output:
+          extracted_spectrogram: ${.....iteration.transforms.output.extracted_spectrogram}
+        reference:
+          mixture_spectrogram: ${.....iteration.transforms.reference.mixture_spectrogram}
+          source_spectrogram: ${.....iteration.transforms.reference.source_spectrogram}

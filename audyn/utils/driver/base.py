@@ -25,7 +25,8 @@ from ...optim.optimizer import (
     MovingAverageWrapper,
     MultiOptimizers,
 )
-from ...utils._hydra.utils import (
+from .._hydra.utils import (
+    TORCH_CLIP_GRAD_FN,
     instantiate,
     instantiate_criterion,
     instantiate_grad_clipper,
@@ -33,14 +34,12 @@ from ...utils._hydra.utils import (
     instantiate_model,
     instantiate_optimizer,
 )
-from ...utils.modules import set_device
-from .._hydra.utils import TORCH_CLIP_GRAD_FN
 from ..alignment import expand_by_duration
 from ..clip_grad import GradClipper
 from ..data import BaseDataLoaders, select_device
 from ..distributed import select_global_rank, select_local_rank
 from ..logging import get_logger
-from ..modules import unwrap
+from ..modules import set_device, unwrap
 from ..tensorboard import get_summary_writer
 from ._decorator import run_only_global_master_rank
 
@@ -2147,6 +2146,13 @@ class BaseTrainer(BaseDriver):
     def write_audio(
         self, tag: str, waveform: torch.Tensor, global_step: Any = 1, sample_rate: int = 44100
     ) -> None:
+        """Write out audio to tensorboard.
+
+        Args:
+            waveform (torch.Tensor): Waveform of shape (length,) or (1, length). Stereo is not
+                supported due to restriction of tensorboard.
+
+        """
         if waveform.dim() == 2:
             assert (
                 waveform.size(0) == 1

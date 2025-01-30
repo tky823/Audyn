@@ -1343,7 +1343,7 @@ class GANOptimizer:
 
 # pack
 def _pack_param_groups(
-    param_groups: Dict[str, List[Any]]
+    param_groups: Dict[str, List[Any]],
 ) -> Tuple[List[Dict[str, Any]], Dict[int, int]]:
     param_mappings = {}
     start_index = 0

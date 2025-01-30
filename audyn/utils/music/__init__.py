@@ -74,7 +74,7 @@ def note_to_hz(note: Union[str, List[str]]) -> Union[float, List[float]]:
 
 
 def midi_to_hz(
-    midi: Union[Number, List[Number], torch.Tensor]
+    midi: Union[Number, List[Number], torch.Tensor],
 ) -> Union[float, List[float], torch.Tensor]:
     """Convert MIDI number to frequency.
 
@@ -117,7 +117,7 @@ def midi_to_hz(
 
 
 def hz_to_midi(
-    freq: Union[Number, List[Number], torch.Tensor]
+    freq: Union[Number, List[Number], torch.Tensor],
 ) -> Union[float, List[float], torch.Tensor]:
     """Convert frequency to (continuous) MIDI number.
 

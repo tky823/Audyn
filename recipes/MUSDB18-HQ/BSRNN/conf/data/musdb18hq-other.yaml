@@ -1,0 +1,6 @@
+defaults:
+  - musdb18hq
+  - _self_
+
+sources:
+  target: other

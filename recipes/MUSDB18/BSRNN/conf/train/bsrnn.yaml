@@ -1,0 +1,41 @@
+defaults:
+  - dataset: bsrnn
+  - dataloader: bsrnn
+  - record: musdb18
+  - _self_
+
+trainer:
+  _target_: audyn.utils.driver.BaseTrainer
+
+key_mapping:
+  train:
+    input:
+      input: mixture_spectrogram
+    output: extracted_spectrogram
+  validation: ${.train}
+
+clip_gradient:
+  max_norm: 5
+
+resume:
+  continue_from:
+
+output:
+  exp_dir: "./exp"
+  tensorboard_dir: "./tensorboard"
+  save_checkpoint:
+    iteration:
+      every: 1000
+      path: ${...exp_dir}/model/iteration{iteration}.pth
+    epoch:
+      every: 20
+      path: ${...exp_dir}/model/epoch{epoch}.pth
+    last:
+      path: ${...exp_dir}/model/last.pth
+    best_epoch:
+      path: ${...exp_dir}/model/best_epoch.pth
+
+steps:
+  epochs: 100
+  iterations:
+  lr_scheduler: epoch
