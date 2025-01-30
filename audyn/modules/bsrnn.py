@@ -3,6 +3,7 @@ from typing import Any, Callable, List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from .dprnn import InterChunkRNN, IntraChunkRNN
 from .glu import GLU
@@ -22,7 +23,7 @@ __all__ = [
 class _BandSplitModule(nn.Module, ABC):
     """Base class of band split module."""
 
-    bins: List[int]
+    bins: Union[List[int], List[Tuple[int, int]]]
     backbone: nn.ModuleList
 
     def __init__(self, *args, **kwargs) -> None:
@@ -43,16 +44,27 @@ class _BandSplitModule(nn.Module, ABC):
 
         n_bins = input.size(-2)
 
-        assert sum(bins) == n_bins
-
-        x = torch.split(input, bins, dim=-2)
         x_stacked = []
 
-        for band_idx in range(len(bins)):
-            x_band = x[band_idx]
-            block = self.backbone[band_idx]
-            x_band = block(x_band)
-            x_stacked.append(x_band)
+        if isinstance(bins[0], int):
+            assert sum(bins) == n_bins
+
+            x = torch.split(input, bins, dim=-2)
+
+            for band_idx in range(len(bins)):
+                x_band = x[band_idx]
+                block = self.backbone[band_idx]
+                x_band = block(x_band)
+                x_stacked.append(x_band)
+        else:
+            for band_idx in range(len(bins)):
+                start_bin, end_bin = bins[band_idx]
+                _, x_band, _ = torch.split(
+                    input, [start_bin, end_bin - start_bin, n_bins - end_bin], dim=-2
+                )
+                block = self.backbone[band_idx]
+                x_band = block(x_band)
+                x_stacked.append(x_band)
 
         output = torch.stack(x_stacked, dim=-2)
 
@@ -62,8 +74,9 @@ class _BandSplitModule(nn.Module, ABC):
 class _BandMergeModule(nn.Module):
     """Base class of band merge module."""
 
-    bins: List[int]
+    bins: Union[List[int], List[Tuple[int, int]]]
     backbone: nn.ModuleList
+    frequency_assignment: Optional[torch.Tensor]
 
     def __init__(self, *args, **kwargs) -> None:
         """Define backbone."""
@@ -80,29 +93,80 @@ class _BandMergeModule(nn.Module):
 
         """
         bins = self.bins
+        frequency_assignment = self.frequency_assignment
 
         n_bands = input.size(-2)
-
-        assert len(bins) == n_bands
-
         x = torch.unbind(input, dim=-2)
         x_stacked = []
 
-        for band_idx in range(n_bands):
-            x_band = x[band_idx]
-            block = self.backbone[band_idx]
-            x_band = block(x_band)
-            x_stacked.append(x_band)
+        if isinstance(bins[0], int):
+            assert len(bins) == n_bands
 
-        output = torch.cat(x_stacked, dim=-2)
+            for band_idx in range(n_bands):
+                x_band = x[band_idx]
+                block = self.backbone[band_idx]
+                x_band = block(x_band)
+                x_stacked.append(x_band)
+
+            output = torch.cat(x_stacked, dim=-2)
+        else:
+            n_bins = frequency_assignment.size(-1)
+
+            for band_idx in range(n_bands):
+                start_idx, end_idx = bins[band_idx]
+                x_band = x[band_idx]
+                block = self.backbone[band_idx]
+                x_band = block(x_band)
+                x_band = F.pad(x_band, (0, 0, start_idx, n_bins - end_idx))
+                x_stacked.append(x_band)
+
+            x_stacked = torch.stack(x_stacked, dim=-3)
+            x_stacked = frequency_assignment.unsqueeze(dim=-1) * x_stacked
+            output = x_stacked.sum(dim=-3)
 
         return output
+
+    @staticmethod
+    def build_frequency_assignment(
+        bins: List[Tuple[int, int]],
+        n_bins: Optional[int] = None,
+        dtype: torch.dtype = None,
+        device: torch.device = None,
+    ) -> torch.Tensor:
+        """Build frequency assignment to bands.
+
+        Args:
+            bins (list): List of (start, end) in each band.
+            n_bins (int, optional): Number of frequency bins.
+
+        Returns:
+            torch.Tensor: Frequency assignment of shape (n_bands, n_bins).
+
+        """
+        factory_kwargs = {
+            "dtype": dtype,
+            "device": device,
+        }
+
+        if n_bins is None:
+            last_band = bins[-1]
+            _, n_bins = last_band
+
+        n_bands = len(bins)
+        assignment = torch.zeros((n_bands, n_bins), **factory_kwargs)
+
+        for band_idx, (start_bin, end_bin) in enumerate(bins):
+            assignment[band_idx, start_bin:end_bin] = 1
+
+        assignment = assignment / assignment.sum(dim=0)
+
+        return assignment
 
 
 class BandSplitModule(_BandSplitModule):
     """Band split module."""
 
-    def __init__(self, bins: List[int], embed_dim: int) -> None:
+    def __init__(self, bins: Union[List[int], List[Tuple[int, int]]], embed_dim: int) -> None:
         super().__init__()
 
         self.bins = bins
@@ -110,7 +174,13 @@ class BandSplitModule(_BandSplitModule):
 
         backbone = []
 
-        for n_bins in bins:
+        for _bins in bins:
+            if isinstance(_bins, int):
+                n_bins = _bins
+            else:
+                start_bin, end_bin = _bins
+                n_bins = end_bin - start_bin
+
             block = BandSplitBlock(n_bins, embed_dim)
             backbone.append(block)
 
@@ -122,7 +192,7 @@ class BandMergeModule(_BandMergeModule):
 
     def __init__(
         self,
-        bins: List[int],
+        bins: Union[List[int], List[Tuple[int, int]]],
         embed_dim: int,
         hidden_channels: int = 512,
         num_layers: int = 2,
@@ -134,7 +204,22 @@ class BandMergeModule(_BandMergeModule):
 
         backbone = []
 
-        for n_bins in bins:
+        if isinstance(bins[0], int):
+            frequency_overlap = False
+        else:
+            frequency_overlap = True
+
+        max_bin = 0
+
+        for _bins in bins:
+            if frequency_overlap:
+                start_bin, end_bin = _bins
+                n_bins = end_bin - start_bin
+                max_bin = end_bin
+            else:
+                n_bins = _bins
+                max_bin += _bins
+
             block = BandMergeBlock(
                 n_bins,
                 embed_dim,
@@ -145,11 +230,23 @@ class BandMergeModule(_BandMergeModule):
 
         self.backbone = nn.ModuleList(backbone)
 
+        if frequency_overlap:
+            frequency_assignment = self.build_frequency_assignment(bins, n_bins=max_bin)
+        else:
+            frequency_assignment = None
+
+        self.register_buffer("frequency_assignment", frequency_assignment, persistent=False)
+
 
 class MultiChannelBandSplitModule(_BandSplitModule):
     """Band split module for multichannel input."""
 
-    def __init__(self, in_channels: int, bins: List[int], embed_dim: int) -> None:
+    def __init__(
+        self,
+        in_channels: int,
+        bins: Union[List[int], List[Tuple[int, int]]],
+        embed_dim: int,
+    ) -> None:
         super().__init__()
 
         self.in_channels = in_channels
@@ -158,7 +255,13 @@ class MultiChannelBandSplitModule(_BandSplitModule):
 
         backbone = []
 
-        for n_bins in bins:
+        for _bins in bins:
+            if isinstance(_bins, int):
+                n_bins = _bins
+            else:
+                start_bin, end_bin = _bins
+                n_bins = end_bin - start_bin
+
             block = MultiChannelBandSplitBlock(in_channels, n_bins, embed_dim)
             backbone.append(block)
 
@@ -171,7 +274,7 @@ class MultiChannelBandMergeModule(_BandMergeModule):
     def __init__(
         self,
         out_channels: int,
-        bins: List[int],
+        bins: Union[List[int], List[Tuple[int, int]]],
         embed_dim: int,
         hidden_channels: int = 512,
         num_layers: int = 2,
@@ -184,7 +287,22 @@ class MultiChannelBandMergeModule(_BandMergeModule):
 
         backbone = []
 
-        for n_bins in bins:
+        if isinstance(bins[0], int):
+            frequency_overlap = False
+        else:
+            frequency_overlap = True
+
+        max_bin = 0
+
+        for _bins in bins:
+            if frequency_overlap:
+                start_bin, end_bin = _bins
+                n_bins = end_bin - start_bin
+                max_bin = end_bin
+            else:
+                n_bins = _bins
+                max_bin += _bins
+
             block = MultiChannelBandMergeBlock(
                 out_channels,
                 n_bins,
@@ -195,6 +313,13 @@ class MultiChannelBandMergeModule(_BandMergeModule):
             backbone.append(block)
 
         self.backbone = nn.ModuleList(backbone)
+
+        if frequency_overlap:
+            frequency_assignment = self.build_frequency_assignment(bins, n_bins=max_bin)
+        else:
+            frequency_assignment = None
+
+        self.register_buffer("frequency_assignment", frequency_assignment, persistent=False)
 
 
 class BandSplitBlock(nn.Module):
