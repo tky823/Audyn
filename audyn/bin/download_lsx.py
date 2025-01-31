@@ -83,5 +83,7 @@ def _unpack_zip(path: str, lsx_root: str) -> None:
         with zipfile.ZipFile(path, "r") as f:
             f.extractall(temp_dir)
 
+        os.makedirs(lsx_root, exist_ok=True)
+
         for temp_path in glob.glob(os.path.join(temp_dir, "*")):
             shutil.move(temp_path, lsx_root)

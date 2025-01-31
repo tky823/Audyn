@@ -113,5 +113,7 @@ def _unpack_targz(path: str, dnr_root: str) -> None:
         with tarfile.open(path) as f:
             f.extractall(temp_dir)
 
+        os.makedirs(dnr_root, exist_ok=True)
+
         for temp_path in glob.glob(os.path.join(temp_dir, "*")):
             shutil.move(temp_path, dnr_root)
