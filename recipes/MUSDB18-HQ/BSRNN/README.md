@@ -23,8 +23,8 @@ model="bsrnn_v7"
 --stage 1 \
 --stop-stage 1 \
 --tag <TAG> \
---model "${model}" \
---data "${data}"
+--data "${data}" \
+--model "${model}"
 ```
 
 If you resume training from a checkpoint,
@@ -40,6 +40,6 @@ model="bsrnn_v7"
 --stop-stage 1 \
 --tag <TAG> \
 --continue-from "${checkpoint}" \
---model "${model}" \
---data "${data}"
+--data "${data}" \
+--model "${model}"
 ```
