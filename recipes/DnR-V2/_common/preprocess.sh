@@ -28,7 +28,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
 
     mkdir -p "${list_dir}"
 
-    for subset in "train" "validate" "evaluate"; do
+    for subset in "train" "validation" "test"; do
         list_path="${list_dir}/${subset}.txt"
 
         python ../_common/local/save_list.py \
@@ -46,12 +46,12 @@ fi
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     echo "Preprocess stage 2: Save features"
 
-    for subset in "train" "validate" "evaluate"; do
+    for subset in "train" "validation" "test"; do
         if [ "${subset}" = "train" ]; then
             subset_name="tr"
-        elif [ "${subset}" = "validate" ]; then
+        elif [ "${subset}" = "validation" ]; then
             subset_name="cv"
-        elif [ "${subset}" = "evaluate" ]; then
+        elif [ "${subset}" = "test" ]; then
             subset_name="tt"
         else
             echo "Invalid subset is given."
