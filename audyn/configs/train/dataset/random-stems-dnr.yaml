@@ -12,7 +12,7 @@ train:
   replacement: true
   seed: ${system.seed}
 validation:
-  _target_: audyn.utils.data.musdb18.StemsDNRDataset
+  _target_: audyn.utils.data.dnr.StemsDNRDataset
   list_path:
   feature_dir:
   duration: ???
