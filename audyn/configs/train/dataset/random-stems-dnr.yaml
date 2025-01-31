@@ -3,7 +3,7 @@ train:
   list_path:
   feature_dir:
   duration: ???
-  speech_key: drums
+  speech_key: speech
   music_key: music
   effect_key: effect
   sample_rate_key: sample_rate
