@@ -8,6 +8,6 @@ Available formats are ``audyn.utils.data.available_dump_formats``.
 
    >>> from audyn.utils.data import available_dump_formats
    >>> print(available_dump_formats)
-   ['torch', 'webdataset', 'birdclef2024', 'musdb18', 'custom']
+   ['torch', 'webdataset', 'birdclef2024', 'musdb18', 'dnr-v2', 'custom']
 
 - ``custom``: Customized dumping format to avoid errors of format conversion by ``Audyn``.
