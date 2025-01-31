@@ -470,7 +470,17 @@ class RandomStemsDNRDataset(IterableDataset):
             for idx, source, source_key in zip(indices, sources, source_keys):
                 filename = filenames_per_worker[idx]
                 filenames.append(filename)
-                filename_per_source = f"{filename}/{source}.wav"
+
+                if source in ["speech", "music"]:
+                    _source = source
+                elif source in ["mixture"]:
+                    _source = "mix"
+                elif source in ["effect", "sfx"]:
+                    _source = "sfx"
+                else:
+                    raise ValueError(f"Invalid source {source} is given.")
+
+                filename_per_source = f"{filename}/{_source}.wav"
                 path = os.path.join(feature_dir, filename_per_source)
                 waveform, sample_rate = self.load_sliced_audio(path)
 
