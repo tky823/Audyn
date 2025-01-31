@@ -27,9 +27,9 @@ def main(config: DictConfig) -> None:
 
     if subset == "train":
         subset_name = "tr"
-    elif subset == "validate":
+    elif subset == "validation":
         subset_name = "cv"
-    elif subset == "evaluate":
+    elif subset == "test":
         subset_name = "tt"
     else:
         raise ValueError(f"{subset} is not supported as subset.")
@@ -57,12 +57,12 @@ def is_included(path: str, subset: str) -> bool:
             return True
         else:
             return False
-    elif subset == "validate":
+    elif subset == "validation":
         if filename in v2_validation_track_names:
             return True
         else:
             return False
-    elif subset == "evaluate":
+    elif subset == "test":
         if filename in v2_test_track_names:
             return True
         else:
