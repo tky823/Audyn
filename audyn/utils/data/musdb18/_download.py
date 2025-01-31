@@ -13,7 +13,7 @@ def download_track_names(
     """Download all track names of MUSDB18 dataset.
 
     Args:
-        root (str, optional): Rootdirectory to save ``musdb18_track_names.txt``.
+        root (str, optional): Root directory to save ``musdb18_track_names.txt``.
             Default: ``$HOME/.cache/audyn/data/musdb18``.
         subset (str or list, optional): Subset name(s). ``train``, ``validation``, and ``test`` are supported.
         url (str, optional): URL of pre-defined ``musdb18_track_names.txt``.
