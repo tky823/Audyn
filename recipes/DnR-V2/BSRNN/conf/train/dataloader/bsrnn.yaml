@@ -1,0 +1,57 @@
+defaults:
+  - defaults
+  - _self_
+
+train:
+  batch_size: 16
+  collate_fn:
+    _target_: audyn.utils.data.Collator
+    composer:
+      _target_: audyn.utils.data.SequentialComposer
+      _args_:
+        - _target_: audyn.utils.data.RescaledMixer
+          input_keys:
+            - speech
+            - music
+            - effect
+          output_key: mixture
+          decode_audio_as_waveform: true
+          decode_audio_as_monoral: false
+        - _target_: audyn.utils.data.Stacker
+          input_keys: ${..0.input_keys}
+          output_key: sources
+          dim: 0
+          decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
+          decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
+        - _target_: audyn.utils.data.composer.AudioFeatureExtractionComposer
+          feature_extractor:
+            _target_: audyn.transforms.STFT
+            n_fft: ${data.spectrogram.n_fft}
+            hop_length: ${data.spectrogram.hop_length}
+            window: ${data.spectrogram.window}
+            center: ${data.spectrogram.center}
+            normalized: ${data.spectrogram.normalized}
+            onesided: ${data.spectrogram.onesided}
+            return_complex: true
+          audio_key: ${..0.output_key}
+          feature_key: mixture_spectrogram
+          decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
+          decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
+        - _target_: audyn.utils.data.composer.AudioFeatureExtractionComposer
+          feature_extractor:
+            _target_: audyn.transforms.STFT
+            n_fft: ${data.spectrogram.n_fft}
+            hop_length: ${data.spectrogram.hop_length}
+            window: ${data.spectrogram.window}
+            center: ${data.spectrogram.center}
+            normalized: ${data.spectrogram.normalized}
+            onesided: ${data.spectrogram.onesided}
+            return_complex: true
+          audio_key: ${..1.output_key}
+          feature_key: source_spectrogram
+          decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
+          decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
+  shuffle:
+validation:
+  batch_size: 16
+  collate_fn: ${..train.collate_fn}
