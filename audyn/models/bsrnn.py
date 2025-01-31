@@ -14,7 +14,9 @@ from ..modules.bsrnn import (
 
 __all__ = [
     "BandSplitRNN",
+    "MultiSourceMultiChannelBandSplitRNN",
     "BSRNN",
+    "MultiSourceMultiChannelBSRNN",
 ]
 
 
