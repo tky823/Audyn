@@ -326,6 +326,49 @@ class MultiChannelBandMergeModule(_BandMergeModule):
         self.register_buffer("frequency_assignment", frequency_assignment, persistent=False)
 
 
+class MultiSourceMultiChannelBandMergeModule(nn.Module):
+    """Band merge module for multichannel output."""
+
+    def __init__(
+        self,
+        num_sources: int,
+        out_channels: int,
+        bins: Union[List[int], List[Tuple[int, int]]],
+        embed_dim: int,
+        hidden_channels: int = 512,
+        num_layers: int = 2,
+    ) -> None:
+        super().__init__()
+
+        backbone = []
+
+        for _ in range(num_sources):
+            module = MultiChannelBandMergeModule(
+                out_channels,
+                bins,
+                embed_dim,
+                hidden_channels=hidden_channels,
+                num_layers=num_layers,
+            )
+            backbone.append(module)
+
+        self.backbone = nn.ModuleList(backbone)
+        self.num_sources = num_sources
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        num_sources = self.num_sources
+        x = []
+
+        for source_idx in range(num_sources):
+            module = self.backbone[source_idx]
+            x_source = module(input)
+            x.append(x_source)
+
+        output = torch.stack(x, dim=-4)
+
+        return output
+
+
 class BandSplitBlock(nn.Module):
     """BandSplitBlock composed of layer norm and linear.
 
