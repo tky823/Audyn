@@ -21,6 +21,7 @@ available_dump_formats = [
     "webdataset",
     "birdclef2024",
     "musdb18",
+    "dnr-v2",
     "custom",
 ]
 
