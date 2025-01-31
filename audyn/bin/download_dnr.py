@@ -18,7 +18,7 @@ def main(config: DictConfig) -> None:
     .. code-block:: shell
 
         data_root="./data"  # root directory to save .tar.gz file.
-        dnr_root="${data_root}/DnR-v2"
+        dnr_root="${data_root}/DnR-V2"
         version=2
         unpack=true  # unpack .tar.gz or not
         chunk_size=8192  # chunk size in byte to download
@@ -60,7 +60,7 @@ def download_dnr(config: DictConfig) -> None:
 
     version = str(version)
 
-    assert version.lower() in ["2", "v2"], "DnR-v2 is supported."
+    assert version.lower() in ["2", "v2"], "Only DnR-V2 is supported."
 
     if root:
         os.makedirs(root, exist_ok=True)
@@ -86,7 +86,7 @@ def download_dnr(config: DictConfig) -> None:
                     f_out.write(f_in.read())
 
         root = os.path.dirname(path)
-        default_name = "DnR-v2"
+        default_name = "DnR-V2"
 
         if dnr_root is None:
             dnr_root = os.path.join(root, default_name)
