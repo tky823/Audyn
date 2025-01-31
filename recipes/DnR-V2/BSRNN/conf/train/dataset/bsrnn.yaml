@@ -1,5 +1,5 @@
 defaults:
-  - random-stems-dnr-v2
+  - random-stems-dnr
   - _self_
 
 train:
