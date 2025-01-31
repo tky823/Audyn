@@ -8,6 +8,7 @@ from audyn.modules.bsrnn import (
     BandSplitRNNBackbone,
     MultiChannelBandMergeModule,
     MultiChannelBandSplitModule,
+    MultiSourceMultiChannelBandMergeModule,
 )
 
 
@@ -105,3 +106,42 @@ def test_multichannel_bsrnn() -> None:
     output = model(input)
 
     assert output.size() == input.size()
+
+
+def test_multisource_multichannel_bsrnn() -> None:
+    torch.manual_seed(0)
+
+    batch_size = 4
+    in_channels = 1
+    bins = [15, 11, 5, 2]
+    n_frames = 128
+    num_features, hidden_channels = 8, 6
+    shape = (batch_size, in_channels, sum(bins), n_frames)
+    num_sources = 3
+    num_blocks = 2
+
+    bandsplit = MultiChannelBandSplitModule(in_channels, bins, num_features)
+    bandmerge = MultiSourceMultiChannelBandMergeModule(
+        num_sources, in_channels, bins, num_features
+    )
+    backbone = BandSplitRNNBackbone(num_features, hidden_channels, num_blocks=num_blocks)
+    model = MultiSourceMultiChannelBandSplitRNN(bandsplit, bandmerge, backbone)
+    input = torch.randn(shape) + 1j * torch.randn(shape)
+    output = model(input)
+
+    assert output.size() == (batch_size, num_sources, in_channels, sum(bins), n_frames)
+
+    bins = [[0, 18], [12, 28], [24, 31], [30, 33]]
+
+    bandsplit = MultiChannelBandSplitModule(in_channels, bins, num_features)
+    bandmerge = MultiSourceMultiChannelBandMergeModule(
+        num_sources, in_channels, bins, num_features
+    )
+    backbone = BandSplitRNNBackbone(num_features, hidden_channels, num_blocks=num_blocks)
+    model = MultiSourceMultiChannelBandSplitRNN(bandsplit, bandmerge, backbone)
+    input = torch.randn(shape) + 1j * torch.randn(shape)
+    output = model(input)
+
+    _, n_bins = bins[-1]
+
+    assert output.size() == (batch_size, num_sources, in_channels, n_bins, n_frames)
