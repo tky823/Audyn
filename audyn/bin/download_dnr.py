@@ -99,7 +99,7 @@ def _download_dnr(url: str, path: str, chunk_size: int = 8192) -> None:
     temp_path = path + str(uuid.uuid4())[:8]
 
     try:
-        download_file(url, path, chunk_size=chunk_size)
+        download_file(url, temp_path, chunk_size=chunk_size)
         shutil.move(temp_path, path)
     except (Exception, KeyboardInterrupt) as e:
         if os.path.exists(temp_path):
