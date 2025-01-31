@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from audyn.models.bsrnn import BandSplitRNN
+from audyn.models.bsrnn import BandSplitRNN, MultiSourceMultiChannelBandSplitRNN
 from audyn.modules.bsrnn import (
     BandMergeModule,
     BandSplitModule,
@@ -15,9 +15,9 @@ from audyn.modules.bsrnn import (
 def test_official_bsrnn() -> None:
     batch_size = 4
     n_frames = 128
-    in_channels = 2
 
     # BandSplitRNN
+    in_channels = 2
     version = "v7"
     model = BandSplitRNN.build_from_config(in_channels, version=version)
     n_bins = sum(model.bandsplit.bins)
@@ -29,15 +29,19 @@ def test_official_bsrnn() -> None:
     assert output.size() == input.size()
 
     # BandIt
+    num_sources = 3
+    in_channels = 1
     version = "music-scale"
-    model = BandSplitRNN.build_from_config(in_channels, version=version)
+    model = MultiSourceMultiChannelBandSplitRNN.build_from_config(
+        num_sources, in_channels, version=version
+    )
     _, n_bins = model.bandsplit.bins[-1]
 
     shape = (batch_size, in_channels, n_bins, n_frames)
     input = torch.randn(shape) + 1j * torch.randn(shape)
     output = model(input)
 
-    assert output.size() == input.size()
+    assert output.size() == (batch_size, num_sources, in_channels, n_bins, n_frames)
 
 
 def test_bsrnn() -> None:
