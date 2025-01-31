@@ -30,7 +30,7 @@ model="bsrnn_v7"
 If you resume training from a checkpoint,
 
 ```sh
-checkpoint=<PATH/TO/HIFIGAN/CHECKPOINT>  # e.g. exp/<TAG>/model/last.pth
+checkpoint=<PATH/TO/BSRNN/CHECKPOINT>  # e.g. exp/<TAG>/model/last.pth
 
 data="musdb18hq-bass"  # "musdb18hq-bass", "musdb18hq-drums", "musdb18hq-other", or "musdb18hq-vocals"
 model="bsrnn_v7"
