@@ -1,0 +1,22 @@
+defaults:
+  - dataset: random-stems-musdb18
+  - dataloader: dummy_musdb18
+  - output: dummy
+  - _self_
+
+key_mapping:
+  train:
+    input:
+      input: mixture
+    output: extracted
+  validation: ${.train}
+
+resume:
+  continue_from:
+
+record:
+
+steps:
+  epochs:
+  iterations:
+  lr_scheduler: iteration
