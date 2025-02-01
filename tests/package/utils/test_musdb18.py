@@ -163,6 +163,7 @@ def test_distributed_musdb18_dataset(
     num_workers: int,
     divisible_by_num_workers: bool,
 ) -> None:
+    # NOTE: Set num_workers=1 instead of num_workers=0 to prevent segment fault on Ubuntu.
     port = select_random_port()
     seed = 0
     world_size = 1
