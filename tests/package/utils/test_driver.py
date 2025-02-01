@@ -504,11 +504,12 @@ def test_base_trainer_ddp_for_audioset(
         if composer_pattern == 1:
             train_dataset_target += ".instantiate_dataset"
 
-        assert config.train.dataset.train._target_ == train_dataset_target
-        assert (
-            config.train.dataset.validation._target_
-            == "audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset"
+        validation_dataset_target = (
+            "audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset"
         )
+
+        assert config.train.dataset.train._target_ == train_dataset_target
+        assert config.train.dataset.validation._target_ == validation_dataset_target
         assert config.train.dataloader.train._target_ == "torch.utils.data.DataLoader"
         assert config.train.dataloader.validation._target_ == "torch.utils.data.DataLoader"
 
@@ -543,10 +544,7 @@ def test_base_trainer_ddp_for_audioset(
             train_dataset_target += ".instantiate_dataset"
 
         assert config.train.dataset.train._target_ == train_dataset_target
-        assert (
-            config.train.dataset.validation._target_
-            == "audyn.utils.data.dataset.WebDatasetWrapper.instantiate_dataset"
-        )
+        assert config.train.dataset.validation._target_ == validation_dataset_target
         assert config.train.dataloader.train._target_ == "torch.utils.data.DataLoader"
         assert (
             config.train.dataloader.validation._target_
@@ -607,6 +605,156 @@ def test_base_trainer_ddp_for_audioset(
 
         close_all(trainer.loaders.train)
         close_all(trainer.loaders.validation)
+
+        dist.destroy_process_group()
+
+        monkeypatch.undo()
+
+
+def test_base_trainer_ddp_for_musdb18(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """Test BaseTrainer for DDP using MUSDDB18 dataset."""
+    BATCH_SIZE = 3
+    ITERATIONS = 3
+
+    num_frames = 48000
+
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
+        monkeypatch.chdir(temp_dir)
+
+        # set environmental variables
+        os.environ["LOCAL_RANK"] = "0"
+        os.environ["RANK"] = "0"
+        os.environ["WORLD_SIZE"] = "1"
+        os.environ["MASTER_ADDR"] = "localhost"
+        os.environ["MASTER_PORT"] = str(torch.randint(0, 2**16, ()).item())
+
+        overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
+        exp_dir = "./exp"
+
+        audio_dir = os.path.join(temp_dir, "audio")
+        list_dir = os.path.join(temp_dir, "list")
+        feature_dir = os.path.join(temp_dir, "feature")
+
+        os.makedirs(audio_dir, exist_ok=True)
+        os.makedirs(list_dir, exist_ok=True)
+        os.makedirs(feature_dir, exist_ok=True)
+
+        track_names = _save_dummy_musdb18(root=feature_dir, num_frames=num_frames)
+
+        for subset, subset_track_names in track_names.items():
+            subset_track_names = subset_track_names[:10]
+            list_path = os.path.join(list_dir, f"{subset}.txt")
+
+            with open(list_path, mode="w") as f:
+                for track_name in subset_track_names:
+                    line = f"{track_name}\n"
+                    f.write(line)
+
+        with hydra.initialize(
+            version_base="1.2",
+            config_path=relpath(config_template_path, dirname(realpath(__file__))),
+            job_name="test_driver",
+        ):
+            system_name = "cpu_ddp"
+            train_name = "dummy_musdb18"
+            lr_scheduler_name = "dummy"
+            optimizer_name = "dummy"
+
+            config = hydra.compose(
+                config_name="config",
+                overrides=create_dummy_musdb18_override(
+                    overrides_conf_dir=overrides_conf_dir,
+                    exp_dir=exp_dir,
+                    list_dir=list_dir,
+                    feature_dir=feature_dir,
+                    batch_size=BATCH_SIZE,
+                    iterations=ITERATIONS,
+                    system=system_name,
+                    train=train_name,
+                    optimizer=optimizer_name,
+                    lr_scheduler=lr_scheduler_name,
+                ),
+                return_hydra_config=True,
+            )
+
+        assert config.system.distributed.enable
+
+        train_dataset_target = "audyn.utils.data.musdb18.RandomStemsMUSDB18Dataset"
+        validation_dataset_target = "audyn.utils.data.musdb18.StemsMUSDB18Dataset"
+        train_dataloader_target = "torch.utils.data.DataLoader"
+        validation_dataloader_target = "torch.utils.data.DataLoader"
+
+        assert config.train.dataset.train._target_ == train_dataset_target
+        assert config.train.dataset.validation._target_ == validation_dataset_target
+        assert config.train.dataloader.train._target_ == train_dataloader_target
+        assert config.train.dataloader.validation._target_ == validation_dataloader_target
+
+        convert_dataset_and_dataloader_format_if_necessary(config)
+        convert_dataset_and_dataloader_to_ddp_if_possible(config)
+        set_nodes_if_necessary(config.system)
+        set_compiler_if_necessary(config.system)
+
+        dist.init_process_group(
+            backend=config.system.distributed.backend,
+            init_method=config.system.distributed.init_method,
+            rank=int(os.environ["RANK"]),
+            world_size=int(os.environ["WORLD_SIZE"]),
+            timeout=timedelta(minutes=5),
+        )
+        torch.manual_seed(config.system.seed)
+
+        assert config.system.distributed.enable
+
+        train_dataset_target = (
+            "audyn.utils.data.musdb18.dataset.DistributedRandomStemsMUSDB18Dataset"
+        )
+        validation_dataloader_target = "audyn.utils.data.dataloader.DistributedDataLoader"
+
+        assert config.train.dataset.train._target_ == train_dataset_target
+        assert config.train.dataset.validation._target_ == validation_dataset_target
+        assert config.train.dataloader.train._target_ == train_dataloader_target
+        assert config.train.dataloader.validation._target_ == validation_dataloader_target
+
+        train_dataset = instantiate(config.train.dataset.train)
+        validation_dataset = instantiate(config.train.dataset.validation)
+        train_loader = instantiate(
+            config.train.dataloader.train,
+            train_dataset,
+        )
+        validation_loader = instantiate(
+            config.train.dataloader.validation,
+            validation_dataset,
+        )
+
+        loaders = BaseDataLoaders(train_loader, validation_loader)
+        model = instantiate_model(config.model)
+        # NOTE: set_device is unavailable here.
+        model = nn.parallel.DistributedDataParallel(model)
+        criterion = instantiate_criterion(config.criterion)
+
+        if config.system.compile.enable:
+            compile_kwargs = config.system.compile.kwargs
+
+            if compile_kwargs is None:
+                compile_kwargs = {}
+
+            model = torch.compile(model, **compile_kwargs)
+
+        optimizer = instantiate_optimizer(config.optimizer, model)
+        lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
+
+        trainer = BaseTrainer(
+            loaders,
+            model,
+            optimizer,
+            lr_scheduler=lr_scheduler,
+            criterion=criterion,
+            config=config,
+        )
+        trainer.run()
+        trainer.writer.flush()
 
         dist.destroy_process_group()
 
@@ -2612,6 +2760,74 @@ def create_dummy_audioset_override(
     return override_list
 
 
+def create_dummy_musdb18_override(
+    overrides_conf_dir: str,
+    exp_dir: str,
+    list_dir: str,
+    feature_dir: str,
+    batch_size: int = 1,
+    iterations: int = 1,
+    system: str = "defaults",
+    train: str = "dummy_musdb18",
+    optimizer: str = "dummy",
+    lr_scheduler: str = "dummy",
+    continue_from: str = "",
+    checkpoint: str = "",
+) -> List[str]:
+    sample_rate = 16000
+
+    dump_format = "musdb18"
+
+    model = "dummy_waveform_processor"
+    criterion = "dummy_musdb18"
+
+    train_list_path = os.path.join(list_dir, "train.txt")
+    validation_list_path = os.path.join(list_dir, "validation.txt")
+    train_feature_dir = os.path.join(feature_dir, "train")
+    validation_feature_dir = train_feature_dir
+
+    override_list = [
+        f"system={system}",
+        f"preprocess.dump_format={dump_format}",
+        f"train={train}",
+        "test=dummy",
+        f"model={model}",
+        f"optimizer={optimizer}",
+        f"lr_scheduler={lr_scheduler}",
+        f"criterion={criterion}",
+        f"hydra.searchpath=[{overrides_conf_dir}]",
+        "hydra.job.num=1",
+        f"hydra.runtime.output_dir={exp_dir}/log",
+        f"preprocess.dump_format={dump_format}",
+        f"data.audio.sample_rate={sample_rate}",
+        f"train.dataset.train.list_path={train_list_path}",
+        f"train.dataset.train.feature_dir={train_feature_dir}",
+        f"train.dataset.validation.list_path={validation_list_path}",
+        f"train.dataset.validation.feature_dir={validation_feature_dir}",
+        f"train.dataloader.train.batch_size={batch_size}",
+        f"train.dataloader.validation.batch_size={batch_size}",
+        f"train.output.exp_dir={exp_dir}",
+        f"train.resume.continue_from={continue_from}",
+        f"train.steps.iterations={iterations}",
+        f"test.checkpoint={checkpoint}",
+    ]
+
+    override_list += [
+        "train/dataloader=dummy_musdb18",
+        "train.dataset.train.duration=1",
+        "train.dataset.validation.duration=1",
+    ]
+
+    if lr_scheduler == "none":
+        override_list += ["train.steps.lr_scheduler=''"]
+
+    if system == "cpu_ddp" and IS_WINDOWS:
+        port = os.environ["MASTER_PORT"]
+        override_list += [f"system.distributed.init_method=tcp://localhost:{port}"]
+
+    return override_list
+
+
 def create_dummy_for_dataloader_override(
     overrides_conf_dir: str,
     exp_dir: str,
@@ -2821,3 +3037,65 @@ def audioset_samples() -> Dict[str, Dict[str, Any]]:
     }
 
     return samples
+
+
+def _save_dummy_musdb18(root: str, num_frames: int) -> Dict[str, List[str]]:
+    from audyn.utils.data.musdb18 import (
+        sources,
+        test_track_names,
+        train_track_names,
+        validation_track_names,
+    )
+
+    g = torch.Generator()
+    g.manual_seed(0)
+
+    num_channels = 2
+    sample_rate = 24000
+
+    subset_name = "train"
+    track_names = {
+        "train": train_track_names,
+        "validation": validation_track_names,
+        "test": test_track_names,
+    }
+
+    for track_name in train_track_names + validation_track_names:
+        track_dir = os.path.join(root, subset_name, track_name)
+
+        os.makedirs(track_dir, exist_ok=True)
+
+        mixture = 0
+
+        for source in sources:
+            path = os.path.join(track_dir, f"{source}.wav")
+            waveform = torch.randn((num_channels, num_frames), generator=g)
+            max_amplitude = torch.max(torch.abs(waveform))
+            waveform = 0.1 * (waveform / max_amplitude)
+            mixture = mixture + waveform
+            torchaudio.save(path, waveform, sample_rate)
+
+        path = os.path.join(track_dir, "mixture.wav")
+        torchaudio.save(path, mixture, sample_rate)
+
+    subset_name = "test"
+
+    for track_name in test_track_names:
+        track_dir = os.path.join(root, subset_name, track_name)
+
+        os.makedirs(track_dir, exist_ok=True)
+
+        mixture = 0
+
+        for source in sources:
+            path = os.path.join(track_dir, f"{source}.wav")
+            waveform = torch.randn((num_channels, num_frames), generator=g)
+            max_amplitude = torch.max(torch.abs(waveform))
+            waveform = 0.1 * (waveform / max_amplitude)
+            mixture = mixture + waveform
+            torchaudio.save(path, waveform, sample_rate)
+
+        path = os.path.join(track_dir, "mixture.wav")
+        torchaudio.save(path, mixture, sample_rate)
+
+    return track_names
