@@ -192,6 +192,8 @@ def test_distributed_musdb18_dataset(
     with tempfile.TemporaryDirectory() as temp_dir:
         list_dir = os.path.join(temp_dir, "list")
         feature_dir = os.path.join(temp_dir, "feature")
+        train_feature_dir = os.path.join(feature_dir, "train")
+        train_list_path = os.path.join(list_dir, "train.txt")
 
         os.makedirs(list_dir, exist_ok=True)
         os.makedirs(feature_dir, exist_ok=True)
@@ -200,9 +202,6 @@ def test_distributed_musdb18_dataset(
             root=feature_dir, sample_rate=sample_rate, num_frames=num_frames
         )
         train_track_names = track_names["train"]
-
-        train_list_path = os.path.join(list_dir, "train.txt")
-        train_feature_dir = os.path.join(feature_dir, "train")
 
         with open(train_list_path, mode="w") as f_list:
             for track_name in train_track_names:
