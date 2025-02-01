@@ -31,6 +31,23 @@ You can decode .stem.mp4 file(s) into .wav files for MUSDB18 dataset by ``audyn-
 
 .. autofunction:: audyn.bin.decode_musdb18.main
 
+Download LSX dataset
+--------------------
+
+You can download LSX dataset by ``audyn-download-lsx``.
+
+.. code-block:: shell
+
+    data_root="./data"  # root directory to save .zip file.
+    lsx_root="${data_root}/lsx"
+    unpack=true  # unpack .zip or not
+    chunk_size=8192  # chunk size in byte to download
+
+    audyn-download-lsx \
+    root="${data_root}" \
+    lsx_root="${lsx_root}" \
+    unpack=${unpack} \
+    chunk_size=${chunk_size}
 
 Download MTG-Jamendo dataset
 ----------------------------
