@@ -371,6 +371,8 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
         sample_rate_key = self.sample_rate_key
         filename_key = self.filename_key
 
+        assert len(sources) == len(source_keys)
+
         if self.worker_id is None:
             # should be initialized
             worker_info = get_worker_info()
@@ -431,7 +433,8 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
 
             # NOTE: Random state of self.generator is shared among processes.
             #       Random state of sampler.generator is not shared among processes.
-            indices = torch.randperm(num_total_samples, generator=self.generator).tolist()
+            indices = torch.randperm(num_total_samples, generator=self.generator)
+            indices = indices.tolist()
             filenames_per_worker = [
                 self.filenames[idx] for idx in indices[self.worker_id :: self.num_workers]
             ]
@@ -445,8 +448,6 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
         for indices in self.sampler:
             filenames = []
             feature = {}
-
-            assert len(sources) == len(source_keys)
 
             if self.replacement:
                 # If self.replacement=True,
