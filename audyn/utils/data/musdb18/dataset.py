@@ -15,6 +15,7 @@ __all__ = [
     "StemsMUSDB18Dataset",
     "RandomStemsMUSDB18Dataset",
     "DistributedRandomStemsMUSDB18Dataset",
+    "Track",
 ]
 
 
