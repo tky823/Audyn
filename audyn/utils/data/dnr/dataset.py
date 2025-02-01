@@ -13,6 +13,7 @@ __all__ = [
     "DNR",
     "StemsDNRDataset",
     "RandomStemsDNRDataset",
+    "DistributedRandomStemsDNRDataset",
     "Track",
 ]
 
