@@ -644,7 +644,7 @@ def test_base_trainer_ddp_for_musdb18(
         track_names = _save_dummy_musdb18(root=feature_dir, num_frames=num_frames)
 
         for subset, subset_track_names in track_names.items():
-            subset_track_names = subset_track_names[:10]
+            subset_track_names = subset_track_names
             list_path = os.path.join(list_dir, f"{subset}.txt")
 
             with open(list_path, mode="w") as f:
@@ -3050,17 +3050,21 @@ def _save_dummy_musdb18(root: str, num_frames: int) -> Dict[str, List[str]]:
     g = torch.Generator()
     g.manual_seed(0)
 
+    _train_track_names = train_track_names[:10]
+    _validation_track_names = validation_track_names[:10]
+    _test_track_names = test_track_names[:10]
+
     track_names = {
-        "train": train_track_names,
-        "validation": validation_track_names,
-        "test": test_track_names,
+        "train": _train_track_names,
+        "validation": _validation_track_names,
+        "test": _test_track_names,
     }
 
     num_channels = 2
     sample_rate = 24000
     subset_name = "train"
 
-    for track_name in train_track_names + validation_track_names:
+    for track_name in _train_track_names + _validation_track_names:
         track_dir = os.path.join(root, subset_name, track_name)
 
         os.makedirs(track_dir, exist_ok=True)
@@ -3080,7 +3084,7 @@ def _save_dummy_musdb18(root: str, num_frames: int) -> Dict[str, List[str]]:
 
     subset_name = "test"
 
-    for track_name in test_track_names:
+    for track_name in _test_track_names:
         track_dir = os.path.join(root, subset_name, track_name)
 
         os.makedirs(track_dir, exist_ok=True)

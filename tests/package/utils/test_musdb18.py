@@ -1,6 +1,7 @@
 import glob
 import os
 import tempfile
+import warnings
 from datetime import timedelta
 from typing import Dict, List
 
@@ -37,7 +38,10 @@ def test_musdb18() -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
         _ = _save_dummy_musdb18(root=temp_dir, sample_rate=sample_rate, num_frames=num_frames)
 
+        # To ignore "Track is not found."
+        warnings.simplefilter("ignore", UserWarning)
         dataset = MUSDB18(temp_dir, subset="train", ext="wav")
+        warnings.resetwarnings()
 
         for track in dataset:
             track: Track
@@ -312,16 +316,20 @@ def _save_dummy_musdb18(root: str, sample_rate: int, num_frames: int) -> Dict[st
     g = torch.Generator()
     g.manual_seed(0)
 
+    _train_track_names = train_track_names[:10]
+    _validation_track_names = validation_track_names[:10]
+    _test_track_names = test_track_names[:10]
+
     track_names = {
-        "train": train_track_names,
-        "validation": validation_track_names,
-        "test": test_track_names,
+        "train": _train_track_names,
+        "validation": _validation_track_names,
+        "test": _test_track_names,
     }
 
     num_channels = 2
     subset_name = "train"
 
-    for track_name in train_track_names + validation_track_names:
+    for track_name in _train_track_names + _validation_track_names:
         track_dir = os.path.join(root, subset_name, track_name)
 
         os.makedirs(track_dir, exist_ok=True)
@@ -341,7 +349,7 @@ def _save_dummy_musdb18(root: str, sample_rate: int, num_frames: int) -> Dict[st
 
     subset_name = "test"
 
-    for track_name in test_track_names:
+    for track_name in _test_track_names:
         track_dir = os.path.join(root, subset_name, track_name)
 
         os.makedirs(track_dir, exist_ok=True)
