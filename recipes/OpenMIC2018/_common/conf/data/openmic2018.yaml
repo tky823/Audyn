@@ -1,0 +1,7 @@
+defaults:
+  - defaults
+  - _self_
+
+tag:
+  tags: ${const:audyn.utils.data.openmic2018.all_tags}
+  num_tags: ${const:audyn.utils.data.openmic2018.num_all_tags}
