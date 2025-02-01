@@ -4,6 +4,7 @@ from .dataset import (
     DistributedRandomStemsMUSDB18Dataset,
     RandomStemsMUSDB18Dataset,
     StemsMUSDB18Dataset,
+    Track,
 )
 
 __all__ = [
@@ -18,6 +19,7 @@ __all__ = [
     "StemsMUSDB18Dataset",
     "RandomStemsMUSDB18Dataset",
     "DistributedRandomStemsMUSDB18Dataset",
+    "Track",
 ]
 
 all_track_names = download_track_names()
