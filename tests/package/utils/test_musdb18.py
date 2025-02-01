@@ -145,7 +145,7 @@ def _save_dummy_musdb18(root: str, num_frames: int) -> None:
 
     subset_name = "train"
 
-    for track_name in train_track_names:
+    for track_name in train_track_names + validation_track_names:
         track_dir = os.path.join(root, subset_name, track_name)
 
         os.makedirs(track_dir, exist_ok=True)
@@ -158,26 +158,6 @@ def _save_dummy_musdb18(root: str, num_frames: int) -> None:
             max_amplitude = torch.max(torch.abs(waveform))
             waveform = 0.1 * (waveform / max_amplitude)
             mixture = mixture + waveform
-
-            torchaudio.save(path, waveform, sample_rate)
-
-        path = os.path.join(track_dir, "mixture.wav")
-        torchaudio.save(path, mixture, sample_rate)
-
-    for track_name in validation_track_names:
-        track_dir = os.path.join(root, subset_name, track_name)
-
-        os.makedirs(track_dir, exist_ok=True)
-
-        mixture = 0
-
-        for source in sources:
-            path = os.path.join(track_dir, f"{source}.wav")
-            waveform = torch.randn((num_channels, num_frames), generator=g)
-            max_amplitude = torch.max(torch.abs(waveform))
-            waveform = 0.1 * (waveform / max_amplitude)
-            mixture = mixture + waveform
-
             torchaudio.save(path, waveform, sample_rate)
 
         path = os.path.join(track_dir, "mixture.wav")
@@ -198,7 +178,6 @@ def _save_dummy_musdb18(root: str, num_frames: int) -> None:
             max_amplitude = torch.max(torch.abs(waveform))
             waveform = 0.1 * (waveform / max_amplitude)
             mixture = mixture + waveform
-
             torchaudio.save(path, waveform, sample_rate)
 
         path = os.path.join(track_dir, "mixture.wav")
