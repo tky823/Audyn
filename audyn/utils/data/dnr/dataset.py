@@ -7,6 +7,7 @@ import torch.distributed as dist
 import torchaudio
 from torch.utils.data import Dataset, IterableDataset, RandomSampler, get_worker_info
 
+from .distributed import DistributedRandomStemsDNRSampler
 from .sampler import RandomStemsDNRSampler
 
 __all__ = [
@@ -652,10 +653,12 @@ class DistributedRandomStemsDNRDataset(IterableDataset):
             num_samples = len(filenames) // num_replicas
 
         if replacement:
-            self.sampler = RandomStemsDNRSampler(
+            self.sampler = DistributedRandomStemsDNRSampler(
                 filenames,
                 num_samples=num_samples,
-                generator=generator,
+                num_replicas=num_replicas,
+                rank=rank,
+                seed=seed,
             )
         else:
             if num_samples > len(filenames) // num_replicas:
@@ -723,10 +726,12 @@ class DistributedRandomStemsDNRDataset(IterableDataset):
                 if self.worker_id < num_total_samples % self.num_workers:
                     num_samples_per_worker += 1
 
-                self.sampler = RandomStemsDNRSampler(
+                self.sampler = DistributedRandomStemsDNRSampler(
                     self.filenames,
                     num_samples=num_samples_per_worker,
-                    generator=sampler.generator,
+                    num_replicas=num_replicas,
+                    rank=rank,
+                    seed=sampler.seed,
                 )
             else:
                 self.sampler = RandomSampler(
