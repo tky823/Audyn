@@ -1,6 +1,7 @@
 import glob
 import os
 import tempfile
+from typing import Dict, List
 
 import pytest
 import torch
@@ -18,18 +19,21 @@ from audyn.utils.data.musdb18.dataset import (
     MUSDB18,
     RandomStemsMUSDB18Dataset,
     StemsMUSDB18Dataset,
+    Track,
 )
 
 
 def test_musdb18() -> None:
+    sample_rate = 24000
     num_frames = 48000
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        _save_dummy_musdb18(root=temp_dir, num_frames=num_frames)
+        _ = _save_dummy_musdb18(root=temp_dir, sample_rate=sample_rate, num_frames=num_frames)
 
         dataset = MUSDB18(temp_dir, subset="train", ext="wav")
 
         for track in dataset:
+            track: Track
             track.frame_offset = num_frames // 4
             track.num_frames = num_frames // 2
 
@@ -54,9 +58,13 @@ def test_musdb18() -> None:
 
 
 @pytest.mark.parametrize("replacement", [True, False])
-def test_musdb18_dataset(replacement: bool) -> None:
+@pytest.mark.parametrize("num_workers", [0, 2])
+def test_musdb18_dataset(
+    replacement: bool,
+    num_workers: int,
+) -> None:
     batch_size = 3
-    num_workers = 2
+    sample_rate = 24000
     num_frames = 48000
     duration = 1.0
 
@@ -69,7 +77,7 @@ def test_musdb18_dataset(replacement: bool) -> None:
         os.makedirs(feature_dir, exist_ok=True)
         os.makedirs(list_dir, exist_ok=True)
 
-        _save_dummy_musdb18(root=feature_dir, num_frames=num_frames)
+        _ = _save_dummy_musdb18(root=feature_dir, sample_rate=sample_rate, num_frames=num_frames)
 
         with open(train_list_path, mode="w") as f:
             for track_name in sorted(glob.glob(os.path.join(train_feature_dir, "*"))):
@@ -136,14 +144,18 @@ def test_musdb18_dataset(replacement: bool) -> None:
             assert len(set(filenames)) == len(dataset.filenames)
 
 
-def _save_dummy_musdb18(root: str, num_frames: int) -> None:
+def _save_dummy_musdb18(root: str, sample_rate: int, num_frames: int) -> Dict[str, List[str]]:
     g = torch.Generator()
     g.manual_seed(0)
 
     num_channels = 2
-    sample_rate = 24000
 
     subset_name = "train"
+    track_names = {
+        "train": train_track_names,
+        "validation": validation_track_names,
+        "test": test_track_names,
+    }
 
     for track_name in train_track_names + validation_track_names:
         track_dir = os.path.join(root, subset_name, track_name)
@@ -182,3 +194,5 @@ def _save_dummy_musdb18(root: str, num_frames: int) -> None:
 
         path = os.path.join(track_dir, "mixture.wav")
         torchaudio.save(path, mixture, sample_rate)
+
+    return track_names
