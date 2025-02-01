@@ -312,14 +312,14 @@ def _save_dummy_musdb18(root: str, sample_rate: int, num_frames: int) -> Dict[st
     g = torch.Generator()
     g.manual_seed(0)
 
-    num_channels = 2
-
-    subset_name = "train"
     track_names = {
         "train": train_track_names,
         "validation": validation_track_names,
         "test": test_track_names,
     }
+
+    num_channels = 2
+    subset_name = "train"
 
     for track_name in train_track_names + validation_track_names:
         track_dir = os.path.join(root, subset_name, track_name)
