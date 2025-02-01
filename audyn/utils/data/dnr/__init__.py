@@ -1,4 +1,5 @@
 from ._download import download_track_names
+from .dataset import DNR, RandomStemsDNRDataset, StemsDNRDataset, Track
 
 __all__ = [
     "v2_all_track_names",
@@ -7,6 +8,10 @@ __all__ = [
     "v2_test_track_names",
     "sources",
     "num_sources",
+    "DNR",
+    "StemsDNRDataset",
+    "RandomStemsDNRDataset",
+    "Track",
 ]
 
 _dnr_version = 2

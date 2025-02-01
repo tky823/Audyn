@@ -69,7 +69,7 @@ def _download_lsx(url: str, path: str, chunk_size: int = 8192) -> None:
     temp_path = path + str(uuid.uuid4())[:8]
 
     try:
-        download_file(url, path, chunk_size=chunk_size)
+        download_file(url, temp_path, chunk_size=chunk_size)
         shutil.move(temp_path, path)
     except (Exception, KeyboardInterrupt) as e:
         if os.path.exists(temp_path):
@@ -82,6 +82,8 @@ def _unpack_zip(path: str, lsx_root: str) -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
         with zipfile.ZipFile(path, "r") as f:
             f.extractall(temp_dir)
+
+        os.makedirs(lsx_root, exist_ok=True)
 
         for temp_path in glob.glob(os.path.join(temp_dir, "*")):
             shutil.move(temp_path, lsx_root)

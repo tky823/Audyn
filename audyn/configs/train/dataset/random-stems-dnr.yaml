@@ -1,0 +1,24 @@
+train:
+  _target_: audyn.utils.data.dnr.RandomStemsDNRDataset
+  list_path:
+  feature_dir:
+  duration: ???
+  speech_key: speech
+  music_key: music
+  effect_key: effect
+  sample_rate_key: sample_rate
+  filename_key: filename
+  decode_audio_as_monoral: false
+  replacement: true
+  seed: ${system.seed}
+validation:
+  _target_: audyn.utils.data.dnr.StemsDNRDataset
+  list_path:
+  feature_dir:
+  duration: ???
+  speech_key: ${..train.speech_key}
+  music_key: ${..train.music_key}
+  effect_key: ${..train.effect_key}
+  sample_rate_key: ${..train.sample_rate_key}
+  filename_key: ${..train.filename_key}
+  decode_audio_as_monoral: ${..train.decode_audio_as_monoral}

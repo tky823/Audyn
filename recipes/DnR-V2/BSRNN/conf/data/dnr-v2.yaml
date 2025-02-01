@@ -1,0 +1,20 @@
+defaults:
+  - defaults
+  - _self_
+
+audio:
+  sample_rate: 44100
+  duration: 6
+
+spectrogram:
+  n_fft: 2048
+  hop_length: 512
+  window:
+    _target_: torch.hann_window
+    window_length: ${..n_fft}
+  center: true
+  normalized: false
+  onesided: true
+
+sources:
+  num_sources: ${const:audyn.utils.data.dnr.num_sources}

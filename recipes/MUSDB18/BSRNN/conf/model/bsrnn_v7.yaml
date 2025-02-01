@@ -1,0 +1,3 @@
+_target_: audyn.models.bsrnn.BandSplitRNN.build_from_config
+in_channels: 2
+version: v7

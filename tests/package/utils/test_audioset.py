@@ -1,5 +1,4 @@
 import os
-import sys
 import tempfile
 from datetime import timedelta
 from typing import Any, Dict, Optional
@@ -26,8 +25,6 @@ from audyn.utils.data.audioset.dataset import (
     WeightedAudioSetWebDataset,
 )
 from audyn.utils.data.collator import Collator
-
-IS_WINDOWS = sys.platform == "win32"
 
 
 @pytest.mark.parametrize("dataset_type", [None, "PaSST"])
