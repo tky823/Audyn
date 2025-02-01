@@ -1,14 +1,13 @@
-audio:
+multi_audio:
   iteration:
     every: 1000
     sample_size: 1
     sample_rate: ${data.audio.sample_rate}
     key_mapping:
       output:
-        separated_spectrogram: "Extracted source (iteration)"
+        separated_spectrogram: "Separated source {index} (iteration)"
       reference:
-        mixture_spectrogram: "Mixture (iteration)"
-        source_spectrogram: "Target source (iteration)"
+        source_spectrogram: "Target source {index} (iteration)"
     transforms:
       output:
         separated_spectrogram:
@@ -25,7 +24,6 @@ audio:
                 _partial_: true
                 dim: -2
       reference:
-        mixture_spectrogram: ${..output.separated_spectrogram}
         source_spectrogram: ${..output.separated_spectrogram}
   epoch:
     every: 1
@@ -34,14 +32,34 @@ audio:
     key_mapping:
       validation:
         output:
-          separated_spectrogram: "Extracted source (epoch)"
+          separated_spectrogram: "Separated source {index} (epoch)"
+        reference:
+          source_spectrogram: "Target source {index} (epoch)"
+    transforms:
+      output:
+        separated_spectrogram: ${....iteration.transforms.output.separated_spectrogram}
+      reference:
+        source_spectrogram: ${....iteration.transforms.reference.source_spectrogram}
+audio:
+  iteration:
+    every: 1000
+    sample_size: 1
+    sample_rate: ${data.audio.sample_rate}
+    key_mapping:
+      reference:
+        mixture_spectrogram: "Mixture (iteration)"
+    transforms:
+      reference:
+        mixture_spectrogram: ${.....multi_audio.iteration.transforms.output.separated_spectrogram}
+  epoch:
+    every: 1
+    sample_size: 1
+    sample_rate: ${data.audio.sample_rate}
+    key_mapping:
+      validation:
         reference:
           mixture_spectrogram: "Mixture (epoch)"
-          source_spectrogram: "Target source (epoch)"
     transforms:
       validation:
-        output:
-          separated_spectrogram: ${.....iteration.transforms.output.separated_spectrogram}
         reference:
           mixture_spectrogram: ${.....iteration.transforms.reference.mixture_spectrogram}
-          source_spectrogram: ${.....iteration.transforms.reference.source_spectrogram}

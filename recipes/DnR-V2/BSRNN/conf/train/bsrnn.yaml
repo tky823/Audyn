@@ -12,7 +12,7 @@ key_mapping:
     input:
       input: mixture_spectrogram
     output: separated_spectrogram
-  validate: ${.train}
+  validation: ${.train}
 
 clip_gradient:
   max_norm: 5
