@@ -206,7 +206,7 @@ class StemsMUSDB18Dataset(Dataset):
         for source, source_key in zip(sources, source_keys):
             filename_per_source = f"{filename}/{source}.wav"
             path = os.path.join(feature_dir, filename_per_source)
-            waveform, sample_rate = self.load_sliced_audio(path)
+            waveform, sample_rate = self.load_randomly_sliced_audio(path)
 
             if sample_rate_key in feature:
                 assert feature[sample_rate_key].item() == sample_rate
@@ -235,7 +235,7 @@ class StemsMUSDB18Dataset(Dataset):
                 if not os.path.exists(path):
                     raise FileNotFoundError(f"{path} is not found.")
 
-    def load_sliced_audio(self, path: str) -> Tuple[torch.Tensor, int]:
+    def load_randomly_sliced_audio(self, path: str) -> Tuple[torch.Tensor, int]:
         duration = self.duration
         metadata = torchaudio.info(path)
         num_all_frames = metadata.num_frames
@@ -465,7 +465,7 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
                 filenames.append(filename)
                 filename_per_source = f"{filename}/{source}.wav"
                 path = os.path.join(feature_dir, filename_per_source)
-                waveform, sample_rate = self.load_sliced_audio(path)
+                waveform, sample_rate = self.load_randomly_sliced_audio(path)
 
                 if sample_rate_key in feature:
                     assert feature[sample_rate_key].item() == sample_rate
@@ -502,7 +502,7 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
                 if not os.path.exists(path):
                     raise FileNotFoundError(f"{path} is not found.")
 
-    def load_sliced_audio(self, path: str) -> Tuple[torch.Tensor, int]:
+    def load_randomly_sliced_audio(self, path: str) -> Tuple[torch.Tensor, int]:
         duration = self.duration
         metadata = torchaudio.info(path)
         num_all_frames = metadata.num_frames
@@ -756,7 +756,7 @@ class DistributedRandomStemsMUSDB18Dataset(IterableDataset):
                 filenames.append(filename)
                 filename_per_source = f"{filename}/{source}.wav"
                 path = os.path.join(feature_dir, filename_per_source)
-                waveform, sample_rate = self.load_sliced_audio(path)
+                waveform, sample_rate = self.load_randomly_sliced_audio(path)
 
                 if sample_rate_key in feature:
                     assert feature[sample_rate_key].item() == sample_rate
@@ -793,7 +793,7 @@ class DistributedRandomStemsMUSDB18Dataset(IterableDataset):
                 if not os.path.exists(path):
                     raise FileNotFoundError(f"{path} is not found.")
 
-    def load_sliced_audio(self, path: str) -> Tuple[torch.Tensor, int]:
+    def load_randomly_sliced_audio(self, path: str) -> Tuple[torch.Tensor, int]:
         duration = self.duration
         metadata = torchaudio.info(path)
         num_all_frames = metadata.num_frames
