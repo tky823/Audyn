@@ -150,7 +150,7 @@ def test_dnr_dataset(
 
 
 @pytest.mark.parametrize("replacement", [True, False])
-@pytest.mark.parametrize("num_workers", [0, 2])
+@pytest.mark.parametrize("num_workers", [1, 2])
 @pytest.mark.parametrize("divisible_by_num_workers", [True, False])
 def test_distributed_dnr_dataset(
     replacement: bool,
