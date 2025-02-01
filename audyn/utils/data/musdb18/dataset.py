@@ -8,6 +8,7 @@ import torchaudio
 from torch.utils.data import Dataset, IterableDataset, RandomSampler, get_worker_info
 from torchaudio.io import StreamReader
 
+from .distributed import DistributedRandomStemsMUSDB18Sampler
 from .sampler import RandomStemsMUSDB18Sampler
 
 __all__ = [
@@ -630,10 +631,12 @@ class DistributedRandomStemsMUSDB18Dataset(IterableDataset):
             num_samples = len(filenames) // num_replicas
 
         if replacement:
-            self.sampler = RandomStemsMUSDB18Sampler(
+            self.sampler = DistributedRandomStemsMUSDB18Sampler(
                 filenames,
                 num_samples=num_samples,
-                generator=generator,
+                num_replicas=num_replicas,
+                rank=rank,
+                seed=seed,
             )
         else:
             if num_samples > len(filenames) // num_replicas:
@@ -701,10 +704,12 @@ class DistributedRandomStemsMUSDB18Dataset(IterableDataset):
                 if self.worker_id < num_total_samples % self.num_workers:
                     num_samples_per_worker += 1
 
-                self.sampler = RandomStemsMUSDB18Sampler(
+                self.sampler = DistributedRandomStemsMUSDB18Sampler(
                     self.filenames,
                     num_samples=num_samples_per_worker,
-                    generator=sampler.generator,
+                    num_replicas=num_replicas,
+                    rank=rank,
+                    seed=sampler.seed,
                 )
             else:
                 self.sampler = RandomSampler(

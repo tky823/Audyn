@@ -1,5 +1,6 @@
 from typing import Any, Iterator, List, Optional
 
+import torch
 from torch.utils.data import RandomSampler, Sampler
 
 __all__ = [
@@ -69,6 +70,10 @@ class RandomStemsMUSDB18Sampler(Sampler):
     @property
     def generator(self) -> Optional[Any]:
         return self.stem_sampler.generator
+
+    @generator.setter
+    def generator(self, __value: torch.Generator) -> None:
+        self.stem_sampler.generator = __value
 
 
 class _ReplacementRandomStemsSampler(RandomSampler):
