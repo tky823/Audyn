@@ -9,14 +9,14 @@ from torch.utils.data import Dataset, IterableDataset, RandomSampler, get_worker
 from .sampler import RandomStemsDNRSampler
 
 __all__ = [
-    "DNRDataset",
+    "DNR",
     "StemsDNRDataset",
     "RandomStemsDNRDataset",
     "Track",
 ]
 
 
-class DNRDataset(Dataset):
+class DNR(Dataset):
     """DnR dataset.
 
     Args:

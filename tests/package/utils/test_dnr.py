@@ -13,7 +13,7 @@ from audyn.utils.data.dnr import (
     v2_train_track_names,
     v2_validation_track_names,
 )
-from audyn.utils.data.dnr.dataset import DNRDataset, Track
+from audyn.utils.data.dnr.dataset import DNR, Track
 
 
 def test_dnr() -> None:
@@ -25,7 +25,7 @@ def test_dnr() -> None:
 
         # To ignore "Track is not found."
         warnings.simplefilter("ignore", UserWarning)
-        dataset = DNRDataset(temp_dir, subset="train")
+        dataset = DNR(temp_dir, subset="train")
         warnings.resetwarnings()
 
         for track in dataset:
