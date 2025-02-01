@@ -3,6 +3,7 @@ import warnings
 from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 
 import torch
+import torch.distributed as dist
 import torchaudio
 from torch.utils.data import Dataset, IterableDataset, RandomSampler, get_worker_info
 
@@ -208,7 +209,7 @@ class StemsDNRDataset(Dataset):
 
             filename_per_source = f"{filename}/{_source}.wav"
             path = os.path.join(feature_dir, filename_per_source)
-            waveform, sample_rate = self.load_sliced_audio(path)
+            waveform, sample_rate = self.load_randomly_sliced_audio(path)
 
             if sample_rate_key in feature:
                 assert feature[sample_rate_key].item() == sample_rate
@@ -246,7 +247,7 @@ class StemsDNRDataset(Dataset):
                 if not os.path.exists(path):
                     raise FileNotFoundError(f"{path} is not found.")
 
-    def load_sliced_audio(self, path: str) -> Tuple[torch.Tensor, int]:
+    def load_randomly_sliced_audio(self, path: str) -> Tuple[torch.Tensor, int]:
         duration = self.duration
         metadata = torchaudio.info(path)
         num_all_frames = metadata.num_frames
@@ -294,7 +295,6 @@ class RandomStemsDNRDataset(IterableDataset):
                     |- music.wav
                     |- sfx.wav
                 ...
-
 
     .. note::
 
@@ -482,7 +482,7 @@ class RandomStemsDNRDataset(IterableDataset):
 
                 filename_per_source = f"{filename}/{_source}.wav"
                 path = os.path.join(feature_dir, filename_per_source)
-                waveform, sample_rate = self.load_sliced_audio(path)
+                waveform, sample_rate = self.load_randomly_sliced_audio(path)
 
                 if sample_rate_key in feature:
                     assert feature[sample_rate_key].item() == sample_rate
@@ -528,7 +528,313 @@ class RandomStemsDNRDataset(IterableDataset):
                 if not os.path.exists(path):
                     raise FileNotFoundError(f"{path} is not found.")
 
-    def load_sliced_audio(self, path: str) -> Tuple[torch.Tensor, int]:
+    def load_randomly_sliced_audio(self, path: str) -> Tuple[torch.Tensor, int]:
+        duration = self.duration
+        metadata = torchaudio.info(path)
+        num_all_frames = metadata.num_frames
+        num_frames = int(metadata.sample_rate * duration)
+        frame_offset = torch.randint(0, num_all_frames - num_frames, (), generator=self.generator)
+        frame_offset = frame_offset.item()
+        waveform, sample_rate = torchaudio.load(
+            path, frame_offset=frame_offset, num_frames=num_frames
+        )
+
+        if self.decode_audio_as_monoral:
+            waveform = waveform.mean(dim=0)
+
+        return waveform, sample_rate
+
+
+class DistributedRandomStemsDNRDataset(IterableDataset):
+    """DnR dataset for random mixing with distributed training.
+
+    Args:
+        list_path (str): Path to list file containing filenames.
+        feature_dir (str): Path to directory containing .wav files.
+        duration (float): Duration of waveform slice.
+        speech_key (str): Key to store ``speech`` waveform.
+        music_key (str): Key to store ``music`` waveform.
+        effect_key (str): Key to store ``effect`` waveform.
+        sample_rate_key (str): Key to store sampling rate.
+        filename_key (str): Key to store filename.
+        replacement (bool): If ``True``, samples are taken with replacement.
+        num_samples (int, optional): Number of samples per epoch on each rank.
+            ``len(track_names) // num_replicas`` is used by default.
+        seed (int): Random seed to set dataset and sampler state.
+        generator (torch.Generator, optional): Random number generator to
+            determine slicing positions of audio.
+
+    .. note::
+
+        We assume following structure.
+
+        .. code-block:: shell
+
+            |- feature_dir/  # typically train or test
+                |- 1002/
+                    |- mix.wav
+                    |- speech.wav
+                    |- music.wav
+                    |- sfx.wav
+                ...
+
+    .. note::
+
+        Internally, ``RandomStemsDNRSampler`` is used as sampler if ``replacement=True``.
+        Otherwise, ``RandomSampler`` is used as sampler. Be careful of the difference in behavior
+        of sampler depending on ``replacement``.
+
+    """
+
+    def __init__(
+        self,
+        list_path: str,
+        feature_dir: str,
+        duration: float,
+        speech_key: str = "speech",
+        music_key: str = "music",
+        effect_key: str = "effect",
+        sample_rate_key: str = "sample_rate",
+        filename_key: str = "filename",
+        replacement: bool = True,
+        num_samples: Optional[int] = None,
+        decode_audio_as_monoral: bool = False,
+        num_replicas: Optional[int] = None,
+        rank: Optional[int] = None,
+        seed: int = 0,
+        generator: Optional[torch.Generator] = None,
+    ) -> None:
+        super().__init__()
+
+        if num_replicas is None:
+            if not dist.is_available():
+                raise RuntimeError("Requires distributed package to be available")
+            num_replicas = dist.get_world_size()
+
+        if rank is None:
+            if not dist.is_available():
+                raise RuntimeError("Requires distributed package to be available")
+            rank = dist.get_rank()
+
+        if rank >= num_replicas or rank < 0:
+            raise ValueError(
+                "Invalid rank {}, rank should be in the interval"
+                " [0, {}]".format(rank, num_replicas - 1)
+            )
+
+        filenames = []
+
+        with open(list_path) as f:
+            for line in f:
+                filenames.append(line.strip("\n"))
+
+        self.feature_dir = feature_dir
+        self.filenames = filenames
+        self.duration = duration
+        self.seed = seed
+        self.source_keys = [
+            speech_key,
+            music_key,
+            effect_key,
+        ]
+        self.sample_rate_key = sample_rate_key
+        self.filename_key = filename_key
+        self.decode_audio_as_monoral = decode_audio_as_monoral
+
+        self.num_replicas = num_replicas
+        self.rank = rank
+        self.worker_id = None
+        self.num_workers = None
+        self.generator = None
+
+        if num_samples is None:
+            num_samples = len(filenames) // num_replicas
+
+        if replacement:
+            self.sampler = RandomStemsDNRSampler(
+                filenames,
+                num_samples=num_samples,
+                generator=generator,
+            )
+        else:
+            if num_samples > len(filenames) // num_replicas:
+                raise ValueError(
+                    f"num_samples ({num_samples}) is greater than "
+                    f"length of filenames ({len(filenames)})."
+                )
+
+            self.sampler = RandomSampler(
+                filenames,
+                replacement=replacement,
+                num_samples=num_samples,
+                generator=generator,
+            )
+
+        self.replacement = replacement
+        self.num_total_samples = num_samples
+
+        self._validate_tracks()
+
+    def __iter__(self) -> Iterator[Dict[str, Any]]:
+        from . import sources
+
+        num_replicas = self.num_replicas
+        rank = self.rank
+
+        feature_dir = self.feature_dir
+        source_keys = self.source_keys
+        sample_rate_key = self.sample_rate_key
+        filename_key = self.filename_key
+
+        assert len(sources) == len(source_keys)
+
+        if self.worker_id is None:
+            # should be initialized
+            worker_info = get_worker_info()
+
+            if worker_info is None:
+                self.worker_id = 0
+                self.num_workers = 1
+            else:
+                self.worker_id = worker_info.id
+                self.num_workers = worker_info.num_workers
+
+            # set generator state
+            if self.replacement:
+                # NOTE: Seed is dependent on worker_id,
+                #       so random state of self.generator is not shared among processes.
+                seed = self.seed + self.num_workers * rank + self.worker_id
+            else:
+                # NOTE: Seed is independent of worker_id,
+                #       so random state of self.generator is shared among processes.
+                seed = self.seed
+
+            self.generator = torch.Generator()
+            self.generator.manual_seed(seed)
+
+            # set sampler state
+            sampler = self.sampler
+            num_total_samples = self.num_total_samples
+
+            if self.replacement:
+                num_samples_per_worker = num_total_samples // self.num_workers
+
+                if self.worker_id < num_total_samples % self.num_workers:
+                    num_samples_per_worker += 1
+
+                self.sampler = RandomStemsDNRSampler(
+                    self.filenames,
+                    num_samples=num_samples_per_worker,
+                    generator=sampler.generator,
+                )
+            else:
+                self.sampler = RandomSampler(
+                    self.filenames,
+                    replacement=self.replacement,
+                    num_samples=num_total_samples,
+                    generator=sampler.generator,
+                )
+
+        if self.replacement:
+            filenames_per_worker = self.filenames
+        else:
+            # If self.replacement=False, track names should be disjointed among ranks and workers.
+            sampler = self.sampler
+            num_total_samples = self.num_total_samples
+            num_samples_per_worker = num_total_samples // self.num_workers
+
+            if self.worker_id < num_total_samples % self.num_workers:
+                num_samples_per_worker += 1
+
+            # NOTE: Random state of self.generator is shared among processes.
+            #       Random state of sampler.generator is not shared among processes.
+            indices = torch.randperm(num_total_samples, generator=self.generator)
+            indices = indices.tolist()
+            offset = self.num_workers * rank + self.worker_id
+            step = num_replicas * self.num_workers
+            filenames_per_worker = [self.filenames[idx] for idx in indices[offset::step]]
+            self.sampler = RandomSampler(
+                filenames_per_worker,
+                replacement=self.replacement,
+                num_samples=num_samples_per_worker,
+                generator=sampler.generator,
+            )
+
+        for indices in self.sampler:
+            filenames = []
+            feature = {}
+
+            if self.replacement:
+                # If self.replacement=True,
+                # indices returned by sampler should contain multiple indices.
+                assert len(indices) == len(sources)
+            else:
+                # If self.replacement=False,
+                # indices returned by sampler should contain single index.
+                indices = [indices] * len(sources)
+
+            for idx, source, source_key in zip(indices, sources, source_keys):
+                filename = filenames_per_worker[idx]
+                filenames.append(filename)
+
+                if source in ["speech", "music"]:
+                    _source = source
+                elif source in ["mixture"]:
+                    _source = "mix"
+                elif source in ["effect", "sfx"]:
+                    _source = "sfx"
+                else:
+                    raise ValueError(f"Invalid source {source} is given.")
+
+                filename_per_source = f"{filename}/{_source}.wav"
+                path = os.path.join(feature_dir, filename_per_source)
+                waveform, sample_rate = self.load_randomly_sliced_audio(path)
+
+                if sample_rate_key in feature:
+                    assert feature[sample_rate_key].item() == sample_rate
+                else:
+                    feature[sample_rate_key] = torch.tensor(sample_rate, dtype=torch.long)
+
+                feature[source_key] = waveform
+
+            if self.replacement:
+                feature[filename_key] = "+".join(filenames)
+            else:
+                assert len(set(filenames)) == 1, (
+                    "Even when self.sampler.replacement=False, "
+                    "different tracks are chosen among sources."
+                )
+
+                feature[filename_key] = filenames[0]
+
+            yield feature
+
+    def __len__(self) -> int:
+        return self.num_total_samples
+
+    def _validate_tracks(self) -> None:
+        from . import sources
+
+        feature_dir = self.feature_dir
+
+        for filename in self.filenames:
+            for source in ["mixture"] + sources:
+                if source in ["speech", "music"]:
+                    _source = source
+                elif source in ["mixture"]:
+                    _source = "mix"
+                elif source in ["effect", "sfx"]:
+                    _source = "sfx"
+                else:
+                    raise ValueError(f"Invalid source {source} is given.")
+
+                filename_per_source = f"{filename}/{_source}.wav"
+                path = os.path.join(feature_dir, filename_per_source)
+
+                if not os.path.exists(path):
+                    raise FileNotFoundError(f"{path} is not found.")
+
+    def load_randomly_sliced_audio(self, path: str) -> Tuple[torch.Tensor, int]:
         duration = self.duration
         metadata = torchaudio.info(path)
         num_all_frames = metadata.num_frames
