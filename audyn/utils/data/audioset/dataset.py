@@ -293,13 +293,11 @@ class DistributedWeightedAudioSetWebDataset(WeightedAudioSetWebDataset):
         length: int,
         replacement: bool = True,
         smooth: float = 1,
-        num_workers: int = 0,
         num_replicas: Optional[int] = None,
         rank: Optional[int] = None,
         seed: int = 0,
         drop_last: bool = False,
     ) -> None:
-        self.num_workers = num_workers
         self.num_replicas = num_replicas
         self.rank = rank
         self.seed = seed
@@ -322,7 +320,6 @@ class DistributedWeightedAudioSetWebDataset(WeightedAudioSetWebDataset):
         *args,
         replacement: bool = True,
         smooth: float = 1,
-        num_workers: int = 0,
         num_replicas: Optional[int] = None,
         rank: Optional[int] = None,
         seed: int = 0,
@@ -339,7 +336,6 @@ class DistributedWeightedAudioSetWebDataset(WeightedAudioSetWebDataset):
             *args,
             replacement=replacement,
             smooth=smooth,
-            num_workers=num_workers,
             num_replicas=num_replicas,
             rank=rank,
             seed=seed,
@@ -472,7 +468,6 @@ class DistributedPaSSTAudioSetWebDataset(DistributedWeightedAudioSetWebDataset):
         length: int,
         replacement: bool = True,
         smooth: float = 1000,
-        num_workers: int = 0,
         num_replicas: Optional[int] = None,
         rank: Optional[int] = None,
         seed: int = 0,
@@ -484,7 +479,6 @@ class DistributedPaSSTAudioSetWebDataset(DistributedWeightedAudioSetWebDataset):
             length,
             replacement=replacement,
             smooth=smooth,
-            num_workers=num_workers,
             num_replicas=num_replicas,
             rank=rank,
             seed=seed,
