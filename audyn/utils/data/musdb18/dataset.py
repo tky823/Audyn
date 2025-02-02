@@ -140,6 +140,8 @@ class StemsMUSDB18Dataset(Dataset):
         vocals_key (str): Key to store ``vocals`` waveform.
         sample_rate_key (str): Key to store sampling rate.
         filename_key (str): Key to store filename.
+        num_samples (int, optional): Number of samples per epoch. ``len(track_names)`` is
+            used by default.
         training (bool): If ``True``, segments are randomly selected.
             Otherwise, middle frames are selected.
         align_stems (bool): If ``True``, all stems are aligned.
@@ -173,6 +175,7 @@ class StemsMUSDB18Dataset(Dataset):
         vocals_key: str = "vocals",
         sample_rate_key: str = "sample_rate",
         filename_key: str = "filename",
+        num_samples: Optional[int] = None,
         training: bool = False,
         align_stems: bool = True,
         decode_audio_as_monoral: bool = False,
@@ -207,6 +210,11 @@ class StemsMUSDB18Dataset(Dataset):
         if not self.training and not self.align_stems:
             raise ValueError("If training=False, align_stems should be True.")
 
+        if num_samples is None:
+            num_samples = len(self.filenames)
+
+        self.num_total_samples = num_samples
+
         self._validate_tracks()
 
     def __getitem__(self, idx: int) -> Dict[str, Any]:
@@ -217,8 +225,11 @@ class StemsMUSDB18Dataset(Dataset):
         source_keys = self.source_keys
         sample_rate_key = self.sample_rate_key
         filename_key = self.filename_key
+        filenames = self.filenames
 
-        filename = self.filenames[idx]
+        # to support num_samples >= len(filenames)
+        idx = idx % len(filenames)
+        filename = filenames[idx]
         frame_offset = None
         feature = {}
 
@@ -277,7 +288,7 @@ class StemsMUSDB18Dataset(Dataset):
         return feature
 
     def __len__(self) -> int:
-        return len(self.filenames)
+        return len(self.num_total_samples)
 
     def _validate_tracks(self) -> None:
         from . import sources
