@@ -202,8 +202,7 @@ class StemsMUSDB18Dataset(Dataset):
         self.decode_audio_as_monoral = decode_audio_as_monoral
 
         self.seed = seed
-        self.generator = torch.Generator()
-        self.generator.manual_seed(seed)
+        self.generator = None
 
         if not self.training and not self.align_stems:
             raise ValueError("If training=False, align_stems should be True.")
@@ -222,6 +221,10 @@ class StemsMUSDB18Dataset(Dataset):
         filename = self.filenames[idx]
         frame_offset = None
         feature = {}
+
+        if self.generator is None:
+            self.generator = torch.Generator()
+            self.generator.manual_seed(self.seed)
 
         for source, source_key in zip(sources, source_keys):
             filename_per_source = f"{filename}/{source}.wav"
