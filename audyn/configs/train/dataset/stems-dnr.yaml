@@ -10,6 +10,7 @@ train:
   filename_key: filename
   decode_audio_as_monoral: false
   training: true
+  align_stems: true
   seed: ${system.seed}
 validation:
   _target_: audyn.utils.data.dnr.StemsDNRDataset
@@ -23,4 +24,5 @@ validation:
   filename_key: ${..train.filename_key}
   decode_audio_as_monoral: ${..train.decode_audio_as_monoral}
   training: false
+  align_stems: true
   seed: ${system.seed}
