@@ -8,6 +8,8 @@ import torch.nn as nn
 __all__ = [
     "SpectrogramL1Loss",
     "WaveformL1Loss",
+    "SpectrogramL1SNR",
+    "WaveformL1SNR",
 ]
 
 
@@ -107,3 +109,70 @@ class WaveformL1Loss(nn.Module):
         waveform = x.view(*batch_shape, -1)
 
         return waveform
+
+
+class SpectrogramL1SNR(nn.Module):
+
+    def __init__(self, reduction: str = "mean", eps: float = 1e-8) -> None:
+        super().__init__()
+
+        self.reduction = reduction
+        self.eps = eps
+
+    def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        reduction = self.reduction
+        eps = self.eps
+
+        loss_real = torch.abs(input.real - target.real)
+        loss_imag = torch.abs(input.imag - target.imag)
+        loss_real = loss_real.sum(dim=(-2, -1))
+        loss_imag = loss_imag.sum(dim=(-2, -1))
+        target_real = torch.abs(target.real)
+        target_imag = torch.abs(target.imag)
+        target_real = target_real.sum(dim=(-2, -1))
+        target_imag = target_imag.sum(dim=(-2, -1))
+
+        loss_real = 10 * torch.log10((loss_real + eps) / (target_real + eps))
+        loss_imag = 10 * torch.log10((loss_imag + eps) / (target_imag + eps))
+
+        if reduction == "mean":
+            loss = torch.mean(loss_real + loss_imag)
+        elif reduction == "sum":
+            loss = torch.sum(loss_real + loss_imag)
+        elif reduction == "none":
+            loss = loss_real + loss_imag
+        else:
+            raise ValueError(f"Invalid reduction {reduction} is found.")
+
+        return loss
+
+
+class WaveformL1SNR(nn.Module):
+
+    def __init__(self, reduction: str = "mean", eps: float = 1e-8) -> None:
+        super().__init__()
+
+        self.reduction = reduction
+        self.eps = eps
+
+    def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        reduction = self.reduction
+        eps = self.eps
+
+        loss = torch.abs(input - target)
+        loss = loss.sum(dim=-1)
+        target = torch.abs(target)
+        target = target.sum(dim=-1)
+
+        loss = 10 * torch.log10((loss + eps) / (target + eps))
+
+        if reduction == "mean":
+            loss = loss.mean()
+        elif reduction == "sum":
+            loss = loss.sum()
+        elif reduction == "none":
+            pass
+        else:
+            raise ValueError(f"Invalid reduction {reduction} is found.")
+
+        return loss
