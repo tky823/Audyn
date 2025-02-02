@@ -434,6 +434,7 @@ class RandomStemsDNRDataset(IterableDataset):
             filenames_per_worker = self.filenames
         else:
             # If self.replacement=False, track names should be disjointed among workers.
+            filenames = self.filenames
             sampler = self.sampler
             num_total_samples = self.num_total_samples
             num_samples_per_worker = num_total_samples // self.num_workers
@@ -443,9 +444,9 @@ class RandomStemsDNRDataset(IterableDataset):
 
             # NOTE: Random state of self.generator is shared among processes.
             #       Random state of sampler.generator is not shared among processes.
-            indices = torch.randperm(num_total_samples, generator=self.generator).tolist()
+            indices = torch.randperm(len(filenames), generator=self.generator).tolist()
             filenames_per_worker = [
-                self.filenames[idx] for idx in indices[self.worker_id :: self.num_workers]
+                filenames[idx] for idx in indices[self.worker_id :: self.num_workers]
             ]
             self.sampler = RandomSampler(
                 filenames_per_worker,
