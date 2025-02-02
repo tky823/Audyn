@@ -74,6 +74,9 @@ def test_musdb18_dataset(
     replacement: bool,
     num_workers: int,
 ) -> None:
+    if not replacement:
+        pytest.skip("replacement=False is not supported.")
+
     batch_size = 3
     sample_rate = 24000
     num_frames = 48000
@@ -163,6 +166,9 @@ def test_distributed_musdb18_dataset(
     num_workers: int,
     divisible_by_num_workers: bool,
 ) -> None:
+    if not replacement:
+        pytest.skip("replacement=False is not supported.")
+
     # NOTE: Set num_workers=1 instead of num_workers=0 to prevent segment fault on Ubuntu.
     port = select_random_port()
     seed = 0
