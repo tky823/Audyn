@@ -1,8 +1,8 @@
 defaults:
-  - dataset: defaults
-  - dataloader: defaults
-  - clip_gradient: defaults
-  - record: defaults
+  - dataset: default
+  - dataloader: default
+  - clip_gradient: default
+  - record: default
   - _self_
 
 trainer:

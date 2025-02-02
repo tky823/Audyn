@@ -1,7 +1,7 @@
 defaults:
   - record: vqvae
   - dataset: torch
-  - dataloader: defaults
+  - dataloader: default
   - _self_
 
 dataloader:

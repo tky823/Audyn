@@ -1,6 +1,6 @@
 defaults:
   - dataset: torch
-  - dataloader: defaults
+  - dataloader: default
   - record: vqvae+pretrained_hifigan
   - clip_gradient: vqvae
   - _self_

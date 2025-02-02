@@ -8,8 +8,8 @@ checkpoint=""
 
 dump_format="torch"
 
-system="defaults"
-preprocess="defaults"
+system="default"
+preprocess="default"
 data="soundstream"
 test="soundstream_reconstruction"
 model="soundstream_reconstruction"

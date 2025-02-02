@@ -12,7 +12,7 @@ continue_from=""
 
 dump_format="dnr-v2"
 
-system="defaults"
+system="default"
 preprocess="dnr-v2"
 data="dnr-v2"
 train="bsrnn"

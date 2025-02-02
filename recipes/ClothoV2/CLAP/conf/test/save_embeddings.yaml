@@ -1,5 +1,5 @@
 defaults:
-  - defaults
+  - default
   - override dataset: torch
   - _self_
 

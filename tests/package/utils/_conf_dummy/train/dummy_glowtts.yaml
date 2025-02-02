@@ -1,6 +1,6 @@
 defaults:
   - dataset: dummy_text-to-feat
-  - dataloader: defaults
+  - dataloader: default
   - output: dummy
   - _self_
 

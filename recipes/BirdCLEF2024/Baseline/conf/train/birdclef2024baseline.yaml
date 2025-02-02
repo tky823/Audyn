@@ -1,5 +1,5 @@
 defaults:
-  - defaults
+  - default
   - override dataset: birdclef2024
   - _self_
 

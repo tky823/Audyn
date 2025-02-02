@@ -1,5 +1,5 @@
 defaults:
-  - defaults
+  - default
   - metrics: clap
   - override dataset: torch
   - _self_

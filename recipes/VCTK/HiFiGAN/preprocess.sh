@@ -12,7 +12,7 @@ log_dir="./log"
 
 dump_format="torch"
 
-preprocess="defaults"
+preprocess="default"
 data="hifigan_vctk"
 
 n_validation=20

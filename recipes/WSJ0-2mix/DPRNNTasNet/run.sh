@@ -17,8 +17,8 @@ dump_root="dump"
 
 dump_format="torch"
 
-system="defaults"
-preprocess="defaults"
+system="default"
+preprocess="default"
 data="wsj0-2mix_8k"
 train="wsj0-mix"
 model="dprnn-tasnet"

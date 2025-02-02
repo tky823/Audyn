@@ -9,7 +9,7 @@ vqvae_checkpoint=""
 
 dump_format="torch"
 
-system="defaults"
+system="default"
 data="vqvae"
 test="pixelcnn+vqvae"
 model="pixelcnn+vqvae"

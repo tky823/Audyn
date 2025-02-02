@@ -22,7 +22,7 @@ dump_root="./dump"
 
 dump_format="torch"
 
-system="defaults"
+system="default"
 preprocess="baseline"
 data="baseline"
 train=""

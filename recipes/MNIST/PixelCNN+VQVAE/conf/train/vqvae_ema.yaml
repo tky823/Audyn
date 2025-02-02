@@ -1,6 +1,6 @@
 defaults:
   - dataset: mnist
-  - dataloader: defaults
+  - dataloader: default
   - record: vqvae
   - _self_
 

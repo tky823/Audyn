@@ -18,7 +18,7 @@ dump_root="dump"
 
 dump_format="torch"
 
-system="defaults"
+system="default"
 preprocess="ljspeech_text-to-feat"
 data="ljspeech_text-to-feat"
 train="glowtts"

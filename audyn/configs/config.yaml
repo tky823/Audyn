@@ -1,12 +1,12 @@
 defaults:
-  - system: defaults
-  - preprocess: defaults
-  - data: defaults
-  - train: defaults
-  - test: defaults
-  - model: defaults
+  - system: default
+  - preprocess: default
+  - data: default
+  - train: default
+  - test: default
+  - model: default
   - optimizer:
-  - lr_scheduler: defaults
+  - lr_scheduler: default
   - criterion:
   - _self_
 

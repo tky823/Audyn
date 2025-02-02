@@ -25,7 +25,7 @@ dump_root="dump"
 
 dump_format="webdataset"
 
-system="defaults"
+system="default"
 preprocess="hubert-tiny"
 data="hubert"
 

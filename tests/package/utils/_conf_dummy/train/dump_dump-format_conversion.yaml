@@ -1,6 +1,6 @@
 defaults:
   - dataset: torch
-  - dataloader: defaults
+  - dataloader: default
   - output: dummy
   - _self_
 

@@ -1,6 +1,6 @@
 defaults:
   - dataset: dummy_feat-to-wave
-  - dataloader: defaults
+  - dataloader: default
   - output: dummy
   - _self_
 

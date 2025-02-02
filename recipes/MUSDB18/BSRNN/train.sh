@@ -12,7 +12,7 @@ continue_from=""
 
 dump_format="musdb18"
 
-system="defaults"
+system="default"
 preprocess="musdb18"
 data="musdb18"
 train="bsrnn"

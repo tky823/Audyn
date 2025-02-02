@@ -9,7 +9,7 @@ checkpoint=""
 
 dump_format="birdclef2024"
 
-system="defaults"
+system="default"
 preprocess="birdclef2024"
 data="birdclef2024"
 train="birdclef2024baseline"

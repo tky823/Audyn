@@ -1,6 +1,6 @@
 defaults:
   - dataset: dummy_audioset1
-  - dataloader: defaults
+  - dataloader: default
   - output: dummy
   - _self_
 

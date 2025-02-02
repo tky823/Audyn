@@ -8,8 +8,8 @@ checkpoint=""
 
 dump_format="torch"
 
-system="defaults"
-preprocess="defaults"
+system="default"
+preprocess="default"
 data="vqvae"
 train="prior"
 model="vqvae"
