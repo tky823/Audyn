@@ -24,7 +24,7 @@ train="bsrnn"
 model="bsrnn_music-scale"
 optimizer="bsrnn"
 lr_scheduler="bsrnn"
-criterion="bsrnn"
+criterion="l1snr"
 
 . ../../_common/parse_options.sh || exit 1;
 
