@@ -1,5 +1,5 @@
 defaults:
-  - defaults
+  - default
   - melspectrogram: torchaudio
   - text: clotho-v2
   - _self_

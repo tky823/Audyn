@@ -1,5 +1,5 @@
 defaults:
-  - defaults
+  - default
 
 audio:
   sample_rate: 44100
