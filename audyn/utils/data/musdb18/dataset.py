@@ -140,6 +140,9 @@ class StemsMUSDB18Dataset(Dataset):
         vocals_key (str): Key to store ``vocals`` waveform.
         sample_rate_key (str): Key to store sampling rate.
         filename_key (str): Key to store filename.
+        training (bool): If ``True``, segments are randomly selected.
+            Otherwise, middle frames are selected.
+        seed (int): Random seed for training.
 
     .. note::
 
@@ -169,7 +172,9 @@ class StemsMUSDB18Dataset(Dataset):
         vocals_key: str = "vocals",
         sample_rate_key: str = "sample_rate",
         filename_key: str = "filename",
+        training: bool = False,
         decode_audio_as_monoral: bool = False,
+        seed: int = 0,
     ) -> None:
         super().__init__()
 
@@ -190,7 +195,12 @@ class StemsMUSDB18Dataset(Dataset):
         ]
         self.sample_rate_key = sample_rate_key
         self.filename_key = filename_key
+        self.training = training
         self.decode_audio_as_monoral = decode_audio_as_monoral
+
+        self.seed = seed
+        self.generator = torch.Generator()
+        self.generator.manual_seed(seed)
 
         self._validate_tracks()
 
@@ -208,7 +218,7 @@ class StemsMUSDB18Dataset(Dataset):
         for source, source_key in zip(sources, source_keys):
             filename_per_source = f"{filename}/{source}.wav"
             path = os.path.join(feature_dir, filename_per_source)
-            waveform, sample_rate = self.load_randomly_sliced_audio(path)
+            waveform, sample_rate = self.load_sliced_audio(path)
 
             if sample_rate_key in feature:
                 assert feature[sample_rate_key].item() == sample_rate
@@ -237,12 +247,20 @@ class StemsMUSDB18Dataset(Dataset):
                 if not os.path.exists(path):
                     raise FileNotFoundError(f"{path} is not found.")
 
-    def load_randomly_sliced_audio(self, path: str) -> Tuple[torch.Tensor, int]:
+    def load_sliced_audio(self, path: str) -> Tuple[torch.Tensor, int]:
         duration = self.duration
         metadata = torchaudio.info(path)
         num_all_frames = metadata.num_frames
         num_frames = int(metadata.sample_rate * duration)
-        frame_offset = (num_all_frames - num_frames) // 2
+
+        if self.training:
+            frame_offset = torch.randint(
+                0, num_all_frames - num_frames, (), generator=self.generator
+            )
+            frame_offset = frame_offset.item()
+        else:
+            frame_offset = (num_all_frames - num_frames) // 2
+
         waveform, sample_rate = torchaudio.load(
             path, frame_offset=frame_offset, num_frames=num_frames
         )
