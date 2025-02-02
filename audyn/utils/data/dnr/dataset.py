@@ -291,7 +291,7 @@ class StemsDNRDataset(Dataset):
         return feature
 
     def __len__(self) -> int:
-        return len(self.num_total_samples)
+        return self.num_total_samples
 
     def _validate_tracks(self) -> None:
         from . import sources
