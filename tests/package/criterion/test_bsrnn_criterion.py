@@ -25,13 +25,15 @@ def test_waveform_l1snr() -> None:
 
     batch_size = 4
     in_channels = 1
-    n_frames = 128
+    n_fft, hop_length = 64, 16
+    n_bins, n_frames = (n_fft // 2 + 1), 64
 
-    shape = (batch_size, in_channels, n_frames)
+    shape = (batch_size, in_channels, n_bins, n_frames)
+    window = torch.hann_window(n_fft)
 
-    criterion = WaveformL1SNR()
-    input = torch.randn(shape)
-    target = torch.randn(shape)
+    criterion = WaveformL1SNR(n_fft=n_fft, hop_length=hop_length, window=window)
+    input = torch.randn(shape) + 1j * torch.randn(shape)
+    target = torch.randn(shape) + 1j * torch.randn(shape)
     output = criterion(input, target)
 
     assert output.size() == ()
