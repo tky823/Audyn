@@ -132,8 +132,8 @@ class SpectrogramL1SNR(nn.Module):
         target_real = target_real.sum(dim=(-2, -1))
         target_imag = target_imag.sum(dim=(-2, -1))
 
-        loss_real = 10 * torch.log10((loss_real + eps) / (target_real + eps))
-        loss_imag = 10 * torch.log10((loss_imag + eps) / (target_imag + eps))
+        loss_real = 10 * (torch.log10(loss_real + eps) - torch.log10(target_real + eps))
+        loss_imag = 10 * (torch.log10(loss_imag + eps) - torch.log10(target_imag + eps))
 
         if reduction == "mean":
             loss = torch.mean(loss_real + loss_imag)
@@ -188,7 +188,7 @@ class WaveformL1SNR(nn.Module):
         x_target = torch.abs(x_target)
         x_target = x_target.sum(dim=-1)
 
-        loss = 10 * torch.log10((loss + eps) / (x_target + eps))
+        loss = 10 * (torch.log10(loss + eps) - torch.log10(x_target + eps))
 
         if reduction == "mean":
             loss = loss.mean()
