@@ -18,13 +18,15 @@ data="dnr-v2"
 ```sh
 data="dnr-v2"
 model="bsrnn_music-scale"
+criterion="l1snr"
 
 . ./run.sh \
 --stage 1 \
 --stop-stage 1 \
 --tag <TAG> \
 --data "${data}" \
---model "${model}"
+--model "${model}" \
+--criterion "${criterion}"
 ```
 
 If you resume training from a checkpoint,
@@ -34,6 +36,7 @@ checkpoint=<PATH/TO/BSRNN/CHECKPOINT>  # e.g. exp/<TAG>/model/last.pth
 
 data="dnr-v2"
 model="bsrnn_music-scale"
+criterion="l1snr"
 
 . ./run.sh \
 --stage 1 \
@@ -41,5 +44,6 @@ model="bsrnn_music-scale"
 --tag <TAG> \
 --continue-from "${checkpoint}" \
 --data "${data}" \
---model "${model}"
+--model "${model}" \
+--criterion "${criterion}"
 ```

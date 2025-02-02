@@ -1,0 +1,31 @@
+_target_: audyn.criterion.MultiCriteria
+spectrogram:
+  _target_: audyn.criterion.BaseCriterionWrapper
+  criterion:
+    _target_: audyn.criterion.bsrnn.SpectrogramL1SNR
+    reduction: mean
+    eps: 1.0e-3
+  weight: 1
+  key_mapping:
+    estimated:
+      input: separated_spectrogram
+    target:
+      target: source_spectrogram
+waveform:
+  _target_: audyn.criterion.BaseCriterionWrapper
+  criterion:
+    _target_: audyn.criterion.bsrnn.WaveformL1SNR
+    n_fft: ${data.spectrogram.n_fft}
+    hop_length: ${data.spectrogram.hop_length}
+    window: ${data.spectrogram.window}
+    center: ${data.spectrogram.center}
+    normalized: ${data.spectrogram.normalized}
+    onesided: ${data.spectrogram.onesided}
+    reduction: mean
+    eps: 1.0e-3
+  weight: 1
+  key_mapping:
+    estimated:
+      input: separated_spectrogram
+    target:
+      target: source_spectrogram
