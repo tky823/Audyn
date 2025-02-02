@@ -1,5 +1,11 @@
 from ._download import download_track_names
-from .dataset import DNR, RandomStemsDNRDataset, StemsDNRDataset, Track
+from .dataset import (
+    DNR,
+    DistributedRandomStemsDNRDataset,
+    RandomStemsDNRDataset,
+    StemsDNRDataset,
+    Track,
+)
 
 __all__ = [
     "v2_all_track_names",
@@ -11,6 +17,7 @@ __all__ = [
     "DNR",
     "StemsDNRDataset",
     "RandomStemsDNRDataset",
+    "DistributedRandomStemsDNRDataset",
     "Track",
 ]
 

@@ -261,6 +261,10 @@ def convert_dataset_and_dataloader_to_ddp_if_possible(config: DictConfig) -> Non
         PaSSTAudioSetWebDataset,
         WeightedAudioSetWebDataset,
     )
+    from .data.dnr.dataset import (
+        DistributedRandomStemsDNRDataset,
+        RandomStemsDNRDataset,
+    )
     from .data.musdb18.dataset import (
         DistributedRandomStemsMUSDB18Dataset,
         RandomStemsMUSDB18Dataset,
@@ -436,6 +440,25 @@ def convert_dataset_and_dataloader_to_ddp_if_possible(config: DictConfig) -> Non
                     )
                 elif dataset_factory_fn == RandomStemsMUSDB18Dataset:
                     ddp_dataset_factory_fn = DistributedRandomStemsMUSDB18Dataset
+
+                    ddp_target = ".".join(
+                        [
+                            ddp_dataset_factory_fn.__module__,
+                            ddp_dataset_factory_fn.__name__,
+                        ]
+                    )
+                    additional_ddp_config = {
+                        "_target_": ddp_target,
+                        "num_replicas": int(os.environ["WORLD_SIZE"]),
+                        "rank": int(os.environ["RANK"]),
+                        "seed": seed,
+                    }
+                    dataset_config.update(additional_ddp_config)
+                    OmegaConf.update(
+                        config, f"train.dataset.{subset}", dataset_config, merge=False
+                    )
+                elif dataset_factory_fn == RandomStemsDNRDataset:
+                    ddp_dataset_factory_fn = DistributedRandomStemsDNRDataset
 
                     ddp_target = ".".join(
                         [

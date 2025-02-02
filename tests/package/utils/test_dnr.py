@@ -2,14 +2,20 @@ import glob
 import os
 import tempfile
 import warnings
+from datetime import timedelta
 from typing import Dict, List
 
 import pytest
 import torch
+import torch.distributed as dist
+import torch.multiprocessing as mp
 import torchaudio
 from dummy import allclose
+from dummy.utils import select_random_port
+from dummy.utils.ddp import set_ddp_environment
 from torch.utils.data import DataLoader
 
+from audyn.utils.data import Collator, Mixer
 from audyn.utils.data.dnr import (
     sources,
     v2_test_track_names,
@@ -18,6 +24,7 @@ from audyn.utils.data.dnr import (
 )
 from audyn.utils.data.dnr.dataset import (
     DNR,
+    DistributedRandomStemsDNRDataset,
     RandomStemsDNRDataset,
     StemsDNRDataset,
     Track,
@@ -142,6 +149,162 @@ def test_dnr_dataset(
             assert len(set(filenames)) == len(dataset.filenames)
 
 
+@pytest.mark.parametrize("replacement", [True, False])
+@pytest.mark.parametrize("num_workers", [1, 2])
+@pytest.mark.parametrize("divisible_by_num_workers", [True, False])
+def test_distributed_dnr_dataset(
+    replacement: bool,
+    num_workers: int,
+    divisible_by_num_workers: bool,
+) -> None:
+    port = select_random_port()
+    seed = 0
+    world_size = 1
+
+    torch.manual_seed(seed)
+
+    epochs = 2
+    sample_rate = 24000
+    num_frames = 48000
+    duration = 1
+    input_keys = [
+        "speech",
+        "music",
+        "effect",
+    ]
+    output_key = "mixture"
+
+    if divisible_by_num_workers:
+        expected_samples_per_epoch = 8
+        batch_size = 2
+    else:
+        expected_samples_per_epoch = 10
+        batch_size = 3
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        list_dir = os.path.join(temp_dir, "list")
+        feature_dir = os.path.join(temp_dir, "feature")
+        train_feature_dir = os.path.join(feature_dir, "tr")
+        train_list_path = os.path.join(list_dir, "train.txt")
+
+        os.makedirs(list_dir, exist_ok=True)
+        os.makedirs(feature_dir, exist_ok=True)
+
+        track_names = _save_dummy_dnr(
+            root=feature_dir, sample_rate=sample_rate, num_frames=num_frames
+        )
+        train_track_names = track_names["train"]
+
+        with open(train_list_path, mode="w") as f_list:
+            for track_name in train_track_names:
+                line = f"{track_name}\n"
+                f_list.write(line)
+
+        processes = []
+
+        for rank in range(world_size):
+            path = os.path.join(temp_dir, f"{rank}.pth")
+            process = mp.Process(
+                target=run_distributed_dnr_dataset_sampler,
+                args=(rank, world_size, port),
+                kwargs={
+                    "replacement": replacement,
+                    "samples_per_epoch": expected_samples_per_epoch,
+                    "epochs": epochs,
+                    "batch_size": batch_size,
+                    "seed": seed,
+                    "path": path,
+                    "num_workers": num_workers,
+                    "list_path": train_list_path,
+                    "feature_dir": train_feature_dir,
+                    "duration": duration,
+                    "input_keys": input_keys,
+                    "output_key": output_key,
+                },
+            )
+            process.start()
+            processes.append(process)
+
+        for process in processes:
+            process.join()
+
+        for epoch in range(epochs):
+            rank = 0
+            path = os.path.join(temp_dir, f"{rank}.pth")
+            filenames_0 = torch.load(path)
+
+            assert len(filenames_0[epoch]) == expected_samples_per_epoch
+
+            for rank in range(1, world_size):
+                path = os.path.join(temp_dir, f"{rank}.pth")
+                filenames_rank = torch.load(path)
+
+                # ensure disjointness among ranks
+                assert filenames_0 != filenames_rank
+                assert len(filenames_rank[epoch]) == expected_samples_per_epoch
+
+
+def run_distributed_dnr_dataset_sampler(
+    rank: int,
+    world_size: int,
+    port: int,
+    replacement: bool,
+    samples_per_epoch: int,
+    epochs: int,
+    batch_size: int,
+    seed: int = 0,
+    path: str = None,
+    num_workers: int = 1,
+    list_path: str = None,
+    feature_dir: str = None,
+    duration: float = 1,
+    input_keys: List[str] = None,
+    output_key: str = None,
+) -> None:
+    set_ddp_environment(rank, world_size, port)
+
+    dist.init_process_group(
+        backend="gloo",
+        world_size=world_size,
+        rank=rank,
+        timeout=timedelta(minutes=5),
+    )
+    torch.manual_seed(seed)
+
+    composer = Mixer(input_keys, output_key)
+    collator = Collator(composer=composer)
+    dataset = DistributedRandomStemsDNRDataset(
+        list_path,
+        feature_dir,
+        duration,
+        replacement=replacement,
+        num_samples=samples_per_epoch,
+        num_replicas=world_size,
+        rank=rank,
+        seed=seed,
+    )
+    dataloader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        collate_fn=collator,
+    )
+
+    filenames = []
+
+    for _ in range(epochs):
+        filenames_per_epoch = []
+
+        for sample in dataloader:
+            filenames_per_epoch.extend(sample["filename"])
+
+        filenames.append(filenames_per_epoch)
+
+    torch.save(filenames, path)
+
+    dist.destroy_process_group()
+
+
 def _save_dummy_dnr(root: str, sample_rate: int, num_frames: int) -> Dict[str, List[int]]:
     g = torch.Generator()
     g.manual_seed(0)
@@ -158,10 +321,10 @@ def _save_dummy_dnr(root: str, sample_rate: int, num_frames: int) -> Dict[str, L
         "test": test_track_names,
     }
 
-    for subset_name, track_names in zip(
+    for subset_name, subset_track_names in zip(
         ["tr", "cv", "tt"], [train_track_names, validation_track_names, test_track_names]
     ):
-        for track_name in track_names:
+        for track_name in subset_track_names:
             track_dir = os.path.join(root, subset_name, f"{track_name}")
 
             os.makedirs(track_dir, exist_ok=True)

@@ -8,6 +8,7 @@ import torchaudio
 from torch.utils.data import Dataset, IterableDataset, RandomSampler, get_worker_info
 from torchaudio.io import StreamReader
 
+from .distributed import DistributedRandomStemsMUSDB18Sampler
 from .sampler import RandomStemsMUSDB18Sampler
 
 __all__ = [
@@ -15,6 +16,7 @@ __all__ = [
     "StemsMUSDB18Dataset",
     "RandomStemsMUSDB18Dataset",
     "DistributedRandomStemsMUSDB18Dataset",
+    "Track",
 ]
 
 
@@ -426,6 +428,7 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
             filenames_per_worker = self.filenames
         else:
             # If self.replacement=False, track names should be disjointed among workers.
+            filenames = self.filenames
             sampler = self.sampler
             num_total_samples = self.num_total_samples
             num_samples_per_worker = num_total_samples // self.num_workers
@@ -435,10 +438,10 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
 
             # NOTE: Random state of self.generator is shared among processes.
             #       Random state of sampler.generator is not shared among processes.
-            indices = torch.randperm(num_total_samples, generator=self.generator)
+            indices = torch.randperm(len(filenames), generator=self.generator)
             indices = indices.tolist()
             filenames_per_worker = [
-                self.filenames[idx] for idx in indices[self.worker_id :: self.num_workers]
+                filenames[idx] for idx in indices[self.worker_id :: self.num_workers]
             ]
             self.sampler = RandomSampler(
                 filenames_per_worker,
@@ -533,8 +536,8 @@ class DistributedRandomStemsMUSDB18Dataset(IterableDataset):
         sample_rate_key (str): Key to store sampling rate.
         filename_key (str): Key to store filename.
         replacement (bool): If ``True``, samples are taken with replacement.
-        num_samples (int, optional): Number of samples per epoch on each rank.
-            ``len(track_names) // num_replicas`` is used by default.
+        num_samples (int, optional): Number of samples per epoch.
+            ``len(track_names)`` is used by default.
         seed (int): Random seed to set dataset and sampler state.
         generator (torch.Generator, optional): Random number generator to
             determine slicing positions of audio.
@@ -579,6 +582,7 @@ class DistributedRandomStemsMUSDB18Dataset(IterableDataset):
         num_replicas: Optional[int] = None,
         rank: Optional[int] = None,
         seed: int = 0,
+        drop_last: Optional[bool] = None,
         generator: Optional[torch.Generator] = None,
     ) -> None:
         super().__init__()
@@ -598,6 +602,12 @@ class DistributedRandomStemsMUSDB18Dataset(IterableDataset):
                 "Invalid rank {}, rank should be in the interval"
                 " [0, {}]".format(rank, num_replicas - 1)
             )
+
+        if drop_last is None:
+            if replacement:
+                drop_last = False
+            else:
+                drop_last = True
 
         filenames = []
 
@@ -626,30 +636,39 @@ class DistributedRandomStemsMUSDB18Dataset(IterableDataset):
         self.generator = None
 
         if num_samples is None:
-            num_samples = len(filenames) // num_replicas
+            num_samples = len(filenames)
+
+        num_samples_per_replica = num_samples // num_replicas
+
+        if num_samples % num_replicas > 0 and not drop_last:
+            num_samples_per_replica += 1
 
         if replacement:
-            self.sampler = RandomStemsMUSDB18Sampler(
+            self.sampler = DistributedRandomStemsMUSDB18Sampler(
                 filenames,
-                num_samples=num_samples,
-                generator=generator,
+                num_samples=num_samples_per_replica,
+                num_replicas=num_replicas,
+                rank=rank,
+                seed=seed,
             )
         else:
-            if num_samples > len(filenames) // num_replicas:
+            if num_replicas * num_samples_per_replica > len(filenames):
                 raise ValueError(
                     f"num_samples ({num_samples}) is greater than "
                     f"length of filenames ({len(filenames)})."
+                    " You may need to set drop_last=True."
                 )
 
             self.sampler = RandomSampler(
                 filenames,
                 replacement=replacement,
-                num_samples=num_samples,
+                num_samples=num_samples_per_replica,
                 generator=generator,
             )
 
         self.replacement = replacement
         self.num_total_samples = num_samples
+        self.num_samples_per_replica = num_samples_per_replica
 
         self._validate_tracks()
 
@@ -692,24 +711,26 @@ class DistributedRandomStemsMUSDB18Dataset(IterableDataset):
 
             # set sampler state
             sampler = self.sampler
-            num_total_samples = self.num_total_samples
+            num_samples_per_replica = self.num_samples_per_replica
 
             if self.replacement:
-                num_samples_per_worker = num_total_samples // self.num_workers
+                num_samples_per_worker = num_samples_per_replica // self.num_workers
 
-                if self.worker_id < num_total_samples % self.num_workers:
+                if self.worker_id < num_samples_per_replica % self.num_workers:
                     num_samples_per_worker += 1
 
-                self.sampler = RandomStemsMUSDB18Sampler(
+                self.sampler = DistributedRandomStemsMUSDB18Sampler(
                     self.filenames,
                     num_samples=num_samples_per_worker,
-                    generator=sampler.generator,
+                    num_replicas=num_replicas,
+                    rank=rank,
+                    seed=sampler.seed,
                 )
             else:
                 self.sampler = RandomSampler(
                     self.filenames,
                     replacement=self.replacement,
-                    num_samples=num_total_samples,
+                    num_samples=num_samples_per_replica,
                     generator=sampler.generator,
                 )
 
@@ -718,15 +739,15 @@ class DistributedRandomStemsMUSDB18Dataset(IterableDataset):
         else:
             # If self.replacement=False, track names should be disjointed among ranks and workers.
             sampler = self.sampler
-            num_total_samples = self.num_total_samples
-            num_samples_per_worker = num_total_samples // self.num_workers
+            num_samples_per_replica = self.num_samples_per_replica
+            num_samples_per_worker = num_samples_per_replica // self.num_workers
 
-            if self.worker_id < num_total_samples % self.num_workers:
+            if self.worker_id < num_samples_per_replica % self.num_workers:
                 num_samples_per_worker += 1
 
             # NOTE: Random state of self.generator is shared among processes.
             #       Random state of sampler.generator is not shared among processes.
-            indices = torch.randperm(num_total_samples, generator=self.generator)
+            indices = torch.randperm(len(self.filenames), generator=self.generator)
             indices = indices.tolist()
             offset = self.num_workers * rank + self.worker_id
             step = num_replicas * self.num_workers
@@ -778,7 +799,7 @@ class DistributedRandomStemsMUSDB18Dataset(IterableDataset):
             yield feature
 
     def __len__(self) -> int:
-        return self.num_total_samples
+        return self.num_samples_per_replica
 
     def _validate_tracks(self) -> None:
         from . import sources
