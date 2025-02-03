@@ -1,5 +1,5 @@
 defaults:
-  - defaults
+  - default
   - override dataset: weighted_audioset
   - _self_
 

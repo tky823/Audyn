@@ -1,5 +1,5 @@
 defaults:
-  - defaults
+  - default
 
 list_path:
 wav_dir:

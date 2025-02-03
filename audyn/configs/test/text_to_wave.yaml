@@ -1,6 +1,6 @@
 defaults:
-  - dataset: defaults
-  - dataloader: defaults
+  - dataset: default
+  - dataloader: default
   - _self_
 
 key_mapping:

@@ -1,7 +1,7 @@
 defaults:
-  - defaults
+  - default
   - override dataset: torch
-  - override dataloader: defaults
+  - override dataloader: default
   - override clip_gradient: clap
   - _self_
 

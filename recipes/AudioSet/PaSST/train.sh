@@ -12,7 +12,7 @@ validation_name="full_validation"
 
 dump_format="webdataset"
 
-system="defaults"
+system="default"
 preprocess="audioset"
 data="passt"
 train="passt"

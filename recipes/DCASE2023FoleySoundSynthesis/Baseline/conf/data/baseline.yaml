@@ -2,6 +2,7 @@ defaults:
   - audio: baseline
   - spectrogram: baseline
   - melspectrogram: baseline
+  - _self_
 
 codebook:
   size: 512

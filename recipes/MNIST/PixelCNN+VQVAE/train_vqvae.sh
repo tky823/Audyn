@@ -9,7 +9,7 @@ continue_from=""
 
 dump_format="torch"
 
-system="defaults"
+system="default"
 data="vqvae"
 train="vqvae"
 test="pixelcnn+vqvae"

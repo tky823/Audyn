@@ -18,8 +18,8 @@ data_root="../data"
 
 dump_format="torch"
 
-system="defaults"
-preprocess="defaults"
+system="default"
+preprocess="default"
 data="vqvae"
 train=""
 test="pixelcnn+vqvae"

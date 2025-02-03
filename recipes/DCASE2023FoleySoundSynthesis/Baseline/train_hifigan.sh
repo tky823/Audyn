@@ -10,8 +10,8 @@ continue_from=""
 
 dump_format="torch"
 
-system="defaults"
-preprocess="defaults"
+system="default"
+preprocess="default"
 data="baseline"
 train="hifigan"
 model="hifigan_v1"

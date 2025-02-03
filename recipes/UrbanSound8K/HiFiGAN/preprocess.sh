@@ -10,7 +10,7 @@ data_root="../data"
 dump_root="./dump"
 log_dir="./log"
 
-preprocess="defaults"
+preprocess="default"
 data="hifigan"
 
 n_validation=10

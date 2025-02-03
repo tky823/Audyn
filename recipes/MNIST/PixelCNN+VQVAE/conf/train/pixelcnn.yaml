@@ -1,6 +1,6 @@
 defaults:
   - dataset: torch
-  - dataloader: defaults
+  - dataloader: default
   - record: pixelcnn
   - _self_
 

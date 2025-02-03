@@ -1,26 +1,25 @@
 train:
-  _target_: audyn.utils.data.musdb18.RandomStemsMUSDB18Dataset
+  _target_: audyn.utils.data.dnr.StemsDNRDataset
   list_path:
   feature_dir:
   duration: ???
-  drums_key: drums
-  bass_key: bass
-  other_key: other
-  vocals_key: vocals
+  speech_key: speech
+  music_key: music
+  effect_key: effect
   sample_rate_key: sample_rate
   filename_key: filename
   decode_audio_as_monoral: false
-  replacement: true
+  training: true
+  align_stems: true
   seed: ${system.seed}
 validation:
-  _target_: audyn.utils.data.musdb18.StemsMUSDB18Dataset
+  _target_: audyn.utils.data.dnr.StemsDNRDataset
   list_path:
   feature_dir:
   duration: ???
-  drums_key: ${..train.drums_key}
-  bass_key: ${..train.bass_key}
-  other_key: ${..train.other_key}
-  vocals_key: ${..train.vocals_key}
+  speech_key: ${..train.speech_key}
+  music_key: ${..train.music_key}
+  effect_key: ${..train.effect_key}
   sample_rate_key: ${..train.sample_rate_key}
   filename_key: ${..train.filename_key}
   decode_audio_as_monoral: ${..train.decode_audio_as_monoral}

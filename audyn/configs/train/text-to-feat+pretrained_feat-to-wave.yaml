@@ -1,7 +1,7 @@
 defaults:
-  - dataset: defaults
-  - dataloader: defaults
-  - record: defaults
+  - dataset: default
+  - dataloader: default
+  - record: default
   - _self_
   
 key_mapping:

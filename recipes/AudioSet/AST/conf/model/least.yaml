@@ -1,5 +1,6 @@
 defaults:
   - ast
+  - _self_
 
 embedding:
   _target_: audyn.modules.vit.PatchEmbedding

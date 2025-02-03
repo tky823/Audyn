@@ -9,8 +9,8 @@ continue_from=""
 
 dump_format="torch"
 
-system="defaults"
-preprocess="defaults"
+system="default"
+preprocess="default"
 data="vqvae"
 train="vqvae"
 model="vqvae"

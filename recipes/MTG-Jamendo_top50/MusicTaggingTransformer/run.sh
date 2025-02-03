@@ -17,13 +17,13 @@ dump_root="dump"
 
 dump_format="webdataset"
 
-system="defaults"
+system="default"
 preprocess="mtg-jamendo"
 data="music-tagging-transformer"
 train="music-tagging-transformer_linear-probing"
 model="music-tagging-transformer_student_linear-probing"
 optimizer="music-tagging-transformer_linear-probing"
-lr_scheduler="defaults"
+lr_scheduler="default"
 criterion="mtg-jamendo"
 
 . ../../_common/parse_options.sh || exit 1;

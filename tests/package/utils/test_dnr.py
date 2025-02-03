@@ -70,6 +70,9 @@ def test_dnr_dataset(
     replacement: bool,
     num_workers: int,
 ) -> None:
+    if not replacement:
+        pytest.skip("replacement=False is not supported.")
+
     batch_size = 3
     sample_rate = 24000
     num_frames = 48000
@@ -157,6 +160,9 @@ def test_distributed_dnr_dataset(
     num_workers: int,
     divisible_by_num_workers: bool,
 ) -> None:
+    if not replacement:
+        pytest.skip("replacement=False is not supported.")
+
     port = select_random_port()
     seed = 0
     world_size = 1

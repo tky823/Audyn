@@ -7,8 +7,8 @@ checkpoint=""
 
 dump_format="torch"
 
-system="defaults"
-preprocess="defaults"
+system="default"
+preprocess="default"
 data="soundstream"
 train="valle"
 

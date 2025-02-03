@@ -1,7 +1,7 @@
 defaults:
   - record: valle
   - dataset: torch
-  - dataloader: defaults
+  - dataloader: default
   - key_mapping: valle
   - _self_
 

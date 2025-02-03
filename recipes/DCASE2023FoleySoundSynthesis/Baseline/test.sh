@@ -10,7 +10,7 @@ hifigan_checkpoint=""
 
 dump_format="torch"
 
-system="defaults"
+system="default"
 data="baseline"
 test="baseline"
 model="baseline"

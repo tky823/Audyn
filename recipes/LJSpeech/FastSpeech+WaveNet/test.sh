@@ -9,8 +9,8 @@ feat_to_wave_checkpoint=""
 
 dump_format="torch"
 
-system="defaults"
-preprocess="defaults"
+system="default"
+preprocess="default"
 data="ljspeech_text-to-wave"
 test="fastspeech+wavenet"
 model="fastspeech+wavenet"

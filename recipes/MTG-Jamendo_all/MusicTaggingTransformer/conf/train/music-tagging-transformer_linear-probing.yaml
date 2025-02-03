@@ -1,5 +1,5 @@
 defaults:
-  - defaults
+  - default
   - override dataloader: mtg_jamendo
   - override dataset: webdataset
   - _self_

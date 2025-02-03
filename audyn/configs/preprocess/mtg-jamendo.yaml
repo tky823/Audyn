@@ -1,5 +1,5 @@
 defaults:
-  - defaults
+  - default
   - _self_
 
 split: 0

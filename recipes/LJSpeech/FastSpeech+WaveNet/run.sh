@@ -16,8 +16,8 @@ dump_root="dump"
 
 dump_format="torch"
 
-system="defaults"
-preprocess="defaults"
+system="default"
+preprocess="default"
 data="ljspeech_text-to-wave"
 test="fastspeech+wavenet"
 model="fastspeech+wavenet"

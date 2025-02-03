@@ -17,7 +17,7 @@ dump_root="dump"
 
 dump_format="musdb18"
 
-system="defaults"
+system="default"
 preprocess="musdb18hq"
 data="musdb18hq"
 train="bsrnn"

@@ -89,7 +89,7 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool, use_torch_compile
 
             system_name = "cpu_compile"
         else:
-            system_name = "defaults"
+            system_name = "default"
 
         if use_ema:
             optimizer_name = "dummy"
@@ -2560,7 +2560,7 @@ def create_dummy_override(
     data_size: int,
     batch_size: int = 1,
     iterations: int = 1,
-    system: str = "defaults",
+    system: str = "default",
     train: str = "dummy",
     model: str = "dummy",
     criterion: str = "dummy",
@@ -2611,7 +2611,7 @@ def create_dummy_gan_override(
     data_size: int,
     batch_size: int = 1,
     iterations: int = 1,
-    system: str = "defaults",
+    system: str = "default",
     train: str = "dummy_gan",
     model: str = "dummy_gan",
     criterion: str = "dummy_gan",
@@ -2830,7 +2830,7 @@ def create_dummy_audioset_override(
     feature_dir: str,
     batch_size: int = 1,
     iterations: int = 1,
-    system: str = "defaults",
+    system: str = "default",
     train: str = "dummy_audioset",
     optimizer: str = "dummy",
     lr_scheduler: str = "dummy",
@@ -2915,7 +2915,7 @@ def create_dummy_musdb18_override(
     feature_dir: str,
     batch_size: int = 1,
     iterations: int = 1,
-    system: str = "defaults",
+    system: str = "default",
     train: str = "dummy_musdb18",
     optimizer: str = "dummy",
     lr_scheduler: str = "dummy",
@@ -2983,7 +2983,7 @@ def create_dummy_dnr_override(
     feature_dir: str,
     batch_size: int = 1,
     iterations: int = 1,
-    system: str = "defaults",
+    system: str = "default",
     train: str = "dummy_dnr",
     optimizer: str = "dummy",
     lr_scheduler: str = "dummy",

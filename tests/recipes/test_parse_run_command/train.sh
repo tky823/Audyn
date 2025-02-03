@@ -4,7 +4,7 @@ exp_root="./exp"
 
 tag=""
 
-system="defaults"
+system="default"
 
 . ../_common/parse_options.sh || exit 1;
 

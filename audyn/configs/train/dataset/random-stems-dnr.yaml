@@ -22,3 +22,6 @@ validation:
   sample_rate_key: ${..train.sample_rate_key}
   filename_key: ${..train.filename_key}
   decode_audio_as_monoral: ${..train.decode_audio_as_monoral}
+  training: false
+  align_stems: true
+  seed: ${system.seed}

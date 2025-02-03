@@ -9,8 +9,8 @@ continue_from=""
 
 dump_format="torch"
 
-system="defaults"
-preprocess="defaults"
+system="default"
+preprocess="default"
 data="wsj0-3mix_8k"
 train="wsj0-mix"
 model="dprnn-tasnet"

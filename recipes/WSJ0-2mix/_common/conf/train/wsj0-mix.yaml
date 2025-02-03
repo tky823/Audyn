@@ -1,6 +1,6 @@
 defaults:
   - dataset: torch
-  - dataloader: defaults
+  - dataloader: default
   - record: wsj0-mix
   - _self_
 

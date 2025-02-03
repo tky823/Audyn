@@ -12,7 +12,7 @@ log_dir="./log"
 
 dump_format="torch"
 
-preprocess="defaults"
+preprocess="default"
 data="wavenet"
 
 n_validation=5

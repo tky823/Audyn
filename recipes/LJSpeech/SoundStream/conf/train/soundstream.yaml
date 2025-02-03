@@ -1,7 +1,7 @@
 defaults:
   - record: soundstream
   - dataset: torch
-  - dataloader: defaults
+  - dataloader: default
   - key_mapping: soundstream
   - _self_
 
