@@ -190,7 +190,8 @@ class InterChunkRNN(nn.Module):
     ) -> None:
         super().__init__()
 
-        self.num_features, self.hidden_channels = num_features, hidden_channels
+        self.num_features = num_features
+        self.hidden_channels = hidden_channels
 
         if is_causal:
             # uni-direction
