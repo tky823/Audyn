@@ -1,0 +1,9 @@
+defaults:
+  - config
+  - _self_
+
+type:
+root: ???
+fma_root:
+unpack:
+chunk_size:
