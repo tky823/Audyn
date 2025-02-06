@@ -38,7 +38,8 @@ def download_fma(config: DictConfig) -> None:
     unpack = config.unpack
     chunk_size = config.chunk_size
 
-    url = f"https://os.unil.cloud.switch.ch/fma/fma_{_type}.zip"
+    metadata_url = "https://os.unil.cloud.switch.ch/fma/fma_metadata.zip"
+    audio_url = f"https://os.unil.cloud.switch.ch/fma/fma_{_type}.zip"
 
     if root is None:
         raise ValueError("Set root directory.")
@@ -52,11 +53,17 @@ def download_fma(config: DictConfig) -> None:
     if root:
         os.makedirs(root, exist_ok=True)
 
-    filename = os.path.basename(url)
+    filename = os.path.basename(metadata_url)
     path = os.path.join(root, filename)
 
     if not os.path.exists(path):
-        _download_fma(url, path, chunk_size=chunk_size)
+        _download_fma(metadata_url, path, chunk_size=chunk_size)
+
+    filename = os.path.basename(audio_url)
+    path = os.path.join(root, filename)
+
+    if not os.path.exists(path):
+        _download_fma(audio_url, path, chunk_size=chunk_size)
 
 
 def _download_fma(url: str, path: str, chunk_size: int = 8192) -> None:
