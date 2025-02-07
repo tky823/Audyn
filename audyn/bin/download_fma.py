@@ -17,7 +17,7 @@ def main(config: DictConfig) -> None:
         type="medium"  # for FMA-medium
 
         data_root="./data"  # root directory to save .zip file.
-        fma_root="${data_root}/FMA/medium"
+        fma_root="${data_root}/FMA/${type}"
         unpack=true  # unpack .zip or not
         chunk_size=8192  # chunk size in byte to download
 
