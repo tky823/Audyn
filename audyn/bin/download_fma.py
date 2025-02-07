@@ -1,6 +1,9 @@
+import glob
 import os
 import shutil
+import tempfile
 import uuid
+import zipfile
 
 from omegaconf import DictConfig
 
@@ -35,6 +38,7 @@ def main(config: DictConfig) -> None:
 def download_fma(config: DictConfig) -> None:
     _type = config.type
     root = config.root
+    fma_root = config.fma_root
     unpack = config.unpack
     chunk_size = config.chunk_size
 
@@ -53,17 +57,24 @@ def download_fma(config: DictConfig) -> None:
     if root:
         os.makedirs(root, exist_ok=True)
 
-    filename = os.path.basename(metadata_url)
-    path = os.path.join(root, filename)
+    metadata_filename = os.path.basename(metadata_url)
+    metadata_path = os.path.join(root, metadata_filename)
 
-    if not os.path.exists(path):
-        _download_fma(metadata_url, path, chunk_size=chunk_size)
+    if not os.path.exists(metadata_path):
+        _download_fma(metadata_url, metadata_path, chunk_size=chunk_size)
 
-    filename = os.path.basename(audio_url)
-    path = os.path.join(root, filename)
+    audio_filename = os.path.basename(audio_url)
+    audio_path = os.path.join(root, audio_filename)
 
-    if not os.path.exists(path):
-        _download_fma(audio_url, path, chunk_size=chunk_size)
+    if not os.path.exists(audio_path):
+        _download_fma(audio_url, audio_path, chunk_size=chunk_size)
+
+    if unpack:
+        if fma_root is None:
+            fma_root = os.path.join(root, "FMA", _type)
+
+        _unpack_zip(metadata_path, fma_root=fma_root)
+        _unpack_zip(audio_path, fma_root=fma_root)
 
 
 def _download_fma(url: str, path: str, chunk_size: int = 8192) -> None:
@@ -77,3 +88,14 @@ def _download_fma(url: str, path: str, chunk_size: int = 8192) -> None:
             os.remove(temp_path)
 
         raise e
+
+
+def _unpack_zip(path: str, fma_root: str) -> None:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with zipfile.ZipFile(path, "r") as f:
+            f.extractall(temp_dir)
+
+        os.makedirs(fma_root, exist_ok=True)
+
+        for temp_path in glob.glob(os.path.join(temp_dir, "*")):
+            shutil.move(temp_path, fma_root)
