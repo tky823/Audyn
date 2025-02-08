@@ -73,8 +73,10 @@ def download_fma(config: DictConfig) -> None:
         if fma_root is None:
             fma_root = os.path.join(root, "FMA", _type)
 
-        _unpack_zip(metadata_path, fma_root=fma_root)
-        _unpack_zip(audio_path, fma_root=fma_root)
+        unpack_root = os.path.join(fma_root, "metadata")
+        _unpack_zip(metadata_path, filename="fma_metadata", unpack_root=unpack_root)
+        unpack_root = os.path.join(fma_root, f"{_type}")
+        _unpack_zip(audio_path, filename=f"fma_{_type}", unpack_root=unpack_root)
 
 
 def _download_fma(url: str, path: str, chunk_size: int = 8192) -> None:
@@ -90,12 +92,12 @@ def _download_fma(url: str, path: str, chunk_size: int = 8192) -> None:
         raise e
 
 
-def _unpack_zip(path: str, fma_root: str) -> None:
+def _unpack_zip(path: str, filename: str, unpack_root: str) -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
         with zipfile.ZipFile(path, "r") as f:
             f.extractall(temp_dir)
 
-        os.makedirs(fma_root, exist_ok=True)
+        os.makedirs(unpack_root, exist_ok=True)
 
-        for temp_path in glob.glob(os.path.join(temp_dir, "*")):
-            shutil.move(temp_path, fma_root)
+        for temp_path in glob.glob(os.path.join(temp_dir, filename, "*")):
+            shutil.move(temp_path, unpack_root)
