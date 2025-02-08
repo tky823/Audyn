@@ -75,7 +75,7 @@ def download_fma(config: DictConfig) -> None:
 
         unpack_root = os.path.join(fma_root, "metadata")
         _unpack_zip(metadata_path, filename="fma_metadata", unpack_root=unpack_root)
-        unpack_root = os.path.join(fma_root, f"{_type}")
+        unpack_root = os.path.join(fma_root, "audio")
         _unpack_zip(audio_path, filename=f"fma_{_type}", unpack_root=unpack_root)
 
 
