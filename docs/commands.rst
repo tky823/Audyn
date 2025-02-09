@@ -42,12 +42,14 @@ You can download MUSDB18 dataset by ``audyn-download-musdb18``.
     unpack=${unpack} \
     chunk_size=${chunk_size}
 
+
 Decode MUSDB18 .mp4 files
 -------------------------
 
 You can decode .stem.mp4 file(s) into .wav files for MUSDB18 dataset by ``audyn-decode-musdb18``.
 
 .. autofunction:: audyn.bin.decode_musdb18.main
+
 
 Download FSD50K dataset
 -----------------------
@@ -67,6 +69,7 @@ You can download FSD50K dataset by ``audyn-download-fsd50k``.
     unpack=${unpack} \
     chunk_size=${chunk_size}
 
+
 Download LSX dataset
 --------------------
 
@@ -84,6 +87,7 @@ You can download LSX dataset by ``audyn-download-lsx``.
     lsx_root="${lsx_root}" \
     unpack=${unpack} \
     chunk_size=${chunk_size}
+
 
 Download DnR dataset
 --------------------
@@ -105,6 +109,7 @@ Only version 2 is supported.
     version=${version} \
     unpack=${unpack} \
     chunk_size=${chunk_size}
+
 
 Download MTG-Jamendo dataset
 ----------------------------
@@ -161,6 +166,28 @@ You can download OpenMIC-2018 dataset by ``audyn-download-openmic2018``.
     audyn-download-openmic2018 \
     root="${data_root}" \
     openmic2018_root="${openmic2018_root}" \
+    unpack=${unpack} \
+    chunk_size=${chunk_size}
+
+
+Download FMA dataset
+--------------------
+
+You can download FMA dataset by ``audyn-download-fma``.
+
+.. code-block:: shell
+
+    type="medium"  # for FMA-medium
+
+    data_root="./data"  # root directory to save .zip file.
+    fma_root="${data_root}/FMA/${type}"
+    unpack=true  # unpack .zip or not
+    chunk_size=8192  # chunk size in byte to download
+
+    audyn-download-fma \
+    type="${type}" \
+    root="${data_root}" \
+    fma_root="${fma_root}" \
     unpack=${unpack} \
     chunk_size=${chunk_size}
 
