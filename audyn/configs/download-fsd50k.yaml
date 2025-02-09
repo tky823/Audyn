@@ -1,0 +1,8 @@
+defaults:
+  - config
+  - _self_
+
+root: ???
+fsd50k_root:
+unpack:
+chunk_size:
