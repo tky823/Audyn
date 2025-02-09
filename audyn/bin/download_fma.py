@@ -45,6 +45,13 @@ def download_fma(config: DictConfig) -> None:
     metadata_url = "https://os.unil.cloud.switch.ch/fma/fma_metadata.zip"
     audio_url = f"https://os.unil.cloud.switch.ch/fma/fma_{_type}.zip"
 
+    assert _type in [
+        "small",
+        "medium",
+        "large",
+        "full",
+    ], "Only small, medium, large, and full are supported."
+
     if root is None:
         raise ValueError("Set root directory.")
 
