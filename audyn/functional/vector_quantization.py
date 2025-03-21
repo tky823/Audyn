@@ -3,7 +3,10 @@ from typing import List, Tuple, Union
 import torch
 import torch.nn.functional as F
 
-__all__ = ["quantize_vector", "quantize_residual_vector"]
+__all__ = [
+    "quantize_vector",
+    "quantize_residual_vector",
+]
 
 
 def quantize_vector(
@@ -51,7 +54,7 @@ def quantize_vector(
 
 def quantize_residual_vector(
     input: torch.Tensor, weight: Union[torch.Tensor, List[torch.Tensor]]
-) -> Tuple[torch.Tensor, torch.LongTensor]:
+) -> Tuple[torch.Tensor, torch.Tensor, torch.LongTensor]:
     """Apply vector quantization proposed in VQ-VAE.
 
     Args:
@@ -65,8 +68,10 @@ def quantize_residual_vector(
 
             - torch.Tensor: Quantized embeddings of shape \
                 (batch_size, num_layers, embedding_dim, *).
+            - torch.Tensor: Residual vectors of shape \
+                (batch_size, num_layers, embedding_dim, *).
             - torch.LongTensor: Indices of indices in codebook of shape \
-            (batch_size, num_layers, *).
+                (batch_size, num_layers, *).
 
     """
     if isinstance(weight, torch.Tensor):
@@ -82,16 +87,19 @@ def quantize_residual_vector(
 
     reconstructed = 0
     output = []
+    residual = []
     indices = []
 
     for _weight in weight:
-        residual = input - reconstructed
-        _output, _indices = quantize_vector(residual, _weight)
+        _residual = input - reconstructed
+        _output, _indices = quantize_vector(_residual, _weight)
         reconstructed = reconstructed + _output
         output.append(_output)
+        residual.append(_residual)
         indices.append(_indices)
 
     output = torch.stack(output, dim=1)
+    residual = torch.stack(residual, dim=1)
     indices = torch.stack(indices, dim=1)
 
-    return output, indices
+    return output, residual, indices
