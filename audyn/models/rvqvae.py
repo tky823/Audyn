@@ -170,7 +170,7 @@ class RVQVAE(BaseVAE):
         return output
 
     @torch.no_grad()
-    def sample(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.LongTensor]:
+    def sample(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.LongTensor]:
         """Non-differentiable sampling.
 
         Args:
