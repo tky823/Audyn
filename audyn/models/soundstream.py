@@ -75,13 +75,15 @@ class SoundStream(RVQVAE):
         padding_left, padding_right = self.compute_padding(input)
         x = F.pad(input, (padding_left, padding_right))
         encoded = self.encode(x)
-        hierarchical_quantized, indices = self.quantize(encoded)
-        quantized = hierarchical_quantized.sum(dim=1)
-        quantized_straight_through = encoded + torch.detach(quantized - encoded)
+        hierarchical_quantized, hierarchical_residual, indices = self.quantize(encoded)
+        quantized_straight_through = hierarchical_residual + torch.detach(
+            hierarchical_quantized - hierarchical_residual
+        )
+        quantized_straight_through = quantized_straight_through.sum(dim=1)
         x = self.decode(quantized_straight_through, stage_wise=False)
         output = F.pad(x, (-padding_left, -padding_right))
 
-        return output, encoded, hierarchical_quantized, indices
+        return output, encoded, hierarchical_quantized, hierarchical_residual, indices
 
     @torch.no_grad()
     def inference(
