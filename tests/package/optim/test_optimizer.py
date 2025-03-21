@@ -4,7 +4,7 @@ import os
 import sys
 import tempfile
 from datetime import timedelta
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 
 import pytest
 import torch
@@ -17,10 +17,6 @@ from dummy.utils.ddp import retry_on_file_not_found, set_ddp_environment
 from omegaconf import OmegaConf
 from torch.optim import SGD, Adam
 
-from audyn.functional.vector_quantization import (
-    quantize_residual_vector as base_quantize_residual_vector,
-)
-from audyn.functional.vector_quantization import quantize_vector
 from audyn.models.rvqvae import RVQVAE
 from audyn.models.vqvae import VQVAE
 from audyn.modules.rvq import ResidualVectorQuantizer
@@ -350,32 +346,26 @@ def test_rvq_optimizer_correctness() -> None:
     codebook_size, embedding_dim = 3, 4
     batch_size, length = 2, 5
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        residual_path = os.path.join(temp_dir, "residual.pth")
+    model = ResidualVectorQuantizer(
+        codebook_size,
+        embedding_dim,
+        num_stages=num_stages,
+        dropout=False,
+    )
 
-        model = CustomResidualVectorQuantizer(
-            codebook_size,
-            embedding_dim,
-            num_stages=num_stages,
-            dropout=False,
-            residual_path=residual_path,
-        )
+    optimizer = ExponentialMovingAverageCodebookOptimizer(model.parameters())
+    model.register_forward_hook(optimizer.store_current_stats)
+    input = torch.randn((batch_size, embedding_dim, length))
 
-        optimizer = ExponentialMovingAverageCodebookOptimizer(model.parameters())
-        model.register_forward_hook(optimizer.store_current_stats)
-        input = torch.randn((batch_size, embedding_dim, length))
+    optimizer.zero_grad()
+    _, residual_by_model, _ = model(input)
+    residual_by_model = residual_by_model.permute(1, 0, 3, 2).contiguous()
+    residual_by_model = residual_by_model.view(num_stages, -1, embedding_dim)
 
-        optimizer.zero_grad()
-        _ = model(input)
+    assert len(optimizer.residual_groups) == 1
 
-        residual_by_model = torch.load(residual_path, map_location=lambda storage, loc: storage)
-        residual_by_model = residual_by_model.permute(1, 0, 3, 2).contiguous()
-        residual_by_model = residual_by_model.view(num_stages, -1, embedding_dim)
-
-        assert len(optimizer.residual_groups) == 1
-
-        for residual_group in optimizer.residual_groups:
-            assert torch.allclose(residual_group, residual_by_model)
+    for residual_group in optimizer.residual_groups:
+        assert torch.allclose(residual_group, residual_by_model)
 
 
 @pytest.mark.parametrize(
@@ -452,131 +442,6 @@ class CustomModel(nn.Module):
         output = self.norm(x)
 
         return output
-
-
-class CustomResidualVectorQuantizer(ResidualVectorQuantizer):
-    """
-    Args:
-        residual_path (str): Path to save residual features.
-    """
-
-    def __init__(
-        self,
-        codebook_size: int,
-        embedding_dim: int,
-        num_stages: int,
-        dropout: bool = True,
-        init_by_kmeans: int = 0,
-        seed: int = 0,
-        residual_path: str = None,
-    ) -> None:
-        super().__init__(
-            codebook_size,
-            embedding_dim,
-            num_stages=num_stages,
-            dropout=dropout,
-            init_by_kmeans=init_by_kmeans,
-            seed=seed,
-        )
-
-        self.residual_path = residual_path
-
-    def forward(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.LongTensor]:
-        """Forward pass of vector quantizer.
-
-        Args:
-            input (torch.Tensor): Latent feature of shape (batch_size, embedding_dim, *).
-
-        Returns:
-            tuple: Tuple containing:
-
-                - torch.Tensor: Selected embeddings of same shape as input.
-                - torch.Tensor: Residual vectors of shape
-                    (batch_size, num_stages', embedding_dim, *).
-                - torch.LongTensor: Indices of codebook of shape (batch_size, num_stages', *),
-                    where num_stages' might be changed if ``dropout=True``.
-                    To disable this feature, set ``dropout=False`` or call ``.eval()``.
-
-        """
-        if not self.is_initialized:
-            self._initialize_parameters(input)
-            self.is_initialized = True
-
-        if self.dropout and self.training:
-            num_stages = torch.randint(0, len(self.codebooks), ()) + 1
-            num_stages = num_stages.item()
-        else:
-            num_stages = len(self.codebooks)
-
-        weight = []
-
-        for codebook in self.codebooks[:num_stages]:
-            codebook: nn.Embedding
-            weight.append(codebook.weight)
-
-        output, residual, indices = quantize_residual_vector(input, weight)
-        output_base, residual_base, indices_base = base_quantize_residual_vector(input, weight)
-
-        assert torch.allclose(output, output_base)
-        assert torch.allclose(residual, residual_base)
-        assert torch.equal(indices, indices_base)
-
-        torch.save(residual, self.residual_path)
-
-        return output, residual, indices
-
-
-def quantize_residual_vector(
-    input: torch.Tensor, weight: Union[torch.Tensor, List[torch.Tensor]]
-) -> Tuple[torch.Tensor, torch.Tensor, torch.LongTensor]:
-    """Apply vector quantization proposed in VQ-VAE.
-
-    Args:
-        input (torch.Tensor): Latent feature of shape (batch_size, embedding_dim, *).
-        weight (torch.Tensor or list): Embeddings in codebooks. Following two types are supported.
-            - Stacked codebooks of shape (num_layers, codebook_size, embedding_dim)
-            - List of codebooks. Shape of each item is (codebook_size, embedding_dim).
-
-    Returns:
-        tuple: Tuple of tensors containing:
-
-            - torch.Tensor: Quantized embeddings of shape \
-                (batch_size, num_layers, embedding_dim, *).
-            - torch.Tensor: Residual features of shape \
-                (batch_size, num_layers, embedding_dim, *).
-            - torch.LongTensor: Indices of indices in codebook of shape \
-            (batch_size, num_layers, *).
-
-    """
-    if isinstance(weight, torch.Tensor):
-        n_dims = weight.dim()
-
-        assert (
-            n_dims == 3
-        ), "Shape of weight is expected to be (num_layers, codebook_size, embedding_dim)."
-    elif isinstance(weight, list):
-        pass
-    else:
-        raise ValueError(f"Invalid type {type(weight)} is given as weight.")
-
-    reconstructed = 0
-    output = []
-    residual = []
-    indices = []
-
-    for _weight in weight:
-        _residual = input - reconstructed
-        _output, _indices = quantize_vector(_residual, _weight)
-        reconstructed = reconstructed + _output
-        output.append(_output)
-        residual.append(_residual)
-        indices.append(_indices)
-
-    output = torch.stack(output, dim=1)
-    residual = torch.stack(residual, dim=1)
-    indices = torch.stack(indices, dim=1)
-
-    return output, residual, indices
 
 
 def train_exponential_moving_average_codebook_optimizer(
