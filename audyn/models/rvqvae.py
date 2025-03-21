@@ -53,7 +53,7 @@ class RVQVAE(BaseVAE):
 
     def forward(
         self, input: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.LongTensor]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.LongTensor]:
         """Forward pass of RVQVAE.
 
         Args:
@@ -63,10 +63,12 @@ class RVQVAE(BaseVAE):
             tuple: Tuple of tensors containing
 
                 - torch.Tensor: Reconstructed feature of same shape as input.
-                - torch.Tensor: Latent feature of shape \
+                - torch.Tensor: Encoded latent feature of shape \
                     (batch_size, embedding_dim, *latent_shape). In most cases, latent_shape is \
                     smaller than input_shape.
                 - torch.Tensor: Quantized latent feature of shape \
+                    (batch_size, num_stages, embedding_dim, *latent_shape).
+                - torch.Tensor: Residual latent feature of shape \
                     (batch_size, num_stages, embedding_dim, *latent_shape).
                 - torch.Tensor: Indices of embeddings in codebook of shape \
                     (batch_size, num_stages, *latent_shape).
@@ -77,12 +79,14 @@ class RVQVAE(BaseVAE):
 
         """
         encoded = self.encode(input)
-        hierarchical_quantized, indices = self.quantize(encoded)
-        quantized = hierarchical_quantized.sum(dim=1)
-        quantized_straight_through = encoded + torch.detach(quantized - encoded)
+        hierarchical_quantized, hierarchical_residual, indices = self.quantize(encoded)
+        quantized_straight_through = hierarchical_residual + torch.detach(
+            hierarchical_quantized - hierarchical_residual
+        )
+        quantized_straight_through = quantized_straight_through.sum(dim=1)
         output = self.decode(quantized_straight_through, stage_wise=False)
 
-        return output, encoded, hierarchical_quantized, indices
+        return output, encoded, hierarchical_quantized, hierarchical_residual, indices
 
     @torch.no_grad()
     def inference(self, quantized: torch.Tensor, stage_wise: bool = True) -> torch.Tensor:
@@ -176,9 +180,12 @@ class RVQVAE(BaseVAE):
             tuple: Tuple of tensors containing
 
                 - torch.Tensor: Quantized feature of shape \
-                    (batch_size, num_stages, embedding_dim, *input_shape).
+                    (batch_size, num_stages, embedding_dim, *latent_shape). In most cases, \
+                    latent_shape is smaller than input_shape.
+                - torch.Tensor: Residual feature of shape \
+                    (batch_size, num_stages, embedding_dim, *latent_shape).
                 - torch.LongTensor: Quantization indices of shape \
-                    (batch_size, num_stages, *input_shape).
+                    (batch_size, num_stages, *latent_shape).
 
         .. note::
 
@@ -186,11 +193,11 @@ class RVQVAE(BaseVAE):
 
         """
         encoded = self.encode(input)
-        quantized, indices = self.quantize(encoded)
+        quantized, residual, indices = self.quantize(encoded)
 
-        return quantized, indices
+        return quantized, residual, indices
 
-    def rsample(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.LongTensor]:
+    def rsample(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.LongTensor]:
         """Differentiable sampling with straight through estimator.
 
         Args:
@@ -199,10 +206,13 @@ class RVQVAE(BaseVAE):
         Returns:
             tuple: Tuple of tensors containing
 
-                - torch.Tensor: Quantized feature of shape \
-                    (batch_size, num_stages, embedding_dim, *input_shape).
+                - torch.Tensor: Quantized latent feature of shape \
+                    (batch_size, num_stages, embedding_dim, *latent_shape). In most cases, \
+                    latent_shape is smaller than input_shape.
+                - torch.Tensor: Residual latent feature of shape \
+                    (batch_size, num_stages, embedding_dim, *latent_shape).
                 - torch.LongTensor: Quantization indices of shape \
-                    (batch_size, num_stages, *input_shape).
+                    (batch_size, num_stages, *latent_shape).
 
         .. note::
 
@@ -210,26 +220,27 @@ class RVQVAE(BaseVAE):
 
         """
         encoded = self.encode(input)
-        quantized, indices = self.quantize(encoded)
-        encoded = encoded.unsqueeze(dim=1)
-        quantized_straight_through = encoded + torch.detach(quantized - encoded)
+        quantized, residual, indices = self.quantize(encoded)
+        quantized_straight_through = residual + torch.detach(quantized - residual)
 
-        return quantized_straight_through, indices
+        return quantized_straight_through, residual, indices
 
-    def quantize(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.LongTensor]:
+    def quantize(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.LongTensor]:
         """Apply vector_quantizer.
 
         Args:
-            input (torch.Tensor): Latent feature of shape (batch_size, embedding_dim, *).
+            input (torch.Tensor): Encoded feature of shape (batch_size, embedding_dim, *).
 
         Returns:
             tuple: Tuple of tensors containing:
 
                 - torch.Tensor: Selected embeddings of shape
                     (batch_size, num_stages, embedding_dim, *).
+                - torch.Tensor: Residual vectors of shape
+                    (batch_size, num_stages, embedding_dim, *).
                 - torch.LongTensor: Indices of indices in codebook of shape (batch_size, *).
 
         """
-        quantized, indices = self.vector_quantizer(input)
+        quantized, residual, indices = self.vector_quantizer(input)
 
-        return quantized, indices
+        return quantized, residual, indices
