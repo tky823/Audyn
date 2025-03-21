@@ -156,7 +156,12 @@ def test_exponential_moving_average_codebook_optimizer(
 
         for _ in range(num_initial_steps):
             optimizer.zero_grad()
-            _, _ = model(input)
+
+            if is_rvq:
+                _, _, _ = model(input)
+            else:
+                _, _ = model(input)
+
             optimizer.step()
 
         state_dict_stop = {}
@@ -168,7 +173,12 @@ def test_exponential_moving_average_codebook_optimizer(
 
         for _ in range(num_initial_steps, num_total_steps):
             optimizer.zero_grad()
-            output, _ = model(input)
+
+            if is_rvq:
+                output, _, _ = model(input)
+            else:
+                output, _ = model(input)
+
             loss = output.mean()
             loss.backward()
             optimizer.step()
@@ -189,7 +199,12 @@ def test_exponential_moving_average_codebook_optimizer(
         # resume training from checkpoint
         for _ in range(num_initial_steps, num_total_steps):
             optimizer.zero_grad()
-            output, _ = model(input)
+
+            if is_rvq:
+                output, _, _ = model(input)
+            else:
+                output, _ = model(input)
+
             loss = output.mean()
             loss.backward()
             optimizer.step()
@@ -353,14 +368,14 @@ def test_rvq_optimizer_correctness() -> None:
         optimizer.zero_grad()
         _ = model(input)
 
-        residuals_by_model = torch.load(residual_path, map_location=lambda storage, loc: storage)
-        residuals_by_model = residuals_by_model.permute(1, 0, 3, 2).contiguous()
-        residuals_by_model = residuals_by_model.view(num_stages, -1, embedding_dim)
+        residual_by_model = torch.load(residual_path, map_location=lambda storage, loc: storage)
+        residual_by_model = residual_by_model.permute(1, 0, 3, 2).contiguous()
+        residual_by_model = residual_by_model.view(num_stages, -1, embedding_dim)
 
         assert len(optimizer.residual_groups) == 1
 
         for residual_group in optimizer.residual_groups:
-            assert torch.allclose(residual_group, residuals_by_model)
+            assert torch.allclose(residual_group, residual_by_model)
 
 
 @pytest.mark.parametrize(
@@ -476,6 +491,8 @@ class CustomResidualVectorQuantizer(ResidualVectorQuantizer):
             tuple: Tuple containing:
 
                 - torch.Tensor: Selected embeddings of same shape as input.
+                - torch.Tensor: Residual vectors of shape
+                    (batch_size, num_stages', embedding_dim, *).
                 - torch.LongTensor: Indices of codebook of shape (batch_size, num_stages', *),
                     where num_stages' might be changed if ``dropout=True``.
                     To disable this feature, set ``dropout=False`` or call ``.eval()``.
@@ -497,15 +514,16 @@ class CustomResidualVectorQuantizer(ResidualVectorQuantizer):
             codebook: nn.Embedding
             weight.append(codebook.weight)
 
-        output, residuals, indices = quantize_residual_vector(input, weight)
-        output_base, indices_base = base_quantize_residual_vector(input, weight)
+        output, residual, indices = quantize_residual_vector(input, weight)
+        output_base, residual_base, indices_base = base_quantize_residual_vector(input, weight)
 
         assert torch.allclose(output, output_base)
+        assert torch.allclose(residual, residual_base)
         assert torch.equal(indices, indices_base)
 
-        torch.save(residuals, self.residual_path)
+        torch.save(residual, self.residual_path)
 
-        return output, indices
+        return output, residual, indices
 
 
 def quantize_residual_vector(
@@ -543,22 +561,22 @@ def quantize_residual_vector(
 
     reconstructed = 0
     output = []
-    residuals = []
+    residual = []
     indices = []
 
     for _weight in weight:
-        residual = input - reconstructed
-        _output, _indices = quantize_vector(residual, _weight)
+        _residual = input - reconstructed
+        _output, _indices = quantize_vector(_residual, _weight)
         reconstructed = reconstructed + _output
         output.append(_output)
-        residuals.append(residual)
+        residual.append(_residual)
         indices.append(_indices)
 
     output = torch.stack(output, dim=1)
-    residuals = torch.stack(residuals, dim=1)
+    residual = torch.stack(residual, dim=1)
     indices = torch.stack(indices, dim=1)
 
-    return output, residuals, indices
+    return output, residual, indices
 
 
 def train_exponential_moving_average_codebook_optimizer(
@@ -627,31 +645,49 @@ def train_exponential_moving_average_codebook_optimizer(
         seed=config.seed,
     )
     model = nn.parallel.DistributedDataParallel(model, find_unused_parameters=True)
+    unwrapped_model: VQVAE | RVQVAE = model.module
     optimizer = ExponentialMovingAverageCodebookOptimizer(
-        model.module.vector_quantizer.parameters(),
+        unwrapped_model.vector_quantizer.parameters(),
         reset_step=1,
         reset_rate=0.9,
     )
-    model.module.vector_quantizer.register_forward_hook(optimizer.store_current_stats)
+    unwrapped_model.vector_quantizer.register_forward_hook(optimizer.store_current_stats)
 
     for _ in range(iterations):
         input = torch.randn((batch_size, in_channels, height, width), generator=g)
-        output, encoded, quantized, indices = model(input)
 
-        if isinstance(model.module, RVQVAE):
-            quantized = quantized.sum(dim=1)
+        if isinstance(unwrapped_model, RVQVAE):
+            output, encoded, quantized, residual, indices = model(input)
+        else:
+            output, encoded, quantized, indices = model(input)
+            residual = encoded
 
         assert output.size() == input.size()
         assert indices.size(0) == batch_size
 
         reconstrction_loss = torch.mean((output - input) ** 2)
-        commitment_loss = torch.mean((encoded - quantized.detach()) ** 2)
-        codebook_loss = torch.mean((encoded.detach() - quantized) ** 2)
+        commitment_loss = torch.mean((residual - quantized.detach()) ** 2)
+        codebook_loss = torch.mean((residual.detach() - quantized) ** 2)
         loss = reconstrction_loss + commitment_loss + codebook_loss
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
+        if isinstance(unwrapped_model, RVQVAE):
+            quantized = quantized.transpose(1, 0)
+            residual = residual.transpose(1, 0)
+            num_stages = quantized.size(0)
+
+            for stage_idx in range(num_stages):
+                _residual = residual[stage_idx]
+
+                if stage_idx == 0:
+                    allclose(_residual, encoded)
+                else:
+                    _quantized = torch.sum(quantized[:stage_idx], dim=0)
+
+                    allclose(_quantized + _residual, encoded, atol=1e-7)
 
     torch.save(model.module.state_dict(), path)
 
