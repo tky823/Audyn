@@ -1,6 +1,14 @@
+defaults:
+  - _mnist
+  - _self_
+
 train:
-  _target_: utils.dataset.MNIST
+  _target_: utils.dataset.GumbelMNIST
   root: "../data/"
+  init_temperature: 2
+  min_temperature: 0.5
+  gamma: 0.999
+  schedule: exponential
   train: true
   transform:
     _target_: torchvision.transforms.ToTensor
@@ -10,7 +18,7 @@ train:
   download: true
 
 validation:
-  _target_: ${..train._target_}
+  _target_: utils.dataset.MNIST
   root: ${..train.root}
   train: false
   transform: ${..train.transform}

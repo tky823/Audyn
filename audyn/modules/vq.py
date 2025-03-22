@@ -1,6 +1,6 @@
 """Vector quantization modules."""
 
-from typing import Any, Dict, Mapping, Tuple
+from typing import Any, Dict, Mapping, Optional, Tuple
 
 import torch
 import torch.distributed as dist
@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from torch.nn.modules.module import _IncompatibleKeys
 
 from ..amp import autocast, get_autocast_device_type
-from ..functional.vector_quantization import quantize_vector
+from ..functional.vector_quantization import quantize_gumbel_vector, quantize_vector
 
 __all__ = ["VectorQuantizer"]
 
@@ -162,7 +162,10 @@ class VectorQuantizer(BaseVectorQuantizer):
         init_by_kmeans: int = 0,
         seed: int = 0,
     ) -> None:
-        super().__init__(init_by_kmeans=init_by_kmeans, seed=seed)
+        super().__init__(
+            init_by_kmeans=init_by_kmeans,
+            seed=seed,
+        )
 
         self.codebook = nn.Embedding(
             num_embeddings=codebook_size,
@@ -245,3 +248,79 @@ class VectorQuantizer(BaseVectorQuantizer):
             reconstructed = reconstructed + quantized
 
         self.is_initialized = True
+
+
+class GumbelVectorQuantizer(VectorQuantizer):
+    """Gumbel vector quantizer.
+
+    Args:
+        codebook_size (int): Size of codebook.
+        embedding_dim (int): Number of embedding dimensions.
+        proj (nn.Module, optional): Module to project encoded latent feature (*, embedding_dim)
+            to logit (*, codebook_size).
+        init_by_kmeans (int): Number of iterations in k-means clustering initialization.
+            If non-positive value is given, k-means clustering initialization is not used.
+        seed (int): Random seed for k-means clustering initialization.
+
+    """
+
+    def __init__(
+        self,
+        codebook_size: int,
+        embedding_dim: int,
+        proj: Optional[nn.Module] = None,
+        init_by_kmeans: int = 0,
+        seed: int = 0,
+    ) -> None:
+        super(VectorQuantizer, self).__init__(
+            init_by_kmeans=init_by_kmeans,
+            seed=seed,
+        )
+
+        if proj is None:
+            proj = nn.Sequential(
+                nn.Linear(embedding_dim, codebook_size),
+                nn.ReLU(),
+                nn.Linear(codebook_size, codebook_size),
+            )
+
+        self.proj = proj
+        self.codebook = nn.Embedding(
+            num_embeddings=codebook_size,
+            embedding_dim=embedding_dim,
+        )
+
+    def forward(
+        self, input: torch.Tensor, temperature: float = 1
+    ) -> Tuple[torch.Tensor, torch.LongTensor]:
+        """Forward pass of gumbel vector quantizer.
+
+        Args:
+            input (torch.Tensor): Latent feature of shape (batch_size, embedding_dim, *).
+
+        Returns:
+            tuple: Tuple containing:
+
+                - torch.Tensor: Selected embeddings of same shape as input.
+                - torch.LongTensor: Indices of indices in codebook of shape (batch_size, *).
+
+        """
+        if self.training and not self.is_initialized:
+            self._initialize_parameters(input)
+
+        batch_size, embedding_dim, *shape = input.size()
+        codebook_size = self.codebook.weight.size(0)
+
+        x = input.view(batch_size, embedding_dim, -1)
+        x = x.permute(0, 2, 1).contiguous()
+        logit = self.proj(x)
+        logit = logit.permute(0, 2, 1).contiguous()
+        logit = logit.view(batch_size, codebook_size, *shape)
+        output, indices = quantize_gumbel_vector(
+            logit,
+            self.codebook.weight,
+            temperature=temperature,
+            training=self.training,
+        )
+
+        return output, indices

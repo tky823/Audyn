@@ -3,10 +3,13 @@ from typing import Tuple
 import torch
 import torch.nn as nn
 
-from ..modules.vqvae import VectorQuantizer
+from ..modules.vq import GumbelVectorQuantizer, VectorQuantizer
 from .vae import BaseVAE
 
-__all__ = ["VQVAE"]
+__all__ = [
+    "VQVAE",
+    "GumbelVQVAE",
+]
 
 
 class VQVAE(BaseVAE):
@@ -179,5 +182,130 @@ class VQVAE(BaseVAE):
 
         """
         quantized, indices = self.vector_quantizer(input)
+
+        return quantized, indices
+
+
+class GumbelVQVAE(VQVAE):
+    """Gumbel vector quantized-variational autoencoder.
+
+    Args:
+        encoder (nn.Module): Encoder which returns latent feature of
+            shape (batch_size, embedding_dim, *).
+        decoder (nn.Module): Decoder which takes latent feature of
+            shape (batch_size, embedding_dim, *).
+        codebook_size (int): Size of codebook.
+        embedding_dim (int): Number of embedding dimension.
+        init_by_kmeans (int): Number of iterations in k-means clustering initialization.
+            If non-positive value is given, k-means clustering initialization is not used.
+        seed (int): Random seed for k-means clustering initialization.
+
+    """
+
+    def __init__(
+        self,
+        encoder: nn.Module,
+        decoder: nn.Module,
+        codebook_size: int,
+        embedding_dim: int,
+        init_by_kmeans: int = 0,
+        seed: int = 0,
+    ) -> None:
+        super(VQVAE, self).__init__()
+
+        self.encoder = encoder
+        self.vector_quantizer = GumbelVectorQuantizer(
+            codebook_size,
+            embedding_dim,
+            init_by_kmeans=init_by_kmeans,
+            seed=seed,
+        )
+        self.decoder = decoder
+
+    def forward(
+        self,
+        input: torch.Tensor,
+        temperature: float = 1,
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.LongTensor]:
+        """Forward pass of RVQVAE.
+
+        Args:
+            input (torch.Tensor): Input feature of shape (batch_size, *input_shape).
+            temperature (float): Temperature parameter in Gumbel-softmax. Default: ``1``.
+
+        Returns:
+            tuple: Tuple of tensors containing
+
+                - torch.Tensor: Reconstructed feature of same shape as input.
+                - torch.Tensor: Encoded latent feature of shape \
+                    (batch_size, embedding_dim, *latent_shape). In most cases, latent_shape is \
+                    smaller than input_shape.
+                - torch.Tensor: Quantized latent feature of shape \
+                    (batch_size, embedding_dim, *latent_shape).
+                - torch.Tensor: Indices of embeddings in codebook of shape \
+                    (batch_size, *latent_shape).
+
+        """
+        encoded = self.encode(input)
+        quantized, indices = self.quantize(encoded, temperature=temperature)
+        output = self.decode(quantized)
+
+        return output, encoded, quantized, indices
+
+    @torch.no_grad()
+    def sample(
+        self, input: torch.Tensor, temperature: float = 1
+    ) -> Tuple[torch.Tensor, torch.LongTensor]:
+        """Non-differentiable sampling.
+
+        Args:
+            input (torch.Tensor): Input feature of shape (batch_size, *input_shape).
+            temperature (float): Temperature parameter in Gumbel-softmax. Default: ``1``.
+
+        .. note::
+
+            This method does not use reparametrization trick.
+
+        """
+        quantized, indices = self.rsample(input, temperature=temperature)
+
+        return quantized, indices
+
+    def rsample(
+        self, input: torch.Tensor, temperature: float = 1
+    ) -> Tuple[torch.Tensor, torch.LongTensor]:
+        """Differentiable sampling with straight through estimator.
+
+        Args:
+            input (torch.Tensor): Input feature of shape (batch_size, *input_shape).
+            temperature (float): Temperature parameter in Gumbel-softmax. Default: ``1``.
+
+        .. note::
+
+            This method does not use reparametrization trick.
+
+        """
+        encoded = self.encode(input)
+        quantized, indices = self.quantize(encoded, temperature=temperature)
+
+        return quantized, indices
+
+    def quantize(
+        self, input: torch.Tensor, temperature: float = 1
+    ) -> Tuple[torch.Tensor, torch.LongTensor]:
+        """Apply vector_quantizer.
+
+        Args:
+            input (torch.Tensor): Latent feature of shape (batch_size, embedding_dim, *).
+            temperature (float): Temperature parameter in Gumbel-softmax. Default: ``1``.
+
+        Returns:
+            tuple: Tuple of tensors containing:
+
+                - torch.Tensor: Selected embeddings of same shape as input.
+                - torch.LongTensor: Indices of indices in codebook of shape (batch_size, *).
+
+        """
+        quantized, indices = self.vector_quantizer(input, temperature=temperature)
 
         return quantized, indices

@@ -1,4 +1,4 @@
-_target_: audyn.models.VQVAE
+_target_: audyn.models.GumbelVQVAE
 encoder:
   _target_: utils.models.vqvae.Encoder
   in_channels: 1

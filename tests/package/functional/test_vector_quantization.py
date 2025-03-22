@@ -1,7 +1,40 @@
 import torch
 from dummy import allclose
 
-from audyn.functional.vector_quantization import quantize_residual_vector
+from audyn.functional.vector_quantization import (
+    quantize_gumbel_vector,
+    quantize_residual_vector,
+)
+
+
+def test_quantize_gumbel_vector_1d() -> None:
+    torch.manual_seed(0)
+
+    batch_size = 4
+    codebook_size, embedding_dim = 10, 5
+    length = 3
+
+    input = torch.randn((batch_size, codebook_size, length))
+    weight = torch.randn((codebook_size, embedding_dim))
+    quantized, indices = quantize_gumbel_vector(input, weight)
+
+    assert quantized.size() == (batch_size, embedding_dim, length)
+    assert indices.size() == (batch_size, length)
+
+
+def test_quantize_gumbel_vector_2d() -> None:
+    torch.manual_seed(0)
+
+    batch_size = 4
+    codebook_size, embedding_dim = 10, 5
+    height, width = 2, 3
+
+    input = torch.randn((batch_size, codebook_size, height, width))
+    weight = torch.randn((codebook_size, embedding_dim))
+    quantized, indices = quantize_gumbel_vector(input, weight)
+
+    assert quantized.size() == (batch_size, embedding_dim, height, width)
+    assert indices.size() == (batch_size, height, width)
 
 
 def test_quantize_residual_vector_1d() -> None:

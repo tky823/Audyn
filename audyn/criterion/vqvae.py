@@ -2,7 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-__all__ = ["CodebookLoss", "CommitmentLoss", "CodebookEntropyLoss"]
+__all__ = [
+    "CodebookLoss",
+    "CommitmentLoss",
+    "CodebookEntropyLoss",
+    "CodebookUsageLoss",
+]
 
 
 class CodebookLoss(nn.Module):
@@ -70,7 +75,7 @@ class CodebookEntropyLoss(nn.Module):
             This loss is not differentiable, so use this for monitoring.
 
         Args:
-            input (torch.Tensor): Selected codebook indices of shape (*,)
+            input (torch.LongTensor): Selected codebook indices of shape (*,)
 
         Returns:
             torch.Tensor: Entropy of shape ().
@@ -80,6 +85,32 @@ class CodebookEntropyLoss(nn.Module):
         counts = counts + self.eps
         p = counts / counts.sum()
         loss = -torch.sum(p * torch.log(p))
+
+        return loss
+
+
+class CodebookUsageLoss(nn.Module):
+    def __init__(self, codebook_size: int) -> None:
+        super().__init__()
+
+        self.codebook_size = codebook_size
+
+    def forward(self, input: torch.LongTensor) -> torch.Tensor:
+        """Forward pass of CodebookUsageLoss.
+
+        .. note::
+
+            This loss is not differentiable, so use this for monitoring.
+
+        Args:
+            input (torch.LongTensor): Selected codebook indices of shape (*,)
+
+        Returns:
+            torch.Tensor: Usage of shape ().
+
+        """
+        num_active_codewords = len(torch.unique(input))
+        loss = torch.tensor(num_active_codewords / self.codebook_size, device=input.device)
 
         return loss
 

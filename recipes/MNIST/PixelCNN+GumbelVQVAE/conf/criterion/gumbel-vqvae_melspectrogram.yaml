@@ -1,0 +1,12 @@
+defaults:
+  - vqvae_melspectrogram
+  - _self_
+
+reconstruction_loss:
+  weight: 10
+
+codebook_loss:
+  weight: 1
+
+commitment_loss:
+  weight: 0.25

@@ -8,15 +8,39 @@ reconstruction_loss:
       input: reconstructed
     target:
       target: input
+
 codebook_loss:
   key_mapping:
     estimated:
       encoded: encoded
       quantized: quantized
     target:
+
 commitment_loss:
   key_mapping:
     estimated:
       encoded: encoded
       quantized: quantized
+    target:
+
+codebook_entropy:
+  _target_: audyn.criterion.BaseCriterionWrapper
+  criterion:
+    _target_: audyn.criterion.vqvae.CodebookEntropyLoss
+    codebook_size: ${data.codebook.size}
+  weight: 0  # monitoring
+  key_mapping:
+    estimated:
+      input: indices
+    target:
+
+codebook_usage:
+  _target_: audyn.criterion.BaseCriterionWrapper
+  criterion:
+    _target_: audyn.criterion.vqvae.CodebookUsageLoss
+    codebook_size: ${data.codebook.size}
+  weight: 0  # monitoring
+  key_mapping:
+    estimated:
+      input: indices
     target:

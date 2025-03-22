@@ -7,7 +7,7 @@
 ```sh
 dump_format="torch"
 
-train="vqvae_ema"  # vqvae
+train="vqvae"
 model="vqvae"
 optimizer="vqvae_ema"  # vqvae
 lr_scheduler="vqvae_ema"  # vqvae
@@ -30,7 +30,7 @@ If you resume training from a checkpoint,
 ```sh
 dump_format="torch"
 
-train="vqvae_ema"  # vqvae
+train="vqvae"
 model="vqvae"
 optimizer="vqvae_ema"  # vqvae
 lr_scheduler="vqvae_ema"  # vqvae

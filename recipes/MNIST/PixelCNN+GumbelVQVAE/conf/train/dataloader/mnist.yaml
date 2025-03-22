@@ -1,0 +1,13 @@
+defaults:
+  - default
+  - _self_
+
+train:
+  _target_: utils.dataloader.GumbelVQVAEDataLoader
+  batch_size: 128
+  shuffle: false
+
+validation:
+  _target_: torch.utils.data.DataLoader
+  batch_size: 128
+  shuffle: false
