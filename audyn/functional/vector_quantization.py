@@ -84,15 +84,17 @@ def quantize_gumbel_vector(
     z_e = z_e.view(embedding_dim, -1)
     e = weight.view(-1, embedding_dim)
     dot = torch.matmul(e, z_e)
-    norm = torch.sum(e**2, dim=1)
-    distance = norm.unsqueeze(dim=-1) - 2 * dot
+    norm_e = torch.sum(e**2, dim=1)
 
     if training:
+        norm_z = torch.sum(z_e**2, dim=0)
+        distance = norm_e.unsqueeze(dim=-1) - 2 * dot + norm_z
         onehot = F.gumbel_softmax(-distance, tau=temperature, hard=True, dim=0)
         onehot = onehot.permute(1, 0)
         indices = torch.argmax(onehot, dim=1)
         z_q = torch.matmul(onehot, e)
     else:
+        distance = norm_e.unsqueeze(dim=-1) - 2 * dot
         indices = torch.argmax(-distance, dim=0)
         z_q = F.embedding(indices, weight)
 
