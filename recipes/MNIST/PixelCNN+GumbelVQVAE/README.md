@@ -7,6 +7,7 @@
 ```sh
 dump_format="torch"
 
+data="gumbel-vqvae"
 train="gumbel-vqvae"
 model="gumbel-vqvae"
 optimizer="gumbel-vqvae"
@@ -18,6 +19,7 @@ criterion="vqvae_melspectrogram"
 --stop-stage 1 \
 --tag <TAG> \
 --dump-format "${dump_format}" \
+--data "${data}" \
 --train "${train}" \
 --model "${model}" \
 --optimizer "${optimizer}" \
@@ -30,6 +32,7 @@ If you resume training from a checkpoint,
 ```sh
 dump_format="torch"
 
+data="gumbel-vqvae"
 train="gumbel-vqvae"
 model="gumbel-vqvae"
 optimizer="vqvae"
@@ -43,6 +46,7 @@ vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.p
 --tag <TAG> \
 --continue-from "${vqvae_checkpoint}" \
 --dump-format "${dump_format}" \
+--data "${data}" \
 --train "${train}" \
 --model "${model}" \
 --optimizer "${optimizer}" \

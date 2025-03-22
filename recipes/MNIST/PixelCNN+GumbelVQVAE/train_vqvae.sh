@@ -10,7 +10,7 @@ continue_from=""
 dump_format="torch"
 
 system="default"
-data="vqvae"
+data="gumbel-vqvae"
 train="gumbel-vqvae"
 test="pixelcnn+vqvae"
 model="gumbel-vqvae"
