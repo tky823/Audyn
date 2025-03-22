@@ -281,6 +281,7 @@ class GumbelVectorQuantizer(VectorQuantizer):
             proj = nn.Sequential(
                 nn.Linear(embedding_dim, codebook_size),
                 nn.ReLU(),
+                nn.Linear(codebook_size, codebook_size),
             )
 
         self.proj = proj
