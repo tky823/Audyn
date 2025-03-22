@@ -106,6 +106,18 @@ def collate_fn(
         dtype=torch.long,
     )
 
+    if "temperature" in dict_batch:
+        # for Gumbel-VQVAE, temperature is treated as scalar
+        temperature = None
+
+        for _temperature in dict_batch["temperature"]:
+            if temperature is None:
+                temperature = _temperature
+            else:
+                assert _temperature == temperature
+
+        dict_batch["temperature"] = temperature
+
     return dict_batch
 
 
