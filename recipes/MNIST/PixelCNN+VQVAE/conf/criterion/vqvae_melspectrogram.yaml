@@ -33,3 +33,14 @@ codebook_entropy:
     estimated:
       input: indices
     target:
+
+codebook_usage:
+  _target_: audyn.criterion.BaseCriterionWrapper
+  criterion:
+    _target_: audyn.criterion.vqvae.CodebookUsageLoss
+    codebook_size: ${data.codebook.size}
+  weight: 0  # monitoring
+  key_mapping:
+    estimated:
+      input: indices
+    target:
