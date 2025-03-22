@@ -12,7 +12,7 @@ train="gumbel-vqvae"
 model="gumbel-vqvae"
 optimizer="gumbel-vqvae"
 lr_scheduler="gumbel-vqvae"
-criterion="vqvae_melspectrogram"
+criterion="gumbel-vqvae_melspectrogram"
 
 . ./run.sh \
 --stage 1 \
@@ -37,7 +37,7 @@ train="gumbel-vqvae"
 model="gumbel-vqvae"
 optimizer="vqvae"
 lr_scheduler="vqvae"
-criterion="vqvae_melspectrogram"
+criterion="gumbel-vqvae_melspectrogram"
 vqvae_checkpoint=<PATH/TO/VQVAE/CHECKPOINT>  # e.g. exp/<TAG>/model/vqvae/last.pth
 
 . ./run.sh \

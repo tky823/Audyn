@@ -16,7 +16,7 @@ test="pixelcnn+vqvae"
 model="gumbel-vqvae"
 optimizer="gumbel-vqvae"
 lr_scheduler="gumbel-vqvae"
-criterion="vqvae_melspectrogram"
+criterion="gumbel-vqvae_melspectrogram"
 
 . ../../_common/parse_options.sh || exit 1;
 
