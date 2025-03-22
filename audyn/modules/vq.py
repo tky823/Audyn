@@ -1,6 +1,6 @@
 """Vector quantization modules."""
 
-from typing import Any, Dict, Mapping, Tuple
+from typing import Any, Dict, Mapping, Optional, Tuple
 
 import torch
 import torch.distributed as dist
@@ -268,7 +268,7 @@ class GumbelVectorQuantizer(VectorQuantizer):
         self,
         codebook_size: int,
         embedding_dim: int,
-        proj: nn.Module | None = None,
+        proj: Optional[nn.Module] = None,
         init_by_kmeans: int = 0,
         seed: int = 0,
     ) -> None:
