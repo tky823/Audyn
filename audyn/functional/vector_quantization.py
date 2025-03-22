@@ -56,6 +56,7 @@ def quantize_gumbel_vector(
     input: torch.Tensor,
     weight: torch.Tensor,
     temperature: float = 1,
+    training: bool = True,
 ) -> Tuple[torch.Tensor, torch.LongTensor]:
     """Apply Gumbel vector quantization.
 
@@ -85,14 +86,19 @@ def quantize_gumbel_vector(
     dot = torch.matmul(e, z_e)
     norm = torch.sum(e**2, dim=1)
     distance = norm.unsqueeze(dim=-1) - 2 * dot
-    onehot = F.gumbel_softmax(-distance, tau=temperature, hard=True, dim=0)
-    onehot = onehot.permute(1, 0)
-    indices = torch.argmax(onehot, dim=1)
-    z_q = torch.matmul(onehot, e)
+
+    if training:
+        onehot = F.gumbel_softmax(-distance, tau=temperature, hard=True, dim=0)
+        onehot = onehot.permute(1, 0)
+        indices = torch.argmax(onehot, dim=1)
+        z_q = torch.matmul(onehot, e)
+    else:
+        indices = torch.argmax(-distance, dim=0)
+        z_q = F.embedding(indices, weight)
+
     z_q = z_q.view(batch_size, -1, embedding_dim)
     z_q = z_q.permute(0, 2, 1).contiguous()
     output = z_q.view(batch_size, embedding_dim, *shape)
-    indices = torch.argmax(onehot, dim=1)
     indices = indices.view(batch_size, *shape)
 
     return output, indices

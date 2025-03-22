@@ -281,6 +281,7 @@ class GumbelVectorQuantizer(VectorQuantizer):
             input,
             self.codebook.weight,
             temperature=temperature,
+            training=self.training,
         )
 
         return output, indices
