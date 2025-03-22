@@ -6,7 +6,10 @@ import torch.nn as nn
 from ..modules.vq import GumbelVectorQuantizer, VectorQuantizer
 from .vae import BaseVAE
 
-__all__ = ["VQVAE"]
+__all__ = [
+    "VQVAE",
+    "GumbelVQVAE",
+]
 
 
 class VQVAE(BaseVAE):

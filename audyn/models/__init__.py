@@ -26,7 +26,7 @@ from .ssast import (
     SelfSupervisedAudioSpectrogramTransformer,
 )
 from .vae import BaseVAE
-from .vqvae import VQVAE
+from .vqvae import VQVAE, GumbelVQVAE
 from .waveglow import MultiSpeakerWaveGlow, WaveGlow
 from .wavenet import MultiSpeakerWaveNet, WaveNet
 from .wavenext import WaveNeXtVocoder
@@ -54,8 +54,10 @@ __all__ = [
     "HiFiGANDiscriminator",
     # WaveNeXt Vocoder
     "WaveNeXtVocoder",
+    # VAE
     "BaseVAE",
     "VQVAE",
+    "GumbelVQVAE",
     "RVQVAE",
     "SoundStream",
     "EnCodec",
