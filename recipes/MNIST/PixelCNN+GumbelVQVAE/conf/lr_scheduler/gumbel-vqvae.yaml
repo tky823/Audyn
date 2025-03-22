@@ -1,0 +1,5 @@
+_target_: utils.lr_scheduler.GumbelVQVAELR
+warmup_steps: 500
+total_steps: 4690
+start_factor: 1.0e-2
+end_factor: 1.0e-1
