@@ -14,7 +14,7 @@ def test_quantize_gumbel_vector_1d() -> None:
     codebook_size, embedding_dim = 10, 5
     length = 3
 
-    input = torch.randn((batch_size, embedding_dim, length))
+    input = torch.randn((batch_size, codebook_size, length))
     weight = torch.randn((codebook_size, embedding_dim))
     quantized, indices = quantize_gumbel_vector(input, weight)
 
@@ -29,7 +29,7 @@ def test_quantize_gumbel_vector_2d() -> None:
     codebook_size, embedding_dim = 10, 5
     height, width = 2, 3
 
-    input = torch.randn((batch_size, embedding_dim, height, width))
+    input = torch.randn((batch_size, codebook_size, height, width))
     weight = torch.randn((codebook_size, embedding_dim))
     quantized, indices = quantize_gumbel_vector(input, weight)
 
