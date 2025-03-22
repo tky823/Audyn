@@ -52,6 +52,52 @@ def quantize_vector(
     return output, indices
 
 
+def quantize_gumbel_vector(
+    input: torch.Tensor,
+    weight: torch.Tensor,
+    temperature: float = 1,
+) -> Tuple[torch.Tensor, torch.LongTensor]:
+    """Apply Gumbel vector quantization.
+
+    Args:
+        input (torch.Tensor): Latent feature of shape (batch_size, embedding_dim, *).
+        weight (torch.Tensor): Embeddings in codebook of shape
+            (codebook_size, embedding_dim).
+        temperature (float): Temperature parameter. Default: ``1``.
+
+    Returns:
+        tuple: Tuple containing:
+
+            - torch.Tensor: Quantized embeddings of shape (batch_size, embedding_dim, *).
+            - torch.LongTensor: Indices of indices in codebook of shape (batch_size, *).
+
+    """
+    n_dims = input.dim()
+
+    assert n_dims > 1, "n_dims is expected to be (batch_size, embedding_dim, *)."
+
+    batch_size, embedding_dim, *shape = input.size()
+
+    z_e = input.view(batch_size, embedding_dim, -1)
+    z_e = z_e.permute(1, 0, 2).contiguous()
+    z_e = z_e.view(embedding_dim, -1)
+    e = weight.view(-1, embedding_dim)
+    dot = torch.matmul(e, z_e)
+    norm = torch.sum(e**2, dim=1)
+    distance = norm.unsqueeze(dim=-1) - 2 * dot
+    onehot = F.gumbel_softmax(-distance, tau=temperature, hard=True, dim=0)
+    onehot = onehot.permute(1, 0)
+    indices = torch.argmax(onehot, dim=1)
+    z_q = torch.matmul(onehot, e)
+    z_q = z_q.view(batch_size, -1, embedding_dim)
+    z_q = z_q.permute(0, 2, 1).contiguous()
+    output = z_q.view(batch_size, embedding_dim, *shape)
+    indices = torch.argmax(onehot, dim=1)
+    indices = indices.view(batch_size, *shape)
+
+    return output, indices
+
+
 def quantize_residual_vector(
     input: torch.Tensor, weight: Union[torch.Tensor, List[torch.Tensor]]
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.LongTensor]:

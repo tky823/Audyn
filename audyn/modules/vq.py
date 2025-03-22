@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from torch.nn.modules.module import _IncompatibleKeys
 
 from ..amp import autocast, get_autocast_device_type
-from ..functional.vector_quantization import quantize_vector
+from ..functional.vector_quantization import quantize_gumbel_vector, quantize_vector
 
 __all__ = ["VectorQuantizer"]
 
@@ -245,3 +245,42 @@ class VectorQuantizer(BaseVectorQuantizer):
             reconstructed = reconstructed + quantized
 
         self.is_initialized = True
+
+
+class GumbelVectorQuantizer(VectorQuantizer):
+    """Gumbel vector quantizer.
+
+    Args:
+        codebook_size (int): Size of codebook.
+        embedding_dim (int): Number of embedding dimensions.
+        init_by_kmeans (int): Number of iterations in k-means clustering initialization.
+            If non-positive value is given, k-means clustering initialization is not used.
+        seed (int): Random seed for k-means clustering initialization.
+
+    """
+
+    def forward(
+        self, input: torch.Tensor, temperature: float = 1
+    ) -> Tuple[torch.Tensor, torch.LongTensor]:
+        """Forward pass of gumbel vector quantizer.
+
+        Args:
+            input (torch.Tensor): Latent feature of shape (batch_size, embedding_dim, *).
+
+        Returns:
+            tuple: Tuple containing:
+
+                - torch.Tensor: Selected embeddings of same shape as input.
+                - torch.LongTensor: Indices of indices in codebook of shape (batch_size, *).
+
+        """
+        if self.training and not self.is_initialized:
+            self._initialize_parameters(input)
+
+        output, indices = quantize_gumbel_vector(
+            input,
+            self.codebook.weight,
+            temperature=temperature,
+        )
+
+        return output, indices
