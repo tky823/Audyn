@@ -1,5 +1,6 @@
 import pytest
 import torch
+from dummy import allclose
 
 from audyn.models.encodec import Decoder, EnCodec, Encoder
 
@@ -59,7 +60,7 @@ def test_official_encodec(is_causal: bool) -> None:
     )
 
     input = torch.randn((batch_size, in_channels, input_length))
-    output, encoded, hierarchical_quantized, indices = model(input)
+    output, encoded, hierarchical_quantized, hierarchical_residual, indices = model(input)
 
     assert output.size() == input.size()
     assert encoded.size() == (batch_size, embedding_dim, compressed_length)
@@ -69,7 +70,21 @@ def test_official_encodec(is_causal: bool) -> None:
         embedding_dim,
         compressed_length,
     )
+    assert hierarchical_residual.size() == hierarchical_quantized.size()
     assert indices.size() == (batch_size, num_stages, compressed_length)
+
+    hierarchical_quantized = hierarchical_quantized.transpose(1, 0)
+    hierarchical_residual = hierarchical_residual.transpose(1, 0)
+
+    for stage_idx in range(num_stages):
+        _hierarchical_residual = hierarchical_residual[stage_idx]
+
+        if stage_idx == 0:
+            allclose(_hierarchical_residual, encoded)
+        else:
+            _hierarchical_quantized = torch.sum(hierarchical_quantized[:stage_idx], dim=0)
+
+            allclose(_hierarchical_quantized + _hierarchical_residual, encoded, atol=1e-5)
 
     num_parameters = 0
 

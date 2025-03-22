@@ -9,6 +9,7 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import torch.nn as nn
+from dummy import allclose
 from dummy.utils.ddp import retry_on_file_not_found, set_ddp_environment
 from omegaconf import OmegaConf
 
@@ -35,10 +36,23 @@ def test_residual_vector_quantizer() -> None:
         num_stages=num_stages,
         dropout=False,
     )
-    quantized, indices = rvq(input)
+    quantized, residual, indices = rvq(input)
 
     assert quantized.size() == (batch_size, num_stages, embedding_dim, length)
+    assert residual.size() == (batch_size, num_stages, embedding_dim, length)
     assert indices.size() == (batch_size, num_stages, length)
+
+    quantized = quantized.transpose(1, 0)
+    residual = residual.transpose(1, 0)
+
+    for stage_idx in range(num_stages):
+        _residual = residual[stage_idx]
+
+        if stage_idx == 0:
+            allclose(_residual, input)
+        else:
+            _quantized = torch.sum(quantized[:stage_idx], dim=0)
+            allclose(_quantized + _residual, input)
 
     # k-means clustering initalization
     kmeans_iteration = 100
@@ -52,11 +66,11 @@ def test_residual_vector_quantizer() -> None:
     )
 
     _ = vector_quantizer(input)
-    _, indices_before_save = vector_quantizer(input)
+    _, _, indices_before_save = vector_quantizer(input)
     state_dict = copy.copy(vector_quantizer.state_dict())
     vector_quantizer.load_state_dict(state_dict)
 
-    _, indices_after_save = vector_quantizer(input)
+    _, _, indices_after_save = vector_quantizer(input)
 
     assert torch.equal(indices_before_save, indices_after_save)
 
@@ -81,7 +95,7 @@ def test_residual_vector_quantizer() -> None:
         forward_output = forward_output.permute(0, 3, 1, 2).contiguous()
         forward_output = forward_output.view(-1, num_stages, embedding_dim)
 
-        assert torch.allclose(initialization_output, forward_output)
+        allclose(initialization_output, forward_output)
 
 
 @retry_on_file_not_found(3)
@@ -166,12 +180,12 @@ class CustomResidualVectorQuantizer(ResidualVectorQuantizer):
         self.initialization_path = initialization_path
         self.forward_path = forward_path
 
-    def forward(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.LongTensor]:
-        quantized, indices = super().forward(input)
+    def forward(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.LongTensor]:
+        quantized, residual, indices = super().forward(input)
 
         torch.save(quantized, self.forward_path)
 
-        return quantized, indices
+        return quantized, residual, indices
 
     @torch.no_grad()
     def _initialize_parameters(self, encoded: torch.Tensor) -> None:

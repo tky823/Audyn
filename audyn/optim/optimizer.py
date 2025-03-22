@@ -963,8 +963,13 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
         if not isinstance(param_groups[0], dict):
             param_groups = [{"params": param_groups}]
 
-        (dequantized,) = input
-        quantized, indices = output
+        if is_rvq:
+            (dequantized,) = input
+            quantized, residual, indices = output
+        else:
+            (dequantized,) = input
+            quantized, indices = output
+            residual = None
 
         dequantized = dequantized.transpose(1, 0).contiguous()
 
@@ -972,11 +977,13 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             # quantized: (batch_size, num_stages, embedding_dim, *)
             # indices: (batch_size, num_stages, *)
             stacked_quantized = quantized.transpose(1, 0).contiguous()
+            stacked_residual = residual.transpose(1, 0).contiguous()
             stacked_indices = indices.transpose(1, 0).contiguous()
         else:
-            # stacked_quantized: (batch_size, embedding_dim, *)
+            # quantized: (batch_size, embedding_dim, *)
             # indices: (batch_size, *)
             stacked_quantized = quantized.unsqueeze(dim=0)
+            stacked_residual = None
             stacked_indices = indices.unsqueeze(dim=0)
 
         if len(param_groups) != len(tracking_param_groups):
@@ -992,14 +999,13 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             #      -> (num_stages, num_gpus * batch_size, embedding_dim, *)
             # stacked_indices:
             #     (num_stages, batch_size, *) -> (num_stages, num_gpus * batch_size, *)
-            gathered_dequantized = [
-                torch.zeros_like(dequantized) for _ in range(dist.get_world_size())
-            ]
+            world_size = dist.get_world_size()
+            gathered_dequantized = [torch.zeros_like(dequantized) for _ in range(world_size)]
             gathered_stacked_quantized = [
-                torch.zeros_like(stacked_quantized) for _ in range(dist.get_world_size())
+                torch.zeros_like(stacked_quantized) for _ in range(world_size)
             ]
             gathered_stacked_indices = [
-                torch.zeros_like(stacked_indices) for _ in range(dist.get_world_size())
+                torch.zeros_like(stacked_indices) for _ in range(world_size)
             ]
 
             dist.all_gather(gathered_dequantized, dequantized)
@@ -1009,6 +1015,19 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
             dequantized = torch.cat(gathered_dequantized, dim=1)
             stacked_quantized = torch.cat(gathered_stacked_quantized, dim=1)
             stacked_indices = torch.cat(gathered_stacked_indices, dim=1)
+
+            if is_rvq:
+                # gather stacked_residual
+                # stacked_residual:
+                #     (num_stages, batch_size, embedding_dim, *)
+                #      -> (num_stages, num_gpus * batch_size, embedding_dim, *)
+                gathered_stacked_residual = [
+                    torch.zeros_like(stacked_residual) for _ in range(world_size)
+                ]
+                dist.all_gather(gathered_stacked_residual, stacked_residual)
+                stacked_residual = torch.cat(gathered_stacked_residual, dim=1)
+            else:
+                assert stacked_residual is None
 
         if len(param_groups) > 1:
             raise RuntimeError("Unexpected error happened during store_current_stats.")
@@ -1058,18 +1077,24 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
                     if idx == 0:
                         dequantized = dequantized.view(embedding_dim, -1)
 
-                    residual = dequantized - reconstructed
+                    if is_rvq:
+                        _residual = stacked_residual[idx]
+                        _residual = _residual.transpose(1, 0).contiguous()
+                        _residual = _residual.view(embedding_dim, -1)
+                    else:
+                        _residual = dequantized - reconstructed
+
                     quantized = quantized.transpose(1, 0).contiguous()
                     quantized = quantized.view(embedding_dim, -1)
 
                     one_hot = F.one_hot(indices, num_classes=codebook_size)
                     one_hot = one_hot.view(-1, codebook_size)
                     one_hot_sum = one_hot.sum(dim=0)
-                    one_hot = one_hot.to(residual.dtype)
+                    one_hot = one_hot.to(_residual.dtype)
 
                     # NOTE: In some cases with mixed precision training,
                     #       the following matmul operation may cause inf.
-                    z_e_sum = torch.matmul(residual, one_hot)
+                    z_e_sum = torch.matmul(_residual, one_hot)
                     z_e_sum = z_e_sum.permute(1, 0).contiguous()
 
                     one_hot_sum_group[idx].data.copy_(one_hot_sum.data)
@@ -1080,7 +1105,7 @@ class ExponentialMovingAverageCodebookOptimizer(_ExponentialMovingAverageCodeboo
 
                     reconstructed = reconstructed + quantized
 
-                residual_group.append(residual.transpose(1, 0).contiguous())
+                residual_group.append(_residual.transpose(1, 0).contiguous())
 
             # residual_group: (num_stages, num_grids, embedding_dim)
             residual_group = torch.stack(residual_group, dim=0)

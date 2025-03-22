@@ -52,7 +52,7 @@ class ResidualVectorQuantizer(BaseVectorQuantizer):
 
         self.codebooks = nn.ModuleList(codebooks)
 
-    def forward(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.LongTensor]:
+    def forward(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.LongTensor]:
         """Forward pass of residual vector quantizer.
 
         Args:
@@ -62,9 +62,11 @@ class ResidualVectorQuantizer(BaseVectorQuantizer):
             tuple: Tuple containing:
 
                 - torch.Tensor: Selected embeddings of same shape as input.
-                - torch.LongTensor: Indices of codebook of shape (batch_size, num_stages', *),
-                    where num_stages' might be changed if ``dropout=True``.
-                    To disable this feature, set ``dropout=False`` or call ``.eval()``.
+                - torch.Tensor: Residual vectors of shape
+                    (batch_size, num_stages', embedding_dim, *), where num_stages' might be
+                    changed if ``dropout=True``. To disable this feature, set ``dropout=False``
+                    or call ``.eval()``.
+                - torch.LongTensor: Indices of codebook of shape (batch_size, num_stages', *).
 
         """
         if self.training and not self.is_initialized:
@@ -93,9 +95,9 @@ class ResidualVectorQuantizer(BaseVectorQuantizer):
             codebook: nn.Embedding
             weight.append(codebook.weight)
 
-        output, indices = quantize_residual_vector(input, weight)
+        output, residual, indices = quantize_residual_vector(input, weight)
 
-        return output, indices
+        return output, residual, indices
 
     @torch.no_grad()
     def _initialize_parameters(self, encoded: torch.Tensor) -> None:
