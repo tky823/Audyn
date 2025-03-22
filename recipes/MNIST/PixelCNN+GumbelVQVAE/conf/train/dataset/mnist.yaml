@@ -15,3 +15,11 @@ train:
     _target_: torch.tensor
     _partial_: true
   download: true
+
+validation:
+  _target_: utils.dataset.MNIST
+  root: ${..train.root}
+  train: false
+  transform: ${..train.transform}
+  target_transform: ${..train.target_transform}
+  download: ${..train.download}

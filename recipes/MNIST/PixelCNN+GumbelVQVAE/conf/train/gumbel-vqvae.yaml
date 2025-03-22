@@ -13,7 +13,10 @@ key_mapping:
       - encoded
       - quantized
       - indices
-  validation: ${.train}
+  validation:
+    input:
+      input: input
+    output: ${..train.output}
   inference:
     input:
       quantized: codebook_indices

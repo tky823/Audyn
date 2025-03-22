@@ -8,6 +8,7 @@ train:
     _target_: torch.tensor
     _partial_: true
   download: true
+
 validation:
   _target_: ${..train._target_}
   root: ${..train.root}
