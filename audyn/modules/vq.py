@@ -162,7 +162,10 @@ class VectorQuantizer(BaseVectorQuantizer):
         init_by_kmeans: int = 0,
         seed: int = 0,
     ) -> None:
-        super().__init__(init_by_kmeans=init_by_kmeans, seed=seed)
+        super().__init__(
+            init_by_kmeans=init_by_kmeans,
+            seed=seed,
+        )
 
         self.codebook = nn.Embedding(
             num_embeddings=codebook_size,
@@ -253,11 +256,38 @@ class GumbelVectorQuantizer(VectorQuantizer):
     Args:
         codebook_size (int): Size of codebook.
         embedding_dim (int): Number of embedding dimensions.
+        proj (nn.Module, optional): Module to project encoded latent feature (*, embedding_dim)
+            to logit (*, codebook_size).
         init_by_kmeans (int): Number of iterations in k-means clustering initialization.
             If non-positive value is given, k-means clustering initialization is not used.
         seed (int): Random seed for k-means clustering initialization.
 
     """
+
+    def __init__(
+        self,
+        codebook_size: int,
+        embedding_dim: int,
+        proj: nn.Module | None = None,
+        init_by_kmeans: int = 0,
+        seed: int = 0,
+    ) -> None:
+        super(VectorQuantizer, self).__init__(
+            init_by_kmeans=init_by_kmeans,
+            seed=seed,
+        )
+
+        if proj is None:
+            proj = nn.Sequential(
+                nn.Linear(embedding_dim, codebook_size),
+                nn.ReLU(),
+            )
+
+        self.proj = proj
+        self.codebook = nn.Embedding(
+            num_embeddings=codebook_size,
+            embedding_dim=embedding_dim,
+        )
 
     def forward(
         self, input: torch.Tensor, temperature: float = 1
@@ -277,8 +307,16 @@ class GumbelVectorQuantizer(VectorQuantizer):
         if self.training and not self.is_initialized:
             self._initialize_parameters(input)
 
+        batch_size, embedding_dim, *shape = input.size()
+        codebook_size = self.codebook.weight.size(0)
+
+        x = input.view(batch_size, embedding_dim, -1)
+        x = x.permute(0, 2, 1).contiguous()
+        logit = self.proj(x)
+        logit = logit.permute(0, 2, 1).contiguous()
+        logit = logit.view(batch_size, codebook_size, *shape)
         output, indices = quantize_gumbel_vector(
-            input,
+            logit,
             self.codebook.weight,
             temperature=temperature,
             training=self.training,

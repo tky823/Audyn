@@ -53,7 +53,7 @@ def quantize_vector(
 
 
 def quantize_gumbel_vector(
-    input: torch.Tensor,
+    logit: torch.Tensor,
     weight: torch.Tensor,
     temperature: float = 1,
     training: bool = True,
@@ -61,7 +61,7 @@ def quantize_gumbel_vector(
     """Apply Gumbel vector quantization.
 
     Args:
-        input (torch.Tensor): Latent feature of shape (batch_size, embedding_dim, *).
+        logit (torch.Tensor): Logit of shape (batch_size, codebook_size, *).
         weight (torch.Tensor): Embeddings in codebook of shape
             (codebook_size, embedding_dim).
         temperature (float): Temperature parameter. Default: ``1``.
@@ -73,29 +73,23 @@ def quantize_gumbel_vector(
             - torch.LongTensor: Indices of indices in codebook of shape (batch_size, *).
 
     """
-    n_dims = input.dim()
+    n_dims = logit.dim()
 
-    assert n_dims > 1, "n_dims is expected to be (batch_size, embedding_dim, *)."
+    assert n_dims > 1, "n_dims is expected to be (batch_size, codebook_size, *)."
 
-    batch_size, embedding_dim, *shape = input.size()
+    batch_size, _, *shape = logit.size()
+    codebook_size, embedding_dim = weight.size()
 
-    z_e = input.view(batch_size, embedding_dim, -1)
-    z_e = z_e.permute(1, 0, 2).contiguous()
-    z_e = z_e.view(embedding_dim, -1)
-    e = weight.view(-1, embedding_dim)
-    dot = torch.matmul(e, z_e)
-    norm_e = torch.sum(e**2, dim=1)
+    logit = logit.view(batch_size, codebook_size, -1)
+    logit = logit.permute(0, 2, 1).contiguous()
+    logit = logit.view(-1, codebook_size)
 
     if training:
-        norm_z = torch.sum(z_e**2, dim=0)
-        distance = norm_e.unsqueeze(dim=-1) - 2 * dot + norm_z
-        onehot = F.gumbel_softmax(-distance, tau=temperature, hard=True, dim=0)
-        onehot = onehot.permute(1, 0)
+        onehot = F.gumbel_softmax(logit, tau=temperature, hard=True, dim=1)
         indices = torch.argmax(onehot, dim=1)
-        z_q = torch.matmul(onehot, e)
+        z_q = torch.matmul(onehot, weight)
     else:
-        distance = norm_e.unsqueeze(dim=-1) - 2 * dot
-        indices = torch.argmax(-distance, dim=0)
+        indices = torch.argmax(logit, dim=1)
         z_q = F.embedding(indices, weight)
 
     z_q = z_q.view(batch_size, -1, embedding_dim)
