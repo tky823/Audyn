@@ -267,8 +267,7 @@ class GumbelVQVAE(VQVAE):
             This method does not use reparametrization trick.
 
         """
-        encoded = self.encode(input)
-        quantized, indices = self.quantize(encoded, temperature=temperature)
+        quantized, indices = self.rsample(input, temperature=temperature)
 
         return quantized, indices
 
@@ -286,7 +285,10 @@ class GumbelVQVAE(VQVAE):
             This method does not use reparametrization trick.
 
         """
-        return self.sample(input, temperature=temperature)
+        encoded = self.encode(input)
+        quantized, indices = self.quantize(encoded, temperature=temperature)
+
+        return quantized, indices
 
     def quantize(
         self, input: torch.Tensor, temperature: float = 1
