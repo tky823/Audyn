@@ -11,7 +11,7 @@ from .utils._hydra import main
 
 __all__ = ["__version__", "main"]
 
-__version__ = "0.0.7.dev0"
+__version__ = "0.1.0"
 
 IS_WINDOWS = sys.platform == "win32"
 
