@@ -245,15 +245,10 @@ class GumbelVQVAE(VQVAE):
                 - torch.Tensor: Indices of embeddings in codebook of shape \
                     (batch_size, num_stages, *latent_shape).
 
-        .. note::
-
-            Gradient from decoder does not back propagate to codebook.
-
         """
         encoded = self.encode(input)
         quantized, indices = self.quantize(encoded, temperature=temperature)
-        quantized_straight_through = encoded + torch.detach(quantized - encoded)
-        output = self.decode(quantized_straight_through)
+        output = self.decode(quantized)
 
         return output, encoded, quantized, indices
 
@@ -291,11 +286,7 @@ class GumbelVQVAE(VQVAE):
             This method does not use reparametrization trick.
 
         """
-        encoded = self.encode(input)
-        quantized, indices = self.quantize(encoded, temperature=temperature)
-        quantized_straight_through = encoded + torch.detach(quantized - encoded)
-
-        return quantized_straight_through, indices
+        return self.sample(input, temperature=temperature)
 
     def quantize(
         self, input: torch.Tensor, temperature: float = 1
