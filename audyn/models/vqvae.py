@@ -241,9 +241,9 @@ class GumbelVQVAE(VQVAE):
                     (batch_size, embedding_dim, *latent_shape). In most cases, latent_shape is \
                     smaller than input_shape.
                 - torch.Tensor: Quantized latent feature of shape \
-                    (batch_size, num_stages, embedding_dim, *latent_shape).
+                    (batch_size, embedding_dim, *latent_shape).
                 - torch.Tensor: Indices of embeddings in codebook of shape \
-                    (batch_size, num_stages, *latent_shape).
+                    (batch_size, *latent_shape).
 
         """
         encoded = self.encode(input)
