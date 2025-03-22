@@ -10,8 +10,8 @@ dump_format="torch"
 data="gumbel-vqvae"
 train="gumbel-vqvae"
 model="gumbel-vqvae"
-optimizer="gumbel-vqvae"
-lr_scheduler="gumbel-vqvae"
+optimizer="vqvae"
+lr_scheduler="vqvae"
 criterion="gumbel-vqvae_melspectrogram"
 
 . ./run.sh \
