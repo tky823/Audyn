@@ -22,3 +22,14 @@ commitment_loss:
       encoded: encoded
       quantized: quantized
     target:
+
+codebook_entropy:
+  _target_: audyn.criterion.BaseCriterionWrapper
+  criterion:
+    _target_: audyn.criterion.vqvae.CodebookEntropyLoss
+    codebook_size: ${data.codebook.size}
+  weight: 0  # monitoring
+  key_mapping:
+    estimated:
+      input: indices
+    target:
