@@ -9,7 +9,7 @@ dump_format="torch"
 
 train="gumbel-vqvae"
 model="gumbel-vqvae"
-optimizer="vqvae"
+optimizer="gumbel-vqvae"
 lr_scheduler="gumbel-vqvae"
 criterion="vqvae_melspectrogram"
 
