@@ -11,11 +11,11 @@ dump_format="torch"
 
 system="default"
 data="vqvae"
-train="vqvae"
+train="gumbel-vqvae"
 test="pixelcnn+vqvae"
 model="gumbel-vqvae"
-optimizer="vqvae"
-lr_scheduler="vqvae"
+optimizer="gumbel-vqvae"
+lr_scheduler="gumbel-vqvae"
 criterion="vqvae_melspectrogram"
 
 . ../../_common/parse_options.sh || exit 1;
