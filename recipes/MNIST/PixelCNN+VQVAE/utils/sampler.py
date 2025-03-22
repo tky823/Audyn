@@ -24,6 +24,9 @@ class GumbelVQVAERandomSampler(RandomSampler):
             generator=generator,
         )
 
-    def set_epoch(self, epoch: int) -> None:
+    def set_step(self, step: int) -> None:
         self.data_source: GumbelMNIST
-        self.data_source.set_epoch(epoch)
+        self.data_source.set_step(step)
+
+    def get_step(self) -> int:
+        return self.data_source.get_step()

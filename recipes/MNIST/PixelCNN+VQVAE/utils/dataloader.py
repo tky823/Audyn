@@ -1,3 +1,5 @@
+from typing import Any
+
 import torch
 from torch.utils.data import DataLoader
 
@@ -43,3 +45,16 @@ class GumbelVQVAEDataLoader(DataLoader):
             generator=generator,
             **kwargs,
         )
+
+    def __iter__(self, *args, **kwargs) -> Any:
+        sampler: GumbelVQVAERandomSampler = self.sampler
+        step = sampler.get_step()
+
+        if step < 0:
+            sampler.set_step(0)
+
+        for sample in super().__iter__(*args, **kwargs):
+            step = sampler.get_step()
+            sampler.set_step(step + 1)
+
+            yield sample

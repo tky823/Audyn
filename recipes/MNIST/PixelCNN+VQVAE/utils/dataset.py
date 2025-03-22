@@ -59,20 +59,20 @@ class GumbelMNIST(MNIST):
         self.init_temperature = init_temperature
         self.min_temperature = min_temperature
         self.gamma = gamma
-        self.epoch_index = last_epoch
+        self._step = last_epoch
 
     def __getitem__(self, index: int) -> Dict[str, torch.Tensor]:
         init_temperature = self.init_temperature
         min_temperature = self.min_temperature
         gamma = self.gamma
-        epoch_index = self.epoch_index
+        step = self._step
 
-        if epoch_index < 0:
-            raise ValueError("Call set_epoch before iteration.")
+        if step < 0:
+            raise ValueError("Call set_step before iteration.")
 
         data = super().__getitem__(index)
 
-        temperature = init_temperature * (gamma**epoch_index)
+        temperature = init_temperature * (gamma**step)
 
         if min_temperature is not None:
             temperature = max(temperature, min_temperature)
@@ -81,5 +81,8 @@ class GumbelMNIST(MNIST):
 
         return data
 
-    def set_epoch(self, epoch: int) -> None:
-        self.epoch_index = epoch
+    def set_step(self, step: int) -> None:
+        self._step = step
+
+    def get_step(self) -> int:
+        return self._step
