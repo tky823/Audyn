@@ -1,0 +1,7 @@
+defaults:
+  - default
+  - _self_
+
+train:
+  _target_: utils.dataloader.GumbelVQVAEDataLoader
+  shuffle: false

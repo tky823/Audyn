@@ -1,1 +1,17 @@
-../../../../PixelCNN+VQVAE/conf/train/dataset/mnist.yaml
+defaults:
+  - _mnist
+  - _self_
+
+train:
+  _target_: utils.dataset.GumbelMNIST
+  root: "../data/"
+  init_temperature: 10
+  min_temperature: 1.0e-3
+  gamma: 1.0e-1
+  train: true
+  transform:
+    _target_: torchvision.transforms.ToTensor
+  target_transform:
+    _target_: torch.tensor
+    _partial_: true
+  download: true

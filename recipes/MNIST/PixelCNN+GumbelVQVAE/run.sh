@@ -38,7 +38,7 @@ export PYTHONPATH="./:${PYTHONPATH}"
 set -u
 
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
-    echo "Stage 1: Training of VQ-VAE"
+    echo "Stage 1: Training of Gumbel-VQVAE"
 
     (
         . ./train_vqvae.sh \
@@ -61,7 +61,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
 fi
 
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
-    echo "Stage 2: Save prior from VQ-VAE"
+    echo "Stage 2: Save prior from Gumbel-VQVAE"
 
     (
         . ./save_prior.sh \

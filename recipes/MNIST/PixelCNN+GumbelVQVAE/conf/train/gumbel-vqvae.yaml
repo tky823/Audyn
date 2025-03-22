@@ -1,0 +1,20 @@
+defaults:
+  - vqvae
+  - override dataloader: mnist
+  - _self_
+
+key_mapping:
+  train:
+    input:
+      input: input
+      temperature: temperature
+    output:
+      - reconstructed
+      - encoded
+      - quantized
+      - indices
+  validation: ${.train}
+  inference:
+    input:
+      quantized: codebook_indices
+    output: reconstructed
