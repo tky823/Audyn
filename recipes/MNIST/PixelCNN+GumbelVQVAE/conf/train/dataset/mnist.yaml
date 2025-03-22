@@ -5,9 +5,10 @@ defaults:
 train:
   _target_: utils.dataset.GumbelMNIST
   root: "../data/"
-  init_temperature: 10
-  min_temperature: 1.0e-3
-  gamma: 1.0e-1
+  init_temperature: 2
+  min_temperature: 0.5
+  gamma: 0.999
+  schedule: exponential
   train: true
   transform:
     _target_: torchvision.transforms.ToTensor
