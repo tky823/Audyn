@@ -14,5 +14,5 @@ decoder:
   stride: ${..encoder.stride}
   num_layers: ${..encoder.num_layers}
 codebook_size: ${data.codebook.size}
-embedding_dim: 4
+embedding_dim: 2
 init_by_kmeans: 10
