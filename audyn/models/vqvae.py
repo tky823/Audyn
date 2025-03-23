@@ -95,6 +95,7 @@ class VQVAE(BaseVAE):
 
             for key, kwarg in kwargs.items():
                 assert key not in vector_quantizer_kwargs
+                assert key in keys[len(args) :]
 
                 vector_quantizer_kwargs[key] = kwarg
 
@@ -328,6 +329,7 @@ class GumbelVQVAE(VQVAE):
 
             for key, kwarg in kwargs.items():
                 assert key not in vector_quantizer_kwargs
+                assert key in keys[len(args) :]
 
                 vector_quantizer_kwargs[key] = kwarg
 

@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, overload
 
 import torch
 import torch.nn as nn
@@ -10,23 +10,8 @@ __all__ = ["RVQVAE"]
 
 
 class RVQVAE(BaseVAE):
-    """Residual vector quantized-variational autoencoder.
 
-    Args:
-        encoder (nn.Module): Encoder which returns latent feature of
-            shape (batch_size, embedding_dim, *).
-        decoder (nn.Module): Decoder which takes latent feature of
-            shape (batch_size, embedding_dim, *).
-        codebook_size (int): Size of codebook.
-        embedding_dim (int): Number of embedding dimension.
-        num_stages (int): Number of stages of RVQ.
-        dropout (bool): Dropout of RVQ. Default: ``True``.
-        init_by_kmeans (int): Number of iterations in k-means clustering initialization.
-            If non-positive value is given, k-means clustering initialization is not used.
-        seed (int): Random seed for k-means clustering initialization.
-
-    """
-
+    @overload
     def __init__(
         self,
         encoder: nn.Module,
@@ -38,17 +23,87 @@ class RVQVAE(BaseVAE):
         init_by_kmeans: int = 0,
         seed: int = 0,
     ) -> None:
+        """Residual vector quantized-variational autoencoder.
+
+        Args:
+            encoder (nn.Module): Encoder which returns latent feature of
+                shape (batch_size, embedding_dim, *).
+            decoder (nn.Module): Decoder which takes latent feature of
+                shape (batch_size, embedding_dim, *).
+            codebook_size (int): Size of codebook.
+            embedding_dim (int): Number of embedding dimension.
+            num_stages (int): Number of stages of RVQ.
+            dropout (bool): Dropout of RVQ. Default: ``True``.
+            init_by_kmeans (int): Number of iterations in k-means clustering initialization.
+                If non-positive value is given, k-means clustering initialization is not used.
+            seed (int): Random seed for k-means clustering initialization.
+
+        """
+
+    @overload
+    def __init__(
+        self,
+        encoder: nn.Module,
+        decoder: nn.Module,
+        vector_quantizer: ResidualVectorQuantizer,
+    ) -> None:
+        """Residual vector quantized-variational autoencoder.
+
+        Args:
+            encoder (nn.Module): Encoder which returns latent feature of
+                shape (batch_size, embedding_dim, *).
+            decoder (nn.Module): Decoder which takes latent feature of
+                shape (batch_size, embedding_dim, *).
+            vector_quantizer (int): Residual vector quantizer.
+
+        """
+
+    def __init__(
+        self,
+        encoder: nn.Module,
+        decoder: nn.Module,
+        *args,
+        **kwargs,
+    ) -> None:
         super().__init__()
 
+        if len(args) + len(kwargs) == 1:
+            if len(args) == 1:
+                (vector_quantizer,) = args
+
+                assert isinstance(
+                    vector_quantizer, nn.Module
+                ), "nn.Module is required as positional argument."
+            else:
+                assert (
+                    "vector_quantizer" in kwargs
+                ), "vector_quantizer is required as keyword argument."
+
+                (vector_quantizer,) = kwargs["vector_quantizer"]
+
+                assert isinstance(
+                    vector_quantizer, nn.Module
+                ), "nn.Module is required as vector_quantizer."
+        else:
+            required_keys = ["codebook_size", "embedding_dim"]
+            optional_keys = ["num_stages", "dropout", "init_by_kmeans", "seed"]
+            keys = required_keys + optional_keys
+            args_keys = keys[: len(args)]
+            vector_quantizer_kwargs = {}
+
+            for key, arg in zip(args_keys, args):
+                vector_quantizer_kwargs[key] = arg
+
+            for key, kwarg in kwargs.items():
+                assert key not in vector_quantizer_kwargs
+                assert key in keys[len(args) :]
+
+                vector_quantizer_kwargs[key] = kwarg
+
+            vector_quantizer = ResidualVectorQuantizer(**vector_quantizer_kwargs)
+
         self.encoder = encoder
-        self.vector_quantizer = ResidualVectorQuantizer(
-            codebook_size,
-            embedding_dim,
-            num_stages=num_stages,
-            dropout=dropout,
-            init_by_kmeans=init_by_kmeans,
-            seed=seed,
-        )
+        self.vector_quantizer = vector_quantizer
         self.decoder = decoder
 
     def forward(
