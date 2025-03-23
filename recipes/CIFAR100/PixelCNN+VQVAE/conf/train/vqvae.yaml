@@ -52,6 +52,6 @@ output:
       path: ${...exp_dir}/model/vqvae/best_epoch.pth
 
 steps:
-  epochs: 10
+  epochs: 50
   iterations:
   lr_scheduler: epoch

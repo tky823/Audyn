@@ -1,7 +1,7 @@
 - name: adam
   optimizer:
     _target_: torch.optim.Adam
-    lr: 2.0e-4
+    lr: 1.0e-3
   modules:
     - encoder
     - decoder

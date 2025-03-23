@@ -3,9 +3,9 @@ encoder:
   _target_: utils.models.vqvae.Encoder
   in_channels: 3
   out_channels: ${..embedding_dim}
-  hidden_channels: 64
+  hidden_channels: 16
   stride: 2
-  num_layers: 3
+  num_layers: 2
 decoder:
   _target_: utils.models.vqvae.Decoder
   in_channels: ${..embedding_dim}
@@ -14,5 +14,5 @@ decoder:
   stride: ${..encoder.stride}
   num_layers: ${..encoder.num_layers}
 codebook_size: ${data.codebook.size}
-embedding_dim: 16
+embedding_dim: 4
 init_by_kmeans: 10
