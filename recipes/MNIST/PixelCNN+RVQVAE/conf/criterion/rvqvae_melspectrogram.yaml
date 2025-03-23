@@ -1,0 +1,46 @@
+defaults:
+  - vqvae
+  - _self_
+
+reconstruction_loss:
+  key_mapping:
+    estimated:
+      input: reconstructed
+    target:
+      target: input
+
+codebook_loss:
+  key_mapping:
+    estimated:
+      encoded: residual
+      quantized: quantized
+    target:
+
+commitment_loss:
+  key_mapping:
+    estimated:
+      encoded: residual
+      quantized: quantized
+    target:
+
+codebook_entropy:
+  _target_: audyn.criterion.BaseCriterionWrapper
+  criterion:
+    _target_: audyn.criterion.rvqvae.CodebookEntropyLoss
+    codebook_size: ${data.codebook.size}
+  weight: 0  # monitoring
+  key_mapping:
+    estimated:
+      input: indices
+    target:
+
+codebook_usage:
+  _target_: audyn.criterion.BaseCriterionWrapper
+  criterion:
+    _target_: audyn.criterion.rvqvae.CodebookUsageLoss
+    codebook_size: ${data.codebook.size}
+  weight: 0  # monitoring
+  key_mapping:
+    estimated:
+      input: indices
+    target:
