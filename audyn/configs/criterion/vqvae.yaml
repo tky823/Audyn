@@ -1,4 +1,5 @@
 _target_: audyn.criterion.MultiCriteria
+
 reconstruction_loss:
   _target_: audyn.criterion.BaseCriterionWrapper
   criterion:
@@ -10,6 +11,7 @@ reconstruction_loss:
       input: ???
     target:
       target: ???
+
 codebook_loss:
   _target_: audyn.criterion.BaseCriterionWrapper
   criterion:
@@ -21,6 +23,7 @@ codebook_loss:
       encoded: ???
       quantized: ???
     target:
+
 commitment_loss:
   _target_: audyn.criterion.BaseCriterionWrapper
   criterion:
