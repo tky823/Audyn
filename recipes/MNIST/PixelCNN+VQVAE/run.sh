@@ -55,7 +55,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         --test "${test}" \
         --model "${model}" \
         --optimizer "${optimizer}" \
-        --lr_scheduler "${lr_scheduler}" \
+        --lr-scheduler "${lr_scheduler}" \
         --criterion "${criterion}"
     )
 fi
@@ -96,7 +96,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
         --test "${test}" \
         --model "${model}" \
         --optimizer "${optimizer}" \
-        --lr_scheduler "${lr_scheduler}" \
+        --lr-scheduler "${lr_scheduler}" \
         --criterion "${criterion}"
     )
 fi

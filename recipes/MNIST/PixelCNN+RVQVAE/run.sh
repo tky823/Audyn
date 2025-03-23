@@ -20,7 +20,7 @@ dump_format="torch"
 
 system="default"
 preprocess="default"
-data="vqvae"
+data="rvqvae"
 train=""
 test="pixelcnn+vqvae"
 model=""
@@ -38,7 +38,7 @@ export PYTHONPATH="./:${PYTHONPATH}"
 set -u
 
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
-    echo "Stage 1: Training of Gumbel-VQVAE"
+    echo "Stage 1: Training of RVQVAE"
 
     (
         . ./train_vqvae.sh \
@@ -57,23 +57,5 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         --optimizer "${optimizer}" \
         --lr-scheduler "${lr_scheduler}" \
         --criterion "${criterion}"
-    )
-fi
-
-if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
-    echo "Stage 2: Save prior from Gumbel-VQVAE"
-
-    (
-        . ./save_prior.sh \
-        --tag "${tag}" \
-        --data-root "${data_root}" \
-        --dump-format "${dump_format}" \
-        --exp-root "${exp_root}" \
-        --checkpoint "${vqvae_checkpoint}" \
-        --system "${system}" \
-        --preprocess "${preprocess}" \
-        --data "${data}" \
-        --train "${train}" \
-        --model "${model}"
     )
 fi

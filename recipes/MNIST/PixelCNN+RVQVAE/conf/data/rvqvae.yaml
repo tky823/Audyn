@@ -1,0 +1,7 @@
+defaults:
+  - vqvae
+  - _self_
+
+codebook:
+  size: 4
+  num_stages: 2
