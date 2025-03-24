@@ -1,0 +1,22 @@
+defaults:
+  - vqvae
+  - _self_
+
+key_mapping:
+  train:
+    input:
+      input: input
+    output:
+      - reconstructed
+      - encoded
+      - quantized
+      - residual
+      - indices
+  validation:
+    input:
+      input: input
+    output: ${..train.output}
+  inference:
+    input:
+      quantized: codebook_indices
+    output: reconstructed
