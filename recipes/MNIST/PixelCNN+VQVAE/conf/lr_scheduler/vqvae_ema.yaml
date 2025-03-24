@@ -2,6 +2,6 @@
   lr_scheduler:
     _target_: torch.optim.lr_scheduler.StepLR
     step_size: 1
-    gamma: 0.999
+    gamma: 0.95
 - name: ema
   lr_scheduler:

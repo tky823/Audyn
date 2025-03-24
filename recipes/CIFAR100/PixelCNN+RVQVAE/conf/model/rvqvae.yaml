@@ -1,0 +1,19 @@
+_target_: audyn.models.RVQVAE
+encoder:
+  _target_: utils.models.vqvae.Encoder
+  in_channels: 3
+  out_channels: ${..embedding_dim}
+  hidden_channels: 16
+  stride: 2
+  num_layers: 2
+decoder:
+  _target_: utils.models.vqvae.Decoder
+  in_channels: ${..embedding_dim}
+  out_channels: ${..encoder.in_channels}
+  hidden_channels: ${..encoder.hidden_channels}
+  stride: ${..encoder.stride}
+  num_layers: ${..encoder.num_layers}
+codebook_size: ${data.codebook.size}
+embedding_dim: 2
+num_stages: ${data.codebook.num_stages}
+dropout: true
