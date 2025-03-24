@@ -1,12 +1,15 @@
 import copy
 
+import pytest
 import torch
 from dummy.modules.vqvae import Decoder, Encoder
 
 from audyn.models.vqvae import VQVAE, GumbelVQVAE
+from audyn.modules.vq import GumbelVectorQuantizer, VectorQuantizer
 
 
-def test_vqvae() -> None:
+@pytest.mark.parametrize("init_vq", [True, False])
+def test_vqvae(init_vq: bool) -> None:
     torch.manual_seed(0)
 
     batch_size = 4
@@ -29,12 +32,24 @@ def test_vqvae() -> None:
         stride=stride,
         num_layers=num_layers,
     )
-    model = VQVAE(
-        encoder,
-        decoder,
-        codebook_size=codebook_size,
-        embedding_dim=hidden_channels,
-    )
+
+    if init_vq:
+        vector_quantizer = VectorQuantizer(
+            codebook_size,
+            hidden_channels,
+        )
+        model = VQVAE(
+            encoder,
+            decoder,
+            vector_quantizer,
+        )
+    else:
+        model = VQVAE(
+            encoder,
+            decoder,
+            codebook_size=codebook_size,
+            embedding_dim=hidden_channels,
+        )
 
     input = torch.randn((batch_size, in_channels, height, width))
     reconstructed, encoded, quantized, indices = model(input)
@@ -79,13 +94,26 @@ def test_vqvae() -> None:
         stride=stride,
         num_layers=num_layers,
     )
-    model = VQVAE(
-        encoder,
-        decoder,
-        codebook_size=codebook_size,
-        embedding_dim=hidden_channels,
-        init_by_kmeans=kmeans_initalization,
-    )
+
+    if init_vq:
+        vector_quantizer = VectorQuantizer(
+            codebook_size,
+            hidden_channels,
+            init_by_kmeans=kmeans_initalization,
+        )
+        model = VQVAE(
+            encoder,
+            decoder,
+            vector_quantizer,
+        )
+    else:
+        model = VQVAE(
+            encoder,
+            decoder,
+            codebook_size=codebook_size,
+            embedding_dim=hidden_channels,
+            init_by_kmeans=kmeans_initalization,
+        )
 
     input = torch.randn((batch_size, in_channels, height, width))
     reconstructed, encoded, quantized, indices = model(input)
@@ -94,7 +122,8 @@ def test_vqvae() -> None:
     model.load_state_dict(state_dict)
 
 
-def test_gumbel_vqvae() -> None:
+@pytest.mark.parametrize("init_vq", [True, False])
+def test_gumbel_vqvae(init_vq: bool) -> None:
     torch.manual_seed(0)
 
     batch_size = 4
@@ -118,12 +147,24 @@ def test_gumbel_vqvae() -> None:
         stride=stride,
         num_layers=num_layers,
     )
-    model = GumbelVQVAE(
-        encoder,
-        decoder,
-        codebook_size=codebook_size,
-        embedding_dim=hidden_channels,
-    )
+
+    if init_vq:
+        vector_quantizer = GumbelVectorQuantizer(
+            codebook_size,
+            hidden_channels,
+        )
+        model = GumbelVQVAE(
+            encoder,
+            decoder,
+            vector_quantizer,
+        )
+    else:
+        model = GumbelVQVAE(
+            encoder,
+            decoder,
+            codebook_size=codebook_size,
+            embedding_dim=hidden_channels,
+        )
 
     input = torch.randn((batch_size, in_channels, height, width))
     reconstructed, encoded, quantized, indices = model(input)
@@ -168,13 +209,26 @@ def test_gumbel_vqvae() -> None:
         stride=stride,
         num_layers=num_layers,
     )
-    model = GumbelVQVAE(
-        encoder,
-        decoder,
-        codebook_size=codebook_size,
-        embedding_dim=hidden_channels,
-        init_by_kmeans=kmeans_initalization,
-    )
+
+    if init_vq:
+        vector_quantizer = GumbelVectorQuantizer(
+            codebook_size,
+            hidden_channels,
+            init_by_kmeans=kmeans_initalization,
+        )
+        model = GumbelVQVAE(
+            encoder,
+            decoder,
+            vector_quantizer,
+        )
+    else:
+        model = GumbelVQVAE(
+            encoder,
+            decoder,
+            codebook_size=codebook_size,
+            embedding_dim=hidden_channels,
+            init_by_kmeans=kmeans_initalization,
+        )
 
     input = torch.randn((batch_size, in_channels, height, width))
     reconstructed, encoded, quantized, indices = model(input, temperature=temperature)

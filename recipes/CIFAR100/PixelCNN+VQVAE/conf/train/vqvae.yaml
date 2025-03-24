@@ -1,0 +1,57 @@
+defaults:
+  - dataset: cifar100
+  - dataloader: default
+  - record: vqvae
+  - _self_
+
+dataloader:
+  train:
+    batch_size: 128
+  validation:
+    batch_size: 128
+
+key_mapping:
+  train:
+    input:
+      input: input
+    output:
+      - reconstructed
+      - encoded
+      - quantized
+      - indices
+  validation:
+    input:
+      input: input
+    output: ${..train.output}
+  inference:
+    input:
+      quantized: codebook_indices
+    output: reconstructed
+
+clip_gradient:
+  _target_: audyn.utils.GradClipper
+  mode: norm
+  max_norm: 10
+
+resume:
+  continue_from:
+
+output:
+  exp_dir: "./exp"
+  tensorboard_dir: "./tensorboard"
+  save_checkpoint:
+    iteration:
+      every: 5000
+      path: ${...exp_dir}/model/vqvae/iteration{iteration}.pth
+    epoch:
+      every: 20
+      path: ${...exp_dir}/model/vqvae/epoch{epoch}.pth
+    last:
+      path: ${...exp_dir}/model/vqvae/last.pth
+    best_epoch:
+      path: ${...exp_dir}/model/vqvae/best_epoch.pth
+
+steps:
+  epochs: 50
+  iterations:
+  lr_scheduler: epoch

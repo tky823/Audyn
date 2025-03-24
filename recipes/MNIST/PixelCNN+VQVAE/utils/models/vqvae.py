@@ -107,6 +107,9 @@ class StackedConvBlock(nn.Module):
             )
             net.append(block)
 
+            if layer_idx != num_layers - 1:
+                net.append(nn.ReLU())
+
         self.net = nn.Sequential(*net)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
@@ -142,6 +145,9 @@ class StackedConvTransposeBlock(nn.Module):
                 padding=(kernel_size - stride) // 2,
             )
             net.append(block)
+
+            if layer_idx != num_layers - 1:
+                net.append(nn.ReLU())
 
         self.net = nn.Sequential(*net)
 

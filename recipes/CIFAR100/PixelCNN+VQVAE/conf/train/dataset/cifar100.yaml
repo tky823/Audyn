@@ -1,0 +1,18 @@
+train:
+  _target_: utils.dataset.CIFAR100
+  root: "../data/"
+  train: true
+  transform:
+    _target_: torchvision.transforms.ToTensor
+  target_transform:
+    _target_: torch.tensor
+    _partial_: true
+  download: true
+
+validation:
+  _target_: ${..train._target_}
+  root: ${..train.root}
+  train: false
+  transform: ${..train.transform}
+  target_transform: ${..train.target_transform}
+  download: ${..train.download}

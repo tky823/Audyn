@@ -1,0 +1,14 @@
+- name: adam
+  optimizer:
+    _target_: torch.optim.Adam
+    lr: 1.0e-3
+  modules:
+    - encoder
+    - decoder
+- name: ema
+  optimizer:
+    _target_: audyn.optim.optimizer.ExponentialMovingAverageCodebookOptimizer
+    smooth: 0.999
+    reset_step: 20
+  modules:
+    - vector_quantizer

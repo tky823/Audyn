@@ -1,0 +1,1 @@
+../../../MNIST/PixelCNN+VQVAE/local/train_vqvae.py

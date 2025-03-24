@@ -1,13 +1,16 @@
 import copy
 
+import pytest
 import torch
 from dummy import allclose
 from dummy.modules.vqvae import Decoder, Encoder
 
 from audyn.models.rvqvae import RVQVAE
+from audyn.modules.rvq import ResidualVectorQuantizer
 
 
-def test_rvqvae():
+@pytest.mark.parametrize("init_vq", [True, False])
+def test_rvqvae(init_vq: bool) -> None:
     torch.manual_seed(0)
 
     batch_size = 4
@@ -18,16 +21,40 @@ def test_rvqvae():
     height, width = 32, 32
     latent_size = (height // (stride**num_layers), width // (stride**num_layers))
 
-    encoder = Encoder(in_channels, hidden_channels, stride=stride, num_layers=num_layers)
-    decoder = Decoder(in_channels, hidden_channels, stride=stride, num_layers=num_layers)
-    model = RVQVAE(
-        encoder,
-        decoder,
-        codebook_size=codebook_size,
-        embedding_dim=hidden_channels,
-        num_stages=num_stages,
-        dropout=False,
+    encoder = Encoder(
+        in_channels,
+        hidden_channels,
+        stride=stride,
+        num_layers=num_layers,
     )
+    decoder = Decoder(
+        in_channels,
+        hidden_channels,
+        stride=stride,
+        num_layers=num_layers,
+    )
+
+    if init_vq:
+        vector_quantizer = ResidualVectorQuantizer(
+            codebook_size=codebook_size,
+            embedding_dim=hidden_channels,
+            num_stages=num_stages,
+            dropout=False,
+        )
+        model = RVQVAE(
+            encoder,
+            decoder,
+            vector_quantizer,
+        )
+    else:
+        model = RVQVAE(
+            encoder,
+            decoder,
+            codebook_size=codebook_size,
+            embedding_dim=hidden_channels,
+            num_stages=num_stages,
+            dropout=False,
+        )
 
     input = torch.randn((batch_size, in_channels, height, width))
     reconstructed, encoded, hierarchical_quantized, hierarchical_residual, indices = model(input)
@@ -84,17 +111,42 @@ def test_rvqvae():
     # k-means clustering initialization
     kmeans_initalization = 100
 
-    encoder = Encoder(in_channels, hidden_channels, stride=stride, num_layers=num_layers)
-    decoder = Decoder(in_channels, hidden_channels, stride=stride, num_layers=num_layers)
-    model = RVQVAE(
-        encoder,
-        decoder,
-        codebook_size=codebook_size,
-        embedding_dim=hidden_channels,
-        num_stages=num_stages,
-        dropout=False,
-        init_by_kmeans=kmeans_initalization,
+    encoder = Encoder(
+        in_channels,
+        hidden_channels,
+        stride=stride,
+        num_layers=num_layers,
     )
+    decoder = Decoder(
+        in_channels,
+        hidden_channels,
+        stride=stride,
+        num_layers=num_layers,
+    )
+
+    if init_vq:
+        vector_quantizer = ResidualVectorQuantizer(
+            codebook_size=codebook_size,
+            embedding_dim=hidden_channels,
+            num_stages=num_stages,
+            dropout=False,
+            init_by_kmeans=kmeans_initalization,
+        )
+        model = RVQVAE(
+            encoder,
+            decoder,
+            vector_quantizer,
+        )
+    else:
+        model = RVQVAE(
+            encoder,
+            decoder,
+            codebook_size=codebook_size,
+            embedding_dim=hidden_channels,
+            num_stages=num_stages,
+            dropout=False,
+            init_by_kmeans=kmeans_initalization,
+        )
 
     input = torch.randn((batch_size, in_channels, height, width))
     _ = model(input)
