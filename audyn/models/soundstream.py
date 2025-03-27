@@ -207,7 +207,7 @@ class SoundStreamReconstructor(SoundStream):
             raise NotImplementedError("Denoising is not supported now.")
 
         encoded = self.encode(input)
-        hierarchical_quantized, _ = self.quantize(encoded)
+        hierarchical_quantized, _, _ = self.quantize(encoded)
 
         num_total_stages = hierarchical_quantized.size(1)
 
