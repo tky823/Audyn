@@ -1,8 +1,26 @@
 Commands
 ========
 
+Download LJSpeech dataset
+-------------------------
+
+You can download LJSpeech dataset by ``audyn-download-ljspeech``.
+
+.. code-block:: shell
+
+    data_root="./data"  # root directory to save .zip file.
+    ljspeech_root="${data_root}/LJSpeech-1.1"
+    unpack=true  # unpack .tar.bz2 or not
+    chunk_size=8192  # chunk size in byte to download
+
+    audyn-download-ljspeech \
+    root="${data_root}" \
+    ljspeech_root="${ljspeech_root}" \
+    unpack=${unpack} \
+    chunk_size=${chunk_size}
+
 Download MUSDB18 dataset
-----------------------------
+------------------------
 
 You can download MUSDB18 dataset by ``audyn-download-musdb18``.
 

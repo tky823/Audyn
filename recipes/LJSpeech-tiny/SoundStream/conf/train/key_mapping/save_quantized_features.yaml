@@ -4,6 +4,7 @@ output:
   - estimated_waveform
   - encoded
   - quantized
+  - residual
   - codebook_indices
 save:
   input:

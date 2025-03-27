@@ -6,6 +6,7 @@ train:
       - estimated_waveform_slice
       - encoded
       - quantized
+      - residual
       - codebook_indices
   discriminator:
     real:
