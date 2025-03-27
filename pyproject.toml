@@ -56,6 +56,7 @@ tests = [
 
 [project.scripts]
 audyn-parse-run-command = "audyn.bin.parse_run_command:main"
+audyn-download-ljspeech = "audyn.bin.download_ljspeech:main"
 audyn-download-musdb18 = "audyn.bin.download_musdb18:main"
 audyn-decode-musdb18 = "audyn.bin.decode_musdb18:main"
 audyn-download-lsx = "audyn.bin.download_lsx:main"
