@@ -11,6 +11,7 @@ from ..utils._github import download_file_from_github_release
 
 __all__ = [
     "LAIONAudioEncoder2023",
+    "LAIONCLAPAudioEncoder2023",
 ]
 
 
@@ -99,6 +100,10 @@ class LAIONAudioEncoder2023(nn.Module):
             return model
         else:
             raise FileNotFoundError(f"{pretrained_model_name_or_path} does not exist.")
+
+
+class LAIONCLAPAudioEncoder2023(LAIONAudioEncoder2023):
+    """Alias of LAIONAudioEncoder2023."""
 
 
 def _create_pretrained_model_configs() -> Dict[str, Dict[str, str]]:
