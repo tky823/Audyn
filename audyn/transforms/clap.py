@@ -6,11 +6,14 @@ import torch.nn.functional as F
 import torchaudio.transforms as aT
 
 __all__ = [
+    "LAIONCLAPAudioEncoder2023MelSpectrogram",
     "LAIONAudioEncoder2023MelSpectrogram",
+    "LAIONCLAPAudioEncoder2023MelSpectrogramFusion",
+    "LAIONAudioEncoder2023MelSpectrogramFusion",
 ]
 
 
-class LAIONAudioEncoder2023MelSpectrogram(aT.MelSpectrogram):
+class LAIONCLAPAudioEncoder2023MelSpectrogram(aT.MelSpectrogram):
     """Mel-spectrogram transform for LAIONAudioEncoder2023.
 
     For the details of arguments, see ``torchaudio.transforms.MelSpectrogram``.
@@ -89,7 +92,7 @@ class LAIONAudioEncoder2023MelSpectrogram(aT.MelSpectrogram):
         return output
 
 
-class LAIONAudioEncoder2023MelSpectrogramFusion(nn.Module):
+class LAIONCLAPAudioEncoder2023MelSpectrogramFusion(nn.Module):
     """Mel-spectrogram fusion for LAIONAudioEncoder2023.
 
     Args:
@@ -237,3 +240,11 @@ class LAIONAudioEncoder2023MelSpectrogramFusion(nn.Module):
         spectrograms = list(spectrograms)
 
         return spectrograms
+
+
+class LAIONAudioEncoder2023MelSpectrogram(LAIONCLAPAudioEncoder2023MelSpectrogram):
+    """Alias of LAIONCLAPAudioEncoder2023MelSpectrogram."""
+
+
+class LAIONAudioEncoder2023MelSpectrogramFusion(LAIONCLAPAudioEncoder2023MelSpectrogramFusion):
+    """Alias of LAIONCLAPAudioEncoder2023MelSpectrogramFusion."""
