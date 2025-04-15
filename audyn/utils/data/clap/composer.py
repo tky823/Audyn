@@ -5,21 +5,24 @@ import torch.nn as nn
 import torchaudio.functional as aF
 
 from ....transforms.clap import (
-    LAIONAudioEncoder2023MelSpectrogram,
-    LAIONAudioEncoder2023MelSpectrogramFusion,
+    LAIONCLAPAudioEncoder2023MelSpectrogram,
+    LAIONCLAPAudioEncoder2023MelSpectrogramFusion,
 )
 from ..composer import Composer
 
-__all__ = ["LAIONAudioEncoder2023Composer"]
+__all__ = [
+    "LAIONCLAPAudioEncoder2023Composer",
+    "LAIONAudioEncoder2023Composer",
+]
 
 
-class LAIONAudioEncoder2023Composer(Composer):
-    """Composer for LAIONAudioEncoder2023.
+class LAIONCLAPAudioEncoder2023Composer(Composer):
+    """Composer for LAIONCLAPAudioEncoder2023.
 
     Args:
-        melspectrogram_transform (LAIONAudioEncoder2023MelSpectrogram or nn.Module):
+        melspectrogram_transform (LAIONCLAPAudioEncoder2023MelSpectrogram or nn.Module):
             Module to transform waveform to Mel-spectrogram.
-        fusion_transform (LAIONAudioEncoder2023MelSpectrogramFusion or nn.Module):
+        fusion_transform (LAIONCLAPAudioEncoder2023MelSpectrogramFusion or nn.Module):
             Module to fuse Mel-spectrogram.
         waveform_key (str): Key of waveform in given sample.
         sample_rate_key (str): Key of sampling rate in given sample.
@@ -31,8 +34,8 @@ class LAIONAudioEncoder2023Composer(Composer):
 
     def __init__(
         self,
-        melspectrogram_transform: Union[LAIONAudioEncoder2023MelSpectrogram, nn.Module],
-        fusion_transform: Union[LAIONAudioEncoder2023MelSpectrogramFusion, nn.Module],
+        melspectrogram_transform: Union[LAIONCLAPAudioEncoder2023MelSpectrogram, nn.Module],
+        fusion_transform: Union[LAIONCLAPAudioEncoder2023MelSpectrogramFusion, nn.Module],
         waveform_key: str = "waveform",
         sample_rate_key: str = "sample_rate",
         melspectrogram_key: str = "melspectrogram",
@@ -103,3 +106,7 @@ class LAIONAudioEncoder2023Composer(Composer):
         }
 
         return output
+
+
+class LAIONAudioEncoder2023Composer(LAIONCLAPAudioEncoder2023Composer):
+    """Alias of LAIONCLAPAudioEncoder2023Composer."""
