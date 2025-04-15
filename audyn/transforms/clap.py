@@ -14,7 +14,7 @@ __all__ = [
 
 
 class LAIONCLAPAudioEncoder2023MelSpectrogram(aT.MelSpectrogram):
-    """Mel-spectrogram transform for LAIONAudioEncoder2023.
+    """Mel-spectrogram transform for LAIONCLAPAudioEncoder2023.
 
     For the details of arguments, see ``torchaudio.transforms.MelSpectrogram``.
 
@@ -26,17 +26,17 @@ class LAIONCLAPAudioEncoder2023MelSpectrogram(aT.MelSpectrogram):
     Examples:
 
         >>> import torch
-        >>> from audyn.transforms import LAIONAudioEncoder2023MelSpectrogram
+        >>> from audyn.transforms import LAIONCLAPAudioEncoder2023MelSpectrogram
         >>> torch.manual_seed(0)
         >>> waveform = torch.randn((48000,))
         >>> # truncation is "fusion"
-        >>> melspectrogram_transform = LAIONAudioEncoder2023MelSpectrogram(norm=None, mel_scale="htk")
+        >>> melspectrogram_transform = LAIONCLAPAudioEncoder2023MelSpectrogram(norm=None, mel_scale="htk")
         >>> melspectrogram = melspectrogram_transform(waveform)
         >>> melspectrogram.size()
         torch.Size([64, 101])
         >>> # truncation is NOT "fusion" (default by transformers)
         >>> # https://github.com/huggingface/transformers/blob/6bc0fbcfa7acb6ac4937e7456a76c2f7975fefec/src/transformers/models/clap/feature_extraction_clap.py#L96
-        >>> melspectrogram_transform = LAIONAudioEncoder2023MelSpectrogram(norm="slaney", mel_scale="slaney")
+        >>> melspectrogram_transform = LAIONCLAPAudioEncoder2023MelSpectrogram(norm="slaney", mel_scale="slaney")
         >>> melspectrogram = melspectrogram_transform(waveform)
         >>> melspectrogram.size()
         torch.Size([64, 101])
@@ -93,7 +93,7 @@ class LAIONCLAPAudioEncoder2023MelSpectrogram(aT.MelSpectrogram):
 
 
 class LAIONCLAPAudioEncoder2023MelSpectrogramFusion(nn.Module):
-    """Mel-spectrogram fusion for LAIONAudioEncoder2023.
+    """Mel-spectrogram fusion for LAIONCLAPAudioEncoder2023.
 
     Args:
         chunk_size (int): Chunk size. Default: ``480000``.
