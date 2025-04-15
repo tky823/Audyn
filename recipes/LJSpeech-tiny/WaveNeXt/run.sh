@@ -12,7 +12,6 @@ continue_from=""
 exp_root="./exp"
 tensorboard_root="./tensorboard"
 
-ljspeech_url="https://data.keithito.com/data/speech/LJSpeech-1.1.tar.bz2"
 data_root="../data"
 dump_root="dump"
 
@@ -39,7 +38,6 @@ if [ ${stage} -le -1 ] && [ ${stop_stage} -ge -1 ]; then
 
     (
         . ../_common/download.sh \
-        --ljspeech-url "${ljspeech_url}" \
         --data-root "${data_root}"
     )
 fi

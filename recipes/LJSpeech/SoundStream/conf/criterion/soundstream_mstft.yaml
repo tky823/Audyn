@@ -92,22 +92,22 @@ generator:
   codebook_loss:
     _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
-      _target_: audyn.criterion.rvqvae.CodebookLoss
-    weight: 0  # monitoring
+      _target_: audyn.criterion.vqvae.CodebookLoss
+    weight: 1
     key_mapping:
       estimated:
-        encoded: encoded
+        encoded: residual
         quantized: quantized
       target:
   commitment_loss:
     _target_: audyn.criterion.BaseCriterionWrapper
     criterion:
-      _target_: audyn.criterion.rvqvae.CommitmentLoss
+      _target_: audyn.criterion.vqvae.CommitmentLoss
       reduction: mean
     weight: 0.25
     key_mapping:
       estimated:
-        encoded: encoded
+        encoded: residual
         quantized: quantized
       target:
 discriminator:

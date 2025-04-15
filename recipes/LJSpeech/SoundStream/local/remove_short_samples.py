@@ -8,10 +8,13 @@ from omegaconf import DictConfig
 from tqdm import tqdm
 
 import audyn
+from audyn.utils import setup_config
 
 
 @audyn.main()
 def main(config: DictConfig) -> None:
+    setup_config(config)
+
     list_path = config.preprocess.list_path
     wav_dir = config.preprocess.wav_dir
 

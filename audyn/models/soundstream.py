@@ -61,6 +61,8 @@ class SoundStream(RVQVAE):
                     smaller than input_shape.
                 - torch.Tensor: Quantized latent feature of shape \
                     (batch_size, num_stages, embedding_dim, *latent_shape).
+                - torch.Tensor: Residual vector of shape \
+                    (batch_size, num_stages, embedding_dim, *latent_shape).
                 - torch.Tensor: Indices of embeddings in codebook of shape \
                     (batch_size, num_stages, *latent_shape).
 
@@ -205,7 +207,7 @@ class SoundStreamReconstructor(SoundStream):
             raise NotImplementedError("Denoising is not supported now.")
 
         encoded = self.encode(input)
-        hierarchical_quantized, _ = self.quantize(encoded)
+        hierarchical_quantized, _, _ = self.quantize(encoded)
 
         num_total_stages = hierarchical_quantized.size(1)
 

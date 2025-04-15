@@ -6,12 +6,14 @@ from omegaconf import DictConfig
 from tqdm import tqdm
 
 import audyn
-from audyn.utils import instantiate
+from audyn.utils import instantiate, setup_config
 from audyn.utils.text import TextPreprocessor
 
 
 @audyn.main()
 def main(config: DictConfig) -> None:
+    setup_config(config)
+
     metadata_path = config.preprocess.metadata_path
     text_dir = config.preprocess.text_dir
     max_workers = config.preprocess.max_workers
