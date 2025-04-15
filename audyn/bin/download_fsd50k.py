@@ -1,7 +1,10 @@
 import os
 import shutil
+import subprocess
+import sys
 import tempfile
 import uuid
+import warnings
 import zipfile
 from typing import Optional
 
@@ -9,6 +12,8 @@ from omegaconf import DictConfig
 
 from ..utils._hydra import main as audyn_main
 from ..utils.data.download import download_file
+
+IS_WINDOWS = sys.platform == "win32"
 
 
 @audyn_main(config_name="download-fsd50k")
@@ -77,25 +82,22 @@ def download_fsd50k(config: DictConfig) -> None:
                 _download_fsd50k(_url, path, chunk_size=chunk_size)
 
     if unpack:
+        if IS_WINDOWS:
+            warnings.warn("Windows is not fully supported.", UserWarning, stacklevel=2)
+
         for subset in ["dev", "eval"]:
-            zip_template = f"FSD50K.{subset}_audio.z" + "{}"
-            merged_path = zip_template.format(f"{0:02d}")
+            zip_template = os.path.join(root, f"FSD50K.{subset}_audio.zip")
+            merged_path = zip_template.replace(".zip", ".merged.zip")
 
-            with open(merged_path, "wb") as f_out:
-                for idx in range(num_files):
-                    filename = zip_template.format(idx)
-                    path = os.path.join(root, filename)
+            cmd = ["zip", "-s", "0", zip_template, "--out", merged_path]
+            subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-                    with open(path, "rb") as f_in:
-                        f_out.write(f_in.read())
-
-            root = os.path.dirname(path)
             default_name = "FSD50K"
 
             if fsd50k_root is None:
                 fsd50k_root = os.path.join(root, default_name)
 
-            unpacked_root = os.path.join(fsd50k_root, f"FSD50K.{subset}_audio")
+            unpacked_root = os.path.join(fsd50k_root)
             _unpack_zip(merged_path, unpacked_root=unpacked_root)
 
 
