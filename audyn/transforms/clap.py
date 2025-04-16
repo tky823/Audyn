@@ -121,12 +121,68 @@ class LAIONCLAPAudioEncoder2023MelSpectrogram(aT.MelSpectrogram):
 
         return output
 
+    @classmethod
+    def build_from_pretrained(
+        cls,
+        pretrained_model_name_or_path: str,
+    ) -> "LAIONCLAPAudioEncoder2023MelSpectrogram":
+        """Build predefined LAIONCLAPAudioEncoder2023MelSpectrogram.
+
+        Args:
+            pretrained_model_name_or_path (str): Name of pretrained model.
+
+        Examples:
+
+            >>> import torch
+            >>> from audyn.transforms import LAIONCLAPAudioEncoder2023MelSpectrogram
+            >>> torch.manual_seed(0)
+            >>> waveform = torch.randn((48000,))
+            >>> melspectrogram_transform = LAIONCLAPAudioEncoder2023MelSpectrogram.build_from_pretrained("laion-clap-htsat-fused")
+            >>> melspectrogram = melspectrogram_transform(waveform)
+            >>> melspectrogram.size()
+            torch.Size([64, 101])
+
+        .. note::
+
+            Supported pretrained model names are
+                - laion-clap-htsat-fused
+
+        """  # noqa: E501
+        if pretrained_model_name_or_path == "laion-clap-htsat-fused":
+            transform = cls(
+                sample_rate=48000,
+                n_fft=1024,
+                win_length=1024,
+                hop_length=480,
+                f_min=50,
+                f_max=14000,
+                pad=0,
+                n_mels=64,
+                window_fn=torch.hann_window,
+                power=2.0,
+                normalized=False,
+                wkwargs=None,
+                center=True,
+                pad_mode="reflect",
+                onesided=None,
+                norm=None,
+                mel_scale="htk",
+                fb_dtype=torch.float64,
+            )
+        else:
+            raise ValueError(
+                f"{pretrained_model_name_or_path} is not supported as "
+                "pretrained_model_name_or_path."
+            )
+
+        return transform
+
 
 class LAIONCLAPAudioEncoder2023MelSpectrogramFusion(nn.Module):
     """Mel-spectrogram fusion for LAIONCLAPAudioEncoder2023.
 
     Args:
-        chunk_size (int): Chunk size. Default: ``480000``.
+        chunk_size (int): Chunk size. Default: ``1001``.
         num_chunks (int): Number of chunks. Default: ``3``.
         dim (int): Dimension to stack. Default: ``-3``.
         prepend_resampled_chunk (bool): If ``True``, resampled chunk of Mel-spectrogram
@@ -208,6 +264,56 @@ class LAIONCLAPAudioEncoder2023MelSpectrogramFusion(nn.Module):
             output = torch.cat([resampled_chunk, output], dim=self.dim)
 
         return output
+
+    @classmethod
+    def build_from_pretrained(
+        cls,
+        pretrained_model_name_or_path: str,
+    ) -> "LAIONCLAPAudioEncoder2023MelSpectrogramFusion":
+        """Build predefined LAIONCLAPAudioEncoder2023MelSpectrogramFusion.
+
+        Args:
+            pretrained_model_name_or_path (str): Name of pretrained model.
+
+        Examples:
+
+            >>> import torch
+            >>> from audyn.transforms.clap import LAIONCLAPAudioEncoder2023MelSpectrogramFusion
+            >>> torch.manual_seed(0)
+            >>> fusion_transform = LAIONCLAPAudioEncoder2023MelSpectrogramFusion.build_from_pretrained("laion-clap-htsat-fused")
+            >>> # unbatched
+            >>> melspectrogram = torch.randn((64, 2001))
+            >>> fused_melspectrogram = fusion_transform(melspectrogram)
+            >>> fused_melspectrogram.size()
+            torch.Size([4, 64, 001])
+            >>> # batched
+            >>> melspectrogram = torch.randn((2, 64, 2001))
+            >>> fused_melspectrogram = fusion_transform(melspectrogram)
+            >>> fused_melspectrogram.size()
+            torch.Size([2, 4, 64, 1001])
+
+        .. note::
+
+            Supported pretrained model names are
+                - laion-clap-htsat-fused
+
+        """  # noqa: E501
+        if pretrained_model_name_or_path == "laion-clap-htsat-fused":
+            transform = cls(
+                chunk_size=1001,
+                num_chunks=3,
+                dim=-3,
+                prepend_resampled_chunk=True,
+                pad_mode="replicate+constant",
+                sample_wise=True,
+            )
+        else:
+            raise ValueError(
+                f"{pretrained_model_name_or_path} is not supported as "
+                "pretrained_model_name_or_path."
+            )
+
+        return transform
 
     def _sample_chunks(self, spectrogram: torch.Tensor) -> List[torch.Tensor]:
         chunk_size = self.chunk_size
