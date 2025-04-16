@@ -219,12 +219,12 @@ Contrastive Language-Audio Pretraining (CLAP)
 .. code-block:: python
 
    >>> import torch
-   >>> from audyn.models import LAIONAudioEncoder2023
+   >>> from audyn.models import LAIONCLAPAudioEncoder2023
    >>> torch.manual_seed(0)
    >>> batch_size, n_bins, n_frames = 4, 64, 1001
-   >>> model = LAIONAudioEncoder2023.build_from_pretrained("laion-clap-htsat-fused")
+   >>> model = LAIONCLAPAudioEncoder2023.build_from_pretrained("laion-clap-htsat-fused")
    >>> print(model)
-   LAIONAudioEncoder2023(
+   LAIONCLAPAudioEncoder2023(
      (embedding): PatchEmbedding(
        (norm1): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
        (conv2d): Conv2d(1, 96, kernel_size=(4, 4), stride=(4, 4))
@@ -323,7 +323,7 @@ Contrastive Language-Audio Pretraining (CLAP)
    >>> print(output.size())
    torch.Size([4, 64, 768])
 
-.. autoclass:: audyn.models.LAIONAudioEncoder2023
+.. autoclass:: audyn.models.LAIONCLAPAudioEncoder2023
 
 Rotary Transformer (RoFormer)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
