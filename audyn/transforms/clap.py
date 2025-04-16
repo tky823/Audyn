@@ -5,6 +5,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchaudio.transforms as aT
 
+from ..functional.melspectrogram import melscale_fbanks
+
 __all__ = [
     "LAIONCLAPAudioEncoder2023MelSpectrogram",
     "LAIONAudioEncoder2023MelSpectrogram",
@@ -62,7 +64,16 @@ class LAIONCLAPAudioEncoder2023MelSpectrogram(aT.MelSpectrogram):
         onesided: Optional[bool] = None,
         norm: Optional[str] = None,
         mel_scale: str = "htk",
+        fb_dtype: torch.dtype | None = None,
     ) -> None:
+        is_float64_fb = fb_dtype is torch.float64
+
+        if is_float64_fb:
+            if wkwargs is None:
+                wkwargs = {}
+
+            wkwargs["dtype"] = torch.float64
+
         super().__init__(
             sample_rate,
             n_fft=n_fft,
@@ -84,10 +95,29 @@ class LAIONCLAPAudioEncoder2023MelSpectrogram(aT.MelSpectrogram):
         )
 
         self.amplitude_to_db = aT.AmplitudeToDB()
+        self.fb_dtype = fb_dtype
+
+        if is_float64_fb:
+            fb = melscale_fbanks(
+                n_fft // 2 + 1,
+                f_min,
+                f_max,
+                n_mels=n_mels,
+                sample_rate=sample_rate,
+                norm=norm,
+                mel_scale=mel_scale,
+                dtype=torch.float64,
+            )
+
+            self.mel_scale.fb = fb
 
     def forward(self, waveform: torch.Tensor) -> torch.Tensor:
+        waveform_dtype = waveform.dtype
+        waveform = waveform.to(self.mel_scale.fb.dtype)
+
         spectrogram = super().forward(waveform)
         output = self.amplitude_to_db(spectrogram)
+        output = output.to(waveform_dtype)
 
         return output
 
