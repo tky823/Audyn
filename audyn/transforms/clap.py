@@ -278,7 +278,7 @@ class LAIONCLAPAudioEncoder2023MelSpectrogramFusion(nn.Module):
         Examples:
 
             >>> import torch
-            >>> from audyn.transforms.clap import LAIONCLAPAudioEncoder2023MelSpectrogramFusion
+            >>> from audyn.transforms import LAIONCLAPAudioEncoder2023MelSpectrogramFusion
             >>> torch.manual_seed(0)
             >>> fusion_transform = LAIONCLAPAudioEncoder2023MelSpectrogramFusion.build_from_pretrained("laion-clap-htsat-fused")
             >>> # unbatched
