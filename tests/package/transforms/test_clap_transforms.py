@@ -12,10 +12,8 @@ from audyn.transforms.clap import (
 from audyn.utils._github import download_file_from_github_release
 
 
-def test_laion_clap_melspectrogram() -> None:
-    # NOTE: High band may contain larger errors due to numerical precision.
-    high_band_idx = 60
-
+@pytest.mark.parametrize("fb_dtype", [None, torch.float64])
+def test_laion_clap_melspectrogram(fb_dtype: torch.dtype) -> None:
     sample_rate = 48000
     url = "https://github.com/tky823/Audyn/releases/download/v0.0.4/test_laion_clap_melspectrogram.pth"  # noqa: E501
 
@@ -31,29 +29,35 @@ def test_laion_clap_melspectrogram() -> None:
 
     # htk
     melspectrogram_transform = LAIONAudioEncoder2023MelSpectrogram(
-        sample_rate, norm=None, mel_scale="htk"
+        sample_rate,
+        norm=None,
+        mel_scale="htk",
+        fb_dtype=fb_dtype,
     )
     melspectrogram = melspectrogram_transform(waveform)
     expected_output = data["htk"]["output"]
-    error = torch.abs(melspectrogram - expected_output)
-    mean_error = error.mean()
-    mean_error = mean_error.item()
 
-    allclose(melspectrogram[:high_band_idx], expected_output[:high_band_idx], atol=1e-3)
-    assert mean_error < 1e-4
+    melspectrogram = melspectrogram.to(expected_output.dtype)
+
+    if fb_dtype is torch.float64:
+        # test only high-precision
+        allclose(melspectrogram, expected_output, atol=1e-5)
 
     # slaney
     melspectrogram_transform = LAIONAudioEncoder2023MelSpectrogram(
-        sample_rate, norm="slaney", mel_scale="slaney"
+        sample_rate,
+        norm="slaney",
+        mel_scale="slaney",
+        fb_dtype=fb_dtype,
     )
     melspectrogram = melspectrogram_transform(waveform)
     expected_output = data["slaney"]["output"]
-    error = torch.abs(melspectrogram - expected_output)
-    mean_error = error.mean()
-    mean_error = mean_error.item()
 
-    allclose(melspectrogram[:high_band_idx], expected_output[:high_band_idx], atol=1e-3)
-    assert mean_error < 1e-4
+    melspectrogram = melspectrogram.to(expected_output.dtype)
+
+    if fb_dtype is torch.float64:
+        # test only high-precision
+        allclose(melspectrogram, expected_output, atol=1e-7)
 
 
 @pytest.mark.parametrize("center", [True, False])
