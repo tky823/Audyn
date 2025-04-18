@@ -23,9 +23,6 @@ def test_laion_clap_transform() -> None:
 
         data = torch.load(path, weights_only=True)
 
-    waveform = data["input"]
-    expected_output = data["transform"]
-
     melspectrogram_transform = LAIONAudioEncoder2023MelSpectrogram.build_from_pretrained(
         "laion-clap-htsat-fused"
     )
@@ -35,6 +32,9 @@ def test_laion_clap_transform() -> None:
     melspectrogram_transform.eval()
     fusion_transform.eval()
 
+    # waveform longer than chunk_size
+    waveform = data["long"]["input"]
+    expected_output = data["long"]["transform"]
     melspectrogram = melspectrogram_transform(waveform)
     output = fusion_transform(melspectrogram)
 
