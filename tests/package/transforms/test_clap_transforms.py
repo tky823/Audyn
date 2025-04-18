@@ -12,6 +12,35 @@ from audyn.transforms.clap import (
 from audyn.utils._github import download_file_from_github_release
 
 
+def test_laion_clap_transform() -> None:
+    url = "https://github.com/tky823/Audyn/releases/download/v0.0.5/test_official_laion-clap-htsat-fused.pth"  # noqa: E501
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        filename = os.path.basename(url)
+        path = os.path.join(temp_dir, filename)
+
+        download_file_from_github_release(url, path)
+
+        data = torch.load(path, weights_only=True)
+
+    waveform = data["input"]
+    expected_output = data["transform"]
+
+    melspectrogram_transform = LAIONAudioEncoder2023MelSpectrogram.build_from_pretrained(
+        "laion-clap-htsat-fused"
+    )
+    fusion_transform = LAIONAudioEncoder2023MelSpectrogramFusion.build_from_pretrained(
+        "laion-clap-htsat-fused"
+    )
+    melspectrogram_transform.eval()
+    fusion_transform.eval()
+
+    melspectrogram = melspectrogram_transform(waveform)
+    output = fusion_transform(melspectrogram)
+
+    allclose(output, expected_output, atol=1e-5)
+
+
 @pytest.mark.parametrize("fb_dtype", [None, torch.float64])
 def test_laion_clap_melspectrogram(fb_dtype: torch.dtype) -> None:
     sample_rate = 48000
@@ -37,8 +66,6 @@ def test_laion_clap_melspectrogram(fb_dtype: torch.dtype) -> None:
     melspectrogram = melspectrogram_transform(waveform)
     expected_output = data["htk"]["output"]
 
-    melspectrogram = melspectrogram.to(expected_output.dtype)
-
     if fb_dtype is torch.float64:
         # test only high-precision
         allclose(melspectrogram, expected_output, atol=1e-5)
@@ -52,8 +79,6 @@ def test_laion_clap_melspectrogram(fb_dtype: torch.dtype) -> None:
     )
     melspectrogram = melspectrogram_transform(waveform)
     expected_output = data["slaney"]["output"]
-
-    melspectrogram = melspectrogram.to(expected_output.dtype)
 
     if fb_dtype is torch.float64:
         # test only high-precision
