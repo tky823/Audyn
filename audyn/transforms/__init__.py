@@ -1,5 +1,12 @@
 from .ast import ASTMelSpectrogram, AudioSpectrogramTransformerMelSpectrogram
-from .clap import LAIONAudioEncoder2023MelSpectrogram
+from .clap import (
+    LAIONAudioEncoder2023MelSpectrogram,
+    LAIONAudioEncoder2023MelSpectrogramFusion,
+    LAIONAudioEncoder2023WaveformPad,
+    LAIONCLAPAudioEncoder2023MelSpectrogram,
+    LAIONCLAPAudioEncoder2023MelSpectrogramFusion,
+    LAIONCLAPAudioEncoder2023WaveformPad,
+)
 from .cqt import CQT, ConstantQTransform
 from .hifigan import HiFiGANMelSpectrogram
 from .hubert import HuBERTMFCC
@@ -38,7 +45,12 @@ __all__ = [
     # HuBERT
     "HuBERTMFCC",
     # CLAP
+    "LAIONCLAPAudioEncoder2023WaveformPad",
+    "LAIONCLAPAudioEncoder2023MelSpectrogram",
+    "LAIONCLAPAudioEncoder2023MelSpectrogramFusion",
+    "LAIONAudioEncoder2023WaveformPad",
     "LAIONAudioEncoder2023MelSpectrogram",
+    "LAIONAudioEncoder2023MelSpectrogramFusion",
     # music tagging transformer
     "MusicTaggingTransformerMelSpectrogram",
 ]
