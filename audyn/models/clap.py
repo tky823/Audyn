@@ -183,6 +183,33 @@ class LAIONAudioEncoder2023(LAIONCLAPAudioEncoder2023):
     """Alias of LAIONCLAPAudioEncoder2023."""
 
 
+class MLPHead(Head):
+    """Projection for CLAP audio feature."""
+
+    def __init__(self, in_channels: int, out_channels: int) -> None:
+        super().__init__()
+
+        self.linear1 = nn.Linear(in_channels, out_channels)
+        self.activation = nn.ReLU()
+        self.linear2 = nn.Linear(out_channels, out_channels)
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of MLPHead.
+
+        Args:
+            input (torch.Tensor): Aggregated feature of shape (batch_size, in_channels).
+
+        Returns:
+            torch.Tensor: Transformed feature of shape (batch_size, out_channels).
+
+        """
+        x = self.linear1(input)
+        x = self.activation(x)
+        output = self.linear2(x)
+
+        return output
+
+
 def _create_pretrained_model_configs() -> Dict[str, Dict[str, str]]:
     """Create pretrained_model_configs without circular import error."""
 
