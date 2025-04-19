@@ -117,7 +117,7 @@ class PatchEmbedding(_PatchEmbedding):
         self.local_conv2d = local_conv2d
         self.fusion = fusion
         self.norm2 = nn.LayerNorm(out_channels, **factory_kwargs)
-        self.dropout = nn.Dropout(dropout, **factory_kwargs)
+        self.dropout = nn.Dropout(dropout)
 
         self._reset_parameters()
 
@@ -262,11 +262,30 @@ class PatchEmbedding(_PatchEmbedding):
 class FusionBlock(nn.Module):
     """Fusion block of CLAP."""
 
-    def __init__(self, num_features: int, hidden_channels: int) -> None:
+    def __init__(
+        self,
+        num_features: int,
+        hidden_channels: int,
+        device: torch.device = None,
+        dtype: torch.dtype = None,
+    ) -> None:
+        factory_kwargs = {
+            "device": device,
+            "dtype": dtype,
+        }
+
         super().__init__()
 
-        self.local_attn = LocalAttentionBlock(num_features, hidden_channels)
-        self.global_attn = GlobalAttentionBlock(num_features, hidden_channels)
+        self.local_attn = LocalAttentionBlock(
+            num_features,
+            hidden_channels,
+            **factory_kwargs,
+        )
+        self.global_attn = GlobalAttentionBlock(
+            num_features,
+            hidden_channels,
+            **factory_kwargs,
+        )
         self.gate = nn.Sigmoid()
 
     def forward(self, input: torch.Tensor, residual: torch.Tensor) -> torch.Tensor:
@@ -282,14 +301,45 @@ class FusionBlock(nn.Module):
 class LocalAttentionBlock(nn.Module):
     """Module to capture local features in fusion block of CLAP."""
 
-    def __init__(self, num_features: int, hidden_channels: int) -> None:
+    def __init__(
+        self,
+        num_features: int,
+        hidden_channels: int,
+        device: torch.device = None,
+        dtype: torch.dtype = None,
+    ) -> None:
+        factory_kwargs = {
+            "device": device,
+            "dtype": dtype,
+        }
+
         super().__init__()
 
-        self.conv2d1 = nn.Conv2d(num_features, hidden_channels, kernel_size=1, stride=1, padding=0)
-        self.norm2d1 = nn.BatchNorm2d(hidden_channels)
+        self.conv2d1 = nn.Conv2d(
+            num_features,
+            hidden_channels,
+            kernel_size=1,
+            stride=1,
+            padding=0,
+            **factory_kwargs,
+        )
+        self.norm2d1 = nn.BatchNorm2d(
+            hidden_channels,
+            **factory_kwargs,
+        )
         self.relu2d = nn.ReLU()
-        self.conv2d2 = nn.Conv2d(hidden_channels, num_features, kernel_size=1, stride=1, padding=0)
-        self.norm2d2 = nn.BatchNorm2d(num_features)
+        self.conv2d2 = nn.Conv2d(
+            hidden_channels,
+            num_features,
+            kernel_size=1,
+            stride=1,
+            padding=0,
+            **factory_kwargs,
+        )
+        self.norm2d2 = nn.BatchNorm2d(
+            num_features,
+            **factory_kwargs,
+        )
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         x = self.conv2d1(input)
@@ -304,15 +354,46 @@ class LocalAttentionBlock(nn.Module):
 class GlobalAttentionBlock(nn.Module):
     """Module to capture global features in fusion block of CLAP."""
 
-    def __init__(self, num_features: int, hidden_channels: int) -> None:
+    def __init__(
+        self,
+        num_features: int,
+        hidden_channels: int,
+        device: torch.device = None,
+        dtype: torch.dtype = None,
+    ) -> None:
+        factory_kwargs = {
+            "device": device,
+            "dtype": dtype,
+        }
+
         super().__init__()
 
         self.pool2d = nn.AdaptiveAvgPool2d(1)
-        self.conv2d1 = nn.Conv2d(num_features, hidden_channels, kernel_size=1, stride=1, padding=0)
-        self.norm2d1 = nn.BatchNorm2d(hidden_channels)
+        self.conv2d1 = nn.Conv2d(
+            num_features,
+            hidden_channels,
+            kernel_size=1,
+            stride=1,
+            padding=0,
+            **factory_kwargs,
+        )
+        self.norm2d1 = nn.BatchNorm2d(
+            hidden_channels,
+            **factory_kwargs,
+        )
         self.relu2d = nn.ReLU()
-        self.conv2d2 = nn.Conv2d(hidden_channels, num_features, kernel_size=1, stride=1, padding=0)
-        self.norm2d2 = nn.BatchNorm2d(num_features)
+        self.conv2d2 = nn.Conv2d(
+            hidden_channels,
+            num_features,
+            kernel_size=1,
+            stride=1,
+            padding=0,
+            **factory_kwargs,
+        )
+        self.norm2d2 = nn.BatchNorm2d(
+            num_features,
+            **factory_kwargs,
+        )
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         x = self.pool2d(input)
