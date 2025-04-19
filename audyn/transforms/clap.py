@@ -8,11 +8,97 @@ import torchaudio.transforms as aT
 from ..functional.melspectrogram import melscale_fbanks
 
 __all__ = [
+    "LAIONCLAPAudioEncoder2023WaveformPad",
+    "LAIONAudioEncoder2023WaveformPad",
     "LAIONCLAPAudioEncoder2023MelSpectrogram",
     "LAIONAudioEncoder2023MelSpectrogram",
     "LAIONCLAPAudioEncoder2023MelSpectrogramFusion",
     "LAIONAudioEncoder2023MelSpectrogramFusion",
 ]
+
+
+class LAIONCLAPAudioEncoder2023WaveformPad(nn.Module):
+    """Waveform padding for LAIONCLAPAudioEncoder2023.
+
+    Args:
+        pad_mode (str): Padding mode. ``replicate+constant`` and ``replicate``
+            are supported.
+        min_length (int, optional): Required length.
+
+    """
+
+    def __init__(
+        self, pad_mode: str = "replicate+constant", min_length: int | None = None
+    ) -> None:
+        super().__init__()
+
+        self.pad_mode = pad_mode
+        self.min_length = min_length
+
+    def forward(self, waveform: torch.Tensor) -> torch.Tensor:
+        pad_mode = self.pad_mode
+        min_length = self.min_length
+
+        *batch_shape, length = waveform.size()
+
+        if min_length is not None and length < min_length:
+            waveform = waveform.view(-1, 1, length)
+
+            if pad_mode == "replicate+constant":
+                repeats = min_length // length
+            elif pad_mode == "replicate":
+                repeats = (min_length - 1) // length + 1
+            else:
+                raise ValueError(f"Invalid {pad_mode} is found as pad_mode.")
+
+            waveform = waveform.repeat(1, 1, repeats)
+
+            # trim or pad
+            waveform = F.pad(waveform, (0, min_length - waveform.size(-1)))
+
+            waveform = waveform.view(*batch_shape, min_length)
+
+        return waveform
+
+    @classmethod
+    def build_from_pretrained(
+        cls,
+        pretrained_model_name_or_path: str,
+    ) -> "LAIONCLAPAudioEncoder2023WaveformPad":
+        """Build predefined LAIONCLAPAudioEncoder2023WaveformPad.
+
+        Args:
+            pretrained_model_name_or_path (str): Name of pretrained model.
+
+        Examples:
+
+            >>> import torch
+            >>> from audyn.transforms import LAIONCLAPAudioEncoder2023WaveformPad
+            >>> torch.manual_seed(0)
+            >>> waveform = torch.randn((200000,))
+            >>> padding = LAIONCLAPAudioEncoder2023WaveformPad.build_from_pretrained("laion-clap-htsat-fused")
+            >>> waveform = padding(waveform)
+            >>> waveform.size()
+            torch.Size([480000])
+
+        .. note::
+
+            Supported pretrained model names are
+                - laion-clap-htsat-fused
+
+        """  # noqa: E501
+        if pretrained_model_name_or_path == "laion-clap-htsat-fused":
+            transform = cls(
+                pad_mode="replicate+constant",
+                min_length=480000,
+            )
+        else:
+            raise ValueError(
+                f"{pretrained_model_name_or_path} is not supported as "
+                "pretrained_model_name_or_path."
+            )
+
+        return transform
 
 
 class LAIONCLAPAudioEncoder2023MelSpectrogram(aT.MelSpectrogram):
@@ -362,6 +448,7 @@ class LAIONCLAPAudioEncoder2023MelSpectrogramFusion(nn.Module):
             repeats = chunk_size // n_frames
             repeats = (1,) * (spectrogram.dim() - 1) + (repeats,)
             spectrogram = spectrogram.repeat(*repeats)
+            raise ValueError(spectrogram.size())
         elif pad_mode == "replicate":
             repeats = (chunk_size - 1) // n_frames + 1
             repeats = (1,) * (spectrogram.dim() - 1) + (repeats,)
@@ -376,6 +463,10 @@ class LAIONCLAPAudioEncoder2023MelSpectrogramFusion(nn.Module):
         spectrograms = list(spectrograms)
 
         return spectrograms
+
+
+class LAIONAudioEncoder2023WaveformPad(LAIONCLAPAudioEncoder2023WaveformPad):
+    """Alias of LAIONCLAPAudioEncoder2023WaveformPad."""
 
 
 class LAIONAudioEncoder2023MelSpectrogram(LAIONCLAPAudioEncoder2023MelSpectrogram):
