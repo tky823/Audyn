@@ -57,7 +57,7 @@ class LAIONCLAPAudioEncoder2023(nn.Module):
         torch.Size([2, 4, 64, 1001])
         >>> embedding = model(fused_melspectrogram)
         >>> print(embedding.size())
-        torch.Size([2, 64, 768])
+        torch.Size([2, 512])
         # long waveform
         >>> length = int(1.2 * waveform_padding.min_length)
         >>> waveform = torch.randn((batch_size, length))
@@ -74,7 +74,7 @@ class LAIONCLAPAudioEncoder2023(nn.Module):
         torch.Size([2, 4, 64, 1001])
         >>> embedding = model(fused_melspectrogram)
         >>> print(embedding.size())
-        torch.Size([2, 64, 768])
+        torch.Size([2, 512])
 
     """  # noqa: E501
 
@@ -131,11 +131,15 @@ class LAIONCLAPAudioEncoder2023(nn.Module):
     def build_from_pretrained(
         cls,
         pretrained_model_name_or_path: str,
+        aggregator: Optional[nn.Module] = None,
+        head: Optional[nn.Module] = None,
     ) -> "LAIONCLAPAudioEncoder2023":
         """Build pretrained LAIONCLAPAudioEncoder2023.
 
         Args:
             pretrained_model_name_or_path (str): Path to pretrained model or name of pretrained model.
+            aggregator (nn.Module, optional): Aggregator module.
+            head (nn.Module, optional): Head module.
 
         Examples:
 
@@ -166,13 +170,19 @@ class LAIONCLAPAudioEncoder2023(nn.Module):
             model: LAIONAudioEncoder2023 = instantiate(pretrained_model_config)
             model.load_state_dict(model_state_dict)
 
+            if aggregator is not None:
+                model.aggregator = aggregator
+
+            if head is not None:
+                model.head = head
+
             return model
         elif pretrained_model_name_or_path in pretrained_model_configs:
             config = pretrained_model_configs[pretrained_model_name_or_path]
             url = config["url"]
             path = config["path"]
             download_file_from_github_release(url, path=path)
-            model = cls.build_from_pretrained(path)
+            model = cls.build_from_pretrained(path, aggregator=aggregator, head=head)
 
             return model
         else:
