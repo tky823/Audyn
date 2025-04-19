@@ -236,8 +236,10 @@ def _create_pretrained_model_configs() -> Dict[str, Dict[str, str]]:
             "path": os.path.join(
                 model_cache_dir,
                 "LAIONAudioEncoder2023",
+                "138f4a83",
                 "laion-clap-htsat-fused.pth",
             ),
+            "sha256": "138f4a83b2b68d799fbef5f7af4937ec13e86b1e8f3964a6e13407376a4fe1d4",
         },
     }
 
