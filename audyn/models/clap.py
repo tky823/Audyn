@@ -76,6 +76,11 @@ class LAIONCLAPAudioEncoder2023(nn.Module):
         >>> print(embedding.size())
         torch.Size([2, 512])
 
+    .. note::
+
+        Normalization is not applied to embedding. To normalize, use
+        ``F.normalize(embedding, p=2, dim=-1)``.
+
     """  # noqa: E501
 
     def __init__(
