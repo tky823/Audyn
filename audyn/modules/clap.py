@@ -260,6 +260,8 @@ class PatchEmbedding(_PatchEmbedding):
 
 
 class FusionBlock(nn.Module):
+    """Fusion block of CLAP."""
+
     def __init__(self, num_features: int, hidden_channels: int) -> None:
         super().__init__()
 
@@ -278,6 +280,8 @@ class FusionBlock(nn.Module):
 
 
 class LocalAttentionBlock(nn.Module):
+    """Module to capture local features in fusion block of CLAP."""
+
     def __init__(self, num_features: int, hidden_channels: int) -> None:
         super().__init__()
 
@@ -298,6 +302,8 @@ class LocalAttentionBlock(nn.Module):
 
 
 class GlobalAttentionBlock(nn.Module):
+    """Module to capture global features in fusion block of CLAP."""
+
     def __init__(self, num_features: int, hidden_channels: int) -> None:
         super().__init__()
 
