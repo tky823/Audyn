@@ -8,6 +8,7 @@ from dummy import allclose
 from audyn.transforms.clap import (
     LAIONAudioEncoder2023MelSpectrogram,
     LAIONAudioEncoder2023MelSpectrogramFusion,
+    LAIONAudioEncoder2023WaveformPad,
 )
 from audyn.utils._github import download_file_from_github_release
 
@@ -23,6 +24,9 @@ def test_laion_clap_transform() -> None:
 
         data = torch.load(path, weights_only=True)
 
+    padding_transform = LAIONAudioEncoder2023WaveformPad.build_from_pretrained(
+        "laion-clap-htsat-fused"
+    )
     melspectrogram_transform = LAIONAudioEncoder2023MelSpectrogram.build_from_pretrained(
         "laion-clap-htsat-fused"
     )
@@ -35,6 +39,16 @@ def test_laion_clap_transform() -> None:
     # waveform longer than chunk_size
     waveform = data["long"]["input"]
     expected_output = data["long"]["transform"]
+    waveform = padding_transform(waveform)
+    melspectrogram = melspectrogram_transform(waveform)
+    output = fusion_transform(melspectrogram)
+
+    allclose(output, expected_output, atol=1e-5)
+
+    # waveform shorter than chunk_size
+    waveform = data["short"]["input"]
+    expected_output = data["short"]["transform"]
+    waveform = padding_transform(waveform)
     melspectrogram = melspectrogram_transform(waveform)
     output = fusion_transform(melspectrogram)
 
@@ -52,7 +66,7 @@ def test_laion_clap_melspectrogram(fb_dtype: torch.dtype) -> None:
 
         download_file_from_github_release(url, path)
 
-        data = torch.load(path)
+        data = torch.load(path, weights_only=True)
 
     waveform = data["input"]
 
@@ -131,7 +145,13 @@ def test_laion_clap_melspectrogram_fusion(
 
     fused_melspectrogram = fusion_transform(melspectrogram)
     long_melspectrogram = fusion_transform(long_melspectrogram)
-    short_melspectrogram = fusion_transform(short_melspectrogram)
+
+    with pytest.warns(
+        UserWarning,
+        match=f"Number of frames {short_melspectrogram.size(-1)} is shorter "
+        f"than required chunk_size {chunk_size}.",
+    ):
+        short_melspectrogram = fusion_transform(short_melspectrogram)
 
     assert long_melspectrogram.size()[-2:] == melspectrogram.size()[-2:]
     assert (
