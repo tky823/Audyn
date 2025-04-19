@@ -1,3 +1,4 @@
+import warnings
 from typing import Callable, Dict, List, Optional
 
 import torch
@@ -329,6 +330,12 @@ class LAIONCLAPAudioEncoder2023MelSpectrogramFusion(nn.Module):
                         *batch_shape, n_bins, chunk_size
                     )
         else:
+            warnings.warn(
+                f"Number of frames {n_frames} is shorter than required chunk_size {chunk_size}.",
+                UserWarning,
+                stacklevel=2,
+            )
+
             stacked_chunks = self._pad_chunks(spectrogram)
 
             for chunk_idx in range(num_chunks):
@@ -442,22 +449,22 @@ class LAIONCLAPAudioEncoder2023MelSpectrogramFusion(nn.Module):
         chunk_size = self.chunk_size
         num_chunks = self.num_chunks
         pad_mode = self.pad_mode
-        n_frames = spectrogram.size(-1)
+        *batch_shape, n_bins, n_frames = spectrogram.size()
+
+        spectrogram = spectrogram.view(-1, n_bins, n_frames)
 
         if pad_mode == "replicate+constant":
             repeats = chunk_size // n_frames
-            repeats = (1,) * (spectrogram.dim() - 1) + (repeats,)
-            spectrogram = spectrogram.repeat(*repeats)
-            raise ValueError(spectrogram.size())
         elif pad_mode == "replicate":
             repeats = (chunk_size - 1) // n_frames + 1
-            repeats = (1,) * (spectrogram.dim() - 1) + (repeats,)
-            spectrogram = spectrogram.repeat(*repeats)
         else:
             raise ValueError(f"Invalid {pad_mode} is found as pad_mode.")
 
+        spectrogram = spectrogram.repeat(1, 1, repeats)
+
         # trim or pad
         spectrogram = F.pad(spectrogram, (0, chunk_size - spectrogram.size(-1)))
+        spectrogram = spectrogram.view(*batch_shape, n_bins, repeats)
         spectrograms = spectrogram.expand(num_chunks, *spectrogram.size())
         spectrograms = torch.unbind(spectrograms, dim=0)
         spectrograms = list(spectrograms)
