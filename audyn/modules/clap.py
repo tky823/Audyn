@@ -19,7 +19,9 @@ class PatchEmbedding(_PatchEmbedding):
         out_channels (int): Output channels identical to embedding dimension.
         kernel_size (_size_2_t): Kernel size that corresponds to patch.
         stride (_size_2_t): Stride.
-        fusion (bool): Whether to apply fusion.
+        num_chunks (int, optional): Number of chunks. This parameters is useful to support
+            multiple chunks.
+        fusion (bool or nn.Module, optional): Whether to apply fusion.
         insert_cls_token (bool): If ``True``, class token is inserted to beginning of sequence.
         insert_dist_token (bool): If ``True``, distillation token is inserd to beginning sequence.
         dropout (float): Dropout rate.
@@ -35,7 +37,8 @@ class PatchEmbedding(_PatchEmbedding):
         out_channels: int,
         kernel_size: _size_2_t,
         stride: Optional[_size_2_t] = None,
-        fusion: bool = False,
+        num_chunks: int | None = None,
+        fusion: bool | nn.Module | None = None,
         insert_cls_token: bool = False,
         insert_dist_token: bool = False,
         dropout: float = 0,
@@ -67,24 +70,54 @@ class PatchEmbedding(_PatchEmbedding):
 
         stride = _pair(stride)
 
+        if fusion is None:
+            if num_chunks is None:
+                num_chunks = 1
+        elif isinstance(fusion, nn.Module):
+            if num_chunks is None:
+                num_chunks = 4
+        elif fusion:
+            if num_chunks is None:
+                num_chunks = 4
+
+            fusion = FusionBlock(out_channels, out_channels // 4, **factory_kwargs)
+        else:
+            fusion = None
+
+            if num_chunks is None:
+                num_chunks = 1
+
+        if fusion is None:
+            local_conv2d = None
+        else:
+            kernel_height, kernel_width = kernel_size
+            stride_height, stride_width = stride
+
+            local_conv2d = nn.Conv2d(
+                in_channels,
+                out_channels,
+                kernel_size=(kernel_height, 3 * kernel_width),
+                stride=(stride_height, 3 * stride_width),
+                **factory_kwargs,
+            )
+
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.kernel_size = kernel_size
         self.stride = stride
-        self.fusion = fusion
+        self.num_chunks = num_chunks
         self.n_bins = n_bins
         self.height = height
         self.width = width
 
-        self.norm1 = nn.BatchNorm2d(n_bins)
+        self.norm1 = nn.BatchNorm2d(n_bins, **factory_kwargs)
         self.conv2d = nn.Conv2d(
-            in_channels,
-            out_channels,
-            kernel_size=kernel_size,
-            stride=stride,
+            in_channels, out_channels, kernel_size=kernel_size, stride=stride, **factory_kwargs
         )
-        self.norm2 = nn.LayerNorm(out_channels)
-        self.dropout = nn.Dropout(dropout)
+        self.local_conv2d = local_conv2d
+        self.fusion = fusion
+        self.norm2 = nn.LayerNorm(out_channels, **factory_kwargs)
+        self.dropout = nn.Dropout(dropout, **factory_kwargs)
 
         self._reset_parameters()
 
@@ -96,14 +129,38 @@ class PatchEmbedding(_PatchEmbedding):
 
         Args:
             input (torch.Tensor): Spectrogram of shape (batch_size, in_channels, n_bins, n_frames),
-                where in_channels corresponds to number of fused chunks.
+                if ``self.fusion`` is ``None``. Otherwise,
+                (batch_size, num_chunks, in_channels, n_bins, n_frames). Here, in_channels
+                corresponds to number of fused chunks, and num_chunks corresponds to
+                number of fused chunks.
 
         Returns:
             torch.Tensor: (batch_size, height * width + num_head_tokens, embedding_dim),
                 where `num_head_tokens` represents number of tokens for [CLS] and [DIST].
 
         """
-        x = self.compute_patch_embedding(input)
+        n_dims = input.dim()
+
+        if self.fusion is None:
+            if n_dims == 3:
+                x = input.unsqueeze(dim=-3)
+            elif n_dims == 4:
+                x = input
+            else:
+                raise ValueError(
+                    f"Only 3D or 4D input is supported, but {n_dims}D input is given."
+                )
+        else:
+            if n_dims == 4:
+                x = input.unsqueeze(dim=-3)
+            elif n_dims == 5:
+                x = input
+            else:
+                raise ValueError(
+                    f"Only 4D or 5D input is supported, but {n_dims}D input is given."
+                )
+
+        x = self.compute_patch_embedding(x)
         x = self.patches_to_sequence(x)
         x = self.norm2(x)
         x = self.prepend_head_tokens(x)
@@ -116,7 +173,8 @@ class PatchEmbedding(_PatchEmbedding):
 
         Args:
             input (torch.Tensor): Spectrogram-like feature of shape
-                (batch_size, in_channels, n_bins, n_frames).
+                (batch_size, in_channels, n_bins, n_frames) or
+                (batch_size, num_chunks, in_channels, n_bins, n_frames).
 
         Returns:
             torch.Tensor: Embedded features of shape (batch_size, embedding_dim, height, width).
@@ -127,9 +185,9 @@ class PatchEmbedding(_PatchEmbedding):
         height = self.height
         width = self.width
 
-        batch_size, in_channels, _n_bins, _n_frames = input.size()
-
-        x = input.permute(0, 2, 1, 3)
+        batch_size, *in_channels, _n_bins, _n_frames = input.size()
+        x = input.view(batch_size, -1, _n_bins, _n_frames)
+        x = x.permute(0, 2, 1, 3)
         x = self.norm1(x)
         x = x.permute(0, 2, 1, 3)
 
@@ -162,18 +220,100 @@ class PatchEmbedding(_PatchEmbedding):
 
         assert x.size(-2) == n_bins
 
-        x = x.view(batch_size, in_channels, n_bins, (height // n_bins), width)
+        x = x.view(batch_size, -1, n_bins, (height // n_bins), width)
         x = x.permute(0, 1, 3, 2, 4).contiguous()
-        x = x.view(batch_size, in_channels, height, width)
+        x = x.view(batch_size, -1, height, width)
 
-        if self.fusion:
-            # TODO: implement here
-            raise NotImplementedError("fusion=True is not supported.")
-        else:
+        if self.fusion is None:
             output = self.conv2d(x)
+        else:
+            num_chunks, in_channels = in_channels
+            x = x.view(batch_size, num_chunks, in_channels, height, width)
+            x_global, x_local = torch.split(x, [1, num_chunks - 1], dim=-4)
+
+            # global feature
+            x_global = x_global.squeeze(dim=-4)
+            x_global = self.conv2d(x_global)
+            width_global = x_global.size(-1)
+
+            # local feature
+            x_local = x_local.view(batch_size * (num_chunks - 1), in_channels, height, width)
+            x_local = self.local_conv2d(x_local)
+
+            *_, out_channels, height_local, width_local = x_local.size()
+            x_local = x_local.view(
+                batch_size, num_chunks - 1, out_channels, height_local, width_local
+            )
+            x_local = x_local.permute(0, 2, 3, 1, 4).contiguous()
+            x_local = x_local.view(
+                batch_size, out_channels, height_local, (num_chunks - 1) * width_local
+            )
+            width_local = x_local.size(-1)
+            x_local = F.pad(x_local, (0, width_global - width_local), "constant", 0)
+            output = self.fusion(x_global, x_local)
 
         return output
 
     @property
     def n_frames(self) -> int:
         return (self.height * self.width) // self.n_bins
+
+
+class FusionBlock(nn.Module):
+    def __init__(self, num_features: int, hidden_channels: int) -> None:
+        super().__init__()
+
+        self.local_attn = LocalAttentionBlock(num_features, hidden_channels)
+        self.global_attn = GlobalAttentionBlock(num_features, hidden_channels)
+        self.gate = nn.Sigmoid()
+
+    def forward(self, input: torch.Tensor, residual: torch.Tensor) -> torch.Tensor:
+        x = input + residual
+        x_local = self.local_attn(x)
+        x_global = self.global_attn(x)
+        x_gated = self.gate(x_local + x_global)
+        output = 2 * input * x_gated + 2 * residual * (1 - x_gated)
+
+        return output
+
+
+class LocalAttentionBlock(nn.Module):
+    def __init__(self, num_features: int, hidden_channels: int) -> None:
+        super().__init__()
+
+        self.conv2d1 = nn.Conv2d(num_features, hidden_channels, kernel_size=1, stride=1, padding=0)
+        self.norm2d1 = nn.BatchNorm2d(hidden_channels)
+        self.relu2d = nn.ReLU()
+        self.conv2d2 = nn.Conv2d(hidden_channels, num_features, kernel_size=1, stride=1, padding=0)
+        self.norm2d2 = nn.BatchNorm2d(num_features)
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        x = self.conv2d1(input)
+        x = self.norm2d1(x)
+        x = self.relu2d(x)
+        x = self.conv2d2(x)
+        output = self.norm2d2(x)
+
+        return output
+
+
+class GlobalAttentionBlock(nn.Module):
+    def __init__(self, num_features: int, hidden_channels: int) -> None:
+        super().__init__()
+
+        self.pool2d = nn.AdaptiveAvgPool2d(1)
+        self.conv2d1 = nn.Conv2d(num_features, hidden_channels, kernel_size=1, stride=1, padding=0)
+        self.norm2d1 = nn.BatchNorm2d(hidden_channels)
+        self.relu2d = nn.ReLU()
+        self.conv2d2 = nn.Conv2d(hidden_channels, num_features, kernel_size=1, stride=1, padding=0)
+        self.norm2d2 = nn.BatchNorm2d(num_features)
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        x = self.pool2d(input)
+        x = self.conv2d1(x)
+        x = self.norm2d1(x)
+        x = self.relu2d(x)
+        x = self.conv2d2(x)
+        output = self.norm2d2(x)
+
+        return output
