@@ -56,9 +56,8 @@ def test_laion_clap_transform() -> None:
 
 
 @pytest.mark.parametrize("fb_dtype", [None, torch.float64])
-def test_laion_clap_melspectrogram(fb_dtype: torch.dtype) -> None:
-    sample_rate = 48000
-    url = "https://github.com/tky823/Audyn/releases/download/v0.0.4/test_laion_clap_melspectrogram.pth"  # noqa: E501
+def test_laion_clap_melspectrogram(fb_dtype: torch.dtype) -> None:  # noqa: E501
+    url = "https://github.com/tky823/Audyn/releases/download/v0.0.5/test_official_laion-clap-htsat-fused.pth"  # noqa: E501
 
     with tempfile.TemporaryDirectory() as temp_dir:
         filename = os.path.basename(url)
@@ -68,7 +67,8 @@ def test_laion_clap_melspectrogram(fb_dtype: torch.dtype) -> None:
 
         data = torch.load(path, weights_only=True)
 
-    waveform = data["input"]
+    waveform = data["middle"]["input"]
+    sample_rate = data["sample_rate"]
 
     # htk
     melspectrogram_transform = LAIONAudioEncoder2023MelSpectrogram(
@@ -77,12 +77,12 @@ def test_laion_clap_melspectrogram(fb_dtype: torch.dtype) -> None:
         mel_scale="htk",
         fb_dtype=fb_dtype,
     )
-    melspectrogram = melspectrogram_transform(waveform)
-    expected_output = data["htk"]["output"]
+    output = melspectrogram_transform(waveform)
+    expected_output = data["middle"]["transform"]["htk"]
 
     if fb_dtype is torch.float64:
         # test only high-precision
-        allclose(melspectrogram, expected_output, atol=1e-5)
+        allclose(output, expected_output, atol=1e-5)
 
     # slaney
     melspectrogram_transform = LAIONAudioEncoder2023MelSpectrogram(
@@ -91,12 +91,12 @@ def test_laion_clap_melspectrogram(fb_dtype: torch.dtype) -> None:
         mel_scale="slaney",
         fb_dtype=fb_dtype,
     )
-    melspectrogram = melspectrogram_transform(waveform)
-    expected_output = data["slaney"]["output"]
+    output = melspectrogram_transform(waveform)
+    expected_output = data["middle"]["transform"]["slaney"]
 
     if fb_dtype is torch.float64:
         # test only high-precision
-        allclose(melspectrogram, expected_output, atol=1e-7)
+        allclose(output, expected_output, atol=1e-7)
 
 
 @pytest.mark.parametrize("center", [True, False])
