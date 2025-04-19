@@ -237,6 +237,7 @@ class PatchEmbedding(_PatchEmbedding):
             width_global = x_global.size(-1)
 
             # local feature
+            x_local = x_local.contiguous()
             x_local = x_local.view(batch_size * (num_chunks - 1), in_channels, height, width)
             x_local = self.local_conv2d(x_local)
 
