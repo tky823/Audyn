@@ -1,6 +1,7 @@
 import os
+import warnings
 from collections import OrderedDict
-from typing import Dict
+from typing import Dict, Optional
 
 import torch
 import torch.nn as nn
@@ -8,34 +9,102 @@ from omegaconf import OmegaConf
 
 from ..modules.clap import PatchEmbedding
 from ..utils._github import download_file_from_github_release
+from .ast import Aggregator, Head
 
 __all__ = [
-    "LAIONAudioEncoder2023",
     "LAIONCLAPAudioEncoder2023",
+    "LAIONAudioEncoder2023",
 ]
 
 
-class LAIONAudioEncoder2023(nn.Module):
-    """Audio encoder of LION-CLAP 2023.
+class LAIONCLAPAudioEncoder2023(nn.Module):
+    """Audio encoder of LAION-CLAP 2023.
 
     Args:
         embedding (audyn.modules.clap.PatchEmbedding): Patch embedding.
-        backbone (nn.Module): Backbone of LAIONAudioEncoder2023, which is typically
+        backbone (nn.Module): Backbone of LAIONCLAPAudioEncoder2023, which is typically
             Transformer-based module.
+        aggregator (nn.Module, optional): Aggregator.
+        head (nn.Module, optional): Head module to project output features.
 
-    """
+    Examples:
 
-    def __init__(self, embedding: PatchEmbedding, backbone: nn.Module) -> None:
+        >>> import torch
+        >>> from audyn.transforms import LAIONCLAPAudioEncoder2023WaveformPad, LAIONCLAPAudioEncoder2023MelSpectrogram, LAIONCLAPAudioEncoder2023MelSpectrogramFusion
+        >>> from audyn.models import LAIONCLAPAudioEncoder2023
+        >>> torch.manual_seed(0)
+        >>> waveform_padding = LAIONCLAPAudioEncoder2023WaveformPad.build_from_pretrained("laion-clap-htsat-fused")
+        >>> melspectrogram_transform = LAIONCLAPAudioEncoder2023MelSpectrogram.build_from_pretrained("laion-clap-htsat-fused")
+        >>> fusion_transform = LAIONCLAPAudioEncoder2023MelSpectrogramFusion.build_from_pretrained("laion-clap-htsat-fused")
+        >>> model = LAIONCLAPAudioEncoder2023.build_from_pretrained("laion-clap-htsat-fused")
+        >>> batch_size = 2
+        >>> sample_rate = melspectrogram_transform.sample_rate
+        >>> print(sample_rate)
+        48000
+        # short waveform
+        >>> length = int(0.4 * waveform_padding.min_length)
+        >>> waveform = torch.randn((batch_size, length))
+        >>> print(waveform.size())
+        torch.Size([2, 192000])
+        >>> waveform = waveform_padding(waveform)
+        >>> print(waveform.size())
+        torch.Size([2, 480000])
+        >>> melspectrogram = melspectrogram_transform(waveform)
+        >>> print(melspectrogram.size())
+        torch.Size([2, 64, 1001])
+        >>> fused_melspectrogram = fusion_transform(melspectrogram)
+        >>> print(fused_melspectrogram.size())
+        torch.Size([2, 4, 64, 1001])
+        >>> embedding = model(fused_melspectrogram)
+        >>> print(embedding.size())
+        torch.Size([2, 64, 768])
+        # long waveform
+        >>> length = int(1.2 * waveform_padding.min_length)
+        >>> waveform = torch.randn((batch_size, length))
+        >>> print(waveform.size())
+        torch.Size([2, 576000])
+        >>> waveform = waveform_padding(waveform)
+        >>> print(waveform.size())
+        torch.Size([2, 576000])
+        >>> melspectrogram = melspectrogram_transform(waveform)
+        >>> print(melspectrogram.size())
+        torch.Size([2, 64, 1201])
+        >>> fused_melspectrogram = fusion_transform(melspectrogram)
+        >>> print(fused_melspectrogram.size())
+        torch.Size([2, 4, 64, 1001])
+        >>> embedding = model(fused_melspectrogram)
+        >>> print(embedding.size())
+        torch.Size([2, 64, 768])
+
+    """  # noqa: E501
+
+    def __init__(
+        self,
+        embedding: PatchEmbedding,
+        backbone: nn.Module,
+        aggregator: Optional[Aggregator] = None,
+        head: Optional[Head] = None,
+    ) -> None:
         super().__init__()
 
         self.embedding = embedding
         self.backbone = backbone
+        self.aggregator = aggregator
+        self.head = head
 
         assert not embedding.insert_cls_token, "[CLS] token is not supported."
         assert not embedding.insert_dist_token, "[DST] token is not supported."
 
+        if self.aggregator is None and self.head is not None:
+            warnings.warn(
+                "Head is given, but aggregator is not given, "
+                "which may lead to unexpected behavior.",
+                UserWarning,
+                stacklevel=2,
+            )
+
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        """Forward pass of LAIONAudioEncoder2023.
+        """Forward pass of LAIONCLAPAudioEncoder2023.
 
         Args:
             input (torch.Tensor): Spectrogram of shape (batch_size, in_channels, n_bins, n_frames),
@@ -50,22 +119,28 @@ class LAIONAudioEncoder2023(nn.Module):
         x = self.embedding(input)
         output = self.backbone(x)
 
+        if self.aggregator is not None:
+            output = self.aggregator(output)
+
+        if self.head is not None:
+            output = self.head(output)
+
         return output
 
     @classmethod
     def build_from_pretrained(
         cls,
         pretrained_model_name_or_path: str,
-    ) -> "LAIONAudioEncoder2023":
-        """Build pretrained LAIONAudioEncoder2023.
+    ) -> "LAIONCLAPAudioEncoder2023":
+        """Build pretrained LAIONCLAPAudioEncoder2023.
 
         Args:
             pretrained_model_name_or_path (str): Path to pretrained model or name of pretrained model.
 
         Examples:
 
-            >>> from audyn.models.clap import LAIONAudioEncoder2023
-            >>> model = LAIONAudioEncoder2023.build_from_pretrained("laion-clap-htsat-fused")
+            >>> from audyn.models.clap import LAIONCLAPAudioEncoder2023
+            >>> model = LAIONCLAPAudioEncoder2023.build_from_pretrained("laion-clap-htsat-fused")
 
         .. note::
 
@@ -79,7 +154,9 @@ class LAIONAudioEncoder2023(nn.Module):
 
         if os.path.exists(pretrained_model_name_or_path):
             state_dict = torch.load(
-                pretrained_model_name_or_path, map_location=lambda storage, loc: storage
+                pretrained_model_name_or_path,
+                map_location=lambda storage, loc: storage,
+                weights_only=True,
             )
             model_state_dict: OrderedDict = state_dict["model"]
             resolved_config = state_dict["resolved_config"]
@@ -102,8 +179,8 @@ class LAIONAudioEncoder2023(nn.Module):
             raise FileNotFoundError(f"{pretrained_model_name_or_path} does not exist.")
 
 
-class LAIONCLAPAudioEncoder2023(LAIONAudioEncoder2023):
-    """Alias of LAIONAudioEncoder2023."""
+class LAIONAudioEncoder2023(LAIONCLAPAudioEncoder2023):
+    """Alias of LAIONCLAPAudioEncoder2023."""
 
 
 def _create_pretrained_model_configs() -> Dict[str, Dict[str, str]]:
@@ -113,7 +190,7 @@ def _create_pretrained_model_configs() -> Dict[str, Dict[str, str]]:
 
     pretrained_model_configs = {
         "laion-clap-htsat-fused": {
-            "url": "https://github.com/tky823/Audyn/releases/download/v0.0.4/laion-clap-htsat-fused.pth",  # noqa: E501
+            "url": "https://github.com/tky823/Audyn/releases/download/v0.0.5/laion-clap-htsat-fused.pth",  # noqa: E501
             "path": os.path.join(
                 model_cache_dir,
                 "LAIONAudioEncoder2023",
