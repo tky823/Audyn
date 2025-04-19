@@ -7,6 +7,7 @@ import torchaudio.functional as aF
 from ....transforms.clap import (
     LAIONCLAPAudioEncoder2023MelSpectrogram,
     LAIONCLAPAudioEncoder2023MelSpectrogramFusion,
+    LAIONCLAPAudioEncoder2023WaveformPad,
 )
 from ..composer import Composer
 
@@ -20,6 +21,8 @@ class LAIONCLAPAudioEncoder2023Composer(Composer):
     """Composer for LAIONCLAPAudioEncoder2023.
 
     Args:
+        waveform_padding (LAIONCLAPAudioEncoder2023WaveformPad or nn.Module):
+            Module to pad waveform.
         melspectrogram_transform (LAIONCLAPAudioEncoder2023MelSpectrogram or nn.Module):
             Module to transform waveform to Mel-spectrogram.
         fusion_transform (LAIONCLAPAudioEncoder2023MelSpectrogramFusion or nn.Module):
@@ -34,6 +37,7 @@ class LAIONCLAPAudioEncoder2023Composer(Composer):
 
     def __init__(
         self,
+        waveform_padding: Union[LAIONCLAPAudioEncoder2023WaveformPad, nn.Module],
         melspectrogram_transform: Union[LAIONCLAPAudioEncoder2023MelSpectrogram, nn.Module],
         fusion_transform: Union[LAIONCLAPAudioEncoder2023MelSpectrogramFusion, nn.Module],
         waveform_key: str = "waveform",
@@ -49,6 +53,7 @@ class LAIONCLAPAudioEncoder2023Composer(Composer):
             decode_audio_as_monoral=decode_audio_as_monoral,
         )
 
+        self.waveform_padding = waveform_padding
         self.melspectrogram_transform = melspectrogram_transform
         self.fusion_transform = fusion_transform
 
@@ -60,6 +65,9 @@ class LAIONCLAPAudioEncoder2023Composer(Composer):
         self.training = training
 
         if training:
+            if hasattr(self.waveform_padding, "train") and callable(self.waveform_padding.train):
+                self.waveform_padding.train()
+
             if hasattr(self.melspectrogram_transform, "train") and callable(
                 self.melspectrogram_transform.train
             ):
@@ -68,6 +76,9 @@ class LAIONCLAPAudioEncoder2023Composer(Composer):
             if hasattr(self.fusion_transform, "train") and callable(self.fusion_transform.train):
                 self.melspectrogram_transform.train()
         else:
+            if hasattr(self.waveform_padding, "eval") and callable(self.waveform_padding.eval):
+                self.waveform_padding.eval()
+
             if hasattr(self.melspectrogram_transform, "eval") and callable(
                 self.melspectrogram_transform.eval
             ):
@@ -93,6 +104,7 @@ class LAIONCLAPAudioEncoder2023Composer(Composer):
             waveform = aF.resample(waveform, sample_rate, target_sample_rate)
             sample_rate = target_sample_rate
 
+        waveform = self.waveform_padding(waveform)
         melspectrogram = self.melspectrogram_transform(waveform)
         fused_melspectrogram = self.fusion_transform(melspectrogram)
 
