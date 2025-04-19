@@ -464,7 +464,7 @@ class LAIONCLAPAudioEncoder2023MelSpectrogramFusion(nn.Module):
 
         # trim or pad
         spectrogram = F.pad(spectrogram, (0, chunk_size - spectrogram.size(-1)))
-        spectrogram = spectrogram.view(*batch_shape, n_bins, repeats)
+        spectrogram = spectrogram.view(*batch_shape, n_bins, -1)
         spectrograms = spectrogram.expand(num_chunks, *spectrogram.size())
         spectrograms = torch.unbind(spectrograms, dim=0)
         spectrograms = list(spectrograms)
