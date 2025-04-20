@@ -22,9 +22,14 @@ class LAIONCLAPAudioEncoder2023WaveformPad(nn.Module):
     """Waveform padding for LAIONCLAPAudioEncoder2023.
 
     Args:
-        pad_mode (str): Padding mode. ``replicate+constant`` and ``replicate``
+        pad_mode (str): Padding mode. ``"replicate+constant"`` and ``"replicate"``
             are supported.
         min_length (int, optional): Required length.
+
+    .. note::
+
+        Unlike ``MicrosoftCLAPAudioEncoder2023WaveformPad``, ``pad_mode`` defaults to
+        ``"replicate+constant"``.
 
     """
 
@@ -79,7 +84,7 @@ class LAIONCLAPAudioEncoder2023WaveformPad(nn.Module):
             >>> waveform = torch.randn((200000,))
             >>> padding = LAIONCLAPAudioEncoder2023WaveformPad.build_from_pretrained("laion-clap-htsat-fused")
             >>> waveform = padding(waveform)
-            >>> waveform.size()
+            >>> print(waveform.size())
             torch.Size([480000])
 
         .. note::
@@ -91,7 +96,7 @@ class LAIONCLAPAudioEncoder2023WaveformPad(nn.Module):
         if pretrained_model_name_or_path == "laion-clap-htsat-fused":
             transform = cls(
                 pad_mode="replicate+constant",
-                min_length=480000,
+                min_length=10 * 48000,
             )
         else:
             raise ValueError(
@@ -472,6 +477,93 @@ class LAIONCLAPAudioEncoder2023MelSpectrogramFusion(nn.Module):
         return spectrograms
 
 
+class MicrosoftCLAPAudioEncoder2023WaveformPad(LAIONCLAPAudioEncoder2023WaveformPad):
+    """Waveform padding for MicrosoftCLAPAudioEncoder2023.
+
+    Args:
+        pad_mode (str): Padding mode. ``"replicate+constant"`` and ``"replicate"``
+            are supported. Default: ``"replicate"``.
+        min_length (int, optional): Required length.
+
+    .. note::
+
+        Unlike ``LAIONCLAPAudioEncoder2023WaveformPad``, ``pad_mode`` defaults to
+        ``"replicate"``.
+
+    """
+
+    def __init__(self, pad_mode: str = "replicate", length: Optional[int] = None) -> None:
+        super().__init__()
+
+        self.pad_mode = pad_mode
+        self.length = length
+
+    def forward(self, waveform: torch.Tensor) -> torch.Tensor:
+        pad_mode = self.pad_mode
+        length = self.length
+
+        *batch_shape, _length = waveform.size()
+
+        if length is not None and _length < length:
+            waveform = waveform.view(-1, 1, _length)
+
+            if pad_mode == "replicate+constant":
+                repeats = length // _length
+            elif pad_mode == "replicate":
+                repeats = (length - 1) // _length + 1
+            else:
+                raise ValueError(f"Invalid {pad_mode} is found as pad_mode.")
+
+            waveform = waveform.repeat(1, 1, repeats)
+
+            # trim or pad
+            waveform = F.pad(waveform, (0, length - waveform.size(-1)))
+
+            waveform = waveform.view(*batch_shape, length)
+
+        return waveform
+
+    @classmethod
+    def build_from_pretrained(
+        cls,
+        pretrained_model_name_or_path: str,
+    ) -> "MicrosoftCLAPAudioEncoder2023WaveformPad":
+        """Build predefined MicrosoftCLAPAudioEncoder2023WaveformPad.
+
+        Args:
+            pretrained_model_name_or_path (str): Name of pretrained model.
+
+        Examples:
+
+            >>> import torch
+            >>> from audyn.transforms import MicrosoftCLAPAudioEncoder2023WaveformPad
+            >>> torch.manual_seed(0)
+            >>> waveform = torch.randn((100000,))
+            >>> padding = MicrosoftCLAPAudioEncoder2023WaveformPad.build_from_pretrained("microsoft-clap-2023")
+            >>> waveform = padding(waveform)
+            >>> print(waveform.size())
+            torch.Size([308700])
+
+        .. note::
+
+            Supported pretrained model names are
+                - microsoft-clap-2023
+
+        """  # noqa: E501
+        if pretrained_model_name_or_path == "microsoft-clap-2023":
+            transform = cls(
+                pad_mode="replicate",
+                length=7 * 44100,
+            )
+        else:
+            raise ValueError(
+                f"{pretrained_model_name_or_path} is not supported as "
+                "pretrained_model_name_or_path."
+            )
+
+        return transform
+
+
 class LAIONAudioEncoder2023WaveformPad(LAIONCLAPAudioEncoder2023WaveformPad):
     """Alias of LAIONCLAPAudioEncoder2023WaveformPad."""
 
@@ -482,3 +574,7 @@ class LAIONAudioEncoder2023MelSpectrogram(LAIONCLAPAudioEncoder2023MelSpectrogra
 
 class LAIONAudioEncoder2023MelSpectrogramFusion(LAIONCLAPAudioEncoder2023MelSpectrogramFusion):
     """Alias of LAIONCLAPAudioEncoder2023MelSpectrogramFusion."""
+
+
+class MicrosoftAudioEncoder2023WaveformPad(MicrosoftCLAPAudioEncoder2023WaveformPad):
+    """Alias of MicrosoftCLAPAudioEncoder2023WaveformPad."""
