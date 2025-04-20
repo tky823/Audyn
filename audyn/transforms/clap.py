@@ -29,7 +29,7 @@ class LAIONCLAPAudioEncoder2023WaveformPad(nn.Module):
     """
 
     def __init__(
-        self, pad_mode: str = "replicate+constant", min_length: int | None = None
+        self, pad_mode: str = "replicate+constant", min_length: Optional[int] = None
     ) -> None:
         super().__init__()
 
@@ -151,7 +151,7 @@ class LAIONCLAPAudioEncoder2023MelSpectrogram(aT.MelSpectrogram):
         onesided: Optional[bool] = None,
         norm: Optional[str] = None,
         mel_scale: str = "htk",
-        fb_dtype: torch.dtype | None = None,
+        fb_dtype: Optional[torch.dtype] = None,
     ) -> None:
         is_float64_fb = fb_dtype is torch.float64
 

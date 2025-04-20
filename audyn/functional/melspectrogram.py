@@ -1,4 +1,5 @@
 import warnings
+from typing import Optional
 
 import torch
 from torchaudio.functional.functional import (
@@ -18,9 +19,9 @@ def melscale_fbanks(
     f_max: float,
     n_mels: int,
     sample_rate: int,
-    norm: str | None = None,
+    norm: Optional[str] = None,
     mel_scale: str = "htk",
-    dtype: torch.dtype | None = None,
+    dtype: Optional[torch.dtype] = None,
 ) -> torch.Tensor:
     # ported from https://github.com/pytorch/audio/blob/bccaa454a54c3c648697cc2f46a4fb0500b1f01b/src/torchaudio/functional/functional.py#L521-L590  # noqa: E501
     r"""Create a frequency bin conversion matrix for Mel-spectrogram.

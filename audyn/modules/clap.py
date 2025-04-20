@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 
 import torch
 import torch.nn as nn
@@ -37,8 +37,8 @@ class PatchEmbedding(_PatchEmbedding):
         out_channels: int,
         kernel_size: _size_2_t,
         stride: Optional[_size_2_t] = None,
-        num_chunks: int | None = None,
-        fusion: bool | nn.Module | None = None,
+        num_chunks: Optional[int] = None,
+        fusion: Optional[Union[bool, nn.Module]] = None,
         insert_cls_token: bool = False,
         insert_dist_token: bool = False,
         dropout: float = 0,
