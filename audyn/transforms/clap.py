@@ -694,6 +694,7 @@ class MicrosoftCLAPAudioEncoder2023MelSpectrogram(aT.MelSpectrogram):
         sample_rate: int = 32000,
         f_min: float = 50,
         f_max: float = 14000,
+        max_length: int = 308700,
     ) -> "MicrosoftCLAPAudioEncoder2023MelSpectrogram":
         """Build predefined MicrosoftCLAPAudioEncoder2023MelSpectrogram.
 
@@ -702,6 +703,7 @@ class MicrosoftCLAPAudioEncoder2023MelSpectrogram(aT.MelSpectrogram):
             sample_rate (int): Sampling rate. Default: ``32000``.
             f_min (float): Minimum frequency of Mel-spectrogram. Default: ``50``.
             f_max (float): Maximum frequency of Mel-spectrogram. Default: ``14000``.
+            max_length (int): Maximum length of waveform. Default: ``308700``.
 
         Examples:
 
@@ -738,6 +740,11 @@ class MicrosoftCLAPAudioEncoder2023MelSpectrogram(aT.MelSpectrogram):
             if f_max != 14000:
                 raise ValueError(f"f_max should be 14000 for {pretrained_model_name_or_path}.")
 
+            if max_length != 308700:
+                raise ValueError(
+                    f"max_length should be 308700 for {pretrained_model_name_or_path}."
+                )
+
             transform = cls(
                 sample_rate=sample_rate,
                 n_fft=1024,
@@ -756,8 +763,8 @@ class MicrosoftCLAPAudioEncoder2023MelSpectrogram(aT.MelSpectrogram):
                 onesided=None,
                 norm="slaney",
                 mel_scale="slaney",
-                max_length=None,
-                max_duration=7,
+                max_length=max_length,
+                max_duration=None,
                 fb_dtype=torch.float64,
             )
         else:
