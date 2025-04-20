@@ -15,6 +15,8 @@ __all__ = [
     "LAIONAudioEncoder2023MelSpectrogram",
     "LAIONCLAPAudioEncoder2023MelSpectrogramFusion",
     "LAIONAudioEncoder2023MelSpectrogramFusion",
+    "MicrosoftCLAPAudioEncoder2023WaveformPad",
+    "MicrosoftAudioEncoder2023WaveformPad",
 ]
 
 
