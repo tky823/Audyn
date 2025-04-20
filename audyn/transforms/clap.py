@@ -295,6 +295,7 @@ class LAIONCLAPAudioEncoder2023MelSpectrogramFusion(nn.Module):
         prepend_resampled_chunk: bool = True,
         pad_mode: str = "replicate+constant",
         sample_wise: bool = True,
+        seed: int = 0,
     ) -> None:
         super().__init__()
 
@@ -306,6 +307,9 @@ class LAIONCLAPAudioEncoder2023MelSpectrogramFusion(nn.Module):
         self.prepend_resampled_chunk = prepend_resampled_chunk
         self.pad_mode = pad_mode
         self.sample_wise = sample_wise
+        self.generator = torch.Generator()
+
+        self.generator.manual_seed(seed)
 
     def forward(self, spectrogram: torch.Tensor) -> torch.Tensor:
         chunk_size = self.chunk_size
@@ -437,7 +441,7 @@ class LAIONCLAPAudioEncoder2023MelSpectrogramFusion(nn.Module):
                 max_idx = int(valid_max_idx * (chunk_idx + 1) / num_chunks)
 
                 if self.training:
-                    start_idx = torch.randint(min_idx, max_idx, ())
+                    start_idx = torch.randint(min_idx, max_idx, (), generator=self.generator)
                     start_idx = start_idx.item()
                 else:
                     start_idx = (min_idx + max_idx) // 2
