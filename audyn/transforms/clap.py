@@ -17,6 +17,8 @@ __all__ = [
     "LAIONAudioEncoder2023MelSpectrogramFusion",
     "MicrosoftCLAPAudioEncoder2023WaveformPad",
     "MicrosoftAudioEncoder2023WaveformPad",
+    "MicrosoftCLAPAudioEncoder2023MelSpectrogram",
+    "MicrosoftAudioEncoder2023MelSpectrogram",
 ]
 
 
@@ -544,7 +546,7 @@ class MicrosoftCLAPAudioEncoder2023WaveformPad(LAIONCLAPAudioEncoder2023Waveform
             >>> padding = MicrosoftCLAPAudioEncoder2023WaveformPad.build_from_pretrained("microsoft-clap-2023")
             >>> waveform = padding(waveform)
             >>> print(waveform.size())
-            torch.Size([308700])
+            torch.Size([224000])
 
         .. note::
 
@@ -555,7 +557,179 @@ class MicrosoftCLAPAudioEncoder2023WaveformPad(LAIONCLAPAudioEncoder2023Waveform
         if pretrained_model_name_or_path == "microsoft-clap-2023":
             transform = cls(
                 pad_mode="replicate",
-                length=7 * 44100,
+                min_length=7 * 32000,
+            )
+        else:
+            raise ValueError(
+                f"{pretrained_model_name_or_path} is not supported as "
+                "pretrained_model_name_or_path."
+            )
+
+        return transform
+
+
+class MicrosoftCLAPAudioEncoder2023MelSpectrogram(aT.MelSpectrogram):
+    """Mel-spectrogram transform for MicrosoftCLAPAudioEncoder2023.
+
+    For the details of arguments, see ``torchaudio.transforms.MelSpectrogram``.
+    """
+
+    def __init__(
+        self,
+        sample_rate: int = 32000,
+        n_fft: int = 1024,
+        win_length: int = 1024,
+        hop_length: int = 320,
+        f_min: float = 50,
+        f_max: float = 14000,
+        pad: int = 0,
+        n_mels: int = 64,
+        window_fn: Callable[[int], torch.Tensor] = torch.hann_window,
+        power: float = 2.0,
+        normalized: bool = False,
+        wkwargs: Optional[Dict] = None,
+        center: bool = True,
+        pad_mode: str = "reflect",
+        onesided: Optional[bool] = None,
+        norm: Optional[str] = None,
+        mel_scale: str = "htk",
+        max_length: Optional[int] = None,
+        max_duration: Optional[float] = None,
+        fb_dtype: Optional[torch.dtype] = None,
+        seed: int = 0,
+    ) -> None:
+        if max_length is not None:
+            if max_duration is not None:
+                assert max_length == int(
+                    sample_rate * max_duration
+                ), "length and duration is not consistent."
+        elif max_duration is not None:
+            max_length = int(sample_rate * max_duration)
+
+        is_float64_fb = fb_dtype is torch.float64
+
+        if is_float64_fb:
+            if wkwargs is None:
+                wkwargs = {}
+
+            wkwargs["dtype"] = torch.float64
+
+        super().__init__(
+            sample_rate=sample_rate,
+            n_fft=n_fft,
+            win_length=win_length,
+            hop_length=hop_length,
+            f_min=f_min,
+            f_max=f_max,
+            pad=pad,
+            n_mels=n_mels,
+            window_fn=window_fn,
+            power=power,
+            normalized=normalized,
+            wkwargs=wkwargs,
+            center=center,
+            pad_mode=pad_mode,
+            onesided=onesided,
+            norm=norm,
+            mel_scale=mel_scale,
+        )
+
+        self.amplitude_to_db = aT.AmplitudeToDB()
+        self.max_length = max_length
+        self.fb_dtype = fb_dtype
+        self.generator = torch.Generator()
+
+        self.generator.manual_seed(seed)
+
+        if is_float64_fb:
+            fb = melscale_fbanks(
+                n_fft // 2 + 1,
+                f_min,
+                f_max,
+                n_mels=n_mels,
+                sample_rate=sample_rate,
+                norm=norm,
+                mel_scale=mel_scale,
+                dtype=torch.float64,
+            )
+
+            self.mel_scale.fb = fb
+
+    def forward(self, waveform: torch.Tensor) -> torch.Tensor:
+        max_length = self.max_length
+
+        waveform_dtype = waveform.dtype
+
+        if max_length is not None and waveform.size(-1) > max_length:
+            if self.training:
+                start_idx = torch.randint(
+                    0, waveform.size(-1) - max_length, (), generator=self.generator
+                )
+                start_idx = start_idx.item()
+            else:
+                start_idx = (waveform.size(-1) - max_length) // 2
+
+            end_idx = start_idx + max_length
+            _, waveform, _ = torch.split(
+                waveform, [start_idx, max_length, waveform.size(-1) - end_idx], dim=-1
+            )
+
+        waveform = waveform.to(self.mel_scale.fb.dtype)
+        spectrogram = super().forward(waveform)
+        output = self.amplitude_to_db(spectrogram)
+        output = output.to(waveform_dtype)
+
+        return output
+
+    @classmethod
+    def build_from_pretrained(
+        cls,
+        pretrained_model_name_or_path: str,
+    ) -> "MicrosoftCLAPAudioEncoder2023MelSpectrogram":
+        """Build predefined MicrosoftCLAPAudioEncoder2023MelSpectrogram.
+
+        Args:
+            pretrained_model_name_or_path (str): Name of pretrained model.
+
+        Examples:
+
+            >>> import torch
+            >>> from audyn.transforms import MicrosoftCLAPAudioEncoder2023MelSpectrogram
+            >>> torch.manual_seed(0)
+            >>> waveform = torch.randn((224000,))
+            >>> melspectrogram_transform = MicrosoftCLAPAudioEncoder2023MelSpectrogram.build_from_pretrained("microsoft-clap-2023")
+            >>> melspectrogram = melspectrogram_transform(waveform)
+            >>> melspectrogram.size()
+            torch.Size([64, 701])
+
+        .. note::
+
+            Supported pretrained model names are
+                - microsoft-clap-2023
+
+        """  # noqa: E501
+        if pretrained_model_name_or_path == "microsoft-clap-2023":
+            transform = cls(
+                sample_rate=32000,
+                n_fft=1024,
+                win_length=1024,
+                hop_length=320,
+                f_min=50,
+                f_max=14000,
+                pad=0,
+                n_mels=64,
+                window_fn=torch.hann_window,
+                power=2.0,
+                normalized=False,
+                wkwargs=None,
+                center=True,
+                pad_mode="reflect",
+                onesided=None,
+                norm="slaney",
+                mel_scale="slaney",
+                max_length=None,
+                max_duration=7,
+                fb_dtype=torch.float64,
             )
         else:
             raise ValueError(
@@ -580,3 +754,7 @@ class LAIONAudioEncoder2023MelSpectrogramFusion(LAIONCLAPAudioEncoder2023MelSpec
 
 class MicrosoftAudioEncoder2023WaveformPad(MicrosoftCLAPAudioEncoder2023WaveformPad):
     """Alias of MicrosoftCLAPAudioEncoder2023WaveformPad."""
+
+
+class MicrosoftAudioEncoder2023MelSpectrogram(MicrosoftCLAPAudioEncoder2023MelSpectrogram):
+    """Alias of MicrosoftCLAPAudioEncoder2023MelSpectrogram."""
