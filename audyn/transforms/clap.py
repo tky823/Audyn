@@ -535,11 +535,13 @@ class MicrosoftCLAPAudioEncoder2023WaveformPad(LAIONCLAPAudioEncoder2023Waveform
     def build_from_pretrained(
         cls,
         pretrained_model_name_or_path: str,
+        sample_rate: int = 44100,
     ) -> "MicrosoftCLAPAudioEncoder2023WaveformPad":
         """Build predefined MicrosoftCLAPAudioEncoder2023WaveformPad.
 
         Args:
             pretrained_model_name_or_path (str): Name of pretrained model.
+            sample_rate (int): Sampling rate. Default: ``44100``.
 
         Examples:
 
@@ -561,7 +563,7 @@ class MicrosoftCLAPAudioEncoder2023WaveformPad(LAIONCLAPAudioEncoder2023Waveform
         if pretrained_model_name_or_path == "microsoft-clap-2023":
             transform = cls(
                 pad_mode="replicate",
-                min_length=7 * 32000,
+                min_length=7 * sample_rate,
             )
         else:
             raise ValueError(
@@ -689,11 +691,17 @@ class MicrosoftCLAPAudioEncoder2023MelSpectrogram(aT.MelSpectrogram):
     def build_from_pretrained(
         cls,
         pretrained_model_name_or_path: str,
+        sample_rate: int = 32000,
+        f_min: float = 50,
+        f_max: float = 14000,
     ) -> "MicrosoftCLAPAudioEncoder2023MelSpectrogram":
         """Build predefined MicrosoftCLAPAudioEncoder2023MelSpectrogram.
 
         Args:
             pretrained_model_name_or_path (str): Name of pretrained model.
+            sample_rate (int): Sampling rate. Default: ``32000``.
+            f_min (float): Minimum frequency of Mel-spectrogram. Default: ``50``.
+            f_max (float): Maximum frequency of Mel-spectrogram. Default: ``14000``.
 
         Examples:
 
@@ -711,15 +719,32 @@ class MicrosoftCLAPAudioEncoder2023MelSpectrogram(aT.MelSpectrogram):
             Supported pretrained model names are
                 - microsoft-clap-2023
 
+        .. note::
+
+            According to official paper, sampling rate and max frequency are set to 44100Hz and 8000Hz.
+            However, Mel-spectrograms seem to be computed by 32000Hz and max frequency to be 14000Hz
+            in official implementation. See also https://github.com/microsoft/CLAP/issues/38.
+
         """  # noqa: E501
         if pretrained_model_name_or_path == "microsoft-clap-2023":
+            if sample_rate != 32000:
+                raise ValueError(
+                    f"sample_rate should be 32000 for {pretrained_model_name_or_path}."
+                )
+
+            if f_min != 50:
+                raise ValueError(f"f_min should be 50 for {pretrained_model_name_or_path}.")
+
+            if f_max != 14000:
+                raise ValueError(f"f_max should be 14000 for {pretrained_model_name_or_path}.")
+
             transform = cls(
-                sample_rate=32000,
+                sample_rate=sample_rate,
                 n_fft=1024,
                 win_length=1024,
                 hop_length=320,
-                f_min=50,
-                f_max=14000,
+                f_min=f_min,
+                f_max=f_max,
                 pad=0,
                 n_mels=64,
                 window_fn=torch.hann_window,
