@@ -494,34 +494,34 @@ class MicrosoftCLAPAudioEncoder2023WaveformPad(LAIONCLAPAudioEncoder2023Waveform
 
     """
 
-    def __init__(self, pad_mode: str = "replicate", length: Optional[int] = None) -> None:
+    def __init__(self, pad_mode: str = "replicate", min_length: Optional[int] = None) -> None:
         super().__init__()
 
         self.pad_mode = pad_mode
-        self.length = length
+        self.min_length = min_length
 
     def forward(self, waveform: torch.Tensor) -> torch.Tensor:
         pad_mode = self.pad_mode
-        length = self.length
+        min_length = self.min_length
 
-        *batch_shape, _length = waveform.size()
+        *batch_shape, length = waveform.size()
 
-        if length is not None and _length < length:
-            waveform = waveform.view(-1, 1, _length)
+        if min_length is not None and length < min_length:
+            waveform = waveform.view(-1, 1, length)
 
             if pad_mode == "replicate+constant":
-                repeats = length // _length
+                repeats = min_length // length
             elif pad_mode == "replicate":
-                repeats = (length - 1) // _length + 1
+                repeats = (min_length - 1) // length + 1
             else:
                 raise ValueError(f"Invalid {pad_mode} is found as pad_mode.")
 
             waveform = waveform.repeat(1, 1, repeats)
 
             # trim or pad
-            waveform = F.pad(waveform, (0, length - waveform.size(-1)))
+            waveform = F.pad(waveform, (0, min_length - waveform.size(-1)))
 
-            waveform = waveform.view(*batch_shape, length)
+            waveform = waveform.view(*batch_shape, min_length)
 
         return waveform
 
