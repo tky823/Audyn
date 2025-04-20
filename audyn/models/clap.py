@@ -159,7 +159,7 @@ class LAIONCLAPAudioEncoder2023(nn.Module):
         """  # noqa: E501
         from ..utils._hydra.utils import instantiate  # to avoid circular import
 
-        pretrained_model_configs = _create_pretrained_model_configs()
+        pretrained_model_configs = _create_pretrained_laion_clap_configs()
 
         if os.path.exists(pretrained_model_name_or_path):
             state_dict = torch.load(
@@ -172,7 +172,7 @@ class LAIONCLAPAudioEncoder2023(nn.Module):
             resolved_config = OmegaConf.create(resolved_config)
             pretrained_model_config = resolved_config.model
             pretrained_model_config["_target_"] = f"{cls.__module__}.{cls.__name__}"
-            model: LAIONAudioEncoder2023 = instantiate(pretrained_model_config)
+            model: LAIONCLAPAudioEncoder2023 = instantiate(pretrained_model_config)
             model.load_state_dict(model_state_dict)
 
             if aggregator is not None:
@@ -225,7 +225,7 @@ class MLPHead(Head):
         return output
 
 
-def _create_pretrained_model_configs() -> Dict[str, Dict[str, str]]:
+def _create_pretrained_laion_clap_configs() -> Dict[str, Dict[str, str]]:
     """Create pretrained_model_configs without circular import error."""
 
     from ..utils import model_cache_dir
