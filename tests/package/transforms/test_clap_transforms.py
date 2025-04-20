@@ -8,16 +8,13 @@ from dummy import allclose
 from audyn.transforms.clap import (
     LAIONAudioEncoder2023MelSpectrogram,
     LAIONAudioEncoder2023MelSpectrogramFusion,
+    LAIONAudioEncoder2023WaveformPad,
 )
 from audyn.utils._github import download_file_from_github_release
 
 
-def test_laion_clap_melspectrogram() -> None:
-    # NOTE: High band may contain larger errors due to numerical precision.
-    high_band_idx = 60
-
-    sample_rate = 48000
-    url = "https://github.com/tky823/Audyn/releases/download/v0.0.4/test_laion_clap_melspectrogram.pth"  # noqa: E501
+def test_laion_clap_transform() -> None:
+    url = "https://github.com/tky823/Audyn/releases/download/v0.0.5/test_official_laion-clap-htsat-fused.pth"  # noqa: E501
 
     with tempfile.TemporaryDirectory() as temp_dir:
         filename = os.path.basename(url)
@@ -25,35 +22,81 @@ def test_laion_clap_melspectrogram() -> None:
 
         download_file_from_github_release(url, path)
 
-        data = torch.load(path)
+        data = torch.load(path, weights_only=True)
 
-    waveform = data["input"]
+    padding_transform = LAIONAudioEncoder2023WaveformPad.build_from_pretrained(
+        "laion-clap-htsat-fused"
+    )
+    melspectrogram_transform = LAIONAudioEncoder2023MelSpectrogram.build_from_pretrained(
+        "laion-clap-htsat-fused"
+    )
+    fusion_transform = LAIONAudioEncoder2023MelSpectrogramFusion.build_from_pretrained(
+        "laion-clap-htsat-fused"
+    )
+    melspectrogram_transform.eval()
+    fusion_transform.eval()
+
+    # waveform longer than chunk_size
+    waveform = data["long"]["input"]
+    expected_output = data["long"]["transform"]
+    waveform = padding_transform(waveform)
+    melspectrogram = melspectrogram_transform(waveform)
+    output = fusion_transform(melspectrogram)
+
+    allclose(output, expected_output, atol=1e-5)
+
+    # waveform shorter than chunk_size
+    waveform = data["short"]["input"]
+    expected_output = data["short"]["transform"]
+    waveform = padding_transform(waveform)
+    melspectrogram = melspectrogram_transform(waveform)
+    output = fusion_transform(melspectrogram)
+
+    allclose(output, expected_output, atol=1e-5)
+
+
+@pytest.mark.parametrize("fb_dtype", [None, torch.float64])
+def test_laion_clap_melspectrogram(fb_dtype: torch.dtype) -> None:  # noqa: E501
+    url = "https://github.com/tky823/Audyn/releases/download/v0.0.5/test_official_laion-clap-htsat-fused.pth"  # noqa: E501
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        filename = os.path.basename(url)
+        path = os.path.join(temp_dir, filename)
+
+        download_file_from_github_release(url, path)
+
+        data = torch.load(path, weights_only=True)
+
+    waveform = data["middle"]["input"]
+    sample_rate = data["sample_rate"]
 
     # htk
     melspectrogram_transform = LAIONAudioEncoder2023MelSpectrogram(
-        sample_rate, norm=None, mel_scale="htk"
+        sample_rate,
+        norm=None,
+        mel_scale="htk",
+        fb_dtype=fb_dtype,
     )
-    melspectrogram = melspectrogram_transform(waveform)
-    expected_output = data["htk"]["output"]
-    error = torch.abs(melspectrogram - expected_output)
-    mean_error = error.mean()
-    mean_error = mean_error.item()
+    output = melspectrogram_transform(waveform)
+    expected_output = data["middle"]["transform"]["htk"]
 
-    allclose(melspectrogram[:high_band_idx], expected_output[:high_band_idx], atol=1e-3)
-    assert mean_error < 1e-4
+    if fb_dtype is torch.float64:
+        # test only high-precision
+        allclose(output, expected_output, atol=1e-5)
 
     # slaney
     melspectrogram_transform = LAIONAudioEncoder2023MelSpectrogram(
-        sample_rate, norm="slaney", mel_scale="slaney"
+        sample_rate,
+        norm="slaney",
+        mel_scale="slaney",
+        fb_dtype=fb_dtype,
     )
-    melspectrogram = melspectrogram_transform(waveform)
-    expected_output = data["slaney"]["output"]
-    error = torch.abs(melspectrogram - expected_output)
-    mean_error = error.mean()
-    mean_error = mean_error.item()
+    output = melspectrogram_transform(waveform)
+    expected_output = data["middle"]["transform"]["slaney"]
 
-    allclose(melspectrogram[:high_band_idx], expected_output[:high_band_idx], atol=1e-3)
-    assert mean_error < 1e-4
+    if fb_dtype is torch.float64:
+        # test only high-precision
+        allclose(output, expected_output, atol=1e-7)
 
 
 @pytest.mark.parametrize("center", [True, False])
@@ -102,7 +145,13 @@ def test_laion_clap_melspectrogram_fusion(
 
     fused_melspectrogram = fusion_transform(melspectrogram)
     long_melspectrogram = fusion_transform(long_melspectrogram)
-    short_melspectrogram = fusion_transform(short_melspectrogram)
+
+    with pytest.warns(
+        UserWarning,
+        match=f"Number of frames {short_melspectrogram.size(-1)} is shorter "
+        f"than required chunk_size {chunk_size}.",
+    ):
+        short_melspectrogram = fusion_transform(short_melspectrogram)
 
     assert long_melspectrogram.size()[-2:] == melspectrogram.size()[-2:]
     assert (

@@ -7,6 +7,7 @@ import torchaudio.transforms as aT
 from audyn.transforms.clap import (
     LAIONAudioEncoder2023MelSpectrogram,
     LAIONAudioEncoder2023MelSpectrogramFusion,
+    LAIONAudioEncoder2023WaveformPad,
 )
 from audyn.transforms.hubert import HuBERTMFCC
 from audyn.transforms.slicer import WaveformSlicer
@@ -186,11 +187,13 @@ def test_hifigan_composer(audioset_samples: Dict[str, Dict[str, Any]]) -> None:
 def test_laion_clap_composer(audioset_samples: Dict[str, Dict[str, Any]]) -> None:
     audio_key = "audio"
     sample_rate = 48000
+    min_length = int(3 * sample_rate)
     n_mels = 64
     chunk_size = 301
     num_chunks = 3
     list_batch = []
 
+    waveform_padding = LAIONAudioEncoder2023WaveformPad(min_length=min_length)
     melspectrogram_transform = LAIONAudioEncoder2023MelSpectrogram(sample_rate, n_mels=n_mels)
     fusion_transform = LAIONAudioEncoder2023MelSpectrogramFusion(
         chunk_size=chunk_size, num_chunks=num_chunks
@@ -201,6 +204,7 @@ def test_laion_clap_composer(audioset_samples: Dict[str, Dict[str, Any]]) -> Non
         list_batch.append(sample)
 
     composer = LAIONAudioEncoder2023Composer(
+        waveform_padding=waveform_padding,
         melspectrogram_transform=melspectrogram_transform,
         fusion_transform=fusion_transform,
         waveform_key=audio_key,
