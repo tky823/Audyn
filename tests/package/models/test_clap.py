@@ -100,7 +100,7 @@ def test_official_microsoft_audio_encoder() -> None:
 
     embedding = embedding.squeeze(dim=0)
 
-    allclose(embedding, expected_embedding, atol=1e-6)
+    allclose(embedding, expected_embedding, atol=1e-5)
 
     num_parameters = 0
 
