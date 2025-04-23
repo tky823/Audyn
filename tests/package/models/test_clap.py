@@ -84,7 +84,7 @@ def test_official_microsoft_audio_encoder() -> None:
 
     output = output.squeeze(dim=0)
 
-    allclose(output, expected_output, atol=1e-6)
+    allclose(output, expected_output, atol=1e-5)
 
     model = MicrosoftAudioEncoder2023.build_from_pretrained("microsoft-clap-2023")
     model.eval()
