@@ -25,7 +25,7 @@ def main(config: DictConfig) -> None:
 
     .. code-block:: shell
 
-        data_root="./data"  # root directory to save .zip file.
+        data_root="./data"  # root directory to save .tgz file.
         openmic2018_root="${data_root}/openmic-2018"
         unpack=true  # unpack .tgz or not
         chunk_size=8192  # chunk size in byte to download
