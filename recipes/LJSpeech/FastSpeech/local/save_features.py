@@ -30,7 +30,11 @@ def main(config: DictConfig) -> None:
     assert symbols_path is not None, "Specify preprocess.symbols_path."
 
     melspectrogram_transform = aT.MelSpectrogram(**config.data.melspectrogram)
-    vocab = torch.load(symbols_path, map_location=lambda storage, loc: storage)
+    vocab = torch.load(
+        symbols_path,
+        map_location=lambda storage, loc: storage,
+        weights_only=True,
+    )
 
     os.makedirs(feature_dir, exist_ok=True)
 
@@ -139,7 +143,7 @@ def process(
 
 
 def postprocess_alignment(
-    alignment: Dict[str, List[Dict[str, str]]]
+    alignment: Dict[str, List[Dict[str, str]]],
 ) -> Dict[str, List[Dict[str, str]]]:
     # replace "" with special symbol
     for name in alignment:

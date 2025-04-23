@@ -144,7 +144,11 @@ def test_info_nce_loss_ddp(dim: int) -> None:
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            _ = torch.load(path, map_location="cpu")
+            _ = torch.load(
+                path,
+                map_location="cpu",
+                weights_only=True,
+            )
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}_intra-or-inter.pth")
@@ -173,11 +177,19 @@ def test_info_nce_loss_ddp(dim: int) -> None:
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            state_dict = torch.load(path, map_location="cpu")
+            state_dict = torch.load(
+                path,
+                map_location="cpu",
+                weights_only=True,
+            )
             loss = state_dict["loss"]
 
             reference_path = os.path.join(temp_dir, f"{rank}_intra-or-inter.pth")
-            reference_state_dict = torch.load(reference_path, map_location="cpu")
+            reference_state_dict = torch.load(
+                reference_path,
+                map_location="cpu",
+                weights_only=True,
+            )
             reference_loss = reference_state_dict["loss"]
 
             assert torch.equal(loss, reference_loss)
@@ -299,7 +311,11 @@ def test_ntxent_loss_ddp(dim: int) -> None:
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            _ = torch.load(path, map_location="cpu")
+            _ = torch.load(
+                path,
+                map_location="cpu",
+                weights_only=True,
+            )
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}_intra-or-inter.pth")
@@ -328,11 +344,19 @@ def test_ntxent_loss_ddp(dim: int) -> None:
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            state_dict = torch.load(path, map_location="cpu")
+            state_dict = torch.load(
+                path,
+                map_location="cpu",
+                weights_only=True,
+            )
             loss = state_dict["loss"]
 
             reference_path = os.path.join(temp_dir, f"{rank}_intra-or-inter.pth")
-            reference_state_dict = torch.load(reference_path, map_location="cpu")
+            reference_state_dict = torch.load(
+                reference_path,
+                map_location="cpu",
+                weights_only=True,
+            )
             reference_loss = reference_state_dict["loss"]
 
             assert torch.equal(loss, reference_loss)
@@ -720,7 +744,11 @@ def test_inter_info_nce_loss_ddp(dim: int) -> None:
         reference_model_one, reference_model_other, reference_criterion = reference_modules
 
         path = os.path.join(temp_dir, f"{rank}.pth")
-        reference_state_dict = torch.load(path, map_location="cpu")
+        reference_state_dict = torch.load(
+            path,
+            map_location="cpu",
+            weights_only=True,
+        )
         ddp_state_dict = reference_state_dict["last"]
         reference_model_one.load_state_dict(ddp_state_dict["model_one"])
         reference_model_other.load_state_dict(ddp_state_dict["model_other"])
@@ -738,7 +766,11 @@ def test_inter_info_nce_loss_ddp(dim: int) -> None:
             model_one, model_other, criterion = modules
 
             path = os.path.join(temp_dir, f"{rank}.pth")
-            state_dict = torch.load(path, map_location="cpu")
+            state_dict = torch.load(
+                path,
+                map_location="cpu",
+                weights_only=True,
+            )
             ddp_state_dict = state_dict["last"]
             model_one.load_state_dict(ddp_state_dict["model_one"])
             model_other.load_state_dict(ddp_state_dict["model_other"])
@@ -871,7 +903,11 @@ def test_inter_ntxent_loss_ddp(dim: int) -> None:
         reference_model_one, reference_model_other, reference_criterion = reference_modules
 
         path = os.path.join(temp_dir, f"{rank}.pth")
-        reference_state_dict = torch.load(path, map_location="cpu")
+        reference_state_dict = torch.load(
+            path,
+            map_location="cpu",
+            weights_only=True,
+        )
         ddp_state_dict = reference_state_dict["last"]
         reference_model_one.load_state_dict(ddp_state_dict["model_one"])
         reference_model_other.load_state_dict(ddp_state_dict["model_other"])
@@ -889,7 +925,11 @@ def test_inter_ntxent_loss_ddp(dim: int) -> None:
             model_one, model_other, criterion = modules
 
             path = os.path.join(temp_dir, f"{rank}.pth")
-            state_dict = torch.load(path, map_location="cpu")
+            state_dict = torch.load(
+                path,
+                map_location="cpu",
+                weights_only=True,
+            )
             ddp_state_dict = state_dict["last"]
             model_one.load_state_dict(ddp_state_dict["model_one"])
             model_other.load_state_dict(ddp_state_dict["model_other"])

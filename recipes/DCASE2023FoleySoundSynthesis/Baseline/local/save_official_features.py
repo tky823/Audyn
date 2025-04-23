@@ -25,7 +25,11 @@ def main(config: DictConfig) -> None:
     assert category_path is not None, "Specify preprocess.category_path."
 
     melspectrogram_transform = aT.MelSpectrogram(**config.data.melspectrogram)
-    category_to_id = torch.load(category_path, map_location=lambda storage, loc: storage)
+    category_to_id = torch.load(
+        category_path,
+        map_location=lambda storage, loc: storage,
+        weights_only=True,
+    )
 
     os.makedirs(feature_dir, exist_ok=True)
 

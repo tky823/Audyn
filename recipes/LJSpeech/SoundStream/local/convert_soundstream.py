@@ -14,7 +14,11 @@ def main(config: DictConfig) -> None:
     checkpoint = config.train.checkpoint
     save_path = config.train.output.save_path
 
-    state_dict = torch.load(checkpoint, map_location=lambda storage, loc: storage)
+    state_dict = torch.load(
+        checkpoint,
+        map_location=lambda storage, loc: storage,
+        weights_only=True,
+    )
 
     soundstream_generator_config = state_dict["resolved_config"]["model"]["generator"]
     soundstream_generator_config["_target_"] = "utils.models.valle.SoundStreamFirstStageDecoder"

@@ -1052,7 +1052,11 @@ class GANTrainer(BaseTrainer):
     def load_checkpoint(self, path: str) -> None:
         generator_key, discriminator_key = "generator", "discriminator"
 
-        state_dict = torch.load(path, map_location=self.device)
+        state_dict = torch.load(
+            path,
+            map_location=self.device,
+            weights_only=True,
+        )
 
         # model
         unwrapped_generator = unwrap(self.unwrapped_model.generator)
@@ -1178,7 +1182,11 @@ class GANGenerator(BaseGenerator):
     """Waveform synthesis using generator of GAN."""
 
     def load_checkpoint(self, path: str) -> None:
-        state_dict = torch.load(path, map_location=self.device)
+        state_dict = torch.load(
+            path,
+            map_location=self.device,
+            weights_only=True,
+        )
 
         unwrapped_generator = unwrap(self.unwrapped_model.generator)
         unwrapped_discriminator = unwrap(self.unwrapped_model.discriminator)

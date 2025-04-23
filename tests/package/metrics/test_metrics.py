@@ -72,7 +72,11 @@ def test_mean_metric_ddp() -> None:
 
         rank = 0
         path = os.path.join(temp_dir, f"{rank}.pth")
-        reference_state_dict = torch.load(path, map_location="cpu")
+        reference_state_dict = torch.load(
+            path,
+            map_location="cpu",
+            weights_only=True,
+        )
         reference_loss = reference_state_dict["loss"]
         reference_metric = reference_state_dict["metric"]
 
@@ -80,7 +84,11 @@ def test_mean_metric_ddp() -> None:
 
         for rank in range(1, world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            state_dict = torch.load(path, map_location="cpu")
+            state_dict = torch.load(
+                path,
+                map_location="cpu",
+                weights_only=True,
+            )
             loss = state_dict["loss"]
             metric = state_dict["metric"]
 

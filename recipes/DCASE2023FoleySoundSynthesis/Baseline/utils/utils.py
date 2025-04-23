@@ -32,10 +32,20 @@ def instantiate_cascade_model(
         load_weights = False
 
     pixelsnail_state_dict = torch.load(
-        pixelsnail_checkpoint, map_location=lambda storage, loc: storage
+        pixelsnail_checkpoint,
+        map_location=lambda storage, loc: storage,
+        weights_only=True,
     )
-    vqvae_state_dict = torch.load(vqvae_checkpoint, map_location=lambda storage, loc: storage)
-    hifigan_state_dict = torch.load(hifigan_checkpoint, map_location=lambda storage, loc: storage)
+    vqvae_state_dict = torch.load(
+        vqvae_checkpoint,
+        map_location=lambda storage, loc: storage,
+        weights_only=True,
+    )
+    hifigan_state_dict = torch.load(
+        hifigan_checkpoint,
+        map_location=lambda storage, loc: storage,
+        weights_only=True,
+    )
 
     # PixelSNAIL
     pixelsnail_resolved_config: Dict[str, Any] = pixelsnail_state_dict["resolved_config"]

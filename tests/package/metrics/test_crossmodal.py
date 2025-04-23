@@ -95,7 +95,11 @@ def test_crossmodal_mean_average_precision_ddp_itemwise(strategy: str) -> None:
 
         rank = 0
         path = os.path.join(temp_dir, f"{rank}.pth")
-        reference_state_dict = torch.load(path, map_location="cpu")
+        reference_state_dict = torch.load(
+            path,
+            map_location="cpu",
+            weights_only=True,
+        )
         reference_query = reference_state_dict["query"]
         reference_key = reference_state_dict["key"]
         reference_index = reference_state_dict["index"]
@@ -107,7 +111,11 @@ def test_crossmodal_mean_average_precision_ddp_itemwise(strategy: str) -> None:
 
         for rank in range(1, world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            state_dict = torch.load(path, map_location="cpu")
+            state_dict = torch.load(
+                path,
+                map_location="cpu",
+                weights_only=True,
+            )
             query = state_dict["query"]
             key = state_dict["key"]
             index = state_dict["index"]
@@ -189,7 +197,11 @@ def test_crossmodal_mean_average_precision_ddp_batchwise(strategy: str) -> None:
 
         rank = 0
         path = os.path.join(temp_dir, f"{rank}.pth")
-        reference_state_dict = torch.load(path, map_location="cpu")
+        reference_state_dict = torch.load(
+            path,
+            map_location="cpu",
+            weights_only=True,
+        )
         reference_query = reference_state_dict["query"]
         reference_key = reference_state_dict["key"]
         reference_index = reference_state_dict["index"]
@@ -201,7 +213,11 @@ def test_crossmodal_mean_average_precision_ddp_batchwise(strategy: str) -> None:
 
         for rank in range(1, world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            state_dict = torch.load(path, map_location="cpu")
+            state_dict = torch.load(
+                path,
+                map_location="cpu",
+                weights_only=True,
+            )
             query = state_dict["query"]
             key = state_dict["key"]
             index = state_dict["index"]
@@ -324,7 +340,11 @@ def test_crossmodal_median_rank_ddp_itemwise(mink: int, strategy: str) -> None:
 
         rank = 0
         path = os.path.join(temp_dir, f"{rank}.pth")
-        reference_state_dict = torch.load(path, map_location="cpu")
+        reference_state_dict = torch.load(
+            path,
+            map_location="cpu",
+            weights_only=True,
+        )
         reference_query = reference_state_dict["query"]
         reference_key = reference_state_dict["key"]
         reference_index = reference_state_dict["index"]
@@ -336,7 +356,11 @@ def test_crossmodal_median_rank_ddp_itemwise(mink: int, strategy: str) -> None:
 
         for rank in range(1, world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            state_dict = torch.load(path, map_location="cpu")
+            state_dict = torch.load(
+                path,
+                map_location="cpu",
+                weights_only=True,
+            )
             query = state_dict["query"]
             key = state_dict["key"]
             index = state_dict["index"]
@@ -418,7 +442,11 @@ def test_crossmodal_median_rank_ddp_batchwise(mink: int, strategy: str) -> None:
 
         rank = 0
         path = os.path.join(temp_dir, f"{rank}.pth")
-        reference_state_dict = torch.load(path, map_location="cpu")
+        reference_state_dict = torch.load(
+            path,
+            map_location="cpu",
+            weights_only=True,
+        )
         reference_query = reference_state_dict["query"]
         reference_key = reference_state_dict["key"]
         reference_index = reference_state_dict["index"]
@@ -430,7 +458,11 @@ def test_crossmodal_median_rank_ddp_batchwise(mink: int, strategy: str) -> None:
 
         for rank in range(1, world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            state_dict = torch.load(path, map_location="cpu")
+            state_dict = torch.load(
+                path,
+                map_location="cpu",
+                weights_only=True,
+            )
             query = state_dict["query"]
             key = state_dict["key"]
             index = state_dict["index"]

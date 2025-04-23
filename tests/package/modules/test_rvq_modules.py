@@ -90,8 +90,16 @@ def test_residual_vector_quantizer() -> None:
 
         _ = vector_quantizer(input)
 
-        initialization_output = torch.load(initialization_path, map_location="cpu")
-        forward_output = torch.load(forward_path, map_location="cpu")
+        initialization_output = torch.load(
+            initialization_path,
+            map_location="cpu",
+            weights_only=True,
+        )
+        forward_output = torch.load(
+            forward_path,
+            map_location="cpu",
+            weights_only=True,
+        )
         forward_output = forward_output.permute(0, 3, 1, 2).contiguous()
         forward_output = forward_output.view(-1, num_stages, embedding_dim)
 
@@ -136,7 +144,11 @@ def test_residual_vector_quantizer_ddp() -> None:
             seed=another_seed,
         )
         path = os.path.join(temp_dir, f"{rank}.pth")
-        state_dict = torch.load(path, map_location="cpu")
+        state_dict = torch.load(
+            path,
+            map_location="cpu",
+            weights_only=True,
+        )
         reference_model.load_state_dict(state_dict)
 
         for rank in range(1, world_size):
@@ -146,7 +158,11 @@ def test_residual_vector_quantizer_ddp() -> None:
                 seed=seed,
             )
             path = os.path.join(temp_dir, f"{rank}.pth")
-            state_dict = torch.load(path, map_location="cpu")
+            state_dict = torch.load(
+                path,
+                map_location="cpu",
+                weights_only=True,
+            )
             model.load_state_dict(state_dict)
 
             assert len(list(model.parameters())) == len(list(reference_model.parameters()))

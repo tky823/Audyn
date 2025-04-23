@@ -45,7 +45,11 @@ def main(config: DictConfig) -> None:
 
             path = os.path.join(feature_dir, f"{filename}.pth")
 
-            estimated = torch.load(path, map_location=lambda storage, loc: storage)
+            estimated = torch.load(
+                path,
+                map_location=lambda storage, loc: storage,
+                weights_only=True,
+            )
             estimated = estimated.tolist()
             estimated = [str(_estimated) for _estimated in estimated]
             line = ",".join(estimated)

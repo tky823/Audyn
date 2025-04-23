@@ -17,7 +17,10 @@ def test_official_laion_audio_encoder() -> None:
         path = os.path.join(temp_dir, filename)
         download_file_from_github_release(url, path)
 
-        data = torch.load(path, weights_only=True)
+        data = torch.load(
+            path,
+            weights_only=True,
+        )
 
     spectrogram = data["long"]["transform"]
     expected_output = data["long"]["output"]
@@ -64,7 +67,10 @@ def test_official_microsoft_audio_encoder() -> None:
         path = os.path.join(temp_dir, filename)
         download_file_from_github_release(url, path)
 
-        data = torch.load(path, weights_only=True)
+        data = torch.load(
+            path,
+            weights_only=True,
+        )
 
     spectrogram = data["long"]["transform"]
     expected_output = data["long"]["output"]

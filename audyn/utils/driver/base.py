@@ -1051,7 +1051,11 @@ class BaseTrainer(BaseDriver):
         return total_loss
 
     def load_checkpoint(self, path: str) -> None:
-        state_dict = torch.load(path, map_location=self.device)
+        state_dict = torch.load(
+            path,
+            map_location=self.device,
+            weights_only=True,
+        )
 
         # model
         self.unwrapped_model.load_state_dict(state_dict["model"])
@@ -2469,7 +2473,11 @@ class BaseGenerator(BaseDriver):
             )
 
     def load_checkpoint(self, path: str) -> None:
-        state_dict = torch.load(path, map_location=self.device)
+        state_dict = torch.load(
+            path,
+            map_location=self.device,
+            weights_only=True,
+        )
 
         self.unwrapped_model.load_state_dict(state_dict["model"])
 

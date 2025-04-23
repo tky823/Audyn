@@ -90,7 +90,10 @@ def test_kmeans_clustering_ddp() -> None:
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            data_rank = torch.load(path)
+            data_rank = torch.load(
+                path,
+                weights_only=True,
+            )
             input.append(data_rank["input"])
 
         input = torch.cat(input, dim=0)
@@ -105,7 +108,10 @@ def test_kmeans_clustering_ddp() -> None:
 
         for rank, indices_rank in enumerate(indices):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            data_rank = torch.load(path)
+            data_rank = torch.load(
+                path,
+                weights_only=True,
+            )
 
             assert data_rank["indices"].size() == (batch_size,)
             assert torch.equal(data_rank["indices"], indices_rank)
@@ -150,7 +156,10 @@ def test_minibatch_kmeans_clustering_ddp() -> None:
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            data_rank = torch.load(path)
+            data_rank = torch.load(
+                path,
+                weights_only=True,
+            )
             input.append(data_rank["input"])
 
         input = torch.stack(input, dim=0)
@@ -174,7 +183,10 @@ def test_minibatch_kmeans_clustering_ddp() -> None:
 
         for rank, indices_rank in enumerate(indices):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            data_rank = torch.load(path)
+            data_rank = torch.load(
+                path,
+                weights_only=True,
+            )
 
             assert data_rank["indices"].size() == (batch_size,)
             assert torch.equal(data_rank["indices"], indices_rank)

@@ -120,7 +120,10 @@ def test_official_passt(model_name: str) -> None:
         path = os.path.join(temp_dir, "test_official_passt.pth")
         download_file_from_github_release(url, path)
 
-        data = torch.load(path)
+        data = torch.load(
+            path,
+            weights_only=True,
+        )
         input = data["input"]
         expected_output = data["output"]
 

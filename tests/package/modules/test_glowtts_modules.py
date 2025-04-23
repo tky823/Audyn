@@ -253,7 +253,11 @@ def test_masked_act_norm1d_ddp() -> None:
         rank = 0
         reference_model = MaskedActNorm1d(num_features)
         path = os.path.join(temp_dir, f"{rank}.pth")
-        state_dict = torch.load(path, map_location="cpu")
+        state_dict = torch.load(
+            path,
+            map_location="cpu",
+            weights_only=True,
+        )
         reference_model.load_state_dict(state_dict["model"])
         latent = state_dict["latent"].permute(0, 2, 1)
         length = state_dict["length"]
@@ -264,7 +268,11 @@ def test_masked_act_norm1d_ddp() -> None:
         for rank in range(1, world_size):
             model = MaskedActNorm1d(num_features)
             path = os.path.join(temp_dir, f"{rank}.pth")
-            state_dict = torch.load(path, map_location="cpu")
+            state_dict = torch.load(
+                path,
+                map_location="cpu",
+                weights_only=True,
+            )
             model.load_state_dict(state_dict["model"])
             latent = state_dict["latent"].permute(0, 2, 1)
             length = state_dict["length"]

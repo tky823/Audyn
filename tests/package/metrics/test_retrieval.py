@@ -102,7 +102,11 @@ def test_mean_average_precision_ddp_oracle(mink: int) -> None:
 
         process_rank = 0
         path = os.path.join(temp_dir, f"{process_rank}.pth")
-        reference_state_dict = torch.load(path, map_location="cpu")
+        reference_state_dict = torch.load(
+            path,
+            map_location="cpu",
+            weights_only=True,
+        )
         reference_ranks = reference_state_dict["ranks"]
         reference_map_k = reference_state_dict["map_k"]
 
@@ -110,7 +114,11 @@ def test_mean_average_precision_ddp_oracle(mink: int) -> None:
 
         for process_rank in range(1, world_size):
             path = os.path.join(temp_dir, f"{process_rank}.pth")
-            state_dict = torch.load(path, map_location="cpu")
+            state_dict = torch.load(
+                path,
+                map_location="cpu",
+                weights_only=True,
+            )
             ranks = state_dict["ranks"]
             map_k = state_dict["map_k"]
 
@@ -176,7 +184,11 @@ def test_mean_average_precision_ddp_known_map(mink: int) -> None:
 
         process_rank = 0
         path = os.path.join(temp_dir, f"{process_rank}.pth")
-        reference_state_dict = torch.load(path, map_location="cpu")
+        reference_state_dict = torch.load(
+            path,
+            map_location="cpu",
+            weights_only=True,
+        )
         reference_ranks = reference_state_dict["ranks"]
         reference_map_k = reference_state_dict["map_k"]
 
@@ -184,7 +196,11 @@ def test_mean_average_precision_ddp_known_map(mink: int) -> None:
 
         for process_rank in range(1, world_size):
             path = os.path.join(temp_dir, f"{process_rank}.pth")
-            state_dict = torch.load(path, map_location="cpu")
+            state_dict = torch.load(
+                path,
+                map_location="cpu",
+                weights_only=True,
+            )
             ranks = state_dict["ranks"]
             map_k = state_dict["map_k"]
 
@@ -297,7 +313,11 @@ def test_median_rank_ddp(ranks: str, mink: int) -> None:
 
         process_rank = 0
         path = os.path.join(temp_dir, f"{process_rank}.pth")
-        reference_state_dict = torch.load(path, map_location="cpu")
+        reference_state_dict = torch.load(
+            path,
+            map_location="cpu",
+            weights_only=True,
+        )
         reference_ranks = reference_state_dict["ranks"]
         reference_medR = reference_state_dict["medR"]
 
@@ -305,7 +325,11 @@ def test_median_rank_ddp(ranks: str, mink: int) -> None:
 
         for process_rank in range(1, world_size):
             path = os.path.join(temp_dir, f"{process_rank}.pth")
-            state_dict = torch.load(path, map_location="cpu")
+            state_dict = torch.load(
+                path,
+                map_location="cpu",
+                weights_only=True,
+            )
             ranks = state_dict["ranks"]
             medR = state_dict["medR"]
 

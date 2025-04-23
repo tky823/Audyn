@@ -96,7 +96,11 @@ class PriorSaver(BaseDriver):
                 torch.save(data, path)
 
     def load_checkpoint(self, path: str) -> None:
-        state_dict = torch.load(path, map_location=self.device)
+        state_dict = torch.load(
+            path,
+            map_location=self.device,
+            weights_only=True,
+        )
 
         self.unwrapped_model.load_state_dict(state_dict["model"])
 
@@ -181,9 +185,17 @@ class Generator(BaseGenerator):
 
     def load_checkpoint(self, pixelcnn_path: str, vqvae_path: str) -> None:
         # load weights of PixelCNN
-        state_dict = torch.load(pixelcnn_path, map_location=self.device)
+        state_dict = torch.load(
+            pixelcnn_path,
+            map_location=self.device,
+            weights_only=True,
+        )
         self.unwrapped_model.pixelcnn.load_state_dict(state_dict["model"])
 
         # load weights of PixelCNN
-        state_dict = torch.load(vqvae_path, map_location=self.device)
+        state_dict = torch.load(
+            vqvae_path,
+            map_location=self.device,
+            weights_only=True,
+        )
         self.unwrapped_model.vqvae.load_state_dict(state_dict["model"])

@@ -133,7 +133,11 @@ def test_glowtts(scaling: bool, channel_dependent_scaling: bool) -> None:
         state_dict = model.state_dict()
         torch.save(state_dict, path)
 
-        state_dict = torch.load(path, map_location="cpu")
+        state_dict = torch.load(
+            path,
+            map_location="cpu",
+            weights_only=True,
+        )
         model.load_state_dict(state_dict)
 
     # test search_gaussian_monotonic_alignment

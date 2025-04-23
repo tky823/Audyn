@@ -8,7 +8,11 @@ import torch.nn as nn
 from dummy import allclose
 from omegaconf import OmegaConf
 
-from audyn.modules.glow import ActNorm1d, InvertiblePointwiseConv1d, InvertiblePointwiseConv2d
+from audyn.modules.glow import (
+    ActNorm1d,
+    InvertiblePointwiseConv1d,
+    InvertiblePointwiseConv2d,
+)
 
 
 def test_invertible_pointwise_conv1d():
@@ -161,14 +165,22 @@ def test_act_norm1d_ddp() -> None:
         rank = 0
         reference_model = ActNorm1d(num_features)
         path = os.path.join(temp_dir, f"{rank}.pth")
-        state_dict = torch.load(path, map_location="cpu")
+        state_dict = torch.load(
+            path,
+            map_location="cpu",
+            weights_only=True,
+        )
         reference_model.load_state_dict(state_dict["model"])
         z.append(state_dict["latent"])
 
         for rank in range(1, world_size):
             model = ActNorm1d(num_features)
             path = os.path.join(temp_dir, f"{rank}.pth")
-            state_dict = torch.load(path, map_location="cpu")
+            state_dict = torch.load(
+                path,
+                map_location="cpu",
+                weights_only=True,
+            )
             model.load_state_dict(state_dict["model"])
             z.append(state_dict["latent"])
 
