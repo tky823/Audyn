@@ -114,8 +114,11 @@ def mobius_scaler_mul(
 
     norm = torch.linalg.vector_norm(input, dim=-1)
     norm = torch.clamp(norm, min=eps)
-    denom = -curvature * norm
+    denom = ((-curvature) ** 0.5) * norm
     normalized_input = input / denom.unsqueeze(dim=-1)
-    output = normalized_input * torch.tanh(scalar * torch.atanh((-curvature) ** 0.5 * norm))
+    tanh = ((-curvature) ** 0.5) * norm
+    tanh = torch.clamp(tanh, min=-1 + eps, max=1 - eps)
+    scale = torch.tanh(scalar * torch.atanh(tanh))
+    output = normalized_input * scale.unsqueeze(dim=-1)
 
     return output
