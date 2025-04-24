@@ -9,6 +9,8 @@ from audyn.transforms.clap import (
     LAIONAudioEncoder2023MelSpectrogram,
     LAIONAudioEncoder2023MelSpectrogramFusion,
     LAIONAudioEncoder2023WaveformPad,
+    MicrosoftAudioEncoder2023MelSpectrogram,
+    MicrosoftAudioEncoder2023WaveformPad,
 )
 from audyn.utils._github import download_file_from_github_release
 
@@ -174,3 +176,31 @@ def test_laion_clap_melspectrogram_fusion(
 
     for fused_melspectrogram in fused_melspectrograms:
         allclose(fused_melspectrogram, melspectrogram)
+
+
+def test_microsoft_clap_transform() -> None:
+    url = "https://github.com/tky823/Audyn/releases/download/v0.0.5/test_official_microsoft-clap-2023.pth"  # noqa: E501
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        filename = os.path.basename(url)
+        path = os.path.join(temp_dir, filename)
+
+        download_file_from_github_release(url, path)
+
+        data = torch.load(path, weights_only=True)
+
+    padding_transform = MicrosoftAudioEncoder2023WaveformPad.build_from_pretrained(
+        "microsoft-clap-2023"
+    )
+    melspectrogram_transform = MicrosoftAudioEncoder2023MelSpectrogram.build_from_pretrained(
+        "microsoft-clap-2023"
+    )
+    padding_transform.eval()
+    melspectrogram_transform.eval()
+
+    # waveform longer than chunk_size
+    waveform = data["long"]["input"]
+    waveform = padding_transform(waveform)
+    output = melspectrogram_transform(waveform)
+
+    assert output.size() == (64, 965)
