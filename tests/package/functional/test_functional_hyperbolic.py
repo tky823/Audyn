@@ -2,7 +2,7 @@ import pytest
 import torch
 from dummy import allclose
 
-from audyn.functional.hyperbolic import mobius_add, mobius_sub
+from audyn.functional.hyperbolic import mobius_add, mobius_scaler_mul, mobius_sub
 
 
 @pytest.mark.parametrize("curvature", [-1, -2])
@@ -51,3 +51,19 @@ def test_mobius_sub(curvature: float) -> None:
     output_by_tensor_curvature, *_ = torch.unbind(output_by_tensor_curvature, dim=0)
 
     allclose(output_by_scaler_curvature, output_by_tensor_curvature)
+
+
+@pytest.mark.parametrize("curvature", [-1, -2])
+def test_mobius_scaler_mul(curvature: float) -> None:
+    torch.manual_seed(0)
+
+    batch_size = 10
+    num_features = 5
+
+    input = torch.rand((batch_size, num_features)) - 0.5
+
+    output_by_add = mobius_add(input, input, curvature=curvature)
+    output_by_add = mobius_add(output_by_add, input, curvature=curvature)
+    output = mobius_scaler_mul(input, 3, curvature=curvature)
+
+    allclose(output, output_by_add, atol=1e-4)
