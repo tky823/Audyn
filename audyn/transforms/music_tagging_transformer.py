@@ -106,7 +106,11 @@ class MusicTaggingTransformerMelSpectrogram(aT.MelSpectrogram):
         )
         download_file_from_github_release(url, path=path)
 
-        state_dict = torch.load(path, map_location=lambda storage, loc: storage)
+        state_dict = torch.load(
+            path,
+            map_location=lambda storage, loc: storage,
+            weights_only=True,
+        )
 
         transform = cls(sample_rate)
         transform.load_state_dict(state_dict)

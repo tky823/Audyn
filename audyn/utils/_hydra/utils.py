@@ -14,7 +14,10 @@ from ...models.text_to_wave import CascadeTextToWave
 from ...modules.rvq import ResidualVectorQuantizer
 from ...modules.vqvae import VectorQuantizer
 from ...optim.lr_scheduler import MultiLRSchedulers, _DummyLRScheduler
-from ...optim.optimizer import ExponentialMovingAverageCodebookOptimizer, MultiOptimizers
+from ...optim.optimizer import (
+    ExponentialMovingAverageCodebookOptimizer,
+    MultiOptimizers,
+)
 from ..clip_grad import GradClipper
 from ..parallel import is_dp_or_ddp
 
@@ -121,7 +124,11 @@ def instantiate_model(
         load_weights = False
 
     if isinstance(config_or_path, str):
-        state_dict = torch.load(config_or_path, map_location=lambda storage, loc: storage)
+        state_dict = torch.load(
+            config_or_path,
+            map_location=lambda storage, loc: storage,
+            weights_only=True,
+        )
 
         resolved_config: Dict[str, Any] = state_dict["resolved_config"]
         model_config: Dict[str, Any] = resolved_config["model"]
@@ -164,7 +171,11 @@ def instantiate_gan_generator(
         load_weights = False
 
     if isinstance(config_or_path, str):
-        state_dict = torch.load(config_or_path, map_location=lambda storage, loc: storage)
+        state_dict = torch.load(
+            config_or_path,
+            map_location=lambda storage, loc: storage,
+            weights_only=True,
+        )
 
         resolved_config: Dict[str, Any] = state_dict["resolved_config"]
         model_config: Dict[str, Any] = resolved_config["model"]
@@ -213,7 +224,11 @@ def instantiate_gan_discriminator(
         load_weights = False
 
     if isinstance(config_or_path, str):
-        state_dict = torch.load(config_or_path, map_location=lambda storage, loc: storage)
+        state_dict = torch.load(
+            config_or_path,
+            map_location=lambda storage, loc: storage,
+            weights_only=True,
+        )
 
         resolved_config: Dict[str, Any] = state_dict["resolved_config"]
         model_config: Dict[str, Any] = resolved_config["model"]
@@ -265,10 +280,14 @@ def instantiate_cascade_text_to_wave(
         load_weights = False
 
     text_to_feat_state_dict = torch.load(
-        text_to_feat_checkpoint, map_location=lambda storage, loc: storage
+        text_to_feat_checkpoint,
+        map_location=lambda storage, loc: storage,
+        weights_only=True,
     )
     feat_to_wave_state_dict = torch.load(
-        feat_to_wave_checkpoint, map_location=lambda storage, loc: storage
+        feat_to_wave_checkpoint,
+        map_location=lambda storage, loc: storage,
+        weights_only=True,
     )
 
     # text-to-feat

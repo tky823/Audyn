@@ -412,7 +412,9 @@ class AudioSpectrogramTransformer(BaseAudioSpectrogramTransformer):
 
         if os.path.exists(pretrained_model_name_or_path):
             state_dict = torch.load(
-                pretrained_model_name_or_path, map_location=lambda storage, loc: storage
+                pretrained_model_name_or_path,
+                map_location=lambda storage, loc: storage,
+                weights_only=True,
             )
             model_state_dict: OrderedDict = state_dict["model"]
             resolved_config = state_dict["resolved_config"]

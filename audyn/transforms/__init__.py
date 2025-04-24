@@ -6,6 +6,10 @@ from .clap import (
     LAIONCLAPAudioEncoder2023MelSpectrogram,
     LAIONCLAPAudioEncoder2023MelSpectrogramFusion,
     LAIONCLAPAudioEncoder2023WaveformPad,
+    MicrosoftAudioEncoder2023MelSpectrogram,
+    MicrosoftAudioEncoder2023WaveformPad,
+    MicrosoftCLAPAudioEncoder2023MelSpectrogram,
+    MicrosoftCLAPAudioEncoder2023WaveformPad,
 )
 from .cqt import CQT, ConstantQTransform
 from .hifigan import HiFiGANMelSpectrogram
@@ -51,6 +55,10 @@ __all__ = [
     "LAIONAudioEncoder2023WaveformPad",
     "LAIONAudioEncoder2023MelSpectrogram",
     "LAIONAudioEncoder2023MelSpectrogramFusion",
+    "MicrosoftCLAPAudioEncoder2023WaveformPad",
+    "MicrosoftAudioEncoder2023WaveformPad",
+    "MicrosoftCLAPAudioEncoder2023MelSpectrogram",
+    "MicrosoftAudioEncoder2023MelSpectrogram",
     # music tagging transformer
     "MusicTaggingTransformerMelSpectrogram",
 ]

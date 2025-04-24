@@ -47,7 +47,10 @@ def test_official_music_tagging_transformer() -> None:
         path = os.path.join(temp_dir, "test_official_music-tagging-transformer_teacher.pth")
         download_file_from_github_release(url, path)
 
-        data = torch.load(path)
+        data = torch.load(
+            path,
+            weights_only=True,
+        )
 
     waveform = data["input"]
     expected_teacher_output = data["output"]
@@ -64,7 +67,10 @@ def test_official_music_tagging_transformer() -> None:
         path = os.path.join(temp_dir, "test_official_music-tagging-transformer_student.pth")
         download_file_from_github_release(url, path)
 
-        data = torch.load(path)
+        data = torch.load(
+            path,
+            weights_only=True,
+        )
 
     waveform = data["input"]
     expected_student_output = data["output"]

@@ -110,7 +110,11 @@ class ModalTransformerTower(nn.Module):
         aggregation: str,
         out_channels: Optional[int] = None,
     ) -> "ModalTransformerTower":
-        state_dict = torch.load(path, map_location=lambda storage, loc: storage)
+        state_dict = torch.load(
+            path,
+            map_location=lambda storage, loc: storage,
+            weights_only=True,
+        )
         resolved_config = state_dict["resolved_config"]
         resolved_config = OmegaConf.create(resolved_config)
         model_state_dict = state_dict["model"]

@@ -244,13 +244,13 @@ def test_distributed_musdb18_dataset(
         for epoch in range(epochs):
             rank = 0
             path = os.path.join(temp_dir, f"{rank}.pth")
-            filenames_0 = torch.load(path)
+            filenames_0 = torch.load(path, weights_only=True)
 
             assert len(filenames_0[epoch]) == expected_samples_per_epoch
 
             for rank in range(1, world_size):
                 path = os.path.join(temp_dir, f"{rank}.pth")
-                filenames_rank = torch.load(path)
+                filenames_rank = torch.load(path, weights_only=True)
 
                 # ensure disjointness among ranks
                 assert filenames_0 != filenames_rank

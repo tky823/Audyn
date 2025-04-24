@@ -30,9 +30,15 @@ def instantiate_cascade_model(
         load_weights = False
 
     pixelcnn_state_dict = torch.load(
-        pixelcnn_checkpoint, map_location=lambda storage, loc: storage
+        pixelcnn_checkpoint,
+        map_location=lambda storage, loc: storage,
+        weights_only=True,
     )
-    vqvae_state_dict = torch.load(vqvae_checkpoint, map_location=lambda storage, loc: storage)
+    vqvae_state_dict = torch.load(
+        vqvae_checkpoint,
+        map_location=lambda storage, loc: storage,
+        weights_only=True,
+    )
 
     # PixelCNN
     pixelcnn_resolved_config: Dict[str, Any] = pixelcnn_state_dict["resolved_config"]

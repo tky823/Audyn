@@ -88,8 +88,16 @@ class CascadeTextToWaveGenerator(BaseGenerator):
             )
 
     def load_checkpoint(self, text_to_feat_path, feat_to_wave_path: str) -> None:
-        text_to_feat_state_dict = torch.load(text_to_feat_path, map_location=self.device)
-        feat_to_wave_state_dict = torch.load(feat_to_wave_path, map_location=self.device)
+        text_to_feat_state_dict = torch.load(
+            text_to_feat_path,
+            map_location=self.device,
+            weights_only=True,
+        )
+        feat_to_wave_state_dict = torch.load(
+            feat_to_wave_path,
+            map_location=self.device,
+            weights_only=True,
+        )
         unwrapped_text_to_feat = self.unwrapped_model.text_to_feat
         unwrapped_feat_to_wave = self.unwrapped_model.feat_to_wave
 

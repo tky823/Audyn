@@ -39,7 +39,11 @@ def main(config: DictConfig) -> None:
     shards: Dict[str, tarfile.TarFile] = {}
 
     # centroids: (num_clusters, num_features)
-    data = torch.load(centroids_path, map_location=lambda storage, loc: storage)
+    data = torch.load(
+        centroids_path,
+        map_location=lambda storage, loc: storage,
+        weights_only=True,
+    )
     centroids = data[centroids_key]
 
     for named_input in dataset:

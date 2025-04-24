@@ -187,7 +187,10 @@ def test_exponential_moving_average_codebook_optimizer(
         torch.save(state_dict_sequential, path)
 
         path = os.path.join(temp_dir, "stop.pth")
-        state_dict_stop = torch.load(path)
+        state_dict_stop = torch.load(
+            path,
+            weights_only=True,
+        )
 
         model.load_state_dict(state_dict_stop["model"])
         optimizer.load_state_dict(state_dict_stop["optimizer"])
@@ -210,7 +213,10 @@ def test_exponential_moving_average_codebook_optimizer(
         state_dict_resume["optimizer"] = optimizer.state_dict()
 
         path = os.path.join(temp_dir, "sequential.pth")
-        state_dict_sequential = torch.load(path)
+        state_dict_sequential = torch.load(
+            path,
+            weights_only=True,
+        )
 
         if codebook_reset:
             # When codebook_reset=True, optimizer uses torch.randn, which violates reproducibility.
@@ -315,7 +321,11 @@ def test_exponential_moving_average_codebook_optimizer_ddp(is_rvq: bool) -> None
             seed=another_seed,
         )
         path = os.path.join(temp_dir, f"{rank}.pth")
-        state_dict = torch.load(path, map_location="cpu")
+        state_dict = torch.load(
+            path,
+            map_location="cpu",
+            weights_only=True,
+        )
         reference_model.load_state_dict(state_dict)
 
         for rank in range(1, world_size):
@@ -328,7 +338,11 @@ def test_exponential_moving_average_codebook_optimizer_ddp(is_rvq: bool) -> None
                 seed=another_seed,
             )
             path = os.path.join(temp_dir, f"{rank}.pth")
-            state_dict = torch.load(path, map_location="cpu")
+            state_dict = torch.load(
+                path,
+                map_location="cpu",
+                weights_only=True,
+            )
             model.load_state_dict(state_dict)
 
             assert len(list(model.parameters())) == len(list(reference_model.parameters()))

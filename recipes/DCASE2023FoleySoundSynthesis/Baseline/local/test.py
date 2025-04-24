@@ -17,7 +17,9 @@ def main(config: DictConfig) -> None:
     setup_config(config)
 
     vqvae_state_dict = torch.load(
-        config.test.checkpoint.vqvae, map_location=lambda storage, loc: storage
+        config.test.checkpoint.vqvae,
+        map_location=lambda storage, loc: storage,
+        weights_only=True,
     )
     vqvae_config = OmegaConf.create(vqvae_state_dict["resolved_config"])
     codebook_size = vqvae_config.data.codebook.size

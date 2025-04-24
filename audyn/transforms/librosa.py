@@ -3,6 +3,8 @@ from typing import Callable, Dict, Optional
 import torch
 import torchaudio.transforms as aT
 
+from ..functional.melspectrogram import melscale_fbanks
+
 __all__ = [
     "LibrosaMelSpectrogram",
 ]
@@ -34,8 +36,6 @@ class LibrosaMelSpectrogram(aT.MelSpectrogram):
 
     """
 
-    # TODO: improve precision
-
     def __init__(
         self,
         sample_rate: int = 22050,
@@ -55,12 +55,21 @@ class LibrosaMelSpectrogram(aT.MelSpectrogram):
         onesided: Optional[bool] = None,
         norm: Optional[str] = "slaney",
         mel_scale: str = "slaney",
+        fb_dtype: Optional[torch.dtype] = None,
     ) -> None:
         if win_length is None:
             win_length = n_fft
 
         if f_max is None:
             f_max = sample_rate / 2
+
+        is_float64_fb = fb_dtype is torch.float64
+
+        if is_float64_fb:
+            if wkwargs is None:
+                wkwargs = {}
+
+            wkwargs["dtype"] = torch.float64
 
         super().__init__(
             sample_rate=sample_rate,
@@ -81,3 +90,27 @@ class LibrosaMelSpectrogram(aT.MelSpectrogram):
             norm=norm,
             mel_scale=mel_scale,
         )
+
+        self.fb_dtype = fb_dtype
+
+        if is_float64_fb:
+            fb = melscale_fbanks(
+                n_fft // 2 + 1,
+                f_min,
+                f_max,
+                n_mels=n_mels,
+                sample_rate=sample_rate,
+                norm=norm,
+                mel_scale=mel_scale,
+                dtype=torch.float64,
+            )
+
+            self.mel_scale.fb = fb
+
+    def forward(self, waveform: torch.Tensor) -> torch.Tensor:
+        waveform_dtype = waveform.dtype
+        waveform = waveform.to(self.mel_scale.fb.dtype)
+        output = super().forward(waveform)
+        output = output.to(waveform_dtype)
+
+        return output

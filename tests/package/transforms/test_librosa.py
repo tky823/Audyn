@@ -37,7 +37,10 @@ def test_librosa_melspectrogram() -> None:
         path = os.path.join(temp_dir, "test_librosa_melspectrogram.pth")
         download_file_from_github_release(url, path)
 
-        data = torch.load(path)
+        data = torch.load(
+            path,
+            weights_only=True,
+        )
         expected_output = data["output"]
 
     melspectrogram_transform = LibrosaMelSpectrogram(sample_rate)

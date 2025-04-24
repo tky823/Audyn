@@ -1,6 +1,11 @@
 from .ast import AST, AudioSpectrogramTransformer
 from .bsrnn import BSRNN, BandSplitRNN
-from .clap import LAIONAudioEncoder2023, LAIONCLAPAudioEncoder2023
+from .clap import (
+    LAIONAudioEncoder2023,
+    LAIONCLAPAudioEncoder2023,
+    MicrosoftAudioEncoder2023,
+    MicrosoftCLAPAudioEncoder2023,
+)
 from .conv_tasnet import ConvTasNet
 from .dprnn_tasnet import DPRNNTasNet
 from .encodec import EnCodec
@@ -74,6 +79,8 @@ __all__ = [
     # CLAP
     "LAIONAudioEncoder2023",
     "LAIONCLAPAudioEncoder2023",
+    "MicrosoftCLAPAudioEncoder2023",
+    "MicrosoftAudioEncoder2023",
     # RoFormer
     "RoFormerEncoderLayer",
     "RoFormerDecoderLayer",

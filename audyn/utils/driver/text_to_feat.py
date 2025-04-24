@@ -61,7 +61,9 @@ class TextToFeatTrainer(BaseTrainer):
 
         if use_pretrained_feat_to_wave:
             state_dict = torch.load(
-                pretrained_config.path, map_location=lambda storage, loc: storage
+                pretrained_config.path,
+                map_location=lambda storage, loc: storage,
+                weights_only=True,
             )
             feat_to_wave_config = OmegaConf.create(state_dict["resolved_config"])
 

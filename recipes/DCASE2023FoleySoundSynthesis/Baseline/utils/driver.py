@@ -102,7 +102,11 @@ class PriorSaver(BaseDriver):
                 torch.save(data, path)
 
     def load_checkpoint(self, path: str) -> None:
-        state_dict = torch.load(path, map_location=self.device)
+        state_dict = torch.load(
+            path,
+            map_location=self.device,
+            weights_only=True,
+        )
 
         self.unwrapped_model.load_state_dict(state_dict["model"])
 
@@ -212,13 +216,25 @@ class Generator(BaseGenerator):
         self.unwrapped_model: BaselineModel
 
         # load weights of PixelSNAIL
-        state_dict = torch.load(pixelsnail_path, map_location=self.device)
+        state_dict = torch.load(
+            pixelsnail_path,
+            map_location=self.device,
+            weights_only=True,
+        )
         self.unwrapped_model.pixelsnail.load_state_dict(state_dict["model"])
 
         # load weights of VQVAE
-        state_dict = torch.load(vqvae_path, map_location=self.device)
+        state_dict = torch.load(
+            vqvae_path,
+            map_location=self.device,
+            weights_only=True,
+        )
         self.unwrapped_model.vqvae.load_state_dict(state_dict["model"])
 
         # load weights of HiFi-GAN
-        state_dict = torch.load(hifigan_path, map_location=self.device)
+        state_dict = torch.load(
+            hifigan_path,
+            map_location=self.device,
+            weights_only=True,
+        )
         self.unwrapped_model.hifigan_generator.load_state_dict(state_dict["model"]["generator"])

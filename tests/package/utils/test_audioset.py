@@ -257,12 +257,12 @@ def test_distributed_weighted_audioset_webdataset_sampler(
             samples_per_epoch = 0
             rank = 0
             path = os.path.join(temp_dir, f"{rank}.pth")
-            filenames_0 = torch.load(path)
+            filenames_0 = torch.load(path, weights_only=True)
             samples_per_epoch += len(filenames_0[epoch])
 
             for rank in range(1, world_size):
                 path = os.path.join(temp_dir, f"{rank}.pth")
-                filenames_rank = torch.load(path)
+                filenames_rank = torch.load(path, weights_only=True)
                 samples_per_epoch += len(filenames_rank[epoch])
 
                 # ensure disjointness among ranks
