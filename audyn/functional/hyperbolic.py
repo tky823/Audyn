@@ -29,6 +29,24 @@ def mobius_add(
     """
     assert dim == -1, "Only dim=-1 is supported."
 
+    if not isinstance(input, torch.Tensor):
+        if isinstance(other, torch.Tensor):
+            factory_kwargs = {
+                "dtype": other.dtype,
+                "device": other.device,
+            }
+
+        input = torch.tensor(input, **factory_kwargs)
+
+    if not isinstance(other, torch.Tensor):
+        if isinstance(input, torch.Tensor):
+            factory_kwargs = {
+                "dtype": input.dtype,
+                "device": input.device,
+            }
+
+        other = torch.tensor(other, **factory_kwargs)
+
     target_shape = torch.broadcast_shapes(input.size(), other.size())
     input = input.expand(target_shape).contiguous()
     other = other.expand(target_shape).contiguous()
