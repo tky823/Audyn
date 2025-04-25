@@ -119,7 +119,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
-          pytest -vvv tests/package/ --ignore=tests/package/utils/test_*.py
+          pytest -vvv tests/package/utils/
+          ps aux | grep
+          pkill -f torch_shm_manager || true
+          pkill -f python || true
       - name: Upload coverage reports to Codecov
         if: inputs.python-version == '3.9' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.1.0'
         uses: codecov/codecov-action@v3
