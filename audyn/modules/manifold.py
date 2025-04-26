@@ -111,7 +111,7 @@ class PoincareEmbedding(ManifoldEmbedding):
         norm = torch.linalg.vector_norm(input, dim=dim, keepdim=True)
         norm = torch.clamp(norm, min=eps)
         normalized_input = input / norm
-        conformal_factor = 2 / (1 + curvature * torch.sum(input**2, dim=dim))
+        conformal_factor = 2 / (1 + curvature * torch.sum(input**2, dim=dim, keepdim=True))
         y = torch.tanh(_curvature * conformal_factor * norm / 2) * normalized_input / _curvature
         output = mobius_add(root, y, curvature=curvature, dim=dim, eps=eps)
 
