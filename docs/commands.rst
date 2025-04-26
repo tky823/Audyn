@@ -8,7 +8,7 @@ You can download LJSpeech dataset by ``audyn-download-ljspeech``.
 
 .. code-block:: shell
 
-    data_root="./data"  # root directory to save .zip file.
+    data_root="./data"  # root directory to save .tar.bz2 file.
     ljspeech_root="${data_root}/LJSpeech-1.1"
     unpack=true  # unpack .tar.bz2 or not
     chunk_size=8192  # chunk size in byte to download
@@ -18,6 +18,26 @@ You can download LJSpeech dataset by ``audyn-download-ljspeech``.
     ljspeech_root="${ljspeech_root}" \
     unpack=${unpack} \
     chunk_size=${chunk_size}
+
+
+Download VCTK dataset
+---------------------
+
+You can download VCTK dataset by ``audyn-download-vctk``.
+
+.. code-block:: shell
+
+    data_root="./data"  # root directory to save .zip file.
+    vctk_root="${data_root}/VCTK"
+    unpack=true  # unpack .zip or not
+    chunk_size=8192  # chunk size in byte to download
+
+    audyn-download-vctk \
+    root="${data_root}" \
+    vctk_root="${vctk_root}" \
+    unpack=${unpack} \
+    chunk_size=${chunk_size}
+
 
 Download MUSDB18 dataset
 ------------------------
