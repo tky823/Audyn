@@ -9,6 +9,14 @@ __all__ = [
 
 
 class DistanceBasedNegativeSamplingLoss(nn.Module):
+    """Distance-based negative sampling loss.
+
+    Args:
+        distance (nn.Module or callable): Function to compute distance between two points.
+            For input (*batch_shape, embedding_dim) and target (*batch_shape, embedding_dim),
+            ``distance`` should return distance (*batch_shape,).
+
+    """
 
     def __init__(
         self,
