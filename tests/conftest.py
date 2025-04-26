@@ -57,8 +57,11 @@ def pytest_sessionfinish(session: Session, exitstatus: ExitCode) -> None:
         logger.info("[STDOUT]")
         logger.info(process.stdout.decode())
 
-        logger.info("[STDERR]")
-        logger.info(process.stderr.decode())
+        error_msg = process.stderr.decode()
+
+        if len(error_msg) > 0:
+            logger.error("[STDERR]")
+            logger.error(error_msg)
 
         process = subprocess.run(
             ["pkill", "-u", user, "-f", "torch_shm_manager"],
@@ -69,5 +72,8 @@ def pytest_sessionfinish(session: Session, exitstatus: ExitCode) -> None:
         logger.info("[STDOUT]")
         logger.info(process.stdout.decode())
 
-        logger.info("[STDERR]")
-        logger.info(process.stderr.decode())
+        error_msg = process.stderr.decode()
+
+        if len(error_msg) > 0:
+            logger.error("[STDERR]")
+            logger.error(error_msg)
