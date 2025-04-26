@@ -30,7 +30,6 @@ from audyn.optim.optimizer import (
     MultiOptimizers,
     RiemannSGD,
 )
-from audyn.optim.optimizer.manifold import RiemannSGD
 
 
 @pytest.mark.parametrize("build_from_optim_class", [True, False])
