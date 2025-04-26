@@ -12,13 +12,13 @@ import torch.nn.functional as F
 import torchaudio
 from omegaconf import DictConfig, OmegaConf
 from packaging import version
-from torch.cuda.amp import GradScaler
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import ReduceLROnPlateau, _LRScheduler
 from torch.utils.data import DataLoader
 
 from ... import __version__ as _version
 from ...amp import autocast, get_autocast_device_type
+from ...amp.grad_scaler import GradScaler
 from ...metrics import MeanMetric
 from ...optim.optimizer import (
     ExponentialMovingAverageCodebookOptimizer,
@@ -459,7 +459,7 @@ class BaseTrainer(BaseDriver):
     def _reset(self, config: DictConfig) -> None:
         self.set_system(config=config.system)
 
-        self.scaler = GradScaler(enabled=self.enable_amp)
+        self.scaler = GradScaler(device=self.device, enabled=self.enable_amp)
 
         epochs = config.train.steps.epochs
         iterations = config.train.steps.iterations
