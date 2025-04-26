@@ -53,6 +53,7 @@ __all__ = [
     "convert_dataset_and_dataloader_format_if_necessary",
     "set_nodes_if_necessary",
     "set_compiler_if_necessary",
+    "add_dump_formats",
     "instantiate",
     "instantiate_model",
     "instantiate_gan_generator",
