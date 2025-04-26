@@ -21,6 +21,7 @@ from audyn.criterion.negative_sampling import DistanceBasedNegativeSamplingLoss
 from audyn.functional.poincare import poincare_distance
 from audyn.models.rvqvae import RVQVAE
 from audyn.models.vqvae import VQVAE
+from audyn.modules import PoincareEmbedding
 from audyn.modules.rvq import ResidualVectorQuantizer
 from audyn.modules.vq import VectorQuantizer
 from audyn.optim.optimizer import (
@@ -29,6 +30,7 @@ from audyn.optim.optimizer import (
     MultiOptimizers,
     RiemannSGD,
 )
+from audyn.optim.optimizer.manifold import RiemannSGD
 
 
 @pytest.mark.parametrize("build_from_optim_class", [True, False])
