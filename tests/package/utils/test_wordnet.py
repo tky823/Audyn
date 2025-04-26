@@ -43,3 +43,9 @@ def test_wordnet_dataloader() -> None:
     for batch in evaluation_dataloader:
         assert set(batch.keys()) == {"anchor", "positive", "negative"}
         break
+
+    name = indexer.decode(0)
+    names_by_scaler = indexer.decode([0, 1])
+
+    assert name == "aardvark.n.01"
+    assert names_by_scaler == ["aardvark.n.01", "aardwolf.n.01"]
