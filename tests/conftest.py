@@ -4,6 +4,7 @@
 # https://docs.pytest.org/en/latest/deprecations.html#pytest-namespace
 
 
+import getpass
 import logging
 import subprocess
 import sys
@@ -50,6 +51,7 @@ def pytest_sessionfinish(session: Session, exitstatus: ExitCode) -> None:
     logger.info(f"status: {exitstatus}")
 
     if not IS_WINDOWS:
+        user = getpass.getuser()
         process = subprocess.run(["ps", "aux"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         logger.info("[STDOUT]")
@@ -59,7 +61,7 @@ def pytest_sessionfinish(session: Session, exitstatus: ExitCode) -> None:
         logger.info(process.stderr.decode())
 
         process = subprocess.run(
-            ["pkill", "-u", "runner", "-f", "torch_shm_manager"],
+            ["pkill", "-u", user, "-f", "torch_shm_manager"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
