@@ -1,4 +1,12 @@
-from torch.amp.grad_scaler import GradScaler as _GradScaler
+import torch
+from packaging import version
+
+IS_TORCH_LT_2_3 = version.parse(torch.__version__) < version.parse("2.3")
+
+if IS_TORCH_LT_2_3:
+    from torch.cuda.amp import GradScaler as _GradScaler
+else:
+    from torch.amp.grad_scaler import GradScaler as _GradScaler
 
 __all__ = [
     "GradScaler",
@@ -17,4 +25,7 @@ class GradScaler(_GradScaler):
         else:
             _device = device
 
-        super().__init__(_device, **kwargs)
+        if IS_TORCH_LT_2_3:
+            super().__init__(**kwargs)
+        else:
+            super().__init__(_device, **kwargs)
