@@ -23,12 +23,12 @@ class TrainingMammalDataset(IterableDataset):
         >>> import torch
         >>> from audyn.utils.data.wordnet import TrainingMammalDataset
         >>> torch.manual_seed(0)
-        >>> dataset = TrainingMammalDataset(num_neg_samples=2)
+        >>> dataset = TrainingMammalDataset(num_neg_samples=2, burnin_dampening=0.75)
         >>> dataset.set_burnin(True)
         >>> for sample in dataset:
         ...     print(sample)
         ...     break
-        {'anchor': 'leporid.n.01', 'positive': 'lagomorph.n.01', 'negative': ['bear.n.01', 'rodent.n.01']}
+        {'anchor': 'leporid.n.01', 'positive': 'lagomorph.n.01', 'negative': ['bear.n.01', 'pony.n.05']}
 
     """  # noqa: E501
 

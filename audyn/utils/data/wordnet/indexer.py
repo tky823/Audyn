@@ -77,3 +77,29 @@ class WordNetIndexer:
                 names.append(name)
 
             return names
+
+    @classmethod
+    def build_from_default_config(cls, type: str) -> "WordNetIndexer":
+        """Build WordNetIndexer from default config.
+
+        Args:
+            type (str): Type of dataset. Only ``"mammal"`` is supported.
+
+        Examples:
+
+            >>> from audyn.utils.data.wordnet import WordNetIndexer
+            >>> indexer = WordNetIndexer.build_from_default_config("mammal")
+            >>> indexer("mammal.n.01")
+            637
+            >>> indexer(["mammal.n.01", "dog.n.01"])
+            [637, 305]
+
+        """
+        from . import load_mammal_name_to_index
+
+        if type == "mammal":
+            name_to_index = load_mammal_name_to_index()
+        else:
+            raise ValueError(f"{type} is not supported as type.")
+
+        return cls(name_to_index)

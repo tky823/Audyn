@@ -19,7 +19,7 @@ class WordNetDataLoader(DataLoader):
 
         >>> from audyn.utils.data.wordnet import TrainingMammalDataset, WordNetDataLoader
         >>> # when initial_step = 1
-        >>> dataset = TrainingMammalDataset(num_neg_samples=5)
+        >>> dataset = TrainingMammalDataset(num_neg_samples=5, burnin_dampening=0.75)
         >>> dataloader = WordNetDataLoader(dataset, burnin_step=3, initial_step=1)
         >>> dataloader.set_epoch(0)
         >>> dataset.burnin
