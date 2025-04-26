@@ -204,10 +204,10 @@ class TrainingMammalDataset(IterableDataset):
     def sample(
         candidates: list[str],
         num_samples: int = 1,
-        weights: dict[str, float] | None = None,
+        weights: Optional[dict[str, float]] = None,
         dampening: float = 1,
         replacement: bool = False,
-        generator: torch.Generator | None = None,
+        generator: Optional[torch.Generator] = None,
     ) -> list[str]:
         """Sample from candidates based on weights.
 

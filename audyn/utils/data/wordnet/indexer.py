@@ -63,7 +63,7 @@ class WordNetIndexer:
 
             return indices
 
-    def _index_to_name(self, index_or_indices: int | list[int]) -> str | list[str]:
+    def _index_to_name(self, index_or_indices: Union[int, list[int]]) -> Union[str, list[str]]:
         if isinstance(index_or_indices, int):
             name = self.index_to_name[index_or_indices]
 
