@@ -15,11 +15,13 @@ from .optimizer import (
     ExponentialMovingAverageWrapper,
     GANOptimizer,
     MultiOptimizers,
+    RiemannSGD,
 )
 
 __all__ = [
     "ExponentialMovingAverageWrapper",
     "ExponentialMovingAverageCodebookOptimizer",
+    "RiemannSGD",
     "MultiOptimizers",
     "GANOptimizer",
     "TransformerLRScheduler",
