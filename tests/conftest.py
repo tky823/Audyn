@@ -4,6 +4,8 @@
 # https://docs.pytest.org/en/latest/deprecations.html#pytest-namespace
 
 
+import logging
+import subprocess
 import sys
 from typing import List
 
@@ -36,9 +38,10 @@ def pytest_collection_modifyitems(config: pytest.Config, items: List[pytest.Item
 
 
 def pytest_sessionfinish(session: Session, exitstatus: ExitCode) -> None:
-    import logging
-    import subprocess
+    """Kill torch_shm_manager process for Ubuntu & MacOS in GHA.
 
+    See https://github.com/tky823/Audyn/pull/271.
+    """
     logger = logging.getLogger(__name__)
 
     logging.basicConfig(level=logging.INFO)
@@ -56,7 +59,9 @@ def pytest_sessionfinish(session: Session, exitstatus: ExitCode) -> None:
         logger.info(process.stderr.decode())
 
         process = subprocess.run(
-            ["pkill", "-f", "torch_shm_manager"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            ["pkill", "-u", "runner", "-f", "torch_shm_manager"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
 
         logger.info("[STDOUT]")
