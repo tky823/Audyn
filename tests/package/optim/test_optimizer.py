@@ -421,6 +421,18 @@ def test_riemann_sgd() -> None:
     loss.backward()
     optimizer.step()
 
+    x = torch.randint(0, num_embedings, (), dtype=torch.long)
+    y = torch.randint(0, num_embedings, (), dtype=torch.long)
+    x = manifold(x)
+    y = manifold(y)
+
+    # left-cancellation law
+    x_plus_y = manifold.add(x, y)
+    minius_x = manifold.sub(0, x)
+    _y = manifold.add(minius_x, x_plus_y)
+
+    allclose(_y, y)
+
 
 @pytest.mark.parametrize(
     "optim_type",
