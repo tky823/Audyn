@@ -1,12 +1,10 @@
-import json
-import os
 from typing import Any, Iterator, Optional
 
 import torch
 import torch.distributed as dist
 from torch.utils.data import Dataset, IterableDataset, get_worker_info
 
-from ._download import download_wordnet_taxonomy
+from ._download import _download_mammal_taxonomy
 
 
 class TrainingMammalDataset(IterableDataset):
@@ -45,24 +43,7 @@ class TrainingMammalDataset(IterableDataset):
         if is_symmetric:
             raise NotImplementedError("is_symmetric=True is not fully implemented.")
 
-        from ... import audyn_cache_dir
-
-        wordnet_root = os.path.join(audyn_cache_dir, "data", "WordNet")
-
-        url = "https://github.com/tky823/hyperaudioset/releases/download/v0.0.0/wordnet_mammal.json"  # noqa: E501
-
-        if wordnet_root:
-            os.makedirs(wordnet_root, exist_ok=True)
-
-        filename = os.path.basename(url)
-        path = os.path.join(wordnet_root, filename)
-        chunk_size = 8192
-
-        if not os.path.exists(path):
-            download_wordnet_taxonomy(url, path, chunk_size=chunk_size)
-
-        with open(path) as f:
-            taxonomy: list[dict[str, str]] = json.load(f)
+        taxonomy = _download_mammal_taxonomy()
 
         tags = []
         pair_list = []
@@ -295,27 +276,7 @@ class EvaluationMammalDataset(Dataset):
     ) -> None:
         super().__init__()
 
-        from ... import audyn_cache_dir
-
-        wordnet_root = os.path.join(audyn_cache_dir, "data", "WordNet")
-
-        url = (
-            "https://github.com/tky823/hyperaudioset/releases/download/v0.0.0/wordnet_mammal.json"
-        )
-
-        if wordnet_root:
-            os.makedirs(wordnet_root, exist_ok=True)
-
-        filename = os.path.basename(url)
-        path = os.path.join(wordnet_root, filename)
-        chunk_size = 8192
-
-        if not os.path.exists(path):
-            download_wordnet_taxonomy(url, path, chunk_size=chunk_size)
-
-        with open(path) as f:
-            taxonomy: list[dict[str, str]] = json.load(f)
-
+        taxonomy = _download_mammal_taxonomy()
         tags = []
 
         for sample in taxonomy:

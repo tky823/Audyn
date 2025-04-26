@@ -9,9 +9,8 @@ class WordNetIndexer:
 
     Examples:
 
-        >>> from audyn.utils.data.wordnet import WordNetIndexer, load_mammal_name_to_index
-        >>> name_to_index = load_mammal_name_to_index()
-        >>> indexer = WordNetIndexer(name_to_index)
+        >>> from audyn.utils.data.wordnet import WordNetIndexer, mammal_name_to_index
+        >>> indexer = WordNetIndexer(mammal_name_to_index)
         >>> indexer("mammal.n.01")
         637
         >>> indexer(["mammal.n.01", "dog.n.01"])
@@ -95,10 +94,10 @@ class WordNetIndexer:
             [637, 305]
 
         """
-        from . import load_mammal_name_to_index
+        from . import mammal_name_to_index
 
         if type == "mammal":
-            name_to_index = load_mammal_name_to_index()
+            name_to_index = mammal_name_to_index
         else:
             raise ValueError(f"{type} is not supported as type.")
 
