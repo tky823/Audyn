@@ -48,7 +48,11 @@ class TorchObjectDataset(Dataset):
     def __getitem__(self, idx: int) -> Dict[str, Any]:
         filename = self.filenames[idx]
         feature_path = os.path.join(self.feature_dir, f"{filename}.pth")
-        data = torch.load(feature_path, map_location=lambda storage, loc: storage)
+        data = torch.load(
+            feature_path,
+            map_location=lambda storage, loc: storage,
+            weights_only=True,
+        )
 
         return data
 
@@ -90,7 +94,11 @@ class SortableTorchObjectDataset(TorchObjectDataset):
 
             for filename in self.filenames:
                 feature_path = os.path.join(self.feature_dir, f"{filename}.pth")
-                data = torch.load(feature_path, map_location=lambda storage, loc: storage)
+                data = torch.load(
+                    feature_path,
+                    map_location=lambda storage, loc: storage,
+                    weights_only=True,
+                )
 
                 if data[sort_key].dim() == 0:
                     lengths[filename] = data[sort_key].item()

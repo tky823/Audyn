@@ -1,8 +1,7 @@
 import os
 import shutil
-import tarfile
-import tempfile
 import uuid
+import zipfile
 from typing import Optional
 from urllib.request import Request, urlopen
 
@@ -19,34 +18,34 @@ except ImportError:
     IS_TQDM_AVAILABLE = False
 
 
-@audyn_main(config_name="download-openmic2018")
+@audyn_main(config_name="download-song-describer")
 def main(config: DictConfig) -> None:
-    """Download OpenMIC-2018 dataset.
+    """Download SongDescriber dataset.
 
     .. code-block:: shell
 
-        data_root="./data"  # root directory to save .tgz file.
-        openmic2018_root="${data_root}/openmic-2018"
-        unpack=true  # unpack .tgz or not
+        data_root="./data"  # root directory to save .zip file.
+        song_describer_root="${data_root}/SongDescriber"
+        unpack=true  # unpack .zip or not
         chunk_size=8192  # chunk size in byte to download
 
-        audyn-download-openmic2018 \
+        audyn-download-song-describer \
         root="${data_root}" \
-        openmic2018_root="${openmic2018_root}" \
+        song_describer_root="${song_describer_root}" \
         unpack=${unpack} \
         chunk_size=${chunk_size}
 
     """
-    download_openmic2018(config)
+    download_song_describer(config)
 
 
-def download_openmic2018(config: DictConfig) -> None:
+def download_song_describer(config: DictConfig) -> None:
     root = config.root
-    openmic2018_root = config.openmic2018_root
+    song_describer_root = config.song_describer_root
     unpack = config.unpack
     chunk_size = config.chunk_size
 
-    url = "https://zenodo.org/records/1432913/files/openmic-2018-v1.0.0.tgz"
+    url = "https://zenodo.org/records/10072001/files/audio.zip"
 
     if root is None:
         raise ValueError("Set root directory.")
@@ -64,13 +63,13 @@ def download_openmic2018(config: DictConfig) -> None:
     path = os.path.join(root, filename)
 
     if not os.path.exists(path):
-        _download_openmic2018(url, path, chunk_size=chunk_size)
+        _download_song_describer(url, path, chunk_size=chunk_size)
 
     if unpack:
-        _unpack_tgz(path, openmic2018_root=openmic2018_root)
+        _unpack_zip(path, song_describer_root=song_describer_root)
 
 
-def _download_openmic2018(url: str, path: str, chunk_size: int = 8192) -> None:
+def _download_song_describer(url: str, path: str, chunk_size: int = 8192) -> None:
     filename = os.path.basename(url)
     temp_path = path + str(uuid.uuid4())[:8]
 
@@ -94,21 +93,18 @@ def _download_openmic2018(url: str, path: str, chunk_size: int = 8192) -> None:
         raise e
 
 
-def _unpack_tgz(path: str, openmic2018_root: Optional[str] = None) -> None:
+def _unpack_zip(path: str, song_describer_root: Optional[str] = None) -> None:
     root = os.path.dirname(path)
 
-    if openmic2018_root is None:
-        openmic2018_root = os.path.join(root, "openmic-2018")
+    if song_describer_root is None:
+        filename = os.path.basename(path)
+        filename, _ = os.path.splitext(filename)
+        song_describer_root = os.path.join(root, filename)
 
-    os.makedirs(openmic2018_root, exist_ok=True)
+    os.makedirs(song_describer_root, exist_ok=True)
 
-    with tarfile.open(path, "r:gz") as tar, tempfile.TemporaryDirectory() as temp_dir:
-        tar.extractall(temp_dir)
-        _openmic2018_root = os.path.join(temp_dir, "openmic-2018")
-
-        for _filename in os.listdir(_openmic2018_root):
-            _path = os.path.join(_openmic2018_root, _filename)
-            shutil.move(_path, openmic2018_root)
+    with zipfile.ZipFile(path) as f:
+        f.extractall(song_describer_root)
 
 
 if __name__ == "__main__":

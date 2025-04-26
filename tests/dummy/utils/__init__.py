@@ -9,7 +9,7 @@ def select_random_port() -> int:
     return pytest.random_port
 
 
-def reset_random_port() -> None:
+def reset_random_port() -> int:
     sock = socket.socket()
     sock.bind(("", 0))
     _, port = sock.getsockname()

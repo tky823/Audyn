@@ -206,3 +206,19 @@ You can download SingMOS dataset by ``audyn-download-singmos``.
     audyn-download-singmos \
     singmos_root="${singmos_root}" \
     chunk_size=${chunk_size}
+
+
+Download Song Describer dataset
+-------------------------------
+
+You can download Song Describer dataset by ``audyn-download-song-describer``.
+
+.. code-block:: shell
+
+    data_root="./data"
+    song_describer_root="${data_root}/SongDescriber"
+    chunk_size=8192  # chunk size in byte to download
+
+    audyn-download-song-describer \
+    song_describer_root="${song_describer_root}" \
+    chunk_size=${chunk_size}
