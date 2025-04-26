@@ -8,6 +8,7 @@ from typing import List
 
 import pytest
 from dummy.utils import reset_random_port
+from pytest import ExitCode, Session
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -29,3 +30,15 @@ def pytest_collection_modifyitems(config: pytest.Config, items: List[pytest.Item
     for item in items:
         if "slow" in item.keywords:
             item.add_marker(skip_slow)
+
+
+def pytest_sessionfinish(session: Session, exitstatus: ExitCode) -> None:
+    import subprocess
+    import warnings
+
+    msg = f"status: {exitstatus}"
+    warnings.warn(msg, UserWarning, stacklevel=2)
+
+    process = subprocess.run("ps aux", stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    warnings.warn(process.stdout, UserWarning, stacklevel=2)
+    warnings.warn(process.stderr, UserWarning, stacklevel=2)
