@@ -121,7 +121,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
-          pytest -vvv --log-cli-level=DEBUG \
+          pytest -vvv --log-cli-level=DEBUG --cov=audyn/ --cov-report=xml \
           tests/package/
       - name: Upload coverage reports to Codecov
         if: inputs.python-version == '3.9' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.1.0'
