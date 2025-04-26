@@ -58,7 +58,7 @@ class PoincareEmbedding(ManifoldEmbedding):
         curvature: float = -1,
         dim: int = -1,
         apply_riemann_gradient: bool = True,
-        range: tuple[float] | None = None,
+        range: Optional[tuple[float]] = None,
         eps: float = 1e-5,
         **kwargs,
     ) -> None:
