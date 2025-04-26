@@ -1,0 +1,6 @@
+_target_: audyn.modules.negative_sampling.NegativeSamplingModel
+embedding:
+  _target_: audyn.modules.manifold.PoincareEmbedding
+  num_embedding: ${data.tags.num_tags}
+  embedding_dim: 2
+  curvature: -1
