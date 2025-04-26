@@ -17,14 +17,18 @@ from dummy.utils.ddp import retry_on_file_not_found, set_ddp_environment
 from omegaconf import OmegaConf
 from torch.optim import SGD, Adam
 
+from audyn.criterion.negative_sampling import DistanceBasedNegativeSamplingLoss
+from audyn.functional.poincare import poincare_distance
 from audyn.models.rvqvae import RVQVAE
 from audyn.models.vqvae import VQVAE
+from audyn.modules import PoincareEmbedding
 from audyn.modules.rvq import ResidualVectorQuantizer
 from audyn.modules.vq import VectorQuantizer
 from audyn.optim.optimizer import (
     ExponentialMovingAverageCodebookOptimizer,
     ExponentialMovingAverageWrapper,
     MultiOptimizers,
+    RiemannSGD,
 )
 
 
@@ -380,6 +384,42 @@ def test_rvq_optimizer_correctness() -> None:
 
     for residual_group in optimizer.residual_groups:
         assert torch.allclose(residual_group, residual_by_model)
+
+
+def test_riemann_sgd() -> None:
+    num_embedings = 10
+    embedding_dim = 2
+    num_neg_samples = 3
+
+    manifold = PoincareEmbedding(num_embedings, embedding_dim)
+    criterion = DistanceBasedNegativeSamplingLoss(
+        poincare_distance,
+        positive_distance_kwargs={
+            "curvature": manifold.curvature,
+            "dim": -1,
+        },
+        negative_distance_kwargs={
+            "curvature": manifold.curvature,
+            "dim": -1,
+        },
+    )
+    optimizer = RiemannSGD(
+        manifold.parameters(),
+        expmap=manifold.expmap,
+        proj=manifold.proj,
+    )
+
+    anchor = torch.randint(0, num_embedings, (), dtype=torch.long)
+    positive = torch.randint(0, num_embedings, (), dtype=torch.long)
+    negative = torch.randint(0, num_embedings, (num_neg_samples,), dtype=torch.long)
+
+    anchor = manifold(anchor)
+    positive = manifold(positive)
+    negative = manifold(negative)
+    loss = criterion(anchor, positive, negative)
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
 
 
 @pytest.mark.parametrize(

@@ -9,7 +9,7 @@ from ..._github import download_file_from_github_release
 def download_tags(
     root: Optional[str] = None,
     force_download: bool = False,
-    chunk_size: int = 1024,
+    chunk_size: int = 8192,
 ) -> List[Dict[str, str]]:
     """Download tags of AudioSet.
 

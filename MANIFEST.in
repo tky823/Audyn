@@ -5,3 +5,4 @@ prune .github
 prune docs
 prune tests
 prune recipes
+prune notebooks
