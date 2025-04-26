@@ -4,11 +4,14 @@
 # https://docs.pytest.org/en/latest/deprecations.html#pytest-namespace
 
 
+import sys
 from typing import List
 
 import pytest
 from dummy.utils import reset_random_port
 from pytest import ExitCode, Session
+
+IS_WINDOWS = sys.platform == "win32"
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -33,12 +36,21 @@ def pytest_collection_modifyitems(config: pytest.Config, items: List[pytest.Item
 
 
 def pytest_sessionfinish(session: Session, exitstatus: ExitCode) -> None:
+    import logging
     import subprocess
-    import warnings
 
-    msg = f"status: {exitstatus}"
-    warnings.warn(msg, UserWarning, stacklevel=2)
+    logger = logging.getLogger(__name__)
 
-    process = subprocess.run("ps aux", stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    warnings.warn(process.stdout, UserWarning, stacklevel=2)
-    warnings.warn(process.stderr, UserWarning, stacklevel=2)
+    logging.basicConfig(level=logging.INFO)
+    logger.setLevel(logging.INFO)
+
+    logger.info(f"status: {exitstatus}")
+
+    if not IS_WINDOWS:
+        process = subprocess.run(["ps", "aux"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        logger.info("[STDOUT]")
+        logger.info(process.stdout.decode())
+
+        logger.info("[STDERR]")
+        logger.info(process.stderr.decode())
