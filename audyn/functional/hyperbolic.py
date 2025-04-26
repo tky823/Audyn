@@ -35,6 +35,8 @@ def mobius_add(
                 "dtype": other.dtype,
                 "device": other.device,
             }
+        else:
+            factory_kwargs = {}
 
         input = torch.tensor(input, **factory_kwargs)
 
@@ -44,6 +46,8 @@ def mobius_add(
                 "dtype": input.dtype,
                 "device": input.device,
             }
+        else:
+            factory_kwargs = {}
 
         other = torch.tensor(other, **factory_kwargs)
 
