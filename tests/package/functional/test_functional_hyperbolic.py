@@ -28,6 +28,24 @@ def test_mobius_add(curvature: float) -> None:
 
     allclose(output_by_scaler_curvature, output_by_tensor_curvature)
 
+    input = torch.rand((batch_size, num_features)) - 0.5
+    other = torch.rand(()).item() - 0.5
+    output_by_scaler = mobius_add(input, other, curvature=curvature)
+
+    other = other * torch.ones((num_features,), dtype=input.dtype)
+    output_by_tensor = mobius_add(input, other, curvature=curvature)
+
+    allclose(output_by_scaler, output_by_tensor)
+
+    other = torch.rand((batch_size, num_features)) - 0.5
+    input = torch.rand(()).item() - 0.5
+    output_by_scaler = mobius_add(input, other, curvature=curvature)
+
+    input = input * torch.ones((num_features,), dtype=other.dtype)
+    output_by_tensor = mobius_add(input, other, curvature=curvature)
+
+    allclose(output_by_scaler, output_by_tensor)
+
 
 @pytest.mark.parametrize("curvature", [-1, -2])
 def test_mobius_sub(curvature: float) -> None:
