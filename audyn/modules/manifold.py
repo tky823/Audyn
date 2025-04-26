@@ -173,4 +173,4 @@ class PoincareGradientFunction(torch.autograd.Function):
         scale = 1 / (conformal_factor**2)
         grad_input = scale.unsqueeze(dim=dim) * grad_output
 
-        return grad_input, None
+        return grad_input, None, None
