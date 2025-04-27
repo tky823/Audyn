@@ -906,6 +906,101 @@ def test_base_trainer_ddp_for_dnr(
         monkeypatch.undo()
 
 
+def test_base_driver_for_riemann_sgd(monkeypatch: MonkeyPatch) -> None:
+    """Test BaseTrainer for RiemannSGD."""
+    BATCH_SIZE = 10
+    ITERATIONS = 3
+
+    with tempfile.TemporaryDirectory(dir=".") as temp_dir:
+        monkeypatch.chdir(temp_dir)
+
+        overrides_conf_dir = relpath(join(dirname(realpath(__file__)), "_conf_dummy"), os.getcwd())
+        exp_dir = "./exp"
+
+        system_name = "default"
+        train_name = "dummy_poincare_embedding"
+        model_name = "dummy_poincare_embedding"
+        criterion_name = "dummy_poincare_embedding"
+        optimizer_name = "dummy_poincare_embedding"
+        lr_scheduler_name = "dummy_poincare_embedding"
+
+        with hydra.initialize(
+            version_base="1.2",
+            config_path=relpath(config_template_path, dirname(realpath(__file__))),
+            job_name="test_driver",
+        ):
+            config = hydra.compose(
+                config_name="config",
+                overrides=create_dummy_riemann_sgd_override(
+                    overrides_conf_dir=overrides_conf_dir,
+                    exp_dir=exp_dir,
+                    batch_size=BATCH_SIZE,
+                    iterations=ITERATIONS,
+                    system=system_name,
+                    train=train_name,
+                    model=model_name,
+                    criterion=criterion_name,
+                    optimizer=optimizer_name,
+                    lr_scheduler=lr_scheduler_name,
+                ),
+                return_hydra_config=True,
+            )
+
+        setup_config(config)
+        set_nodes_if_necessary(config.system)
+        set_compiler_if_necessary(config.system)
+
+        train_dataset = instantiate(config.train.dataset.train)
+        validation_dataset = instantiate(config.train.dataset.validation)
+
+        train_loader = instantiate(
+            config.train.dataloader.train,
+            train_dataset,
+        )
+        validation_loader = instantiate(
+            config.train.dataloader.validation,
+            validation_dataset,
+        )
+        loaders = BaseDataLoaders(train_loader, validation_loader)
+
+        model = instantiate_model(config.model)
+        model = set_device(
+            model,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
+        criterion = instantiate_criterion(config.criterion)
+        criterion = set_device(
+            criterion,
+            accelerator=config.system.accelerator,
+            is_distributed=config.system.distributed.enable,
+        )
+
+        if config.system.compile.enable:
+            warnings.warn(config.system, UserWarning, stacklevel=2)
+            warnings.warn(config.system.compile.enable, UserWarning, stacklevel=2)
+            compile_kwargs = config.system.compile.kwargs
+
+            if compile_kwargs is None:
+                compile_kwargs = {}
+
+            model = torch.compile(model, **compile_kwargs)
+
+        optimizer = instantiate_optimizer(config.optimizer, model)
+        lr_scheduler = instantiate_lr_scheduler(config.lr_scheduler, optimizer)
+
+        trainer = BaseTrainer(
+            loaders,
+            model,
+            optimizer,
+            lr_scheduler=lr_scheduler,
+            criterion=criterion,
+            config=config,
+        )
+        trainer.run()
+        trainer.writer.flush()
+
+
 @pytest.mark.parametrize("use_ema", [True, False])
 def test_base_driver_build_from_config(monkeypatch: MonkeyPatch, use_ema: bool) -> None:
     """Test BaseTrainer and BaseGenerator."""
@@ -3034,6 +3129,46 @@ def create_dummy_dnr_override(
 
     if lr_scheduler == "none":
         override_list += ["train.steps.lr_scheduler=''"]
+
+    if system == "cpu_ddp" and IS_WINDOWS:
+        port = os.environ["MASTER_PORT"]
+        override_list += [f"system.distributed.init_method=tcp://localhost:{port}"]
+
+    return override_list
+
+
+def create_dummy_riemann_sgd_override(
+    overrides_conf_dir: str,
+    exp_dir: str,
+    batch_size: int = 1,
+    iterations: int = 1,
+    system: str = "default",
+    train: str = "dummy",
+    model: str = "dummy",
+    criterion: str = "dummy",
+    optimizer: str = "dummy",
+    lr_scheduler: str = "dummy",
+) -> List[str]:
+    sample_rate = 16000
+
+    override_list = [
+        f"system={system}",
+        f"train={train}",
+        "test=dummy",
+        f"model={model}",
+        f"optimizer={optimizer}",
+        f"lr_scheduler={lr_scheduler}",
+        f"criterion={criterion}",
+        f"hydra.searchpath=[{overrides_conf_dir}]",
+        "hydra.job.num=1",
+        f"hydra.runtime.output_dir={exp_dir}/log",
+        "preprocess.dump_format=torch",
+        f"data.audio.sample_rate={sample_rate}",
+        f"train.dataloader.train.batch_size={batch_size}",
+        "train.dataloader.validation.batch_size=1",
+        f"train.output.exp_dir={exp_dir}",
+        f"train.steps.iterations={iterations}",
+    ]
 
     if system == "cpu_ddp" and IS_WINDOWS:
         port = os.environ["MASTER_PORT"]
