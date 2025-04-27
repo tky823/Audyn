@@ -45,8 +45,10 @@ class DistanceBasedNegativeSamplingLoss(nn.Module):
 
         Args:
             anchor (torch.Tensor): (*, embedding_dim).
-            positive (torch.Tensor): (*, embedding_dim).
-            negative (torch.Tensor): (*, num_neg_samples, embedding_dim).
+            positive (torch.Tensor): Positive embeddings of shape (*, embedding_dim) if
+                ``self.training=True``. Otherwise, (*, num_pos_samples, embedding_dim).
+            negative (torch.Tensor): Negative embeddings of shape
+                (*, num_neg_samples, embedding_dim).
 
         Returns:
             torch.Tensor: Computed loss.
@@ -55,8 +57,6 @@ class DistanceBasedNegativeSamplingLoss(nn.Module):
         reduction = self.reduction
         positive_distance_kwargs = self.positive_distance_kwargs
         negative_distance_kwargs = self.negative_distance_kwargs
-
-        print(self.training)
 
         if self.training:
             positive_distance = self.distance(anchor, positive, **positive_distance_kwargs)
