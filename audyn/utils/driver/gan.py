@@ -1045,7 +1045,9 @@ class GANTrainer(BaseTrainer):
                 # the following operation may be redundant.
                 warnings.warn(
                     "If grad_clipper changes the internal state (e.g. training step, etc.), "
-                    "excessive calls to .step() can lead to inappropriate results."
+                    "excessive calls to .step() can lead to inappropriate results.",
+                    UserWarning,
+                    stacklevel=2,
                 )
                 self.grad_clipper.step()
 

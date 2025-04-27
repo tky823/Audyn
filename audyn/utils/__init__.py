@@ -96,6 +96,7 @@ def setup_system(config: DictConfig) -> None:
     """
     warnings.warn(
         "audyn.utils.setup_system is deprecated. Use audyn.utils.setup_config instead.",
+        UserWarning,
         stacklevel=2,
     )
     setup_config(config)

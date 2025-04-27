@@ -2334,7 +2334,7 @@ class BaseTrainer(BaseDriver):
             commit_hash = completed_process.stdout.decode().strip()
         except subprocess.CalledProcessError:
             commit_hash = None
-            warnings.warn("The system is not managed by git.", UserWarning)
+            warnings.warn("The system is not managed by git.", UserWarning, stacklevel=2)
 
         self.commit_hash = commit_hash
 

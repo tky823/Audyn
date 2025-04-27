@@ -155,8 +155,8 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool, use_torch_compile
         )
 
         if config.system.compile.enable:
-            warnings.warn(config.system)
-            warnings.warn(config.system.compile.enable)
+            warnings.warn(config.system, UserWarning, stacklevel=2)
+            warnings.warn(config.system.compile.enable, UserWarning, stacklevel=2)
             compile_kwargs = config.system.compile.kwargs
 
             if compile_kwargs is None:
