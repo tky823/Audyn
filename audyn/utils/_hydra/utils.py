@@ -368,9 +368,18 @@ def instantiate_optimizer(
             for idx, subconfig in enumerate(config):
                 name = subconfig.get("name", f"{idx}")
                 optimizer_target = subconfig["optimizer"]._target_
-                optimizer_mod, optimizer_cls = optimizer_target.rsplit(".", maxsplit=1)
-                optimizer_mod = importlib.import_module(optimizer_mod)
-                optimizer_cls = getattr(optimizer_mod, optimizer_cls)
+                optimizer_mod_name, optimizer_var_name = optimizer_target.rsplit(".", maxsplit=1)
+
+                try:
+                    imported_optimizer_module = importlib.import_module(optimizer_mod_name)
+                    optimizer_cls = getattr(imported_optimizer_module, optimizer_var_name)
+                except ModuleNotFoundError:
+                    optimizer_mod_name, optimizer_var_name = optimizer_mod_name.rsplit(
+                        ".", maxsplit=1
+                    )
+                    imported_optimizer_module = importlib.import_module(optimizer_mod_name)
+                    optimizer_cls = getattr(imported_optimizer_module, optimizer_var_name)
+
                 manifold_kwargs = {}
 
                 if optimizer_cls is RiemannSGD:
@@ -431,9 +440,16 @@ def instantiate_optimizer(
             return optimizers
         else:
             optimizer_target = config._target_
-            optimizer_mod, optimizer_cls = optimizer_target.rsplit(".", maxsplit=1)
-            optimizer_mod = importlib.import_module(optimizer_mod)
-            optimizer_cls = getattr(optimizer_mod, optimizer_cls)
+            optimizer_mod_name, optimizer_var_name = optimizer_target.rsplit(".", maxsplit=1)
+
+            try:
+                imported_optimizer_module = importlib.import_module(optimizer_mod_name)
+                optimizer_cls = getattr(imported_optimizer_module, optimizer_var_name)
+            except ModuleNotFoundError:
+                optimizer_mod_name, optimizer_var_name = optimizer_mod_name.rsplit(".", maxsplit=1)
+                imported_optimizer_module = importlib.import_module(optimizer_mod_name)
+                optimizer_cls = getattr(imported_optimizer_module, optimizer_var_name)
+
             manifold_kwargs = {}
 
             if optimizer_cls is RiemannSGD:
