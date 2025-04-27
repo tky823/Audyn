@@ -1,0 +1,13 @@
+train:
+  _target_: audyn.utils.data.wordnet.TrainingMammalDataset.build_from_list_path
+  list_path:
+  feature_dir:
+  num_neg_samples: 50
+  burnin_dampening: 0.75
+  is_symmetric: false
+
+validation:
+  _target_: audyn.utils.data.wordnet.EvaluationMammalDataset.build_from_list_path
+  list_path:
+  feature_dir:
+  is_symmetric: ${..train.is_symmetric}

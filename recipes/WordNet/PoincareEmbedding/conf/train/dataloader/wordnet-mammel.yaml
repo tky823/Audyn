@@ -1,0 +1,11 @@
+defaults:
+  - default
+  - _self_
+
+train:
+  _target_: audyn.utils.data.wordnet.WordNetDataLoader
+  batch_size: 10
+  burnin_step: 20
+
+validation:
+  batch_size: 1

@@ -1,11 +1,11 @@
 defaults:
-  - record: wordnet-mammel
+  - record: default
   - dataset: wordnet-mammel
   - dataloader: wordnet-mammel
   - _self_
 
 trainer:
-  _target_: audyn.utils.data.wordnet.BaseTrainer
+  _target_: audyn.utils.driver.BaseTrainer
 
 key_mapping:
   train:
