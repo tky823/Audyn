@@ -1,3 +1,4 @@
+import importlib
 import itertools
 from typing import Any, Dict, Iterable, Optional, Union, overload
 
@@ -11,12 +12,14 @@ from torch.optim.lr_scheduler import _LRScheduler
 from ...criterion.base import BaseCriterionWrapper, MultiCriteria
 from ...metrics.base import StatefulMetric
 from ...models.text_to_wave import CascadeTextToWave
+from ...modules.manifold import PoincareEmbedding
 from ...modules.rvq import ResidualVectorQuantizer
 from ...modules.vqvae import VectorQuantizer
 from ...optim.lr_scheduler import MultiLRSchedulers, _DummyLRScheduler
 from ...optim.optimizer import (
     ExponentialMovingAverageCodebookOptimizer,
     MultiOptimizers,
+    RiemannSGD,
 )
 from ..clip_grad import GradClipper
 from ..parallel import is_dp_or_ddp
@@ -364,19 +367,48 @@ def instantiate_optimizer(
 
             for idx, subconfig in enumerate(config):
                 name = subconfig.get("name", f"{idx}")
-                params = []
+                optimizer_target = subconfig["optimizer"]._target_
+                optimizer_mod, optimizer_cls = optimizer_target.rsplit(".", maxsplit=1)
+                optimizer_mod = importlib.import_module(optimizer_mod)
+                optimizer_cls = getattr(optimizer_mod, optimizer_cls)
+                manifold_kwargs = {}
 
-                for submodule_name in subconfig["modules"]:
+                if optimizer_cls is RiemannSGD:
+                    assert len(subconfig["modules"]) == 1
+
+                    submodule_name = subconfig["modules"][0]
+
                     if is_dp_or_ddp(module):
                         unwrapped_module = module.module
                     else:
                         unwrapped_module = module
 
-                    submodule: nn.Module = getattr(unwrapped_module, submodule_name)
-                    params.append(submodule.parameters())
+                    submodule: PoincareEmbedding = getattr(unwrapped_module, submodule_name)
 
-                params = itertools.chain(*params)
-                optimizer = instantiate(subconfig["optimizer"], params, *args, **kwargs)
+                    if "expmap" not in config and "expmap" not in kwargs:
+                        manifold_kwargs["expmap"] = submodule.expmap
+
+                    if "proj" not in config and "proj" not in kwargs:
+                        manifold_kwargs["proj"] = submodule.proj
+
+                    params = submodule.parameters()
+                else:
+                    params = []
+
+                    for submodule_name in subconfig["modules"]:
+                        if is_dp_or_ddp(module):
+                            unwrapped_module = module.module
+                        else:
+                            unwrapped_module = module
+
+                        submodule: nn.Module = getattr(unwrapped_module, submodule_name)
+                        params.append(submodule.parameters())
+
+                    params = itertools.chain(*params)
+
+                optimizer = instantiate(
+                    subconfig["optimizer"], params, *args, **kwargs, **manifold_kwargs
+                )
 
                 if isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer):
                     for submodule_name in subconfig["modules"]:
@@ -398,8 +430,23 @@ def instantiate_optimizer(
 
             return optimizers
         else:
+            optimizer_target = config._target_
+            optimizer_mod, optimizer_cls = optimizer_target.rsplit(".", maxsplit=1)
+            optimizer_mod = importlib.import_module(optimizer_mod)
+            optimizer_cls = getattr(optimizer_mod, optimizer_cls)
+            manifold_kwargs = {}
+
+            if optimizer_cls is RiemannSGD:
+                module: PoincareEmbedding
+
+                if "expmap" not in config and "expmap" not in kwargs:
+                    manifold_kwargs["expmap"] = module.expmap
+
+                if "proj" not in config and "proj" not in kwargs:
+                    manifold_kwargs["proj"] = module.proj
+
             params = module.parameters()
-            optimizer = instantiate(config, params, *args, **kwargs)
+            optimizer = instantiate(config, params, *args, **kwargs, **manifold_kwargs)
 
             if isinstance(optimizer, ExponentialMovingAverageCodebookOptimizer):
                 _register_forward_hook_for_ema_codebook_optim(module, optimizer)
