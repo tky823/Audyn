@@ -2,6 +2,8 @@
 
 In this recipe, you can reproduce [Poincaré embeddings for learning hierarchical representations](https://arxiv.org/pdf/1705.08039).
 
+**NOTE**: Unlike official implementation, exponential map is used in RiemannSGD.
+
 ## Stages
 
 ### Stage 0: Preprocessing
