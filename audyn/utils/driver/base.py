@@ -190,13 +190,11 @@ class BaseDriver:
         for model_key in key_mapping.input.keys():
             data_key = key_mapping.input[model_key]
 
-            _named_data = named_data.get(data_key)
-
-            if _named_data is None:
+            if data_key not in named_data:
                 if strict:
                     raise ValueError(f"{data_key} is not found in named_data.")
             else:
-                named_input[model_key] = _named_data
+                named_input[model_key] = named_data.get(data_key)
 
         return named_input
 
@@ -2310,18 +2308,22 @@ class BaseTrainer(BaseDriver):
 
     def set_epoch_if_necessary(self, epoch: int) -> None:
         train_loader = self.loaders.train
-        sampler = None
 
-        if hasattr(train_loader, "sampler") and train_loader.sampler is not None:
-            sampler = train_loader.sampler
-        elif hasattr(train_loader, "batch_sampler") and train_loader.batch_sampler is not None:
-            sampler = train_loader.batch_sampler
+        if hasattr(train_loader, "set_epoch"):
+            train_loader.set_epoch(epoch)
         else:
-            # e.g. wds.WebLoader
-            pass
+            sampler = None
 
-        if sampler is not None and hasattr(sampler, "set_epoch"):
-            sampler.set_epoch(epoch)
+            if hasattr(train_loader, "sampler") and train_loader.sampler is not None:
+                sampler = train_loader.sampler
+            elif hasattr(train_loader, "batch_sampler") and train_loader.batch_sampler is not None:
+                sampler = train_loader.batch_sampler
+            else:
+                # e.g. wds.WebLoader
+                pass
+
+            if sampler is not None and hasattr(sampler, "set_epoch"):
+                sampler.set_epoch(epoch)
 
     def set_commit_hash(self) -> None:
         """Set git commit hash."""
