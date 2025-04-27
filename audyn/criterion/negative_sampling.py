@@ -53,38 +53,56 @@ class DistanceBasedNegativeSamplingLoss(nn.Module):
         Returns:
             torch.Tensor: Computed loss.
 
+        .. note::
+
+            We assume shape of positive depends on ``self.training``.
+
         """
         reduction = self.reduction
         positive_distance_kwargs = self.positive_distance_kwargs
         negative_distance_kwargs = self.negative_distance_kwargs
 
+        negative_distance = self.distance(
+            anchor.unsqueeze(dim=-2), negative, **negative_distance_kwargs
+        )
+
         if self.training:
             positive_distance = self.distance(anchor, positive, **positive_distance_kwargs)
 
-            if positive_distance.size(-1) == 0:
-                # corner case: root in DAG
-                positive_distance = 0
+            if positive_distance.dim() > 0 and positive_distance.size(-1) == 0:
+                raise ValueError("Positive sample is required during training.")
+
+            _positive_distance = positive_distance.unsqueeze(dim=-1)
+            distances = torch.cat([_positive_distance, negative_distance], dim=-1)
         else:
             positive_distance = self.distance(
                 anchor.unsqueeze(dim=-2), positive, **positive_distance_kwargs
             )
 
-            if positive_distance.size(-1) == 0:
-                # corner case: root in DAG
-                positive_distance = 0
-            else:
+            # corner case: root in DAG
+            if positive_distance.dim() > 0 and positive_distance.size(-1) == 0:
+                positive_distance = None
+
+            if negative_distance.dim() > 0 and negative_distance.size(-1) == 0:
+                negative_distance = None
+
+            distances = []
+
+            if positive_distance is not None:
+                distances.append(positive_distance)
                 positive_distance = torch.logsumexp(positive_distance, dim=-1)
 
-        negative_distance = self.distance(
-            anchor.unsqueeze(dim=-2), negative, **negative_distance_kwargs
-        )
+            if negative_distance is not None:
+                distances.append(negative_distance)
 
-        if negative_distance.size(-1) == 0:
-            negative_distance = 0
-        else:
-            negative_distance = torch.logsumexp(-negative_distance, dim=-1)
+            distances = torch.cat(distances, dim=-1)
 
-        loss = positive_distance + negative_distance
+        distances = torch.logsumexp(-distances, dim=-1)
+
+        loss = distances
+
+        if positive_distance is not None:
+            loss = loss + positive_distance
 
         if reduction == "mean":
             loss = loss.mean()
