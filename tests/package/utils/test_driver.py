@@ -63,9 +63,11 @@ config_template_path = join(dirname(realpath(audyn.__file__)), "configs")
 config_name = "config"
 
 
-@pytest.mark.parametrize("use_ema", [True, False])
+@pytest.mark.parametrize("optimizer_name", ["dummy", "dummy_ema"])
 @pytest.mark.parametrize("use_torch_compile", [True, False])
-def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool, use_torch_compile: bool) -> None:
+def test_base_drivers(
+    monkeypatch: MonkeyPatch, optimizer_name: str, use_torch_compile: bool
+) -> None:
     """Test BaseTrainer and BaseGenerator."""
     DATA_SIZE = 20
     BATCH_SIZE = 2
@@ -90,11 +92,6 @@ def test_base_drivers(monkeypatch: MonkeyPatch, use_ema: bool, use_torch_compile
             system_name = "cpu_compile"
         else:
             system_name = "default"
-
-        if use_ema:
-            optimizer_name = "dummy"
-        else:
-            optimizer_name = "dummy_ema"
 
         with hydra.initialize(
             version_base="1.2",
