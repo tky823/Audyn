@@ -1309,7 +1309,7 @@ def test_feat_to_wave_trainer(
     use_lr_scheduler: bool,
     is_legacy_grad_clipper: bool,
     is_legacy_grad_clipper_recipe: bool,
-):
+) -> None:
     """Test FeatToWaveTrainer."""
     DATA_SIZE = 20
     BATCH_SIZE = 2
@@ -1444,7 +1444,7 @@ def test_gan_trainer(
     lr_scheduler_name: str,
     is_legacy_grad_clipper: bool,
     is_legacy_grad_clipper_recipe: bool,
-):
+) -> None:
     DATA_SIZE = 20
     BATCH_SIZE = 2
     INITIAL_ITERATION = 3
