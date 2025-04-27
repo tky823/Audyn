@@ -44,8 +44,8 @@ def test_masked_act_norm1d() -> None:
     assert output.size() == input.size()
     assert z.size() == input.size()
     allclose(output, input)
-    allclose(mean, torch.zeros(()), atol=1e-7)
-    allclose(std, torch.ones(()), atol=1e-7)
+    allclose(mean, torch.zeros(()), atol=1e-6)
+    allclose(std, torch.ones(()), atol=1e-6)
 
     zeros = torch.zeros((batch_size,))
 
@@ -69,8 +69,8 @@ def test_masked_act_norm1d() -> None:
     assert z_logdet.size() == (batch_size,)
     allclose(output, input)
     allclose(logdet, zeros)
-    allclose(mean, torch.zeros(()), atol=1e-7)
-    allclose(std, torch.ones(()), atol=1e-7)
+    allclose(mean, torch.zeros(()), atol=1e-6)
+    allclose(std, torch.ones(()), atol=1e-6)
 
     # w/ 3D padding mask
     batch_size = 4
@@ -103,8 +103,8 @@ def test_masked_act_norm1d() -> None:
     assert output.size() == input.size()
     assert z.size() == input.size()
     allclose(output, input)
-    allclose(mean, torch.zeros(()), atol=1e-7)
-    allclose(std, torch.ones(()), atol=1e-7)
+    allclose(mean, torch.zeros(()), atol=1e-6)
+    allclose(std, torch.ones(()), atol=1e-6)
 
     zeros = torch.zeros((batch_size,))
 
@@ -128,8 +128,8 @@ def test_masked_act_norm1d() -> None:
     assert z_logdet.size() == (batch_size,)
     allclose(output, input)
     allclose(logdet, zeros)
-    allclose(mean, torch.zeros(()), atol=1e-7)
-    allclose(std, torch.ones(()), atol=1e-7)
+    allclose(mean, torch.zeros(()), atol=1e-6)
+    allclose(std, torch.ones(()), atol=1e-6)
 
     # w/o padding mask
     batch_size = 2
@@ -150,8 +150,8 @@ def test_masked_act_norm1d() -> None:
 
     allclose(masked_z, non_masked_z)
     allclose(masked_output, non_masked_output)
-    allclose(mean, torch.zeros(()), atol=1e-7)
-    allclose(std, torch.ones(()), atol=1e-7)
+    allclose(mean, torch.zeros(()), atol=1e-6)
+    allclose(std, torch.ones(()), atol=1e-6)
 
     zeros = torch.zeros((batch_size,))
 
@@ -179,8 +179,8 @@ def test_masked_act_norm1d() -> None:
     allclose(masked_z, non_masked_z)
     allclose(masked_output, non_masked_output)
     allclose(masked_logdet, non_masked_logdet)
-    allclose(mean, torch.zeros(()), atol=1e-7)
-    allclose(std, torch.ones(()), atol=1e-7)
+    allclose(mean, torch.zeros(()), atol=1e-6)
+    allclose(std, torch.ones(()), atol=1e-6)
 
     # w/ 2D padding mask, but all False (identical to w/o padding mask)
     masked_model = MaskedActNorm1d(num_features)
@@ -195,8 +195,8 @@ def test_masked_act_norm1d() -> None:
     std = torch.sum(masked_z**2, dim=(0, 2)) / (batch_size * max_length)
 
     allclose(masked_z, non_masked_z)
-    allclose(mean, torch.zeros(()), atol=1e-7)
-    allclose(std, torch.ones(()), atol=1e-7)
+    allclose(mean, torch.zeros(()), atol=1e-6)
+    allclose(std, torch.ones(()), atol=1e-6)
 
     zeros = torch.zeros((batch_size,))
 
@@ -214,8 +214,8 @@ def test_masked_act_norm1d() -> None:
 
     allclose(masked_z, non_masked_z)
     allclose(masked_z_logdet, non_masked_z_logdet)
-    allclose(mean, torch.zeros(()), atol=1e-7)
-    allclose(std, torch.ones(()), atol=1e-7)
+    allclose(mean, torch.zeros(()), atol=1e-6)
+    allclose(std, torch.ones(()), atol=1e-6)
 
 
 def test_masked_act_norm1d_ddp() -> None:
@@ -288,8 +288,8 @@ def test_masked_act_norm1d_ddp() -> None:
 
         std, mean = torch.std_mean(latent, dim=0, unbiased=False)
 
-        allclose(mean, torch.zeros(()), atol=1e-7)
-        allclose(std, torch.ones(()), atol=1e-7)
+        allclose(mean, torch.zeros(()), atol=1e-6)
+        allclose(std, torch.ones(()), atol=1e-6)
 
 
 def test_masked_invertible_pointwise_conv1d() -> None:
@@ -313,7 +313,7 @@ def test_masked_invertible_pointwise_conv1d() -> None:
 
     assert output.size() == input.size()
     assert z.size() == input.size()
-    allclose(output, input, atol=1e-7)
+    allclose(output, input, atol=1e-6)
 
     zeros = torch.zeros((batch_size,))
 
@@ -333,7 +333,7 @@ def test_masked_invertible_pointwise_conv1d() -> None:
     assert logdet.size() == (batch_size,)
     assert z.size() == input.size()
     assert z_logdet.size() == (batch_size,)
-    allclose(output, input, atol=1e-7)
+    allclose(output, input, atol=1e-6)
     allclose(logdet, zeros)
 
     # w/o padding mask

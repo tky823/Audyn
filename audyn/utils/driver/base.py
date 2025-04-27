@@ -750,8 +750,8 @@ class BaseTrainer(BaseDriver):
         if train_config.steps.lr_scheduler == "iteration":
             self.lr_scheduler_step(self.lr_scheduler, loss=loss)
 
-        prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}"
-        prompt += f", Iter {self.iteration_idx+1}/{self.iterations}]"
+        prompt = f"[Epoch {self.epoch_idx + 1}/{self.epochs}"
+        prompt += f", Iter {self.iteration_idx + 1}/{self.iterations}]"
         s = ""
 
         for criterion_name in criterion_names:
@@ -1024,7 +1024,7 @@ class BaseTrainer(BaseDriver):
         total_loss = {train_key: 0, validation_key: 0}
         criterion_names = self.criterion_names(self.config.criterion)
 
-        prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}] ({train_key})"
+        prompt = f"[Epoch {self.epoch_idx + 1}/{self.epochs}] ({train_key})"
         s = ""
 
         for criterion_name in criterion_names:
@@ -1036,7 +1036,7 @@ class BaseTrainer(BaseDriver):
         s = f"{prompt} {total_loss[train_key]}, {s[:-2]}"
         self.logger.info(s)
 
-        prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}] ({validation_key})"
+        prompt = f"[Epoch {self.epoch_idx + 1}/{self.epochs}] ({validation_key})"
         s = ""
 
         for criterion_name in criterion_names:

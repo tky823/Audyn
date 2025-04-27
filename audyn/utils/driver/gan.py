@@ -494,8 +494,8 @@ class GANTrainer(BaseTrainer):
         if lr_scheduler_step_config and lr_scheduler_step_config.discriminator == "iteration":
             self.lr_scheduler_step(self.lr_scheduler.discriminator, loss=discriminator_loss)
 
-        prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}"
-        prompt += f", Iter {self.iteration_idx+1}/{self.iterations}]"
+        prompt = f"[Epoch {self.epoch_idx + 1}/{self.epochs}"
+        prompt += f", Iter {self.iteration_idx + 1}/{self.iterations}]"
         s = ""
 
         for criterion_name in discriminator_criterion_names:
@@ -608,8 +608,8 @@ class GANTrainer(BaseTrainer):
         if lr_scheduler_step_config and lr_scheduler_step_config.generator == "iteration":
             self.lr_scheduler_step(self.lr_scheduler.generator, loss=generator_loss)
 
-        prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}"
-        prompt += f", Iter {self.iteration_idx+1}/{self.iterations}]"
+        prompt = f"[Epoch {self.epoch_idx + 1}/{self.epochs}"
+        prompt += f", Iter {self.iteration_idx + 1}/{self.iterations}]"
         s = ""
 
         for criterion_name in generator_criterion_names:
@@ -912,7 +912,7 @@ class GANTrainer(BaseTrainer):
             for model_type in [generator_key, discriminator_key]:
                 total_loss[train_or_validation][model_type] = 0
 
-        prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}] ({train_key})"
+        prompt = f"[Epoch {self.epoch_idx + 1}/{self.epochs}] ({train_key})"
         s = ""
 
         for model_type in [generator_key, discriminator_key]:
@@ -929,7 +929,7 @@ class GANTrainer(BaseTrainer):
         s = f"{prompt} {total_loss[train_key][model_type]}, {s[:-2]}"
         self.logger.info(s)
 
-        prompt = f"[Epoch {self.epoch_idx+1}/{self.epochs}] ({validation_key})"
+        prompt = f"[Epoch {self.epoch_idx + 1}/{self.epochs}] ({validation_key})"
         s = ""
 
         for model_type in [generator_key, discriminator_key]:

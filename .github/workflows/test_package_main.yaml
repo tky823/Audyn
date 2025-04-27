@@ -101,28 +101,25 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
-          pytest -vvv --log-cli-level=DEBUG --cov=audyn/ --cov-report=xml --runslow -p no:faulthandler tests/package/
+          pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml --runslow -p no:faulthandler tests/package/
       - name: Pytest for updating package (Windows)
         if: ${{ inputs.os == 'windows-latest' && ! startsWith(github.head_ref, 'release/') }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
-          pytest -vvv --log-cli-level=DEBUG --cov=audyn/ --cov-report=xml -p no:faulthandler tests/package/
+          pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml -p no:faulthandler tests/package/
       - name: Pytest for releasing package (Ubuntu & MacOS)
         if: ${{ inputs.os != 'windows-latest' && startsWith(github.head_ref, 'release/') }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
-          pytest -vvv --log-cli-level=DEBUG --cov=audyn/ --cov-report=xml \
-          --runslow \
-          tests/package/
+          pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml --runslow tests/package/
       - name: Pytest for updating package (Ubuntu & MacOS)
         if: ${{ inputs.os != 'windows-latest' && ! startsWith(github.head_ref, 'release/') }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
-          pytest -vvv --log-cli-level=DEBUG --cov=audyn/ --cov-report=xml \
-          tests/package/
+          pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml tests/package/
       - name: Upload coverage reports to Codecov
         if: inputs.python-version == '3.9' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.1.0'
         uses: codecov/codecov-action@v3
