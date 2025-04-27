@@ -1,4 +1,6 @@
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
+
+import torch
 
 from ..composer import Composer
 
@@ -39,6 +41,7 @@ class WordNetComposer(Composer):
         self,
         indexer: Callable[[str], int],
         keys: Optional[List[str]] = None,
+        return_type: Union[str, type] = "tensor",
         decode_audio_as_waveform: bool = True,
         decode_audio_as_monoral: bool = True,
     ) -> None:
@@ -52,14 +55,29 @@ class WordNetComposer(Composer):
 
         self.indexer = indexer
         self.keys = keys
+        self.return_type = return_type
 
     def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
         indexer = self.indexer
         keys = self.keys
+        return_type = self.return_type
 
         sample = super().process(sample)
 
         for key in keys:
-            sample[key] = indexer(sample[key])
+            _indices = indexer(sample[key])
+
+            if return_type == "list" or return_type is list:
+                pass
+            elif (
+                return_type == "tensor"
+                or return_type is torch.Tensor
+                or return_type is torch.LongTensor
+            ):
+                _indices = torch.tensor(_indices, dtype=torch.long)
+            else:
+                raise ValueError(f"{return_type} is not supported as return_type.")
+
+            sample[key] = _indices
 
         return sample

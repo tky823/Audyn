@@ -18,6 +18,7 @@ __all__ = [
     "NoamLR",
     "ExponentialWarmupLinearCooldownLRScheduler",
     "ExponentialWarmupLinearCooldownLR",
+    "BurnInLRScheduler",
     "MultiLRSchedulers",
     "MultiLR",
     "GANLRScheduler",
@@ -130,6 +131,30 @@ class ExponentialWarmupLinearCooldownLRScheduler(LambdaLR):
 
 class ExponentialWarmupLinearCooldownLR(ExponentialWarmupLinearCooldownLRScheduler):
     """Alias of ExponentialWarmupLinearCooldownLRScheduler."""
+
+
+class BurnInLRScheduler(LambdaLR):
+    """Learning rate scheduler for negative sampling.
+
+    Args:
+        optimizer (Optimizer): Optimizer to schedule learning rate.
+        burnin_step (int): Burn-in step.
+        burnin_scale (float): Scale in burn-in steps.
+
+    """
+
+    def __init__(
+        self, optimizer: Optimizer, burnin_step: int, burnin_scale: float, **kwargs
+    ) -> None:
+        def lr_lambda(epoch: int) -> float:
+            if epoch < burnin_step:
+                return burnin_scale
+            else:
+                return 1
+
+        super().__init__(optimizer, lr_lambda, **kwargs)
+
+        self.burnin_step = burnin_step
 
 
 class MultiLRSchedulers:

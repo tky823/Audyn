@@ -22,6 +22,7 @@ available_dump_formats = [
     "birdclef2024",
     "musdb18",
     "dnr-v2",
+    "wordnet",
     "custom",
 ]
 

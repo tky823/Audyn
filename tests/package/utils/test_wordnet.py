@@ -1,3 +1,4 @@
+import torch
 from torch.utils.data import DataLoader
 
 from audyn.utils.data import Collator
@@ -11,6 +12,8 @@ from audyn.utils.data.wordnet.indexer import WordNetIndexer
 
 
 def test_wordnet_dataloader() -> None:
+    torch.manual_seed(0)
+
     batch_size = 2
     burnin_step = 5
     initial_step = 0
@@ -43,3 +46,9 @@ def test_wordnet_dataloader() -> None:
     for batch in evaluation_dataloader:
         assert set(batch.keys()) == {"anchor", "positive", "negative"}
         break
+
+    name = indexer.decode(0)
+    names_by_scaler = indexer.decode([0, 1])
+
+    assert name == "aardvark.n.01"
+    assert names_by_scaler == ["aardvark.n.01", "aardwolf.n.01"]

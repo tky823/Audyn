@@ -107,9 +107,6 @@ class RiemannSGD(Optimizer):
 
         super().__init__(params, defaults)
 
-        if expmap is None:
-            raise ValueError("expmap is required.")
-
         self.expmap = expmap
         self.proj = proj
 

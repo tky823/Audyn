@@ -19,14 +19,42 @@ def test_mobius_add(curvature: float) -> None:
 
     curvature0 = torch.tensor([curvature])
     curvature1 = 2 * torch.rand((batch_size - 1,)) - 3
-    curvature = torch.cat([curvature0, curvature1], dim=0)
+    curvature_by_tensor = torch.cat([curvature0, curvature1], dim=0)
 
-    output_by_tensor_curvature = mobius_add(input, other, curvature=curvature)
+    output_by_tensor_curvature = mobius_add(input, other, curvature=curvature_by_tensor)
 
     output_by_scaler_curvature, *_ = torch.unbind(output_by_scaler_curvature, dim=0)
     output_by_tensor_curvature, *_ = torch.unbind(output_by_tensor_curvature, dim=0)
 
     allclose(output_by_scaler_curvature, output_by_tensor_curvature)
+
+    input = torch.rand((batch_size, num_features)) - 0.5
+    other = torch.rand(()).item() - 0.5
+    output_by_scaler = mobius_add(input, other, curvature=curvature)
+
+    other = other * torch.ones((num_features,), dtype=input.dtype)
+    output_by_tensor = mobius_add(input, other, curvature=curvature)
+
+    allclose(output_by_scaler, output_by_tensor)
+
+    other = torch.rand((batch_size, num_features)) - 0.5
+    input = torch.rand(()).item() - 0.5
+    output_by_scaler = mobius_add(input, other, curvature=curvature)
+
+    input = input * torch.ones((num_features,), dtype=other.dtype)
+    output_by_tensor = mobius_add(input, other, curvature=curvature)
+
+    allclose(output_by_scaler, output_by_tensor)
+
+    input = torch.rand(()).item() - 0.5
+    other = torch.rand(()).item() - 0.5
+    output_by_scaler = mobius_add(input, other, curvature=curvature)
+
+    input = torch.tensor([input], dtype=torch.float)
+    other = torch.tensor([other], dtype=torch.float)
+    output_by_tensor = mobius_add(input, other, curvature=curvature)
+
+    allclose(output_by_scaler, output_by_tensor)
 
 
 @pytest.mark.parametrize("curvature", [-1, -2])

@@ -1,0 +1,6 @@
+- name: riemann
+  optimizer:
+    _target_: audyn.optim.RiemannSGD
+    lr: 0.3
+  modules:
+    - embedding

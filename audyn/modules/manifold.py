@@ -9,6 +9,7 @@ from ..functional.hyperbolic import mobius_add, mobius_sub
 __all__ = [
     "ManifoldEmbedding",
     "PoincareEmbedding",
+    "NegativeSamplingPoincareEmbedding",
 ]
 
 
@@ -148,6 +149,38 @@ class PoincareEmbedding(ManifoldEmbedding):
             output = x
 
         return output
+
+
+class NegativeSamplingPoincareEmbedding(PoincareEmbedding):
+
+    def forward(
+        self,
+        anchor: torch.LongTensor,
+        positive: torch.LongTensor,
+        negative: torch.LongTensor,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        anchor = super().forward(anchor)
+        positive = super().forward(positive)
+        negative = super().forward(negative)
+
+        return anchor, positive, negative
+
+    @classmethod
+    def build_from_manifold(
+        cls, manifold: PoincareEmbedding
+    ) -> "NegativeSamplingPoincareEmbedding":
+        assert isinstance(
+            manifold, PoincareEmbedding
+        ), "Only PoincareEmbedding is supported as manifold."
+
+        return cls(
+            manifold.num_embeddings,
+            manifold.embedding_dim,
+            curvature=manifold.curvature,
+            dim=manifold.dim,
+            apply_riemann_gradient=manifold.apply_riemann_gradient,
+            eps=manifold.eps,
+        )
 
 
 class PoincareGradientFunction(torch.autograd.Function):

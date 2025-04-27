@@ -1,3 +1,2 @@
 test:
   _target_: torch.utils.data.Dataset
-  dataset:

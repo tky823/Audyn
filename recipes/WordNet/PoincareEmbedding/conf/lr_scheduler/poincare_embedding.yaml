@@ -1,0 +1,3 @@
+_target_: audyn.optim.lr_scheduler.BurnInLRScheduler
+burnin_step: 20
+burnin_scale: 0.01

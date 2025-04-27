@@ -1,0 +1,7 @@
+defaults:
+  - default
+  - _self_
+
+tag:
+  tags: ${const:audyn.utils.data.wordnet.mammal_tags}
+  num_tags: ${const:audyn.utils.data.wordnet.num_mammal_tags}

@@ -59,6 +59,11 @@ ExponentialWarmupLinearCooldownLR
 
 .. autoclass:: audyn.optim.ExponentialWarmupLinearCooldownLR
 
+BurnInLRScheduler
+^^^^^^^^^^^^^^^^^
+
+.. autoclass:: audyn.optim.BurnInLRScheduler
+
 MultiLRSchedulers
 ^^^^^^^^^^^^^^^^^
 

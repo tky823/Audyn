@@ -1,3 +1,5 @@
+import os
+import warnings
 from typing import Any, Iterator, Optional
 
 import torch
@@ -38,6 +40,8 @@ class TrainingMammalDataset(IterableDataset):
         is_symmetric: bool = False,
         seed: int = 0,
     ) -> None:
+        from . import mammal_tags
+
         super().__init__()
 
         if is_symmetric:
@@ -63,6 +67,8 @@ class TrainingMammalDataset(IterableDataset):
 
                 if child_name not in weights:
                     weights[child_name] = 0
+
+        assert tags == mammal_tags
 
         if length is None:
             length = len(pair_list)
@@ -200,6 +206,38 @@ class TrainingMammalDataset(IterableDataset):
     def set_burnin(self, burnin: bool) -> None:
         self.burnin = burnin
 
+    @classmethod
+    def build_from_list_path(
+        cls,
+        list_path: str,
+        feature_dir: str,
+        num_neg_samples: int = 1,
+        length: Optional[int] = None,
+        burnin_dampening: float = 1,
+        is_symmetric: bool = False,
+        seed: int = 0,
+    ) -> "TrainingMammalDataset":
+        dataset = cls(
+            num_neg_samples=num_neg_samples,
+            length=length,
+            burnin_dampening=burnin_dampening,
+            is_symmetric=is_symmetric,
+            seed=seed,
+        )
+
+        num_samples = 0
+
+        with open(list_path) as f:
+            for _ in f:
+                num_samples += 1
+
+        assert len(dataset.taxonomy) == num_samples
+
+        if os.path.exists(feature_dir) and len(os.listdir(feature_dir)) > 0:
+            warnings.warn(f"{feature_dir} exists, but is not used.", UserWarning, stacklevel=2)
+
+        return dataset
+
     @staticmethod
     def sample(
         candidates: list[str],
@@ -274,6 +312,8 @@ class EvaluationMammalDataset(Dataset):
         self,
         is_symmetric: bool = False,
     ) -> None:
+        from . import mammal_tags
+
         super().__init__()
 
         taxonomy = _download_mammal_taxonomy()
@@ -282,6 +322,8 @@ class EvaluationMammalDataset(Dataset):
         for sample in taxonomy:
             name = sample["name"]
             tags.append(name)
+
+        assert tags == mammal_tags
 
         self.tags = tags
         self.taxonomy = taxonomy
@@ -315,6 +357,30 @@ class EvaluationMammalDataset(Dataset):
         }
 
         return sample
+
+    @classmethod
+    def build_from_list_path(
+        cls,
+        list_path: str,
+        feature_dir: str,
+        is_symmetric: bool = False,
+    ) -> "EvaluationMammalDataset":
+        dataset = cls(
+            is_symmetric=is_symmetric,
+        )
+
+        num_samples = 0
+
+        with open(list_path) as f:
+            for _ in f:
+                num_samples += 1
+
+        assert len(dataset.taxonomy) == num_samples
+
+        if os.path.exists(feature_dir) and len(os.listdir(feature_dir)) > 0:
+            warnings.warn(f"{feature_dir} exists, but is not used.", UserWarning, stacklevel=2)
+
+        return dataset
 
     def __len__(self) -> int:
         return len(self.taxonomy)

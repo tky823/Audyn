@@ -4,8 +4,14 @@ import torch.nn as nn
 from torch.optim import SGD, Adam
 from torch.optim.lr_scheduler import LinearLR, StepLR
 
-from audyn.optim.lr_scheduler import ExponentialWarmupLinearCooldownLRScheduler as PaSSTLRScheduler
-from audyn.optim.lr_scheduler import MultiLRSchedulers, TransformerLRScheduler
+from audyn.optim.lr_scheduler import (
+    BurnInLRScheduler,
+    MultiLRSchedulers,
+    TransformerLRScheduler,
+)
+from audyn.optim.lr_scheduler import (
+    ExponentialWarmupLinearCooldownLRScheduler as PaSSTLRScheduler,
+)
 from audyn.optim.optimizer import MultiOptimizers
 
 
@@ -47,6 +53,54 @@ def test_transformer_lr_scheduler() -> None:
     loss.backward()
     optimizer.step()
     lr_scheduler.step()
+
+
+def test_burnin_lr_scheduler() -> None:
+    torch.manual_seed(0)
+
+    class Model(nn.Module):
+        def __init__(self, in_channels: int, out_channels: int) -> None:
+            super().__init__()
+
+            self.linear = nn.Linear(in_channels, out_channels)
+
+        def forward(self, input: torch.Tensor) -> torch.Tensor:
+            return self.linear(input)
+
+    class Criterion(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+
+        def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+            return torch.mean(input - target)
+
+    batch_size = 4
+    in_channels, out_channels = 3, 1
+    lr = 0.1
+    burnin_step, burnin_scale = 3, 0.01
+
+    model = Model(in_channels, out_channels)
+    optimizer = SGD(model.parameters(), lr=lr)
+    lr_scheduler = BurnInLRScheduler(optimizer, burnin_step=burnin_step, burnin_scale=burnin_scale)
+    criterion = Criterion()
+
+    for iteration_idx in range(5):
+        input = torch.randn((batch_size, in_channels))
+        target = torch.randn((batch_size, out_channels))
+
+        output = model(input)
+        loss = criterion(output, target)
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        lr_scheduler.step()
+
+        for param_group in optimizer.param_groups:
+            if iteration_idx + 1 < burnin_step:
+                assert param_group["lr"] == lr * burnin_scale
+            else:
+                assert param_group["lr"] == lr, iteration_idx
 
 
 @pytest.mark.parametrize(

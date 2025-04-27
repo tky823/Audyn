@@ -121,7 +121,7 @@ jobs:
         run: |
           pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml tests/package/
       - name: Upload coverage reports to Codecov
-        if: inputs.python-version == '3.9' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.1.0'
+        if: inputs.python-version == '3.12' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.3.0'
         uses: codecov/codecov-action@v3
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

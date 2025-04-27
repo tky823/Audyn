@@ -35,6 +35,8 @@ def mobius_add(
                 "dtype": other.dtype,
                 "device": other.device,
             }
+        else:
+            factory_kwargs = {}
 
         input = torch.tensor(input, **factory_kwargs)
 
@@ -44,10 +46,17 @@ def mobius_add(
                 "dtype": input.dtype,
                 "device": input.device,
             }
+        else:
+            factory_kwargs = {}
 
         other = torch.tensor(other, **factory_kwargs)
 
     target_shape = torch.broadcast_shapes(input.size(), other.size())
+
+    if target_shape == ():
+        # corner case
+        target_shape = (1,)
+
     input = input.expand(target_shape).contiguous()
     other = other.expand(target_shape).contiguous()
 

@@ -53,6 +53,7 @@ __all__ = [
     "convert_dataset_and_dataloader_format_if_necessary",
     "set_nodes_if_necessary",
     "set_compiler_if_necessary",
+    "add_dump_formats",
     "instantiate",
     "instantiate_model",
     "instantiate_gan_generator",
@@ -95,6 +96,7 @@ def setup_system(config: DictConfig) -> None:
     """
     warnings.warn(
         "audyn.utils.setup_system is deprecated. Use audyn.utils.setup_config instead.",
+        UserWarning,
         stacklevel=2,
     )
     setup_config(config)
@@ -708,6 +710,31 @@ def set_compiler_if_necessary(config: DictConfig) -> None:
                     "compile.enable",
                     False,
                 )
+
+
+def add_dump_formats(dump_format: str) -> list[str]:
+    """Add dump formats to available_dump_formats.
+
+    Args:
+        dump_format (str): Dump format to add.
+
+    Returns:
+        list: List of available dump formats.
+
+    Examples:
+
+        >>> from audyn.utils import available_dump_formats, add_dump_formats
+        >>> available_dump_formats
+        ['torch', 'webdataset', 'birdclef2024', 'musdb18', 'dnr-v2', 'custom']
+        >>> add_dump_formats("new-format")
+        ['torch', 'webdataset', 'birdclef2024', 'musdb18', 'dnr-v2', 'custom', 'new-format']
+        >>> available_dump_formats
+        ['torch', 'webdataset', 'birdclef2024', 'musdb18', 'dnr-v2', 'custom', 'new-format']
+
+    """
+    available_dump_formats.append(dump_format)
+
+    return available_dump_formats
 
 
 def _search_webdataset_format_dataset(config: DictConfig) -> Tuple[str, Dict[str, Any]]:
