@@ -32,6 +32,8 @@ Functions
 
 .. autofunction:: audyn.utils.set_seed
 
+.. autofunction:: audyn.utils.add_dump_formats
+
 .. autofunction:: audyn.utils.convert_dataset_and_dataloader_to_ddp_if_possible
 
 .. autofunction:: audyn.utils.convert_dataset_and_dataloader_format_if_necessary
