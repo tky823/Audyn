@@ -134,6 +134,15 @@ class ExponentialWarmupLinearCooldownLR(ExponentialWarmupLinearCooldownLRSchedul
 
 
 class BurnInLRScheduler(LambdaLR):
+    """Learning rate scheduler for negative sampling.
+
+    Args:
+        optimizer (Optimizer): Optimizer to schedule learning rate.
+        burnin_step (int): Burn-in step.
+        burnin_scale (float): Scale in burn-in steps.
+
+    """
+
     def __init__(
         self, optimizer: Optimizer, burnin_step: int, burnin_scale: float, **kwargs
     ) -> None:

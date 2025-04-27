@@ -1,5 +1,6 @@
 from .lr_scheduler import (
     GANLR,
+    BurnInLRScheduler,
     ExponentialWarmupLinearCooldownLR,
     ExponentialWarmupLinearCooldownLRScheduler,
     GANLRScheduler,
@@ -30,6 +31,7 @@ __all__ = [
     "NoamLR",
     "ExponentialWarmupLinearCooldownLRScheduler",
     "ExponentialWarmupLinearCooldownLR",
+    "BurnInLRScheduler",
     "MultiLRSchedulers",
     "MultiLR",
     "GANLRScheduler",
