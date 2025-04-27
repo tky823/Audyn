@@ -61,7 +61,16 @@ class DistanceBasedNegativeSamplingLoss(nn.Module):
             anchor.unsqueeze(dim=-2), negative, **negative_distance_kwargs
         )
 
-        loss = positive_distance + torch.logsumexp(-negative_distance, dim=-1)
+        if positive_distance.size(-1) == 0:
+            # corner case: root in DAG
+            positive_distance = 0
+
+        if negative_distance.size(-1) == 0:
+            negative_distance = 0
+        else:
+            negative_distance = torch.logsumexp(-negative_distance, dim=-1)
+
+        loss = positive_distance + negative_distance
 
         if reduction == "mean":
             loss = loss.mean()
