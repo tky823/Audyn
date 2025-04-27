@@ -1,4 +1,4 @@
-name: macos-latest/3.11/2.5
+name: macos-latest/3.11/2.6
 on:
   push:
     branches:
