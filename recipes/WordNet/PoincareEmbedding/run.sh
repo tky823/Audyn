@@ -19,7 +19,7 @@ dump_format="wordnet"
 
 system="default"
 preprocess="default"
-data="wordnet-mammal"
+data="wordnet-mammal_1"
 train="poincare_embedding"
 model="poincare_embedding"
 optimizer="poincare_embedding"

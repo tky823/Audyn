@@ -13,7 +13,7 @@ log_dir="./log"
 dump_format="torch"
 
 preprocess="default"
-data="wordnet-mammal"
+data="wordnet-mammal_1"
 
 . ../../_common/parse_options.sh || exit 1;
 
