@@ -1000,6 +1000,8 @@ def test_base_driver_for_riemann_sgd(monkeypatch: MonkeyPatch) -> None:
         trainer.run()
         trainer.writer.flush()
 
+        monkeypatch.undo()
+
 
 @pytest.mark.parametrize("use_ema", [True, False])
 def test_base_driver_build_from_config(monkeypatch: MonkeyPatch, use_ema: bool) -> None:

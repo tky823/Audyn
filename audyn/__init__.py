@@ -9,9 +9,12 @@ from webdataset.gopen import gopen_file, gopen_schemes
 
 from .utils._hydra import main
 
-__all__ = ["__version__", "main"]
+__all__ = [
+    "__version__",
+    "main",
+]
 
-__version__ = "0.1.1.dev0"
+__version__ = "0.2.0"
 
 IS_WINDOWS = sys.platform == "win32"
 
