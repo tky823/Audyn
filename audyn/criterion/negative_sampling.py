@@ -56,14 +56,28 @@ class DistanceBasedNegativeSamplingLoss(nn.Module):
         positive_distance_kwargs = self.positive_distance_kwargs
         negative_distance_kwargs = self.negative_distance_kwargs
 
-        positive_distance = self.distance(anchor, positive, **positive_distance_kwargs)
+        print(self.training)
+
+        if self.training:
+            positive_distance = self.distance(anchor, positive, **positive_distance_kwargs)
+
+            if positive_distance.size(-1) == 0:
+                # corner case: root in DAG
+                positive_distance = 0
+        else:
+            positive_distance = self.distance(
+                anchor.unsqueeze(dim=-2), positive, **positive_distance_kwargs
+            )
+
+            if positive_distance.size(-1) == 0:
+                # corner case: root in DAG
+                positive_distance = 0
+            else:
+                positive_distance = torch.logsumexp(positive_distance, dim=-1)
+
         negative_distance = self.distance(
             anchor.unsqueeze(dim=-2), negative, **negative_distance_kwargs
         )
-
-        if positive_distance.size(-1) == 0:
-            # corner case: root in DAG
-            positive_distance = 0
 
         if negative_distance.size(-1) == 0:
             negative_distance = 0
