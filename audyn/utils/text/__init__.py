@@ -160,7 +160,7 @@ class TextPreprocessor(nn.Module):
         else:
             indices = self.indexer(phonemes)
 
-        if return_type == int or return_type == "int":
+        if return_type is int or return_type == "int":
             pass
         elif return_type == "tensor" or return_type in [torch.Tensor, torch.LongTensor]:
             indices = self.to_tensor(indices)
