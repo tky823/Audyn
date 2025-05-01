@@ -18,9 +18,7 @@ requires-python = ">=3.9, <4"
 dependencies = [
     "omegaconf",
     "hydra-core",
-    # https://github.com/tky823/Audyn/pull/199#issuecomment-2267236196
-    "matplotlib < 3.9.1; sys_platform == 'win32'",
-    "matplotlib; sys_platform != 'win32'",
+    "matplotlib",
     "torch",
     "torchaudio",
     "torchvision",
