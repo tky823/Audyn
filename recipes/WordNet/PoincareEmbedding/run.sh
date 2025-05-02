@@ -37,7 +37,6 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
         --stop-stage 1 \
         --data-root "${data_root}" \
         --dump-root "${dump_root}" \
-        --dump-format "${dump_format}" \
         --preprocess "${preprocess}" \
         --data "${data}"
     )
