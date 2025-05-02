@@ -4,11 +4,14 @@ import shutil
 import uuid
 from typing import Any, Optional
 
+from ..._download import DEFAULT_CHUNK_SIZE
 from ..._github import download_file_from_github_release
 
 
 def download_mammal_name_to_index(
-    root: Optional[str] = None, force_download: bool = False, chunk_size: int = 8192
+    root: Optional[str] = None,
+    force_download: bool = False,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
 ) -> dict[str, int]:
     taxonomy = _download_mammal_taxonomy(
         root=root, force_download=force_download, chunk_size=chunk_size
@@ -24,13 +27,16 @@ def download_mammal_name_to_index(
 
 
 def download_mammal_taxonomy(
-    root: Optional[str] = None, force_download: bool = False, chunk_size: int = 8192
+    root: Optional[str] = None,
+    force_download: bool = False,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
 ) -> dict[str, dict[str, Any]]:
     mammal_taxonomy = {}
 
     _mammal_taxonomy = _download_mammal_taxonomy(
         root=root, force_download=force_download, chunk_size=chunk_size
     )
+
     for tag in _mammal_taxonomy:
         name = tag["name"]
         mammal_taxonomy[name] = {
@@ -42,7 +48,9 @@ def download_mammal_taxonomy(
 
 
 def download_mammal_tags(
-    root: Optional[str] = None, force_download: bool = False, chunk_size: int = 8192
+    root: Optional[str] = None,
+    force_download: bool = False,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
 ) -> list[str]:
     taxonomy = _download_mammal_taxonomy(
         root=root, force_download=force_download, chunk_size=chunk_size
@@ -58,7 +66,9 @@ def download_mammal_tags(
 
 
 def _download_mammal_taxonomy(
-    root: Optional[str] = None, force_download: bool = False, chunk_size: int = 8192
+    root: Optional[str] = None,
+    force_download: bool = False,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
 ) -> list[dict[str, Any]]:
     from ... import audyn_cache_dir
 
