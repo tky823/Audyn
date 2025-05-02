@@ -13,9 +13,16 @@ log_dir="./log"
 dump_format="torch"
 
 preprocess="default"
-data="wordnet-mammal_1"
+data="audioset_1"
 
 . ../../_common/parse_options.sh || exit 1;
+
+set +u
+
+# path to local scripts
+export PYTHONPATH="./:${PYTHONPATH}"
+
+set -u
 
 dump_dir="${dump_root}/${data}"
 list_dir="${dump_dir}/list"
