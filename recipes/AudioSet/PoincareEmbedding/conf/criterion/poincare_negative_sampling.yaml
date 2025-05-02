@@ -1,0 +1,18 @@
+_target_: audyn.criterion.MultiCriteria
+negative_sampling:
+  _target_: audyn.criterion.BaseCriterionWrapper
+  criterion:
+    _target_: audyn.criterion.negative_sampling.DistanceBasedNegativeSamplingLoss
+    distance:
+      _target_: audyn.criterion.poincare.PoincareDistanceLoss
+      curvature: ${data.poincare.curvature}
+      dim: ${data.poincare.dim}
+      reduction: none
+    reduction: mean
+  weight: 1
+  key_mapping:
+    estimated:
+      anchor: anchor_embedding
+      positive: positive_embedding
+      negative: negative_embedding
+    target:

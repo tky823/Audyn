@@ -1,0 +1,2 @@
+_target_: audyn.optim.RiemannSGD
+lr: 0.3
