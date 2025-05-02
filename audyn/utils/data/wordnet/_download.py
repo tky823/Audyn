@@ -4,8 +4,8 @@ import shutil
 import uuid
 from typing import Any, Optional
 
-from ..._download import DEFAULT_CHUNK_SIZE
 from ..._github import download_file_from_github_release
+from ..download import DEFAULT_CHUNK_SIZE
 
 
 def download_mammal_name_to_index(

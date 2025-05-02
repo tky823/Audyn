@@ -3,8 +3,8 @@ import os
 from typing import Dict, List, Optional
 
 from ... import audyn_cache_dir
-from ..._download import DEFAULT_CHUNK_SIZE
 from ..._github import download_file_from_github_release
+from ..download import DEFAULT_CHUNK_SIZE
 
 
 def download_tag_to_index(
