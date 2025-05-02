@@ -3,6 +3,7 @@ train:
   list_path:
   feature_dir:
   num_neg_samples: 50
+  length: 5000
   burnin_dampening: 0.75
   is_symmetric: false
 
