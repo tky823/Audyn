@@ -10,8 +10,6 @@ data_root="../data"
 dump_root="./dump"
 log_dir="./log"
 
-dump_format="torch"
-
 preprocess="default"
 data="audioset_1"
 
