@@ -87,7 +87,8 @@ class AudioSetIndexer:
         """Build AudioSetIndexer from default config.
 
         Args:
-            type (str): Type of dataset. Only ``"default"`` is supported.
+            type (str): Type of dataset. Only ``"default-tag"`` and ``"default-name"``
+                are supported.
 
         Examples:
 
@@ -102,6 +103,7 @@ class AudioSetIndexer:
             0
             >>> indexer(["Speech", "Field recording"])
             [0, 526]
+
         """
         from . import name_to_index as default_name_to_index
         from . import tag_to_index as default_tag_to_index
