@@ -7,6 +7,7 @@ import uuid
 
 from omegaconf import DictConfig
 
+from ..utils._download import DEFAULT_CHUNK_SIZE
 from ..utils._hydra import main as audyn_main
 from ..utils.data.download import download_file
 
@@ -47,7 +48,7 @@ def download_ljspeech(config: DictConfig) -> None:
         unpack = True
 
     if chunk_size is None:
-        chunk_size = 8192
+        chunk_size = DEFAULT_CHUNK_SIZE
 
     if root:
         os.makedirs(root, exist_ok=True)
@@ -65,7 +66,7 @@ def download_ljspeech(config: DictConfig) -> None:
         _unpack_targz(tar_path, ljspeech_root=ljspeech_root)
 
 
-def _download_ljspeech(url: str, path: str, chunk_size: int = 8192) -> None:
+def _download_ljspeech(url: str, path: str, chunk_size: int = DEFAULT_CHUNK_SIZE) -> None:
     temp_path = path + str(uuid.uuid4())[:8]
 
     try:
