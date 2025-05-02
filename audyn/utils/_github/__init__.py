@@ -4,8 +4,7 @@ from typing import Tuple
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
-from .._download import DEFAULT_CHUNK_SIZE
-from ..data.download import download_by_response
+from ..data.download import DEFAULT_CHUNK_SIZE, download_by_response
 
 try:
     from tqdm import tqdm

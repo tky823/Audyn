@@ -5,8 +5,8 @@ import uuid
 from typing import Optional
 
 from audyn.utils import audyn_cache_dir
-from audyn.utils._download import DEFAULT_CHUNK_SIZE
 from audyn.utils._github import download_file_from_github_release
+from audyn.utils.data.download import DEFAULT_CHUNK_SIZE
 
 
 def download_audioset_taxonomy(

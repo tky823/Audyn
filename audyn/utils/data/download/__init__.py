@@ -9,12 +9,14 @@ try:
 except ImportError:
     IS_TQDM_AVAILABLE = False
 
+DEFAULT_CHUNK_SIZE = 8192
+
 
 def download_file(
     url: str,
     path: str,
     force_download: bool = False,
-    chunk_size: int = 1024,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
 ) -> None:
     """Download file from url.
 
@@ -53,7 +55,12 @@ def download_file(
         raise e
 
 
-def download_by_response(response, f: BufferedWriter, chunk_size: int = 1024, pbar=None) -> None:
+def download_by_response(
+    response,
+    f: BufferedWriter,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
+    pbar=None,
+) -> None:
     while True:
         chunk = response.read(chunk_size)
 

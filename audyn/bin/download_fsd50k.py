@@ -10,9 +10,8 @@ from typing import Optional
 
 from omegaconf import DictConfig
 
-from ..utils._download import DEFAULT_CHUNK_SIZE
 from ..utils._hydra import main as audyn_main
-from ..utils.data.download import download_file
+from ..utils.data.download import DEFAULT_CHUNK_SIZE, download_file
 
 IS_WINDOWS = sys.platform == "win32"
 
