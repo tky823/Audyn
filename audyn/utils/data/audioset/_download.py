@@ -130,3 +130,39 @@ def download_tags(
         tags = json.load(f)
 
     return tags
+
+
+def download_names(
+    root: Optional[str] = None,
+    force_download: bool = False,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
+) -> List[Dict[str, str]]:
+    """Download names of AudioSet.
+
+    Args:
+        root (str, optional): Root directory to download tags.
+        force_download (str): If ``True``, existing file is overwritten by new one.
+        chunk_size (int): Chunk size to download file.
+
+    Returns:
+        list: 527 names of AudioSet.
+
+    Examples:
+
+        >>> from audyn.utils.data.audioset import names
+        >>> len(names)
+        527
+        >>> names[0]
+        'Speech'
+        >>> names[-1]
+        'Field recording'
+
+    """
+    tags = download_tags(root=root, force_download=force_download, chunk_size=chunk_size)
+    names = []
+
+    for tag in tags:
+        _tag = tag["name"]
+        names.append(_tag)
+
+    return names
