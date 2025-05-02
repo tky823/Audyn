@@ -1,0 +1,5 @@
+__all__ = [
+    "DEFAULT_CHUNK_SIZE",
+]
+
+DEFAULT_CHUNK_SIZE = 8192
