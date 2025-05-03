@@ -35,7 +35,7 @@ class TrainingAudioSetDataset(IterableDataset):
     def __init__(
         self,
         num_neg_samples: int = 1,
-        length: int | None = None,
+        length: Optional[int] = None,
         burnin_dampening: float = 1,
         is_symmetric: bool = False,
         seed: int = 0,
