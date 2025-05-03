@@ -7,8 +7,6 @@ import torchaudio.functional as aF
 import torchaudio.transforms as aT
 
 from ..composer import Composer
-from . import num_tags as num_audioset_tags
-from . import tags as audioset_tags
 
 __all__ = [
     "AudioSetMultiLabelComposer",
@@ -41,6 +39,8 @@ class AudioSetMultiLabelComposer(Composer):
         decode_audio_as_waveform: bool = True,
         decode_audio_as_monoral: bool = True,
     ) -> None:
+        from . import tags as audioset_tags
+
         super().__init__(
             decode_audio_as_waveform=decode_audio_as_waveform,
             decode_audio_as_monoral=decode_audio_as_monoral,
@@ -58,6 +58,8 @@ class AudioSetMultiLabelComposer(Composer):
         self.tag_to_index = tag_to_index
 
     def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        from . import num_tags as num_audioset_tags
+
         tags_key = self.tags_key
         multilabel_key = self.multilabel_key
 
