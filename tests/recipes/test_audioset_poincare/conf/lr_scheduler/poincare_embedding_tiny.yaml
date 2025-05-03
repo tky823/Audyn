@@ -1,0 +1,5 @@
+defaults:
+  - poincare_embedding
+  - _self_
+
+burnin_step: 3
