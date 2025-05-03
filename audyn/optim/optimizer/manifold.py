@@ -24,23 +24,25 @@ class RiemannSGD(Optimizer):
     Examples:
 
         >>> import torch
-        >>> from audyn.modules import PoincareEmbedding
         >>> from audyn.functional.poincare import poincare_distance
         >>> from audyn.criterion.negative_sampling import DistanceBasedNegativeSamplingLoss
+        >>> from audyn.criterion.poincare import PoincareDistanceLoss
         >>> from audyn.optim import RiemannSGD
         >>> num_embedings = 10
         >>> embedding_dim = 2
         >>> num_neg_samples = 5
+        >>> # PoincareEmbedding
+        >>> from audyn.modules import PoincareEmbedding
         >>> manifold = PoincareEmbedding(num_embedings, embedding_dim)
         >>> criterion = DistanceBasedNegativeSamplingLoss(
         ...     poincare_distance,
         ...     positive_distance_kwargs={
         ...         "curvature": manifold.curvature,
-        ...         "dim": -1,
+        ...         "dim": manifold.dim,
         ...     },
         ...     negative_distance_kwargs={
         ...         "curvature": manifold.curvature,
-        ...         "dim": -1,
+        ...         "dim": manifold.dim,
         ...     },
         ... )
         >>> optimizer = RiemannSGD(
@@ -54,6 +56,31 @@ class RiemannSGD(Optimizer):
         >>> anchor = manifold(anchor)
         >>> positive = manifold(positive)
         >>> negative = manifold(negative)
+        >>> loss = criterion(anchor, positive, negative)
+        >>> optimizer.zero_grad()
+        >>> loss.backward()
+        >>> optimizer.step()
+        >>> # NegativeSamplingModel
+        >>> from audyn.modules.negative_sampling import NegativeSamplingModel
+        >>> manifold = NegativeSamplingModel(
+        ...     PoincareEmbedding(num_embedings, embedding_dim)
+        ... )
+        >>> criterion = DistanceBasedNegativeSamplingLoss(
+        ...     PoincareDistanceLoss(
+        ...         curvature=manifold.embedding.curvature,
+        ...         dim=manifold.embedding.dim,
+        ...         reduction="none",
+        ...     ),
+        ... )
+        >>> optimizer = RiemannSGD(
+        ...     manifold.parameters(),
+        ...     expmap=manifold.embedding.expmap,
+        ...     proj=manifold.embedding.proj,
+        ... )
+        >>> anchor = torch.randint(0, num_embedings, (), dtype=torch.long)
+        >>> positive = torch.randint(0, num_embedings, (), dtype=torch.long)
+        >>> negative = torch.randint(0, num_embedings, (num_neg_samples,), dtype=torch.long)
+        >>> anchor, positive, negative = manifold(anchor, positive, negative)
         >>> loss = criterion(anchor, positive, negative)
         >>> optimizer.zero_grad()
         >>> loss.backward()

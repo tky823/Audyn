@@ -1,0 +1,24 @@
+defaults:
+  - default
+  - _self_
+
+train:
+  _target_: audyn.utils.data.wordnet.WordNetDataLoader
+  batch_size: 10
+  burnin_step: 20
+  shuffle: false
+  collate_fn:
+    _target_: audyn.utils.data.Collator
+    composer:
+      _target_: audyn.utils.data.wordnet.WordNetComposer
+      indexer:
+        _target_: utils.AudioSetIndexer.build_from_default_config
+        type: default
+      keys:
+        - anchor
+        - positive
+        - negative
+
+validation:
+  batch_size: 1
+  collate_fn: ${..train.collate_fn}

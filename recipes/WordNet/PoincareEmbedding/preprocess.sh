@@ -10,8 +10,6 @@ data_root="../data"
 dump_root="./dump"
 log_dir="./log"
 
-dump_format="torch"
-
 preprocess="default"
 data="wordnet-mammal_1"
 
@@ -34,5 +32,4 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         data="${data}" \
         preprocess.list_path="${list_dir}/${subset}.txt"
     done
-
 fi

@@ -1,0 +1,12 @@
+defaults:
+  - default
+  - _self_
+
+tag:
+  tags: ${const:utils.tags}
+  num_tags: ${const:utils.num_tags}
+
+poincare:
+  curvature: -1
+  embedding_dim: 2
+  dim: -1

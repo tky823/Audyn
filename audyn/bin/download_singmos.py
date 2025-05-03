@@ -7,7 +7,7 @@ from urllib.request import Request, urlopen
 from omegaconf import DictConfig
 
 from ..utils._hydra import main as audyn_main
-from ..utils.data.download import download_by_response
+from ..utils.data.download import DEFAULT_CHUNK_SIZE, download_by_response
 
 try:
     from tqdm import tqdm
@@ -45,7 +45,7 @@ def download_singmos(config: DictConfig) -> None:
         raise ValueError("Set singmos_root.")
 
     if chunk_size is None:
-        chunk_size = 8192
+        chunk_size = DEFAULT_CHUNK_SIZE
 
     if singmos_root:
         os.makedirs(singmos_root, exist_ok=True)
@@ -93,7 +93,7 @@ def download_singmos(config: DictConfig) -> None:
             _download_singmos(_url, wav_path, chunk_size=chunk_size)
 
 
-def _download_singmos(url: str, path: str, chunk_size: int = 8192) -> None:
+def _download_singmos(url: str, path: str, chunk_size: int = DEFAULT_CHUNK_SIZE) -> None:
     temp_path = path + str(uuid.uuid4())[:8]
 
     request = Request(url)

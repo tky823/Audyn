@@ -1,0 +1,12 @@
+defaults:
+  - audioset_poincare_embedding
+  - _self_
+
+dataset:
+  train:
+    length: 100
+
+steps:
+  epochs: 5
+  iterations:
+  lr_scheduler: epoch

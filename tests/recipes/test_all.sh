@@ -17,3 +17,10 @@ set -o pipefail
     echo "end: test_decode_musdb18"
     cd -
 )
+(
+    cd test_audioset_poincare/
+    echo "start: test_audioset_poincare"
+    . ./run.sh
+    echo "end: test_audioset_poincare"
+    cd -
+)

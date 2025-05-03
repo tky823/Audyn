@@ -4,7 +4,7 @@ from typing import Tuple
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
-from ..data.download import download_by_response
+from ..data.download import DEFAULT_CHUNK_SIZE, download_by_response
 
 try:
     from tqdm import tqdm
@@ -20,7 +20,7 @@ def download_file_from_github_release(
     url: str,
     path: str,
     force_download: bool = False,
-    chunk_size: int = 8192,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
 ) -> None:
     """Download file from github release.
 

@@ -16,7 +16,6 @@ def test_wordnet_dataloader() -> None:
 
     batch_size = 2
     burnin_step = 5
-    initial_step = 0
 
     indexer = WordNetIndexer.build_from_default_config("mammal")
     composer = WordNetComposer(indexer, keys=["anchor", "positive", "negative"])
@@ -28,7 +27,6 @@ def test_wordnet_dataloader() -> None:
         batch_size=batch_size,
         collate_fn=collator,
         burnin_step=burnin_step,
-        initial_step=initial_step,
     )
     evaluation_dataloader = DataLoader(
         evaluation_dataset,

@@ -7,7 +7,7 @@ tensorboard_root="./tensorboard"
 tag=""
 continue_from=""
 
-dump_format="torch"
+dump_format="wordnet"
 
 system="default"
 preprocess="default"

@@ -8,7 +8,7 @@ from urllib.request import Request, urlopen
 from omegaconf import DictConfig
 
 from ..utils._hydra import main as audyn_main
-from ..utils.data.download import download_by_response
+from ..utils.data.download import DEFAULT_CHUNK_SIZE, download_by_response
 
 try:
     from tqdm import tqdm
@@ -65,7 +65,7 @@ def download_mtg_jamendo(config: DictConfig) -> None:
         unpack = True
 
     if chunk_size is None:
-        chunk_size = 8192
+        chunk_size = DEFAULT_CHUNK_SIZE
 
     if root:
         os.makedirs(root, exist_ok=True)
@@ -95,7 +95,7 @@ def download_mtg_jamendo(config: DictConfig) -> None:
             _unpack_tar(path, mtg_jamendo_root=mtg_jamendo_root)
 
 
-def _download_mtg_jamendo(url: str, path: str, chunk_size: int = 8192) -> None:
+def _download_mtg_jamendo(url: str, path: str, chunk_size: int = DEFAULT_CHUNK_SIZE) -> None:
     # ported from https://github.com/MTG/mtg-jamendo-dataset/blob/1b4fa8c32e076c73b5175c1703ae805b4109309d/scripts/download/download.py  # noqa: E501
     temp_path = path + str(uuid.uuid4())[:8]
     filename = os.path.basename(url)

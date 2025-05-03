@@ -14,6 +14,7 @@ from dummy.utils.ddp import set_ddp_environment
 from torch.utils.data import DataLoader
 
 from audyn.transforms.ast import AudioSpectrogramTransformerMelSpectrogram
+from audyn.utils.data.audioset import AudioSetIndexer
 from audyn.utils.data.audioset.composer import (
     ASTAudioSetMultiLabelComposer,
     AudioSetMultiLabelComposer,
@@ -269,6 +270,55 @@ def test_distributed_weighted_audioset_webdataset_sampler(
                 assert filenames_0 != filenames_rank
 
             assert samples_per_epoch == expected_samples_per_epoch
+
+
+@pytest.mark.parametrize("build_from_config", [True, False])
+def test_audioset_indexer(build_from_config: bool) -> None:
+    from audyn.utils.data.audioset import name_to_index, num_tags, tag_to_index
+
+    # tag
+    if build_from_config:
+        indexer = AudioSetIndexer.build_from_default_config("default-tag")
+    else:
+        indexer = AudioSetIndexer(tag_to_index)
+
+    assert len(indexer) == num_tags
+
+    tag = "/m/09x0r"
+    index = indexer(tag)
+    decoded_tag = indexer.decode(index)
+
+    assert index == 0
+    assert decoded_tag == tag
+
+    tags = ["/m/09x0r", "/m/07hvw1"]
+    indices = indexer(tags)
+    decoded_tags = indexer.decode(indices)
+
+    assert indices == [0, 526]
+    assert decoded_tags == tags
+
+    # name
+    if build_from_config:
+        indexer = AudioSetIndexer.build_from_default_config("default-name")
+    else:
+        indexer = AudioSetIndexer(name_to_index)
+
+    assert len(indexer) == num_tags
+
+    name = "Speech"
+    index = indexer(name)
+    decoded_name = indexer.decode(index)
+
+    assert index == 0
+    assert decoded_name == name
+
+    names = ["Speech", "Field recording"]
+    indices = indexer(names)
+    decoded_names = indexer.decode(indices)
+
+    assert indices == [0, 526]
+    assert decoded_names == names
 
 
 @pytest.fixture

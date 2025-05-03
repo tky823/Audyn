@@ -7,8 +7,6 @@ from typing import Dict, List, Optional
 
 from torch.utils.data import WeightedRandomSampler
 
-from . import tags as audioset_tags
-
 __all__ = [
     "AudioSetWebDatasetWeightedRandomSampler",
 ]
@@ -72,6 +70,8 @@ class AudioSetWebDatasetWeightedRandomSampler(WeightedRandomSampler):
 
 
 def _get_sampling_weights(feature_dir: str, smooth: float) -> Dict[str, float]:
+    from . import tags as audioset_tags
+
     tags_per_sample = {}
     frequency_per_tag = {}
     weight_per_sample = {}

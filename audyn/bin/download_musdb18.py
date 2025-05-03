@@ -8,7 +8,7 @@ from urllib.request import Request, urlopen
 from omegaconf import DictConfig
 
 from ..utils._hydra import main as audyn_main
-from ..utils.data.download import download_by_response
+from ..utils.data.download import DEFAULT_CHUNK_SIZE, download_by_response
 
 try:
     from tqdm import tqdm
@@ -58,7 +58,7 @@ def download_musdb18(config: DictConfig) -> None:
         unpack = True
 
     if chunk_size is None:
-        chunk_size = 8192
+        chunk_size = DEFAULT_CHUNK_SIZE
 
     if _type == "default":
         url = "https://zenodo.org/records/1117372/files/musdb18.zip"
@@ -82,7 +82,7 @@ def download_musdb18(config: DictConfig) -> None:
         _unpack_zip(path, musdb18_root=musdb18_root)
 
 
-def _download_musdb18(url: str, path: str, chunk_size: int = 8192) -> None:
+def _download_musdb18(url: str, path: str, chunk_size: int = DEFAULT_CHUNK_SIZE) -> None:
     filename = os.path.basename(url)
     temp_path = path + str(uuid.uuid4())[:8]
 

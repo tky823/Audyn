@@ -12,39 +12,25 @@ class WordNetDataLoader(DataLoader):
 
     Args:
         burnin_step (int): Step to activate burnin parameter of dataset at ``burnin_step``th epoch.
-            Default: ``1``.
-        initial_step (int): First epoch index. Default: ``1``.
+            Default: ``0``.
 
     Examples:
 
         >>> from audyn.utils.data.wordnet import TrainingMammalDataset, WordNetDataLoader
-        >>> # when initial_step = 1
         >>> dataset = TrainingMammalDataset(num_neg_samples=5, burnin_dampening=0.75)
-        >>> dataloader = WordNetDataLoader(dataset, burnin_step=3, initial_step=1)
+        >>> dataloader = WordNetDataLoader(dataset, burnin_step=3)
         >>> dataloader.set_epoch(0)
         >>> dataset.burnin
-        False
+        True
         >>> dataloader.set_epoch(1)
         >>> dataset.burnin
-        False
+        True
         >>> dataloader.set_epoch(2)
         >>> dataset.burnin
         True
-        >>> # when initial_step = 0
-        >>> dataset = TrainingMammalDataset(num_neg_samples=5)
-        >>> dataloader = WordNetDataLoader(dataset, burnin_step=3, initial_step=0)
-        >>> dataloader.set_epoch(0)
-        >>> dataset.burnin
-        False
-        >>> dataloader.set_epoch(1)
-        >>> dataset.burnin
-        False
-        >>> dataloader.set_epoch(2)
-        >>> dataset.burnin
-        False
         >>> dataloader.set_epoch(3)
         >>> dataset.burnin
-        True
+        False
 
     """
 
@@ -66,8 +52,7 @@ class WordNetDataLoader(DataLoader):
         multiprocessing_context: Any = None,
         generator: Optional[torch.Generator] = None,
         *,
-        burnin_step: int = 1,
-        initial_step: int = 1,
+        burnin_step: int = 0,
         prefetch_factor: Optional[int] = None,
         persistent_workers: bool = False,
         pin_memory_device: str = "",
@@ -100,13 +85,11 @@ class WordNetDataLoader(DataLoader):
         )
 
         self.burnin_step = burnin_step
-        self.initial_step = initial_step
 
     def set_epoch(self, epoch: int) -> None:
         burnin_step = self.burnin_step
-        initial_step = self.initial_step
 
-        if epoch < burnin_step - initial_step:
-            self.dataset.set_burnin(False)
-        else:
+        if burnin_step > epoch:
             self.dataset.set_burnin(True)
+        else:
+            self.dataset.set_burnin(False)
