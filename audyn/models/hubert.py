@@ -315,10 +315,10 @@ def _create_pretrained_configs() -> Dict[str, Dict[str, str]]:
             "path": os.path.join(
                 model_cache_dir,
                 "HuBERT",
-                "f25ba5bc",
+                "9d838b4b",
                 "hubert-large-librispeech960-finetuning.pth",
             ),
-            "sha256": "f25ba5bcaf4a081a5163f2f1dd4d50df5e4f87bd416f415d140f0239eb073e0d",
+            "sha256": "9d838b4b5712d6d95f81aa024bee1a4e1495a0b8c66e6da155daf8d7622601ef",
         },
     }
 
