@@ -1,0 +1,35 @@
+import os
+import tempfile
+
+import torch
+from dummy import allclose
+
+from audyn.models.hubert import HuBERT
+from audyn.utils._github import download_file_from_github_release
+
+
+def test_hubert() -> None:
+    model = HuBERT.build_from_pretrained("hubert-large-librispeech960-finetuning")
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        url = "https://github.com/tky823/Audyn/releases/download/v0.0.6/test_official_hubert.pth"
+        path = os.path.join(temp_dir, "test_official_hubert.pth")
+        download_file_from_github_release(url, path)
+
+        data = torch.load(
+            path,
+            weights_only=True,
+        )
+        waveform = data["input"]
+        expected_output = data["output"]
+
+    model.eval()
+
+    waveform = waveform.unsqueeze(dim=0)
+
+    with torch.no_grad():
+        output = model(waveform)
+
+    output = output.squeeze(dim=0)
+
+    allclose(output, expected_output, atol=1e-3)
