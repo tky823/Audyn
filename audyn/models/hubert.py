@@ -87,6 +87,22 @@ class BaseHuBERT(nn.Module):
             pretrained_model_config = resolved_config.model
             pretrained_model_config["_target_"] = f"{cls.__module__}.{cls.__name__}"
             model: BaseHuBERT = instantiate(pretrained_model_config)
+
+            if IS_TORCH_LT_2_1:
+                prefix = "backbone.embedding.conv1d"
+                new_keys = [
+                    f"{prefix}.parametrizations.weight.original0",
+                    f"{prefix}.parametrizations.weight.original1",
+                ]
+                legacy_keys = [
+                    f"{prefix}.weight_g",
+                    f"{prefix}.weight_v",
+                ]
+
+                for new_key, legacy_key in zip(new_keys, legacy_keys):
+                    value = model_state_dict.pop(new_key)
+                    model_state_dict[legacy_key] = value
+
             model.load_state_dict(model_state_dict)
 
             return model
@@ -336,9 +352,11 @@ def _create_pretrained_configs() -> Dict[str, Dict[str, str]]:
                 model_cache_dir,
                 "HuBERT",
                 "9d838b4b",
+                # "b14daf70",
                 "hubert-large-librispeech960-finetuning.pth",
             ),
             "sha256": "9d838b4b5712d6d95f81aa024bee1a4e1495a0b8c66e6da155daf8d7622601ef",
+            # "sha256": "b14daf70e2aecda84119ed49b25bedd290a93df6e98a2ea0a22696d2fa737e11",
         },
     }
 
