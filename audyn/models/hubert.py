@@ -50,6 +50,16 @@ class BaseHuBERT(nn.Module):
 
         return output
 
+    def weight_norm_(self) -> None:
+        for module in [self.embedding, self.backbone]:
+            if hasattr(module, "weight_norm_") and callable(module.weight_norm_):
+                module.weight_norm_()
+
+    def remove_weight_norm_(self) -> None:
+        for module in [self.embedding, self.backbone]:
+            if hasattr(module, "remove_weight_norm_") and callable(module.remove_weight_norm_):
+                module.remove_weight_norm_()
+
     @classmethod
     def build_from_pretrained(cls, pretrained_model_name_or_path: str) -> "BaseHuBERT":
         """Build HuBERT from pretrained model.
@@ -178,6 +188,16 @@ class HuBERTEncoder(nn.Module):
 
         return output
 
+    def weight_norm_(self) -> None:
+        for module in [self.embedding, self.backbone]:
+            if hasattr(module, "weight_norm_") and callable(module.weight_norm_):
+                module.weight_norm_()
+
+    def remove_weight_norm_(self) -> None:
+        for module in [self.embedding, self.backbone]:
+            if hasattr(module, "remove_weight_norm_") and callable(module.remove_weight_norm_):
+                module.remove_weight_norm_()
+
 
 class HuBERTEmbeddingBlock(nn.Module):
     """HuBERT embedding block."""
@@ -301,7 +321,7 @@ class HuBERTEncoderPositionalEmbedding(nn.Module):
 
         if "conv1d" in self.registered_weight_norms:
             self.conv1d = remove_weight_norm_fn(self.conv1d, *remove_weight_norm_args)
-            self.registered_weight_norms.pop("conv1d")
+            self.registered_weight_norms.remove("conv1d")
 
 
 def _create_pretrained_configs() -> Dict[str, Dict[str, str]]:
