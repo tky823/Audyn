@@ -1,6 +1,6 @@
 dataset:
   test:
-    _target_: dummy.utils.data.DummyTextToWaveDataset
+    _target_: audyn_test.utils.data.DummyTextToWaveDataset
     vocab_size:
     up_scale:
     length:

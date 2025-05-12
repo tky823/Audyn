@@ -4,12 +4,12 @@ defaults:
 
 dataset:
   train:
-    _target_: dummy.utils.data.DummySequentialDataset
+    _target_: audyn_test.utils.data.DummySequentialDataset
     num_features:
     min_length:
     size:
   validation:
-    _target_: dummy.utils.data.DummySequentialDataset
+    _target_: audyn_test.utils.data.DummySequentialDataset
     num_features: ${..train.num_features}
     min_length: ${..train.min_length}
     size:

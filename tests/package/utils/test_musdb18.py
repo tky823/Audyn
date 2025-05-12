@@ -10,9 +10,9 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import torchaudio
-from dummy import allclose
-from dummy.utils import select_random_port
-from dummy.utils.ddp import set_ddp_environment
+from audyn_test import allclose
+from audyn_test.utils import select_random_port
+from audyn_test.utils.ddp import set_ddp_environment
 from torch.utils.data import DataLoader
 
 from audyn.utils.data import Collator, Mixer

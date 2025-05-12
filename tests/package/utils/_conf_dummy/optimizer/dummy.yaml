@@ -1,1 +1,1 @@
-_target_: dummy.utils.optim.optimizer.DummyOptimizer
+_target_: audyn_test.utils.optim.optimizer.DummyOptimizer

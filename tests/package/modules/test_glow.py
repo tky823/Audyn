@@ -5,7 +5,7 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import torch.nn as nn
-from dummy import allclose
+from audyn_test import allclose
 from omegaconf import OmegaConf
 
 from audyn.modules.glow import (

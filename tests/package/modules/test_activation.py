@@ -3,7 +3,7 @@ from typing import Optional, Tuple
 import pytest
 import torch
 import torch.nn as nn
-from dummy import allclose
+from audyn_test import allclose
 
 from audyn.modules.activation import (
     ExtrapolatablePositionalMultiheadAttention,

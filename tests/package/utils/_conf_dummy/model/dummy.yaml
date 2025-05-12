@@ -1,1 +1,1 @@
-_target_: dummy.models.DummyModel
+_target_: audyn_test.models.DummyModel

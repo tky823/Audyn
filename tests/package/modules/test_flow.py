@@ -2,7 +2,7 @@ from typing import Tuple
 
 import torch
 import torch.nn as nn
-from dummy import allclose
+from audyn_test import allclose
 
 from audyn.modules.flow import AdditiveCoupling, AffineCoupling, ChannelSplitFlow
 

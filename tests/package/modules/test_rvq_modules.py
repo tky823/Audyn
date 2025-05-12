@@ -9,8 +9,8 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import torch.nn as nn
-from dummy import allclose
-from dummy.utils.ddp import retry_on_file_not_found, set_ddp_environment
+from audyn_test import allclose
+from audyn_test.utils.ddp import retry_on_file_not_found, set_ddp_environment
 from omegaconf import OmegaConf
 
 from audyn.amp import autocast, get_autocast_device_type

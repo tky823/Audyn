@@ -1,2 +1,2 @@
-_target_: dummy.models.DummyFeatToWave
+_target_: audyn_test.models.DummyFeatToWave
 num_features:

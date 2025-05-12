@@ -11,7 +11,7 @@ import sys
 from typing import List
 
 import pytest
-from dummy.utils import reset_random_port
+from audyn_test.utils import reset_random_port
 from pytest import ExitCode, Session
 
 IS_WINDOWS = sys.platform == "win32"

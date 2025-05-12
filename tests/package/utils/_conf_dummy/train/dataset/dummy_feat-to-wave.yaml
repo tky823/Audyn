@@ -1,11 +1,11 @@
 train:
-  _target_: dummy.utils.data.DummyFeatToWaveDataset
+  _target_: audyn_test.utils.data.DummyFeatToWaveDataset
   n_mels:
   up_scale:
   length:
   size:
 validation:
-  _target_: dummy.utils.data.DummyFeatToWaveDataset
+  _target_: audyn_test.utils.data.DummyFeatToWaveDataset
   n_mels: ${..train.n_mels}
   up_scale: ${..train.up_scale}
   length: ${..train.length}

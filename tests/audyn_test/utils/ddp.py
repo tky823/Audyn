@@ -3,7 +3,8 @@ import os
 from typing import Any, Callable
 
 import torch
-from dummy.utils import reset_random_port
+
+from audyn_test.utils import reset_random_port
 
 
 def retry_on_file_not_found(num_retries: int, enable: bool = True) -> Callable:

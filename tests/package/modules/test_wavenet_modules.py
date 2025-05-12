@@ -1,7 +1,7 @@
 import pytest
 import torch
 import torch.nn.functional as F
-from dummy import allclose
+from audyn_test import allclose
 
 from audyn.modules.wavenet import GatedConv1d, ResidualConvBlock1d
 

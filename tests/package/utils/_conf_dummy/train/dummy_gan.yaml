@@ -6,12 +6,12 @@ defaults:
 
 dataset:
   train:
-    _target_: dummy.utils.data.DummyGANDataset
+    _target_: audyn_test.utils.data.DummyGANDataset
     size:
     min_length: 5
     max_length: 10
   validation:
-    _target_: dummy.utils.data.DummyGANDataset
+    _target_: audyn_test.utils.data.DummyGANDataset
     size:
     min_length: 5
     max_length: 10

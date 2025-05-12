@@ -3,7 +3,7 @@ import tempfile
 
 import pytest
 import torchaudio
-from dummy import allclose
+from audyn_test import allclose
 from omegaconf import OmegaConf
 
 from audyn.bin.decode_musdb18 import decode_musdb18

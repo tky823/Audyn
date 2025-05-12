@@ -4,7 +4,7 @@ from urllib.request import Request, urlopen
 
 import torch
 import torchaudio
-from dummy import allclose
+from audyn_test import allclose
 
 from audyn.transforms.librosa import LibrosaMelSpectrogram
 from audyn.utils._github import download_file_from_github_release

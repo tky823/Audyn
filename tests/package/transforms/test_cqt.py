@@ -5,10 +5,14 @@ import pytest
 import torch
 import torchaudio
 import torchaudio.functional as aF
-from dummy import allclose
-from dummy.utils import download_file
+from audyn_test import allclose
+from audyn_test.utils import download_file
 
-from audyn.transforms.cqt import ConstantQTransform, build_temporal_kernel, compute_filter_length
+from audyn.transforms.cqt import (
+    ConstantQTransform,
+    build_temporal_kernel,
+    compute_filter_length,
+)
 
 
 @pytest.mark.parametrize("n_bins", [12, 24])

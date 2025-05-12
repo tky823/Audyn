@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from dummy import allclose
+from audyn_test import allclose
 
 from audyn.models.waveglow import (
     MultiSpeakerWaveGlow,

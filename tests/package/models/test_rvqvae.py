@@ -2,8 +2,8 @@ import copy
 
 import pytest
 import torch
-from dummy import allclose
-from dummy.modules.vqvae import Decoder, Encoder
+from audyn_test import allclose
+from audyn_test.modules.vqvae import Decoder, Encoder
 
 from audyn.models.rvqvae import RVQVAE
 from audyn.modules.rvq import ResidualVectorQuantizer

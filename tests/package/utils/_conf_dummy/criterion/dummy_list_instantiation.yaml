@@ -1,6 +1,6 @@
 - name: loss1
   criterion:
-    _target_: dummy.criterion.CustomCriterion
+    _target_: audyn_test.criterion.CustomCriterion
   weight: 1
   key_mapping:
     estimated:
@@ -9,7 +9,7 @@
       target: target
 - name: loss2
   criterion:
-    _target_: dummy.criterion.CustomCriterion
+    _target_: audyn_test.criterion.CustomCriterion
   weight: 1
   key_mapping:
     estimated:

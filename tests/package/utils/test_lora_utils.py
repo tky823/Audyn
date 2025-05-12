@@ -1,7 +1,7 @@
 import pytest
 import torch
 import torch.nn as nn
-from dummy import allclose
+from audyn_test import allclose
 
 from audyn.modules.lora import LoRALinear
 from audyn.utils.modules.lora import apply_lora
