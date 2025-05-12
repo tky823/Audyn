@@ -23,6 +23,8 @@ def test_hubert() -> None:
         waveform = data["input"]
         expected_output = data["output"]
 
+    model.remove_weight_norm_()
+
     model.eval()
 
     waveform = waveform.unsqueeze(dim=0)
