@@ -235,7 +235,11 @@ class HuBERTEmbeddingBlock(nn.Module):
             stride=stride,
         )
         self.norm1d = nn.LayerNorm((out_channels,))
-        self.activation1d = get_activation(activation)
+
+        if isinstance(activation, str):
+            activation = get_activation(activation)
+
+        self.activation1d = activation
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         x = self.conv1d(input)
@@ -264,6 +268,9 @@ class HuBERTEncoderPositionalEmbedding(nn.Module):
 
         (kernel_size,) = _single(kernel_size)
 
+        if isinstance(activation, str):
+            activation = get_activation(activation)
+
         self.norm = norm
         self.conv1d = nn.Conv1d(
             embedding_dim,
@@ -272,7 +279,7 @@ class HuBERTEncoderPositionalEmbedding(nn.Module):
             stride=1,
             groups=groups,
         )
-        self.activation = get_activation(activation)
+        self.activation = activation
         self.dropout = nn.Dropout(p=dropout)
 
         self.registered_weight_norms = set()
@@ -351,12 +358,10 @@ def _create_pretrained_configs() -> Dict[str, Dict[str, str]]:
             "path": os.path.join(
                 model_cache_dir,
                 "HuBERT",
-                "9d838b4b",
-                # "b14daf70",
+                "6742a7ae",
                 "hubert-large-librispeech960-finetuning.pth",
             ),
-            "sha256": "9d838b4b5712d6d95f81aa024bee1a4e1495a0b8c66e6da155daf8d7622601ef",
-            # "sha256": "b14daf70e2aecda84119ed49b25bedd290a93df6e98a2ea0a22696d2fa737e11",
+            "sha256": "6742a7ae6448cdbc83e22f0461dc7b08193c710b02455737afb0f52d96ff222f",
         },
     }
 
