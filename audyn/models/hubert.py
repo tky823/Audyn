@@ -234,19 +234,19 @@ class HuBERTEmbeddingBlock(nn.Module):
             kernel_size=kernel_size,
             stride=stride,
         )
-        self.norm1d = nn.LayerNorm((out_channels,))
+        self.norm = nn.LayerNorm((out_channels,))
 
         if isinstance(activation, str):
             activation = get_activation(activation)
 
-        self.activation1d = activation
+        self.activation = activation
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         x = self.conv1d(input)
         x = x.transpose(-2, -1)
-        x = self.norm1d(x)
+        x = self.norm(x)
         x = x.transpose(-2, -1)
-        output = self.activation1d(x)
+        output = self.activation(x)
 
         return output
 
@@ -358,10 +358,10 @@ def _create_pretrained_configs() -> Dict[str, Dict[str, str]]:
             "path": os.path.join(
                 model_cache_dir,
                 "HuBERT",
-                "6742a7ae",
+                "4861b473",
                 "hubert-large-librispeech960-finetuning.pth",
             ),
-            "sha256": "6742a7ae6448cdbc83e22f0461dc7b08193c710b02455737afb0f52d96ff222f",
+            "sha256": "4861b47356f7dc3df6d4d6e0577ebf7a069b6652c41c029ad94f17293d5b484a",
         },
     }
 
