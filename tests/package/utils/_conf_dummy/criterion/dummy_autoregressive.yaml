@@ -4,7 +4,7 @@ criterion_name:
   criterion:
     _target_: audyn.criterion.autoregressive.AutoRegressiveWrapper
     criterion:
-      _target_: dummy.criterion.CustomCriterion
+      _target_: audyn_test.criterion.CustomCriterion
   weight: 1
   key_mapping:
     estimated:

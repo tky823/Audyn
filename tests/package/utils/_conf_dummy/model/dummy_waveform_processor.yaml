@@ -1,2 +1,2 @@
-_target_: dummy.models.DummyWaveformProcessor
+_target_: audyn_test.models.DummyWaveformProcessor
 is_monoral: ${train.dataset.validation.decode_audio_as_monoral}

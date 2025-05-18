@@ -2,7 +2,7 @@ import copy
 
 import pytest
 import torch
-from dummy.modules.vqvae import Decoder, Encoder
+from audyn_test.modules.vqvae import Decoder, Encoder
 
 from audyn.models.vqvae import VQVAE, GumbelVQVAE
 from audyn.modules.vq import GumbelVectorQuantizer, VectorQuantizer

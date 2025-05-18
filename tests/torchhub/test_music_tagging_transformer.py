@@ -1,6 +1,6 @@
 import pytest
 import torch
-from dummy.utils.github import retrieve_git_branch
+from audyn_test.utils.github import retrieve_git_branch
 
 role_parameters = [
     "teacher",

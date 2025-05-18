@@ -1,5 +1,5 @@
 import torch
-from dummy import allclose
+from audyn_test import allclose
 
 from audyn.functional.vector_quantization import (
     quantize_gumbel_vector,

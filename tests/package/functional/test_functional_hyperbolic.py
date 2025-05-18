@@ -1,6 +1,6 @@
 import pytest
 import torch
-from dummy import allclose
+from audyn_test import allclose
 
 from audyn.functional.hyperbolic import mobius_add, mobius_scaler_mul, mobius_sub
 

@@ -1,7 +1,7 @@
 import pytest
 import torch
 import torchaudio.compliance.kaldi as aCK
-from dummy import allclose
+from audyn_test import allclose
 
 from audyn.transforms.kaldi import KaldiMelSpectrogram, KaldiMFCC
 

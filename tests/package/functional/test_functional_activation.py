@@ -4,7 +4,7 @@ from typing import Tuple
 import pytest
 import torch
 import torch.nn.functional as F
-from dummy import allclose
+from audyn_test import allclose
 from packaging import version
 
 from audyn.functional.activation import scaled_dot_product_attention

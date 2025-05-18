@@ -5,10 +5,10 @@ defaults:
 
 dataset:
   train:
-    _target_: dummy.utils.data.DummyDataset
+    _target_: audyn_test.utils.data.DummyDataset
     size:
   validation:
-    _target_: dummy.utils.data.DummyDataset
+    _target_: audyn_test.utils.data.DummyDataset
     size:
 
 dataloader:

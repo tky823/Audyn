@@ -2,7 +2,7 @@ import os
 import tempfile
 
 import torch
-from dummy import allclose
+from audyn_test import allclose
 
 from audyn.transforms.music_tagging_transformer import (
     MusicTaggingTransformerMelSpectrogram,

@@ -1,6 +1,6 @@
 import pytest
 import torch
-from dummy import allclose
+from audyn_test import allclose
 
 from audyn.models.lextransformer import (
     LEXTransformerDecoder,

@@ -9,8 +9,8 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 import torchaudio
 import webdataset as wds
-from dummy.utils import select_random_port
-from dummy.utils.ddp import set_ddp_environment
+from audyn_test.utils import select_random_port
+from audyn_test.utils.ddp import set_ddp_environment
 from torch.utils.data import DataLoader
 
 from audyn.transforms.ast import AudioSpectrogramTransformerMelSpectrogram

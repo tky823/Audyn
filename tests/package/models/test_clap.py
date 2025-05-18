@@ -3,7 +3,7 @@ import tempfile
 
 import torch
 import torch.nn as nn
-from dummy import allclose
+from audyn_test import allclose
 
 from audyn.models.clap import LAIONAudioEncoder2023, MicrosoftAudioEncoder2023
 from audyn.utils._github import download_file_from_github_release

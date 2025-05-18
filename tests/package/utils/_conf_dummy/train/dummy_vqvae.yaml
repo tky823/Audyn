@@ -5,7 +5,7 @@ defaults:
 
 dataset:
   train:
-    _target_: dummy.utils.data.DummyVQVAEDataset
+    _target_: audyn_test.utils.data.DummyVQVAEDataset
     num_features: ${model.encoder.in_channels}
     height: 16
     width: 16
@@ -17,7 +17,7 @@ dataset:
     size:
     codebook_size: 10
   validation:
-    _target_: dummy.utils.data.DummyVQVAEDataset
+    _target_: audyn_test.utils.data.DummyVQVAEDataset
     num_features: ${..train.num_features}
     height: ${..train.height}
     width: ${..train.width}

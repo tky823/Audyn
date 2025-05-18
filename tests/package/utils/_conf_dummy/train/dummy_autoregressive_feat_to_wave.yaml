@@ -5,12 +5,12 @@ defaults:
 
 dataset:
   train:
-    _target_: dummy.utils.data.DummyWaveformDataset
+    _target_: audyn_test.utils.data.DummyWaveformDataset
     size:
     min_length: 5
     max_length: 10
   validation:
-    _target_: dummy.utils.data.DummyWaveformDataset
+    _target_: audyn_test.utils.data.DummyWaveformDataset
     size:
     min_length: ${..train.min_length}
     max_length: ${..train.max_length}

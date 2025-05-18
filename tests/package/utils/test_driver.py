@@ -14,7 +14,7 @@ import torch.distributed as dist
 import torch.nn as nn
 import torchaudio
 import webdataset as wds
-from dummy import allclose
+from audyn_test import allclose
 from omegaconf import DictConfig, OmegaConf
 from pytest import MonkeyPatch
 from torch.utils.data import DataLoader

@@ -1,7 +1,7 @@
 import pytest
 import torch
 import torch.nn as nn
-from dummy import allclose
+from audyn_test import allclose
 from packaging import version
 
 from audyn.modules.swintransformer import (

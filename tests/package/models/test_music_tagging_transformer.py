@@ -3,7 +3,7 @@ import tempfile
 
 import torch
 import torch.nn.functional as F
-from dummy import allclose
+from audyn_test import allclose
 
 from audyn.models.ast import HeadTokensAggregator, MLPHead
 from audyn.models.music_tagging_transformer import MusicTaggingTransformer

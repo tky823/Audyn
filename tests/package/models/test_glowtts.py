@@ -6,7 +6,7 @@ import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dummy import allclose
+from audyn_test import allclose
 from torch.distributions import Independent
 from torch.distributions.normal import Normal
 
