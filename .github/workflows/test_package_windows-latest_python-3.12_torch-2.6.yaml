@@ -1,4 +1,4 @@
-name: windows-latest/3.12/2.5
+name: windows-latest/3.12/2.6
 on:
   workflow_run:
     workflows:
