@@ -1,13 +1,13 @@
 name: macos-latest/3.12/2.6
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  workflow_run:
+    workflows:
+      - "ubuntu-latest/3.12/2.6"
+    types:
+      - completed
 jobs:
   package:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     uses: ./.github/workflows/test_package_macos-latest.yaml
     with:
       python-version: "3.12"
