@@ -1,11 +1,10 @@
 name: ubuntu-latest/3.12/2.6
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  workflow_run:
+    workflows:
+      - "lint"
+    types:
+      - completed
 jobs:
   package:
     uses: ./.github/workflows/test_package_ubuntu-latest.yaml
