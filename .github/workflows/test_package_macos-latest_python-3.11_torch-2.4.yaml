@@ -1,0 +1,17 @@
+name: macos-latest/3.11/2.4
+on:
+  workflow_run:
+    workflows:
+      - "macos-latest/3.12/2.6"
+    types:
+      - completed
+jobs:
+  package:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    uses: ./.github/workflows/test_package_macos-latest.yaml
+    with:
+      python-version: "3.11"
+      torch-version: "2.4.0"
+    secrets:
+      ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
