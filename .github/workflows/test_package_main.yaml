@@ -33,9 +33,11 @@ jobs:
           python-version: ${{ inputs.python-version }}
       - name: Restore cache
         uses: actions/cache/restore@v4
-        key: audyn-${{ runner.os }}-${{ github.sha }}
-        restore-keys: |
-          cache-${{ runner.os }}-
+        with:
+          path: ~/.cache/audyn
+          key: audyn-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            audyn-${{ runner.os }}-
       - name: Install dependencies (Windows)
         if: ${{ inputs.os == 'windows-latest' }}
         run: |
