@@ -48,6 +48,19 @@ jobs:
       - name: Show version of FFmpeg
         run: |
           ffmpeg -version
+      - name: Overwrite torch version in pyproject.toml (Windows)
+        id: windows_torch_installation
+        if: matrix.os == 'windows-latest'
+        env:
+          TORCH_VERSION: ${{ matrix.torch-version }}
+        run: |
+          python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${env:TORCH_VERSION}
+      - name: Overwrite torch version in pyproject.toml (Ubuntu & MacOS)
+        if: steps.windows_torch_installation.conclusion == 'skipped'
+        env:
+          TORCH_VERSION: ${{ matrix.torch-version }}
+        run: |
+          python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
       - name: Install dependencies
         env:
           MACOSX_DEPLOYMENT_TARGET: '10.13'
@@ -61,6 +74,19 @@ jobs:
       - name: Show dependencies
         run: |
           pip list
+      - name: Verify version of torch (Windows)
+        id: windows_torch_verification
+        if: inputs.os == 'windows-latest'
+        env:
+          TORCH_VERSION: ${{ inputs.torch-version }}
+        run: |
+          python tests/scripts/verify_torch_version.py --torch-version ${env:TORCH_VERSION}
+      - name: Verify version of torch (Ubuntu & MacOS)
+        if: steps.windows_torch_verification.conclusion == 'skipped'
+        env:
+          TORCH_VERSION: ${{ inputs.torch-version }}
+        run: |
+          python tests/scripts/verify_torch_version.py --torch-version ${TORCH_VERSION}
       - name: Show backend of torchaudio
         run: |
           python -c "import torchaudio; print(torchaudio.list_audio_backends())"
