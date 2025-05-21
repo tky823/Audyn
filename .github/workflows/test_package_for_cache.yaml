@@ -105,4 +105,4 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: ~/.cache/audyn
-          key: cache-${{ runner.os }}-${{ github.sha }}
+          key: audyn-${{ runner.os }}-${{ github.sha }}
