@@ -1,0 +1,25 @@
+name: Test package on ubuntu-latest
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        required: true
+        type: string
+      torch-version:
+        required: true
+        type: string
+    secrets:
+      ACCESS_TOKEN:
+        required: true
+      CODECOV_TOKEN:
+        required: true
+jobs:
+  package:
+    uses: ./.github/workflows/test_package_main.yaml
+    with:
+      os: ubuntu-latest
+      python-version: ${{ inputs.python-version }}
+      torch-version: ${{ inputs.torch-version }}
+    secrets:
+      ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
