@@ -1,0 +1,17 @@
+name: macos-13/3.10/2.0
+on:
+  workflow_run:
+    workflows:
+      - "macos-13/3.12/2.2"
+    types:
+      - completed
+jobs:
+  package:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    uses: ./.github/workflows/test_package_macos-13.yaml
+    with:
+      python-version: "3.10"
+      torch-version: "2.0.0"
+    secrets:
+      ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
