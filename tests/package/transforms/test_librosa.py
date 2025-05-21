@@ -5,6 +5,7 @@ from urllib.request import Request, urlopen
 import torch
 import torchaudio
 from audyn_test import allclose
+from audyn_test.utils import audyn_test_cache_dir
 
 from audyn.transforms.librosa import LibrosaMelSpectrogram
 from audyn.utils._github import download_file_from_github_release
@@ -33,15 +34,12 @@ def test_librosa_melspectrogram() -> None:
         waveform, sample_rate = torchaudio.load(audio_path)
         waveform = waveform.mean(dim=0)
 
-        url = "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev4/test_librosa_melspectrogram.pth"  # noqa: E501
-        path = os.path.join(temp_dir, "test_librosa_melspectrogram.pth")
-        download_file_from_github_release(url, path)
+    url = "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev4/test_librosa_melspectrogram.pth"  # noqa: E501
+    path = os.path.join(audyn_test_cache_dir, "test_librosa_melspectrogram.pth")
+    download_file_from_github_release(url, path)
 
-        data = torch.load(
-            path,
-            weights_only=True,
-        )
-        expected_output = data["output"]
+    data = torch.load(path, weights_only=True)
+    expected_output = data["output"]
 
     melspectrogram_transform = LibrosaMelSpectrogram(sample_rate)
     melspectrogram = melspectrogram_transform(waveform)

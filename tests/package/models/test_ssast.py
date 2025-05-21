@@ -1,10 +1,10 @@
 import os
-import tempfile
 
 import pytest
 import torch
 import torch.nn as nn
 from audyn_test import allclose
+from audyn_test.utils import audyn_test_cache_dir
 
 from audyn.models.ast import AverageAggregator, HeadTokensAggregator, MLPHead
 from audyn.models.lextransformer import LEXTransformerEncoderLayer
@@ -248,17 +248,13 @@ def test_official_ssast(model_name: str) -> None:
         aggregator=aggregator,
     )
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        url = f"https://github.com/tky823/Audyn/releases/download/v0.0.1.dev3/{filename}"
-        path = os.path.join(temp_dir, filename)
-        download_file_from_github_release(url, path)
+    url = f"https://github.com/tky823/Audyn/releases/download/v0.0.1.dev3/{filename}"
+    path = os.path.join(audyn_test_cache_dir, filename)
+    download_file_from_github_release(url, path)
 
-        data = torch.load(
-            path,
-            weights_only=True,
-        )
-        input = data["input"]
-        expected_output = data["output"]
+    data = torch.load(path, weights_only=True)
+    input = data["input"]
+    expected_output = data["output"]
 
     model.eval()
 

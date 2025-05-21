@@ -1,9 +1,9 @@
 import os
-import tempfile
 
 import torch
 import torch.nn.functional as F
 from audyn_test import allclose
+from audyn_test.utils import audyn_test_cache_dir
 
 from audyn.models.ast import HeadTokensAggregator, MLPHead
 from audyn.models.music_tagging_transformer import MusicTaggingTransformer
@@ -42,15 +42,13 @@ def test_official_music_tagging_transformer() -> None:
     teacher.eval()
     student.eval()
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        url = "https://github.com/tky823/Audyn/releases/download/v0.0.2/test_official_music-tagging-transformer_teacher.pth"  # noqa: E501
-        path = os.path.join(temp_dir, "test_official_music-tagging-transformer_teacher.pth")
-        download_file_from_github_release(url, path)
+    url = "https://github.com/tky823/Audyn/releases/download/v0.0.2/test_official_music-tagging-transformer_teacher.pth"  # noqa: E501
+    path = os.path.join(
+        audyn_test_cache_dir, "test_official_music-tagging-transformer_teacher.pth"
+    )
+    download_file_from_github_release(url, path)
 
-        data = torch.load(
-            path,
-            weights_only=True,
-        )
+    data = torch.load(path, weights_only=True)
 
     waveform = data["input"]
     expected_teacher_output = data["output"]
@@ -62,15 +60,13 @@ def test_official_music_tagging_transformer() -> None:
 
     allclose(teacher_output, expected_teacher_output)
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        url = "https://github.com/tky823/Audyn/releases/download/v0.0.2/test_official_music-tagging-transformer_student.pth"  # noqa: E501
-        path = os.path.join(temp_dir, "test_official_music-tagging-transformer_student.pth")
-        download_file_from_github_release(url, path)
+    url = "https://github.com/tky823/Audyn/releases/download/v0.0.2/test_official_music-tagging-transformer_student.pth"  # noqa: E501
+    path = os.path.join(
+        audyn_test_cache_dir, "test_official_music-tagging-transformer_student.pth"
+    )
+    download_file_from_github_release(url, path)
 
-        data = torch.load(
-            path,
-            weights_only=True,
-        )
+    data = torch.load(path, weights_only=True)
 
     waveform = data["input"]
     expected_student_output = data["output"]
