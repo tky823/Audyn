@@ -10,6 +10,7 @@ jobs:
   package:
     name: Run package tests
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     strategy:
       matrix:
         include:
@@ -25,7 +26,6 @@ jobs:
           - os: windows-latest
             python-version: "3.12"
             torch-version: "2.6.0"
-    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -76,15 +76,15 @@ jobs:
           pip list
       - name: Verify version of torch (Windows)
         id: windows_torch_verification
-        if: inputs.os == 'windows-latest'
+        if: matrix.os == 'windows-latest'
         env:
-          TORCH_VERSION: ${{ inputs.torch-version }}
+          TORCH_VERSION: ${{ matrix.torch-version }}
         run: |
           python tests/scripts/verify_torch_version.py --torch-version ${env:TORCH_VERSION}
       - name: Verify version of torch (Ubuntu & MacOS)
         if: steps.windows_torch_verification.conclusion == 'skipped'
         env:
-          TORCH_VERSION: ${{ inputs.torch-version }}
+          TORCH_VERSION: ${{ matrix.torch-version }}
         run: |
           python tests/scripts/verify_torch_version.py --torch-version ${TORCH_VERSION}
       - name: Show backend of torchaudio
