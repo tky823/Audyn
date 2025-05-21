@@ -1,48 +1,43 @@
 name: Store cache
 on:
-  workflow_dispatch:
-    inputs:
-      os:
-        description: "Operating system"
-        required: true
-        default: "ubuntu-latest"
-        type: choice
-        options:
-          - ubuntu-latest
-          - macos-latest
-          - windows-latest
-      python-version:
-        description: "Python version"
-        required: true
-        default: "3.12"
-        type: string
-      torch-version:
-        description: "PyTorch version"
-        required: true
-        default: "2.6.0"
-        type: string
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 jobs:
   package:
     name: Run package tests
-    runs-on: ${{ inputs.os }}
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 60
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+        python-version:
+          - "3.12"
+        torch-version:
+          - "2.6.0"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up Python ${{ inputs.python-version }}
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ inputs.python-version }}
+          python-version: ${{ matrix.python-version }}
       - name: Install dependencies (Windows)
-        if: ${{ inputs.os == 'windows-latest' }}
+        if: ${{ matrix.os == 'windows-latest' }}
         run: |
           powershell -File tests/scripts/install_windows_dependencies.ps1
       - name: Install dependencies (Ubuntu)
-        if: ${{ inputs.os == 'ubuntu-latest' }}
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
           . tests/scripts/install_ubuntu_dependencies.sh
       - name: Install dependencies (MacOS)
-        if: ${{ inputs.os == 'macos-13' || inputs.os == 'macos-latest' }}
+        if: ${{ matrix.os == 'macos-13' || matrix.os == 'macos-latest' }}
         run: |
           . tests/scripts/install_macos_dependencies.sh
       - name: Show version of FFmpeg
@@ -50,15 +45,15 @@ jobs:
           ffmpeg -version
       - name: Overwrite torch version in pyproject.toml (Windows)
         id: windows_torch_installation
-        if: ${{ inputs.os == 'windows-latest' }}
+        if: ${{ matrix.os == 'windows-latest' }}
         env:
-          TORCH_VERSION: ${{ inputs.torch-version }}
+          TORCH_VERSION: ${{ matrix.torch-version }}
         run: |
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${env:TORCH_VERSION}
       - name: Overwrite torch version in pyproject.toml (Ubuntu & MacOS)
         if: steps.windows_torch_installation.conclusion == 'skipped'
         env:
-          TORCH_VERSION: ${{ inputs.torch-version }}
+          TORCH_VERSION: ${{ matrix.torch-version }}
         run: |
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
       - name: Install dependencies
@@ -68,7 +63,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev,tests]"
       - name: Install dependencies (Windows)
-        if: ${{ inputs.os == 'windows-latest' }}
+        if: ${{ matrix.os == 'windows-latest' }}
         run: |
           pip install soundfile
       - name: Show dependencies
@@ -76,15 +71,15 @@ jobs:
           pip list
       - name: Verify version of torch (Windows)
         id: windows_torch_verification
-        if: ${{ inputs.os == 'windows-latest' }}
+        if: ${{ matrix.os == 'windows-latest' }}
         env:
-          TORCH_VERSION: ${{ inputs.torch-version }}
+          TORCH_VERSION: ${{ matrix.torch-version }}
         run: |
           python tests/scripts/verify_torch_version.py --torch-version ${env:TORCH_VERSION}
       - name: Verify version of torch (Ubuntu & MacOS)
         if: steps.windows_torch_verification.conclusion == 'skipped'
         env:
-          TORCH_VERSION: ${{ inputs.torch-version }}
+          TORCH_VERSION: ${{ matrix.torch-version }}
         run: |
           python tests/scripts/verify_torch_version.py --torch-version ${TORCH_VERSION}
       - name: Show backend of torchaudio
@@ -92,14 +87,14 @@ jobs:
           python -c "import torchaudio; print(torchaudio.list_audio_backends())"
           python -c "import torchaudio; assert len(torchaudio.list_audio_backends()) > 0"
       - name: Pytest for updating package (Windows)
-        if: ${{ inputs.os == 'windows-latest' }}
+        if: ${{ matrix.os == 'windows-latest' }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           USE_LIBUV: 0
         run: |
           pytest -vvv -p no:faulthandler tests/package/
       - name: Pytest for updating package (Ubuntu & MacOS)
-        if: ${{ inputs.os != 'windows-latest' }}
+        if: ${{ matrix.os != 'windows-latest' }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
