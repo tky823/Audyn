@@ -10,9 +10,6 @@ jobs:
   package:
     name: Run package tests
     runs-on: ${{ matrix.os }}
-    secrets:
-      ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-    timeout-minutes: 60
     strategy:
       matrix:
         include:
@@ -28,6 +25,9 @@ jobs:
           - os: windows-latest
             python-version: "3.12"
             torch-version: "2.6.0"
+    secrets:
+      ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v4
