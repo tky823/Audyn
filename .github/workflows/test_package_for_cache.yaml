@@ -107,5 +107,7 @@ jobs:
       - name: Store cache
         uses: actions/cache/save@v4
         with:
-          path: ~/.cache/audyn
+          path: |
+            ~/.cache/audyn
+            ~/.cache/audyn_test
           key: audyn-${{ runner.os }}-${{ github.sha }}
