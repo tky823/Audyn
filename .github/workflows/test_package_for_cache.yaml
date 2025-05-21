@@ -1,0 +1,82 @@
+name: cache
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  package:
+    name: Run package tests
+    runs-on: ${{ matrix.os }}
+    secrets:
+      ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+    timeout-minutes: 60
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: "3.12"
+            torch-version: "2.6.0"
+          - os: macos-13
+            python-version: "3.12"
+            torch-version: "2.2.0"
+          - os: macos-latest
+            python-version: "3.12"
+            torch-version: "2.6.0"
+          - os: windows-latest
+            python-version: "3.12"
+            torch-version: "2.6.0"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          powershell -File tests/scripts/install_windows_dependencies.ps1
+      - name: Install dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          . tests/scripts/install_ubuntu_dependencies.sh
+      - name: Install dependencies (MacOS)
+        if: matrix.os == 'macos-13' || matrix.os == 'macos-latest'
+        run: |
+          . tests/scripts/install_macos_dependencies.sh
+      - name: Show version of FFmpeg
+        run: |
+          ffmpeg -version
+      - name: Install dependencies
+        env:
+          MACOSX_DEPLOYMENT_TARGET: '10.13'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,tests]"
+      - name: Install dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          pip install soundfile
+      - name: Show dependencies
+        run: |
+          pip list
+      - name: Show backend of torchaudio
+        run: |
+          python -c "import torchaudio; print(torchaudio.list_audio_backends())"
+          python -c "import torchaudio; assert len(torchaudio.list_audio_backends()) > 0"
+      - name: Pytest for updating package (Windows)
+        if: ${{ runner.os == 'windows-latest' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          USE_LIBUV: 0
+        run: |
+          pytest -vvv -p no:faulthandler tests/package/
+      - name: Pytest for updating package (Ubuntu & MacOS)
+        if: ${{ runner.os != 'windows-latest' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: |
+          pytest -vvv --log-cli-level=ERROR tests/package/
