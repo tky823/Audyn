@@ -105,7 +105,7 @@ jobs:
         run: |
           pytest -vvv --log-cli-level=ERROR tests/package/
       - name: Store cache
-        uses: actions/cache@v4
+        uses: actions/cache/save@v4
         with:
           path: ~/.cache/audyn
           key: cache-${{ runner.os }}-${{ github.sha }}
