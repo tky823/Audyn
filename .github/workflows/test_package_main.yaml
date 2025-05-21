@@ -1,7 +1,7 @@
 # To create status badge per os, python-version, and torch-version, we use workflow call.
 # https://github.com/orgs/community/discussions/52616
 
-name: test for package and recipes
+name: Tests for package and recipes
 on:
   workflow_call:
     inputs:

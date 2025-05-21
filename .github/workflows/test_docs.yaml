@@ -1,4 +1,4 @@
-name: tests for docs
+name: Tests for docs
 on:
   push:
     branches:
