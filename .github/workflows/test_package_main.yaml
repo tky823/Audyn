@@ -37,15 +37,15 @@ jobs:
         restore-keys: |
           cache-${{ runner.os }}-
       - name: Install dependencies (Windows)
-        if: inputs.os == 'windows-latest'
+        if: ${{ inputs.os == 'windows-latest' }}
         run: |
           powershell -File tests/scripts/install_windows_dependencies.ps1
       - name: Install dependencies (Ubuntu)
-        if: inputs.os == 'ubuntu-latest'
+        if: ${{ inputs.os == 'ubuntu-latest' }}
         run: |
           . tests/scripts/install_ubuntu_dependencies.sh
       - name: Install dependencies (MacOS)
-        if: inputs.os == 'macos-13' || inputs.os == 'macos-latest'
+        if: ${{ inputs.os == 'macos-13' || inputs.os == 'macos-latest' }}
         run: |
           . tests/scripts/install_macos_dependencies.sh
       - name: Show version of FFmpeg
@@ -53,7 +53,7 @@ jobs:
           ffmpeg -version
       - name: Overwrite torch version in pyproject.toml (Windows)
         id: windows_torch_installation
-        if: inputs.os == 'windows-latest'
+        if: ${{ inputs.os == 'windows-latest' }}
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
@@ -71,7 +71,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev,tests]"
       - name: Install dependencies (Windows)
-        if: inputs.os == 'windows-latest'
+        if: ${{ inputs.os == 'windows-latest' }}
         run: |
           pip install soundfile
       - name: Show dependencies
@@ -79,13 +79,13 @@ jobs:
           pip list
       - name: Verify version of torch (Windows)
         id: windows_torch_verification
-        if: inputs.os == 'windows-latest'
+        if: ${{ inputs.os == 'windows-latest' }}
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
           python tests/scripts/verify_torch_version.py --torch-version ${env:TORCH_VERSION}
       - name: Verify version of torch (Ubuntu & MacOS)
-        if: steps.windows_torch_verification.conclusion == 'skipped'
+        if: ${{ steps.windows_torch_verification.conclusion == 'skipped' }}
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
@@ -95,14 +95,14 @@ jobs:
           python -c "import torchaudio; print(torchaudio.list_audio_backends())"
           python -c "import torchaudio; assert len(torchaudio.list_audio_backends()) > 0"
       - name: Pytest for torch.hub
-        if: inputs.python-version == '3.9' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.1.0'
+        if: ${{ inputs.python-version == '3.9' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.1.0' }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           GITHUB_HEAD_REF: ${{ github.head_ref }}
         run: |
           pytest -vvv tests/torchhub/
       - name: Pytest for releasing package (Windows)
-        if: inputs.os == 'windows-latest' && startsWith(github.head_ref, 'release/')
+        if: ${{ inputs.os == 'windows-latest' && startsWith(github.head_ref, 'release/') }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           USE_LIBUV: 0
@@ -128,7 +128,7 @@ jobs:
         run: |
           pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml tests/package/
       - name: Upload coverage reports to Codecov
-        if: inputs.python-version == '3.12' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.3.0'
+        if: ${{ inputs.python-version == '3.12' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.3.0' }}
         uses: codecov/codecov-action@v3
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -146,15 +146,15 @@ jobs:
         with:
           python-version: ${{ inputs.python-version }}
       - name: Install dependencies (Windows)
-        if: inputs.os == 'windows-latest'
+        if: ${{ inputs.os == 'windows-latest' }}
         run: |
           powershell -File tests/scripts/install_windows_dependencies.ps1
       - name: Install dependencies (Ubuntu)
-        if: inputs.os == 'ubuntu-latest'
+        if: ${{ inputs.os == 'ubuntu-latest' }}
         run: |
           . tests/scripts/install_ubuntu_dependencies.sh
       - name: Install dependencies (MacOS)
-        if: inputs.os == 'macos-13' || inputs.os == 'macos-latest'
+        if: ${{ inputs.os == 'macos-13' || inputs.os == 'macos-latest' }}
         run: |
           . tests/scripts/install_macos_dependencies.sh
       - name: Show version of FFmpeg
@@ -162,13 +162,13 @@ jobs:
           ffmpeg -version
       - name: Overwrite torch version in pyproject.toml (Windows)
         id: windows_torch_installation
-        if: inputs.os == 'windows-latest'
+        if: ${{ inputs.os == 'windows-latest' }}
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${env:TORCH_VERSION}
       - name: Overwrite torch version in pyproject.toml (Ubuntu & MacOS)
-        if: steps.windows_torch_installation.conclusion == 'skipped'
+        if: ${{ steps.windows_torch_installation.conclusion == 'skipped' }}
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
@@ -180,7 +180,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[recipes]"
       - name: Install dependencies (Windows)
-        if: inputs.os == 'windows-latest'
+        if: ${{ inputs.os == 'windows-latest' }}
         run: |
           pip install soundfile
       - name: Show dependencies
@@ -188,13 +188,13 @@ jobs:
           pip list
       - name: Verify version of torch (Windows)
         id: windows_torch_verification
-        if: inputs.os == 'windows-latest'
+        if: ${{ inputs.os == 'windows-latest' }}
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
           python tests/scripts/verify_torch_version.py --torch-version ${env:TORCH_VERSION}
       - name: Verify version of torch (Ubuntu & MacOS)
-        if: steps.windows_torch_verification.conclusion == 'skipped'
+        if: ${{ steps.windows_torch_verification.conclusion == 'skipped' }}
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
