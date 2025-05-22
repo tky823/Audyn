@@ -1,4 +1,4 @@
-name: macos-13
+name: Test package on macos-latest
 on:
   workflow_call:
     inputs:

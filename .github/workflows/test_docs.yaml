@@ -1,10 +1,11 @@
-name: tests for docs
+name: Tests for docs
 on:
-  workflow_run:
-    workflows:
-      - "lint"
-    types:
-      - completed
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 jobs:
   build:
     name: Build docs

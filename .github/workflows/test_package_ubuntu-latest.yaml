@@ -1,4 +1,4 @@
-name: test package on ubuntu-latest
+name: Test package on ubuntu-latest
 on:
   workflow_call:
     inputs:

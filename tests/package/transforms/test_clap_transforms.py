@@ -1,9 +1,9 @@
 import os
-import tempfile
 
 import pytest
 import torch
 from audyn_test import allclose
+from audyn_test.utils import audyn_test_cache_dir
 
 from audyn.transforms.clap import (
     LAIONAudioEncoder2023MelSpectrogram,
@@ -18,13 +18,12 @@ from audyn.utils._github import download_file_from_github_release
 def test_laion_clap_transform() -> None:
     url = "https://github.com/tky823/Audyn/releases/download/v0.0.5/test_official_laion-clap-htsat-fused.pth"  # noqa: E501
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        filename = os.path.basename(url)
-        path = os.path.join(temp_dir, filename)
+    filename = os.path.basename(url)
+    path = os.path.join(audyn_test_cache_dir, filename)
 
-        download_file_from_github_release(url, path)
+    download_file_from_github_release(url, path)
 
-        data = torch.load(path, weights_only=True)
+    data = torch.load(path, weights_only=True)
 
     padding_transform = LAIONAudioEncoder2023WaveformPad.build_from_pretrained(
         "laion-clap-htsat-fused"
@@ -61,13 +60,12 @@ def test_laion_clap_transform() -> None:
 def test_laion_clap_melspectrogram(fb_dtype: torch.dtype) -> None:  # noqa: E501
     url = "https://github.com/tky823/Audyn/releases/download/v0.0.5/test_official_laion-clap-htsat-fused.pth"  # noqa: E501
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        filename = os.path.basename(url)
-        path = os.path.join(temp_dir, filename)
+    filename = os.path.basename(url)
+    path = os.path.join(audyn_test_cache_dir, filename)
 
-        download_file_from_github_release(url, path)
+    download_file_from_github_release(url, path)
 
-        data = torch.load(path, weights_only=True)
+    data = torch.load(path, weights_only=True)
 
     waveform = data["middle"]["input"]
     sample_rate = data["sample_rate"]
@@ -181,13 +179,12 @@ def test_laion_clap_melspectrogram_fusion(
 def test_microsoft_clap_transform() -> None:
     url = "https://github.com/tky823/Audyn/releases/download/v0.0.5/test_official_microsoft-clap-2023.pth"  # noqa: E501
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        filename = os.path.basename(url)
-        path = os.path.join(temp_dir, filename)
+    filename = os.path.basename(url)
+    path = os.path.join(audyn_test_cache_dir, filename)
 
-        download_file_from_github_release(url, path)
+    download_file_from_github_release(url, path)
 
-        data = torch.load(path, weights_only=True)
+    data = torch.load(path, weights_only=True)
 
     padding_transform = MicrosoftAudioEncoder2023WaveformPad.build_from_pretrained(
         "microsoft-clap-2023"

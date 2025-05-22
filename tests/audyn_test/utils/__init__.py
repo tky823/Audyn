@@ -4,6 +4,13 @@ from urllib.request import Request, urlopen
 
 import pytest
 
+_home_dir = os.path.expanduser("~")
+audyn_test_cache_dir = os.getenv("AUDYN_TEST_CACHE_DIR") or os.path.join(
+    _home_dir, ".cache", "audyn_test"
+)
+
+os.makedirs(audyn_test_cache_dir, exist_ok=True)
+
 
 def select_random_port() -> int:
     return pytest.random_port

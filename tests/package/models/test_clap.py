@@ -1,9 +1,9 @@
 import os
-import tempfile
 
 import torch
 import torch.nn as nn
 from audyn_test import allclose
+from audyn_test.utils import audyn_test_cache_dir
 
 from audyn.models.clap import LAIONAudioEncoder2023, MicrosoftAudioEncoder2023
 from audyn.utils._github import download_file_from_github_release
@@ -12,15 +12,11 @@ from audyn.utils._github import download_file_from_github_release
 def test_official_laion_audio_encoder() -> None:
     url = "https://github.com/tky823/Audyn/releases/download/v0.0.5/test_official_laion-clap-htsat-fused.pth"  # noqa: E501
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        filename = os.path.basename(url)
-        path = os.path.join(temp_dir, filename)
-        download_file_from_github_release(url, path)
+    filename = os.path.basename(url)
+    path = os.path.join(audyn_test_cache_dir, filename)
+    download_file_from_github_release(url, path)
 
-        data = torch.load(
-            path,
-            weights_only=True,
-        )
+    data = torch.load(path, weights_only=True)
 
     spectrogram = data["long"]["transform"]
     expected_output = data["long"]["output"]
@@ -62,15 +58,14 @@ def test_official_laion_audio_encoder() -> None:
 def test_official_microsoft_audio_encoder() -> None:
     url = "https://github.com/tky823/Audyn/releases/download/v0.0.5/test_official_microsoft-clap-2023.pth"  # noqa: E501
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        filename = os.path.basename(url)
-        path = os.path.join(temp_dir, filename)
-        download_file_from_github_release(url, path)
+    filename = os.path.basename(url)
+    path = os.path.join(audyn_test_cache_dir, filename)
+    download_file_from_github_release(url, path)
 
-        data = torch.load(
-            path,
-            weights_only=True,
-        )
+    data = torch.load(
+        path,
+        weights_only=True,
+    )
 
     spectrogram = data["long"]["transform"]
     expected_output = data["long"]["output"]

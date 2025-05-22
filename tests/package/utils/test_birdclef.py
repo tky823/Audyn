@@ -1,4 +1,5 @@
 import os
+import shutil
 import sys
 import tempfile
 from typing import Any, Dict
@@ -7,12 +8,15 @@ import pytest
 import torch
 import torchaudio
 import webdataset as wds
+from audyn_test.utils import audyn_test_cache_dir
 from torch.utils.data import DataLoader
 
 from audyn.transforms.birdclef import BirdCLEF2024BaselineMelSpectrogram
 from audyn.utils._github import download_file_from_github_release
 from audyn.utils.data import WebDatasetWrapper
-from audyn.utils.data.birdclef.birdclef2024 import decode_csv_line
+from audyn.utils.data.birdclef.birdclef2024 import (
+    decode_csv_line,
+)
 from audyn.utils.data.birdclef.birdclef2024 import (
     num_primary_labels as num_birdclef2024_primary_labels,
 )
@@ -81,17 +85,18 @@ def test_birdclef2024_primary_label_composer(
     if IS_WINDOWS:
         pytest.skip(".ogg file is not supported by Windows.")
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # save dummy audio to check usage of .ogg file.
-        audio_dir = os.path.join(temp_dir, "audio")
-        path = os.path.join(audio_dir, "audio.ogg")
-        download_file_from_github_release(url, path)
+    # save dummy audio to check usage of .ogg file.
+    cached_audio_dir = os.path.join(
+        audyn_test_cache_dir, "test_birdclef2024_primary_label_composer", "audio"
+    )
+    cached_path = os.path.join(cached_audio_dir, "audio.ogg")
+    download_file_from_github_release(url, cached_path)
 
-        try:
-            waveform, sample_rate = torchaudio.load(path)
-            is_ogg_supported = True
-        except RuntimeError:
-            is_ogg_supported = False
+    try:
+        _, sample_rate = torchaudio.load(cached_path)
+        is_ogg_supported = True
+    except RuntimeError:
+        is_ogg_supported = False
 
     if not is_ogg_supported:
         pytest.skip(".ogg file is not supported by environment.")
@@ -108,9 +113,8 @@ def test_birdclef2024_primary_label_composer(
         list_path = os.path.join(list_dir, "train.txt")
         tar_path = os.path.join(feature_dir, "%d.tar")
 
-        audio_dir = os.path.join(temp_dir, "audio")
         path = os.path.join(audio_dir, "audio.ogg")
-        download_file_from_github_release(url, path)
+        shutil.copy(cached_path, path)
 
         with (
             wds.ShardWriter(tar_path, maxcount=max_shard_count) as sink,
