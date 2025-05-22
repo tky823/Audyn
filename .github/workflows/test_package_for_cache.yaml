@@ -29,8 +29,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: tests/gha-cache-2
       - name: Set up Python ${{ matrix.python-version }}
       - name: Set up Python ${{ inputs.python-version }}
         uses: actions/setup-python@v5
