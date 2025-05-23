@@ -3,9 +3,12 @@ import os
 import torch
 from audyn_test import allclose
 from audyn_test.utils import audyn_test_cache_dir
+from packaging import version
 
 from audyn.models.hubert import HuBERT
 from audyn.utils._github import download_file_from_github_release
+
+IS_TORCH_LT_2_3 = version.parse(torch.__version__) < version.parse("2.3")
 
 
 def test_hubert() -> None:
@@ -45,6 +48,9 @@ def test_hubert() -> None:
 
     output = output.squeeze(dim=0)
 
-    allclose(output, expected_output, atol=1e-3)
+    if IS_TORCH_LT_2_3:
+        assert allclose(output, expected_output, atol=1e-2)
+    else:
+        assert allclose(output, expected_output, atol=1e-3)
 
     model.remove_weight_norm_()
