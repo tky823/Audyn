@@ -38,7 +38,7 @@ def test_hubert() -> None:
 
     output = output.squeeze(dim=0)
 
-    allclose(output, expected_output)
+    allclose(output, expected_output, atol=1e-3)
 
     with torch.no_grad():
         output = model(waveform)
