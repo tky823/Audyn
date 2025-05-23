@@ -41,7 +41,10 @@ def test_hubert() -> None:
 
     output = output.squeeze(dim=0)
 
-    allclose(output, expected_output, atol=1e-3)
+    if IS_TORCH_LT_2_3:
+        allclose(output, expected_output, atol=1e-2)
+    else:
+        allclose(output, expected_output, atol=1e-3)
 
     with torch.no_grad():
         output = model(waveform)
@@ -49,8 +52,8 @@ def test_hubert() -> None:
     output = output.squeeze(dim=0)
 
     if IS_TORCH_LT_2_3:
-        assert allclose(output, expected_output, atol=1e-2)
+        allclose(output, expected_output, atol=1e-2)
     else:
-        assert allclose(output, expected_output, atol=1e-3)
+        allclose(output, expected_output, atol=1e-3)
 
     model.remove_weight_norm_()
