@@ -66,8 +66,11 @@ def download_track_ids(
         os.makedirs(root, exist_ok=True)
 
         for _temp_dir in glob.glob(os.path.join(temp_dir, "*")):
-            if not os.path.isdir(_temp_dir):
-                shutil.move(_temp_dir, root)
+            _dirname = os.path.basename(_temp_dir)
+            _dir = os.path.join(root, _dirname)
+
+            if not os.path.isdir(_dir):
+                shutil.move(_temp_dir, _dir)
 
     gathered_track_ids = set()
 
