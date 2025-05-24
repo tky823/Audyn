@@ -51,8 +51,7 @@ jobs:
         run: |
           cd tests/scripts/transformers
           pip install -e "."
-          pip install datasets
-          pip install soundfile
+          pip install datasets librosa soundfile
       - name: Show dependencies
         run: |
           pip list
