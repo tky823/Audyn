@@ -1,0 +1,18 @@
+defaults:
+  - default
+  - _self_
+
+audio:
+  sample_rate: 8000
+
+melspectrogram:
+  _target_: torchaudio.transforms.MelSpectrogram
+  sample_rate: ${..audio.sample_rate}
+  n_fft: 1024
+  win_length: 1024
+  hop_length: 256
+  f_min: 300
+  f_max: 4000
+  n_mels: 256
+  window_fn: torch.hann_window
+  window_kwargs:
