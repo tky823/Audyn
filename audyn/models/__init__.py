@@ -11,6 +11,7 @@ from .dprnn_tasnet import DPRNNTasNet
 from .encodec import EnCodec
 from .fastspeech import FastSpeech, MultiSpeakerFastSpeech
 from .hifigan import HiFiGANDiscriminator, HiFiGANGenerator, HiFiGANVocoder
+from .hubert import HuBERT
 from .music_tagging_transformer import (
     MusicTaggingTransformer,
     MusicTaggingTransformerLinearProbing,
@@ -76,6 +77,8 @@ __all__ = [
     "SSAST",
     # PaSST
     "PaSST",
+    # HuBERT
+    "HuBERT",
     # CLAP
     "LAIONAudioEncoder2023",
     "LAIONCLAPAudioEncoder2023",
