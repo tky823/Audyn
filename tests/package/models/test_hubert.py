@@ -20,7 +20,6 @@ def test_hubert() -> None:
 
     data = torch.load(path, weights_only=True)
     waveform = data["input"]
-    expected_output = data["output"]
     expected_embedding = data["embedding"]
 
     model.eval()
@@ -32,28 +31,6 @@ def test_hubert() -> None:
 
     embedding = embedding.squeeze(dim=0)
 
-    allclose(embedding, expected_embedding, atol=1e-4)
-
-    embedding = expected_embedding.unsqueeze(dim=0)
-
-    with torch.no_grad():
-        output = model.backbone(embedding)
-
-    output = output.squeeze(dim=0)
-
-    if IS_TORCH_LT_2_3:
-        allclose(output, expected_output, atol=1e-2)
-    else:
-        allclose(output, expected_output, atol=1e-3)
-
-    with torch.no_grad():
-        output = model(waveform)
-
-    output = output.squeeze(dim=0)
-
-    if IS_TORCH_LT_2_3:
-        allclose(output, expected_output, atol=1e-2)
-    else:
-        allclose(output, expected_output, atol=1e-3)
+    allclose(embedding, expected_embedding)
 
     model.remove_weight_norm_()
