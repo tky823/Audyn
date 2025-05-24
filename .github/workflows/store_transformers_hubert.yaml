@@ -1,4 +1,4 @@
-name: Store cache
+name: Store input and output of official HuBERT
 on:
   push:
     branches:
