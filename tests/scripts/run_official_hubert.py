@@ -21,6 +21,9 @@ def main() -> None:
         dataset[0]["audio"]["array"], sampling_rate=sampling_rate, return_tensors="pt"
     )
 
+    hook = store_output
+    model.feature_projection.register_forward_hook(hook)
+
     input = inputs["input_values"]
     input = input.squeeze(dim=0)
     input = input.unsqueeze(dim=0)
@@ -31,13 +34,26 @@ def main() -> None:
         outputs = model(**inputs)
 
     output = outputs.last_hidden_state
-    output = output.squeeze()
+    output = output.squeeze(dim=0)
+
+    data = torch.load("test_official_hubert.pth")
+
+    embedding = data["embedding"]
 
     data = {
         "input": input,
+        "embedding": embedding,
         "output": output,
     }
 
+    torch.save(data, "test_official_hubert.pth")
+
+
+def store_output(module, args, output) -> None:
+    output = output.squeeze(dim=0)
+    data = {
+        "embedding": output,
+    }
     torch.save(data, "test_official_hubert.pth")
 
 
