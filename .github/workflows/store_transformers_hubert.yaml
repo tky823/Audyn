@@ -20,7 +20,9 @@ jobs:
         torch-version:
           - "2.6.0"
     steps:
-      - name: Checkout repository
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Clone transformers
         run: |
           cd tests/scripts/
           git clone --depth 1 https://github.com/huggingface/transformers.git
