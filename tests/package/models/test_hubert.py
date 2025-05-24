@@ -32,7 +32,7 @@ def test_hubert() -> None:
 
     embedding = embedding.squeeze(dim=0)
 
-    allclose(embedding, expected_embedding, atol=1e-4)
+    allclose(embedding, expected_embedding)
 
     embedding = expected_embedding.unsqueeze(dim=0)
 
@@ -42,9 +42,9 @@ def test_hubert() -> None:
     output = output.squeeze(dim=0)
 
     if IS_TORCH_LT_2_3:
-        allclose(output, expected_output, atol=1e-2)
+        allclose(output, expected_output)
     else:
-        allclose(output, expected_output, atol=1e-3)
+        allclose(output, expected_output)
 
     with torch.no_grad():
         output = model(waveform)
