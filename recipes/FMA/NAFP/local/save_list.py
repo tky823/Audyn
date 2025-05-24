@@ -1,7 +1,9 @@
 import glob
 import os
 
+import torchaudio
 from omegaconf import DictConfig
+from tqdm import tqdm
 
 import audyn
 from audyn.utils import setup_config
@@ -36,13 +38,24 @@ def main(config: DictConfig) -> None:
 
     track_ids = []
 
-    for idx in range(156):
+    for idx in tqdm(range(156)):
         name = f"{idx:03d}"
         template_path = os.path.join(fma_root, "audio", name, "*.mp3")
         paths = sorted(glob.glob(template_path))
 
         for path in paths:
             if is_included(path, type=_type, subset=subset):
+                _, ext = os.path.splitext(path)
+
+                assert ext == ".mp3"
+
+                ext = ext[1:]
+
+                try:
+                    torchaudio.load(path, format=ext)
+                except RuntimeError:
+                    continue
+
                 filename = os.path.basename(path)
                 filename, _ = os.path.splitext(filename)
                 track_id = int(filename)
