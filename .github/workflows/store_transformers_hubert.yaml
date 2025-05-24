@@ -67,3 +67,8 @@ jobs:
       - name: Run HuBERT in transformers
         run: |
           python tests/scripts/run_official_hubert.py
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: official_hubert
+          path: test_official_hubert.pth
