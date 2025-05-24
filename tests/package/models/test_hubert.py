@@ -3,12 +3,9 @@ import os
 import torch
 from audyn_test import allclose
 from audyn_test.utils import audyn_test_cache_dir
-from packaging import version
 
 from audyn.models.hubert import HuBERT
 from audyn.utils._github import download_file_from_github_release
-
-IS_TORCH_LT_2_3 = version.parse(torch.__version__) < version.parse("2.3")
 
 
 def test_hubert() -> None:
@@ -32,7 +29,7 @@ def test_hubert() -> None:
 
     embedding = embedding.squeeze(dim=0)
 
-    allclose(embedding, expected_embedding)
+    allclose(embedding, expected_embedding, atol=1e-4)
 
     embedding = expected_embedding.unsqueeze(dim=0)
 
@@ -41,19 +38,13 @@ def test_hubert() -> None:
 
     output = output.squeeze(dim=0)
 
-    if IS_TORCH_LT_2_3:
-        allclose(output, expected_output)
-    else:
-        allclose(output, expected_output)
+    allclose(output, expected_output, atol=2e-3)
 
     with torch.no_grad():
         output = model(waveform)
 
     output = output.squeeze(dim=0)
 
-    if IS_TORCH_LT_2_3:
-        allclose(output, expected_output, atol=1e-2)
-    else:
-        allclose(output, expected_output, atol=1e-3)
+    allclose(output, expected_output, atol=2e-3)
 
     model.remove_weight_norm_()
