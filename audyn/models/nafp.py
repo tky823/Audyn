@@ -60,6 +60,7 @@ class ContrastiveNeuralAudioFingerprinter(NeuralAudioFingerprinter):
         """
         x = torch.cat([input, other], dim=0)
         x = super().forward(x)
-        output, output_other = torch.split(x, 2, dim=0)
+        split_size_or_sections = x.size(0) // 2
+        output_one, output_other = torch.split(x, split_size_or_sections, dim=0)
 
-        return output, output_other
+        return output_one, output_other
