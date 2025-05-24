@@ -46,11 +46,12 @@ jobs:
           MACOSX_DEPLOYMENT_TARGET: '10.13'
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[recipes]"
+          pip install -e ".[dev,tests]"
       - name: Install dependencies
         run: |
           cd tests/scripts/transformers
           pip install -e "."
+          pip install datasets
       - name: Show dependencies
         run: |
           pip list
