@@ -72,3 +72,8 @@ jobs:
         with:
           name: official_hubert
           path: test_official_hubert.pth
+      - name: Pytest
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: |
+          pytest -vvv --log-cli-level=ERROR tests/package/models/test_hubert.py
