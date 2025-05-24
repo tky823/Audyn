@@ -44,3 +44,24 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         preprocess.subset="${subset}"
     done
 fi
+
+if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
+    echo "Preprocess stage 2: Save features"
+
+    for subset in "train" "validation" "test"; do
+        list_path="${list_dir}/${subset}.txt"
+        subset_feature_dir="${feature_dir}/${subset}"
+
+        mkdir -p "${subset_feature_dir}"
+
+        python ./local/save_features.py \
+        --config-dir "./conf" \
+        hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
+        preprocess="${preprocess}" \
+        data="${data}" \
+        preprocess.dump_format="${dump_format}" \
+        preprocess.list_path="${list_path}" \
+        preprocess.feature_dir="${subset_feature_dir}" \
+        preprocess.fma_root="${fma_root}"
+    done
+fi
