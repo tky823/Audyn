@@ -52,6 +52,7 @@ jobs:
           cd tests/scripts/transformers
           pip install -e "."
           pip install datasets
+          pip install soundfile
       - name: Show dependencies
         run: |
           pip list
