@@ -1,0 +1,83 @@
+defaults:
+  - default
+  - _self_
+
+train:
+  batch_size: 120
+  collate_fn:
+    _target_: audyn.utils.data.Collator
+    composer:
+      _target_: audyn.utils.data.SequentialComposer
+      _args_:
+        - _target_: audyn.utils.data.UnpackingAudioComposer
+          audio_key: audio
+          waveform_key: waveform
+          sample_rate_key: sample_rate
+          decode_audio_as_waveform: true
+          decode_audio_as_monoral: true
+        - _target_: audyn.utils.data.ResamplingComposer
+          new_freq: ${data.audio.sample_rate}
+          audio_key: ${..0.waveform_key}
+          sample_rate_key: ${..0.sample_rate_key}
+          decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
+          decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
+        - _target_: audyn.utils.data.fma.NAFPWaveformSliceComposer
+          input_key: waveform
+          output_key: waveform_slice
+          shifted_key: augmented_waveform_slice
+          duration: 1
+          offset_duration: 0.2
+          sample_rate: ${data.audio.sample_rate}
+          training: true
+          seed: ${system.seed}
+          decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
+          decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
+        - _target_: audyn.utils.data.AudioFeatureExtractionComposer
+          feature_extractor: ${data.melspectrogram}
+          audio_key: waveform_slice
+          feature_key: melspectrogram_slice
+          decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
+          decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
+        - _target_: audyn.utils.data.AudioFeatureExtractionComposer
+          feature_extractor: ${data.melspectrogram}
+          audio_key: augmented_waveform_slice
+          feature_key: augmented_melspectrogram_slice
+          decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
+          decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
+        - _target_: audyn.utils.data.LogarithmTaker
+          input_key: melspectrogram_slice
+          output_key: melspectrogram_slice
+          flooring: 1e-8
+          decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
+          decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
+        - _target_: audyn.utils.data.LogarithmTaker
+          input_key: augmented_melspectrogram_slice
+          output_key: augmented_melspectrogram_slice
+          flooring: 1e-8
+          decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
+          decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
+  shuffle:
+validation:
+  batch_size: 120
+  collate_fn:
+    _target_: audyn.utils.data.Collator
+    composer:
+      _target_: audyn.utils.data.SequentialComposer
+      _args_:
+        - ${.....train.collate_fn.composer._args_.0}
+        - ${.....train.collate_fn.composer._args_.1}
+        - _target_: ${......train.collate_fn.composer._args_.2._target_}
+          input_key: ${......train.collate_fn.composer._args_.2.input_key}
+          output_key: ${......train.collate_fn.composer._args_.2.output_key}
+          shifted_key: ${......train.collate_fn.composer._args_.2.shifted_key}
+          duration: ${......train.collate_fn.composer._args_.2.duration}
+          offset_duration: ${......train.collate_fn.composer._args_.2.offset_duration}
+          sample_rate: ${......train.collate_fn.composer._args_.2.sample_rate}
+          training: false
+          seed: ${......train.collate_fn.composer._args_.2.seed}
+          decode_audio_as_waveform: ${......train.collate_fn.composer._args_.2.decode_audio_as_waveform}
+          decode_audio_as_monoral: ${......train.collate_fn.composer._args_.2.decode_audio_as_monoral}
+        - ${.....train.collate_fn.composer._args_.3}
+        - ${.....train.collate_fn.composer._args_.4}
+        - ${.....train.collate_fn.composer._args_.5}
+        - ${.....train.collate_fn.composer._args_.6}
