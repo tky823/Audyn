@@ -3,7 +3,7 @@ defaults:
   - _self_
 
 train:
-  batch_size: 120
+  batch_size: 16
   collate_fn:
     _target_: audyn.utils.data.Collator
     composer:
@@ -21,7 +21,7 @@ train:
           sample_rate_key: ${..0.sample_rate_key}
           decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
           decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
-        - _target_: audyn.utils.data.fma.NAFPWaveformSliceComposer
+        - _target_: audyn.utils.data.nafp.NAFPWaveformSliceComposer
           input_key: waveform
           output_key: waveform_slice
           shifted_key: augmented_waveform_slice
@@ -58,7 +58,7 @@ train:
           decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
   shuffle:
 validation:
-  batch_size: 120
+  batch_size: 16
   collate_fn:
     _target_: audyn.utils.data.Collator
     composer:
