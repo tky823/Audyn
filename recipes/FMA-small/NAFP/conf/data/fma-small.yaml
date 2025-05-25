@@ -14,5 +14,9 @@ melspectrogram:
   f_min: 300
   f_max: 4000
   n_mels: 256
-  window_fn: torch.hann_window
-  window_kwargs:
+  window_fn:
+    _target_: torch.hann_window
+    _partial_: true
+
+fingerprinting:
+  embedding_dim: 128
