@@ -2,14 +2,22 @@ from typing import Any, Dict
 
 import pytest
 import torch
+import torchaudio.transforms as aT
 
-from audyn.utils.data.nafp.composer import NAFPWaveformSliceComposer
+from audyn.utils.data import AudioFeatureExtractionComposer
+from audyn.utils.data.nafp.composer import (
+    NAFPSpectrogramAugmentationComposer,
+    NAFPWaveformSliceComposer,
+)
 
 
 def test_nafp_composer(fma_samples: Dict[str, Dict[str, Any]]) -> None:
     input_key = "waveform"
     output_key = "waveform_slice"
     shifted_key = "augmented_waveform_slice"
+    melspectrogram_key = "melspectrogram_slice"
+    sample_rate = 16000
+    duration = 1
 
     list_batch = []
 
@@ -21,24 +29,59 @@ def test_nafp_composer(fma_samples: Dict[str, Dict[str, Any]]) -> None:
         input_key=input_key,
         output_key=output_key,
         shifted_key=shifted_key,
-        duration=1,
+        duration=duration,
         offset_duration=0.2,
-        sample_rate=16000,
+        sample_rate=sample_rate,
         training=True,
     )
     list_batch = composer(list_batch)
+    list_batch = list(list_batch)
 
     for sample in list_batch:
-        assert {
+        assert set(sample.keys()) == {
             "__key__",
             "waveform",
             "waveform_slice",
             "augmented_waveform_slice",
             "sample_rate",
-        } == set(sample.keys())
+        }
 
-        assert sample["waveform_slice"].size() == (16000,)
-        assert sample["augmented_waveform_slice"].size() == (16000,)
+        assert sample["waveform_slice"].size() == (int(sample_rate * duration),)
+        assert sample["augmented_waveform_slice"].size() == (int(sample_rate * duration),)
+
+    composer = AudioFeatureExtractionComposer(
+        aT.MelSpectrogram(
+            sample_rate=sample_rate,
+            n_fft=1024,
+            hop_length=256,
+            f_min=30,
+            f_max=8000,
+            window_fn=torch.hann_window,
+            n_mels=256,
+        ),
+        audio_key=output_key,
+        feature_key=melspectrogram_key,
+    )
+
+    list_batch = composer(list_batch)
+
+    composer = NAFPSpectrogramAugmentationComposer(
+        input_key=melspectrogram_key,
+        output_key=melspectrogram_key,
+        training=True,
+    )
+
+    list_batch = composer(list_batch)
+
+    for sample in list_batch:
+        assert set(sample.keys()) == {
+            "__key__",
+            "waveform",
+            "waveform_slice",
+            "augmented_waveform_slice",
+            "melspectrogram_slice",
+            "sample_rate",
+        }
 
 
 @pytest.fixture
