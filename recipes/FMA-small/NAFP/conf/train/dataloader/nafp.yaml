@@ -34,26 +34,32 @@ train:
           decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
         - _target_: audyn.utils.data.AudioFeatureExtractionComposer
           feature_extractor: ${data.melspectrogram}
-          audio_key: waveform_slice
+          audio_key: ${..2.output_key}
           feature_key: melspectrogram_slice
           decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
           decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
         - _target_: audyn.utils.data.AudioFeatureExtractionComposer
           feature_extractor: ${data.melspectrogram}
-          audio_key: augmented_waveform_slice
+          audio_key: ${..2.shifted_key}
           feature_key: augmented_melspectrogram_slice
           decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
           decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
         - _target_: audyn.utils.data.LogarithmTaker
-          input_key: melspectrogram_slice
-          output_key: melspectrogram_slice
+          input_key: ${..3.feature_key}
+          output_key: ${.input_key}
           flooring: 1e-8
           decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
           decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
         - _target_: audyn.utils.data.LogarithmTaker
-          input_key: augmented_melspectrogram_slice
-          output_key: augmented_melspectrogram_slice
+          input_key: ${..4.feature_key}
+          output_key: ${.input_key}
           flooring: 1e-8
+          decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
+          decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
+        - _target_: audyn.utils.data.nafp.NAFPSpectrogramAugmentationComposer
+          input_key: ${..5.output_key}
+          output_key: ${.input_key}
+          training: true
           decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
           decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
   shuffle:
@@ -81,3 +87,9 @@ validation:
         - ${.....train.collate_fn.composer._args_.4}
         - ${.....train.collate_fn.composer._args_.5}
         - ${.....train.collate_fn.composer._args_.6}
+        - _target_: audyn.utils.data.nafp.NAFPSpectrogramAugmentationComposer
+          input_key: ${..5.output_key}
+          output_key: ${.input_key}
+          training: false
+          decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
+          decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
