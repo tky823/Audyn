@@ -191,7 +191,7 @@ class LogarithmTaker(Composer):
         feature = sample[input_key]
 
         if self.flooring is not None:
-            if isinstance(self.flooring):
+            if isinstance(self.flooring, float):
                 feature = torch.clamp(feature, min=self.flooring)
             else:
                 feature = self.flooring(feature)
