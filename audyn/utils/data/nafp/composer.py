@@ -1,15 +1,23 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import torch
+import torchaudio
+import torchaudio.functional as aF
+from packaging import version
 
 from ..composer import Composer
 
 __all__ = [
+    "NeuralAudioFingerprintingWaveformSliceComposer",
+    "NeuralAudioFingerprintingSpectrogramAugmentationComposer",
     "NAFPWaveformSliceComposer",
+    "NAFPSpectrogramAugmentationComposer",
 ]
 
+IS_TORCHAUDIO_LT_2_1 = version.parse(torchaudio.__version__) < version.parse("2.1")
 
-class NAFPWaveformSliceComposer(Composer):
+
+class NeuralAudioFingerprintingWaveformSliceComposer(Composer):
     """Composer to slice waveform and augmented one by fixed length or duration.
 
     Args:
@@ -132,3 +140,87 @@ class NAFPWaveformSliceComposer(Composer):
         sample[shifted_key] = shifted_waveform.view(*batch_shape, length)
 
         return sample
+
+
+class NAFPWaveformSliceComposer(NeuralAudioFingerprintingWaveformSliceComposer):
+    """Alias of NeuralAudioFingerprintingWaveformSliceComposer."""
+
+
+class NeuralAudioFingerprintingSpectrogramAugmentationComposer(Composer):
+    """Composer to augment spectrogram.
+
+    Args:
+        input_key (str): Key of spectrogram in given sample.
+        output_key (str): Key of tensor to store augmented spectrogram.
+        freq_mask_param (tuple): Parameter of frequency masking. Default: ``(0.01, 0.5)``.
+        time_mask_param (tuple): Parameter of time masking. Default: ``(0.01, 0.5)``.
+
+    """
+
+    def __init__(
+        self,
+        input_key: str,
+        output_key: str,
+        freq_mask_param: Tuple[float, float] = (0.01, 0.5),
+        time_mask_param: Tuple[float, float] = (0.01, 0.5),
+        training: bool = False,
+        decode_audio_as_waveform: bool = True,
+        decode_audio_as_monoral: bool = True,
+    ) -> None:
+        super().__init__(
+            decode_audio_as_waveform=decode_audio_as_waveform,
+            decode_audio_as_monoral=decode_audio_as_monoral,
+        )
+
+        self.input_key = input_key
+        self.output_key = output_key
+        self.freq_mask_param = freq_mask_param
+        self.time_mask_param = time_mask_param
+        self.training = training
+
+    def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        input_key = self.input_key
+        output_key = self.output_key
+        freq_mask_param = self.freq_mask_param
+        time_mask_param = self.time_mask_param
+        training = self.training
+
+        specgram = sample[input_key]
+
+        if training:
+
+            *batch_shape, n_bins, n_frames = specgram.size()
+            specgram = specgram.view(-1, n_bins, n_frames)
+
+            if IS_TORCHAUDIO_LT_2_1:
+                # 4D is required.
+                specgram = specgram.view(-1, 1, n_bins, n_frames)
+                freq_axis = 2
+                time_axis = 3
+            else:
+                # 3D is required.
+                specgram = specgram.view(-1, n_bins, n_frames)
+                freq_axis = 1
+                time_axis = 2
+
+            # frequency mask
+            specgram = aF.mask_along_axis_iid(
+                specgram, mask_param=freq_mask_param, mask_value=0, axis=freq_axis
+            )
+
+            # time mask
+            specgram = aF.mask_along_axis_iid(
+                specgram, mask_param=time_mask_param, mask_value=0, axis=time_axis
+            )
+
+            specgram = specgram.view(*batch_shape, n_bins, n_frames)
+
+        sample[output_key] = specgram
+
+        return sample
+
+
+class NAFPSpectrogramAugmentationComposer(
+    NeuralAudioFingerprintingSpectrogramAugmentationComposer
+):
+    """Alias of NeuralAudioFingerprintingSpectrogramAugmentationComposer."""
