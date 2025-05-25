@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 import pytest
 import torch
@@ -20,6 +20,7 @@ from audyn.utils.data.composer import (
     LabelToOnehot,
     SequentialComposer,
     SynchronousWaveformSlicer,
+    UnpackingAudioComposer,
 )
 from audyn.utils.data.gtzan import num_tags as num_gtzan_tags
 from audyn.utils.data.gtzan import tags as gtzan_tags
@@ -222,6 +223,28 @@ def test_laion_clap_composer(audioset_samples: Dict[str, Dict[str, Any]]) -> Non
         assert sample["fused_melspectrogram"].size() == (num_chunks + 1, n_mels, chunk_size)
 
 
+def test_unpacking_composer(fma_samples: Dict[str, Dict[str, Any]]) -> None:
+    audio_key = "audio"
+    waveform_key = "waveform"
+    sample_rate_key = "sample_rate"
+
+    list_batch = []
+
+    for key, sample in fma_samples.items():
+        sample["__key__"] = key
+        list_batch.append(sample)
+
+    composer = UnpackingAudioComposer(
+        audio_key=audio_key,
+        waveform_key=waveform_key,
+        sample_rate_key=sample_rate_key,
+    )
+    list_batch = composer(list_batch)
+
+    for sample in list_batch:
+        assert {"__key__", audio_key, waveform_key, sample_rate_key} == set(sample.keys())
+
+
 @pytest.fixture
 def audioset_samples() -> Dict[str, Dict[str, Any]]:
     sample_rate = 16000
@@ -359,6 +382,62 @@ def gtzan_samples() -> Dict[str, Dict[str, Any]]:
             "audio": _create_dummy_audio(),
             "tag": "blues",
             "sample_rate": sample_rate,
+        },
+    }
+
+    return samples
+
+
+@pytest.fixture
+def fma_samples() -> Dict[str, Dict[str, Any]]:
+    duration = 30
+    sample_rate = [8000, 16000, 3200]
+
+    g = torch.Generator()
+    g.manual_seed(0)
+
+    def _create_dummy_audio() -> Tuple[torch.Tensor, int]:
+        _duration = torch.randint(int(0.8 * duration), duration, (), generator=g)
+        _sample_rate_index = torch.randint(0, len(sample_rate), (), generator=g)
+        _sample_rate_index = _sample_rate_index.item()
+        _sample_rate = sample_rate[_sample_rate_index]
+        _waveform = torch.randn(int(_duration * _sample_rate), generator=g)
+
+        return _waveform, _sample_rate
+
+    samples = {
+        "example0": {
+            "audio": _create_dummy_audio(),
+        },
+        "example1": {
+            "audio": _create_dummy_audio(),
+        },
+        "example2": {
+            "audio": _create_dummy_audio(),
+        },
+        "example3": {
+            "audio": _create_dummy_audio(),
+        },
+        "example4": {
+            "audio": _create_dummy_audio(),
+        },
+        "example5": {
+            "audio": _create_dummy_audio(),
+        },
+        "example6": {
+            "audio": _create_dummy_audio(),
+        },
+        "example7": {
+            "audio": _create_dummy_audio(),
+        },
+        "example8": {
+            "audio": _create_dummy_audio(),
+        },
+        "example9": {
+            "audio": _create_dummy_audio(),
+        },
+        "example10": {
+            "audio": _create_dummy_audio(),
         },
     }
 
