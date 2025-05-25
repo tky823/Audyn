@@ -155,7 +155,8 @@ class NeuralAudioFingerprinterProjection(nn.Module):
         x = self.conv2d_in(x)
         x = self.activation(x)
         x = self.conv2d_out(x)
-        output = x.mean(dim=(-2, -1))
+        x = x.mean(dim=(-2, -1))
+        output = F.normalize(x, p=2, dim=-1)
 
         return output
 
