@@ -64,22 +64,14 @@ class WaveformSlicer(nn.Module):
 
         if self.training:
             if padding > 0:
-                padding_left = torch.randint(
-                    0,
-                    padding,
-                    (),
-                    generator=self.generator,
-                ).item()
+                padding_left = torch.randint(0, padding, (), generator=self.generator)
+                padding_left = padding_left.item()
                 padding_right = padding - padding_left
                 waveform_slice = F.pad(waveform, (padding_left, padding_right))
             elif padding < 0:
                 trimming = -padding
-                start_idx = torch.randint(
-                    0,
-                    trimming,
-                    (),
-                    generator=self.generator,
-                ).item()
+                start_idx = torch.randint(0, trimming, (), generator=self.generator)
+                padding_left = padding_left.item()
                 end_idx = start_idx + length
                 _, waveform_slice, _ = torch.split(
                     waveform, [start_idx, length, orig_length - end_idx], dim=-1
