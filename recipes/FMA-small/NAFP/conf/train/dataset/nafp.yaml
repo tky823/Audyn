@@ -1,0 +1,13 @@
+defaults:
+  - torch
+  - _self_
+
+train:
+  list_path:
+  feature_dir:
+  decode_audio_as_waveform: false
+
+validation:
+  list_path:
+  feature_dir:
+  decode_audio_as_waveform: ${..train.decode_audio_as_waveform}
