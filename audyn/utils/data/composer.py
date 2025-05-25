@@ -15,6 +15,8 @@ __all__ = [
     "SynchronousWaveformSlicer",
     "LabelToOnehot",
     "LabelsToMultihot",
+    "ResamplingComposer",
+    "UnpackingAudioComposer",
 ]
 
 
@@ -648,5 +650,59 @@ class ResamplingComposer(Composer):
 
         sample[audio_key] = waveform
         sample[sample_rate_key] = torch.tensor(new_freq, dtype=torch.long)
+
+        return sample
+
+
+class UnpackingAudioComposer(Composer):
+    """Composer to unpack tuple of (waveform, sample_rate) to separate keys.
+
+    Args:
+        audio_key (str): Key of audio in given sample.
+        waveform_key (str): Key of waveform to store.
+        sample_rate_key (str): Key of sampling rate to store.
+
+    """
+
+    def __init__(
+        self,
+        audio_key: str,
+        waveform_key: str,
+        sample_rate_key: str,
+        decode_audio_as_waveform: bool = True,
+        decode_audio_as_monoral: bool = True,
+    ) -> None:
+        assert decode_audio_as_waveform, "decode_audio_as_waveform should be True."
+
+        super().__init__(
+            decode_audio_as_waveform=False,
+            decode_audio_as_monoral=decode_audio_as_monoral,
+        )
+
+        self.audio_key = audio_key
+        self.waveform_key = waveform_key
+        self.sample_rate_key = sample_rate_key
+
+    def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        audio_key = self.audio_key
+        waveform_key = self.waveform_key
+        sample_rate_key = self.sample_rate_key
+        decode_audio_as_waveform = self.decode_audio_as_waveform
+
+        assert not decode_audio_as_waveform, "decode_audio_as_waveform should be False."
+
+        sample = super().process(sample)
+
+        audio = sample[audio_key]
+
+        assert isinstance(audio, tuple)
+        assert (
+            len(audio) == 2
+        ), f"Audio with {audio_key} should be a tuple of (waveform, sample_rate)."
+
+        waveform, sample_rate = audio
+
+        sample[waveform_key] = waveform
+        sample[sample_rate_key] = sample_rate
 
         return sample

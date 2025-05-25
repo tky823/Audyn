@@ -19,6 +19,7 @@ from .composer import (
     SequentialComposer,
     Stacker,
     SynchronousWaveformSlicer,
+    UnpackingAudioComposer,
 )
 from .dataloader import (
     DistributedDataLoader,
@@ -59,6 +60,7 @@ __all__ = [
     "LabelToOnehot",
     "LabelsToMultihot",
     "ResamplingComposer",
+    "UnpackingAudioComposer",
     "Collator",
     "slice_feautures",
     "take_log_features",
