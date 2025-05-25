@@ -2,7 +2,6 @@ from typing import Any, Dict, Optional, Tuple
 
 import torch
 import torchaudio
-import torchaudio.functional as aF
 from packaging import version
 
 from ..composer import Composer
@@ -154,6 +153,8 @@ class NeuralAudioFingerprintingSpectrogramAugmentationComposer(Composer):
         output_key (str): Key of tensor to store augmented spectrogram.
         freq_mask_param (tuple): Parameter of frequency masking. Default: ``(0.01, 0.5)``.
         time_mask_param (tuple): Parameter of time masking. Default: ``(0.01, 0.5)``.
+        patch_mask_param (tuple): Parameter of pacth masking (i.e., cut-out).
+            Default: ``((0.01, 0.5), (0.01, 0.05))``.
 
     """
 
@@ -163,7 +164,12 @@ class NeuralAudioFingerprintingSpectrogramAugmentationComposer(Composer):
         output_key: str,
         freq_mask_param: Tuple[float, float] = (0.01, 0.5),
         time_mask_param: Tuple[float, float] = (0.01, 0.5),
+        patch_mask_param: Tuple[Tuple[float, float], Tuple[float, float]] = (
+            (0.01, 0.5),
+            (0.01, 0.5),
+        ),
         training: bool = False,
+        seed: int = 0,
         decode_audio_as_waveform: bool = True,
         decode_audio_as_monoral: bool = True,
     ) -> None:
@@ -176,42 +182,60 @@ class NeuralAudioFingerprintingSpectrogramAugmentationComposer(Composer):
         self.output_key = output_key
         self.freq_mask_param = freq_mask_param
         self.time_mask_param = time_mask_param
+        self.patch_mask_param = patch_mask_param
         self.training = training
+
+        self.generator = None
+        self.seed = seed
 
     def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
         input_key = self.input_key
         output_key = self.output_key
         freq_mask_param = self.freq_mask_param
         time_mask_param = self.time_mask_param
+        patch_mask_param = self.patch_mask_param
         training = self.training
 
         specgram = sample[input_key]
 
-        if training:
+        if self.generator is None:
+            self.generator = torch.Generator()
+            self.generator.manual_seed(self.seed)
 
+        if training:
             *batch_shape, n_bins, n_frames = specgram.size()
             specgram = specgram.view(-1, n_bins, n_frames)
 
-            if IS_TORCHAUDIO_LT_2_1:
-                # 4D is required.
-                specgram = specgram.view(-1, 1, n_bins, n_frames)
-                freq_axis = 2
-                time_axis = 3
-            else:
-                # 3D is required.
-                specgram = specgram.view(-1, n_bins, n_frames)
-                freq_axis = 1
-                time_axis = 2
-
             # frequency mask
-            specgram = aF.mask_along_axis_iid(
-                specgram, mask_param=freq_mask_param, mask_value=0, axis=freq_axis
+            start_bin, end_bin = _randrange(
+                n_bins, param=freq_mask_param, generator=self.generator
             )
+            bin_indices = torch.arange(n_bins)
+            masking_mask = (start_bin <= bin_indices) & (bin_indices < end_bin)
+            masking_mask = masking_mask.unsqueeze(dim=-1)
+            specgram = specgram.masked_fill(masking_mask, 0)
 
             # time mask
-            specgram = aF.mask_along_axis_iid(
-                specgram, mask_param=time_mask_param, mask_value=0, axis=time_axis
+            start_frame, end_frame = _randrange(
+                n_frames, param=time_mask_param, generator=self.generator
             )
+            frame_indices = torch.arange(n_frames)
+            masking_mask = (start_frame <= frame_indices) & (frame_indices < end_frame)
+            specgram = specgram.masked_fill(masking_mask, 0)
+
+            # patch mask
+            start_bin, end_bin = _randrange(
+                n_bins, param=patch_mask_param[0], generator=self.generator
+            )
+            start_frame, end_frame = _randrange(
+                n_frames, param=patch_mask_param[1], generator=self.generator
+            )
+            bin_indices = torch.arange(n_bins)
+            frame_indices = torch.arange(n_frames)
+            freq_masking_mask = (start_bin <= bin_indices) & (bin_indices < end_bin)
+            time_masking_mask = (start_frame <= frame_indices) & (frame_indices < end_frame)
+            patch_masking_mask = freq_masking_mask.unsqueeze(dim=-1) & time_masking_mask
+            specgram = specgram.masked_fill(patch_masking_mask, 0)
 
             specgram = specgram.view(*batch_shape, n_bins, n_frames)
 
@@ -224,3 +248,18 @@ class NAFPSpectrogramAugmentationComposer(
     NeuralAudioFingerprintingSpectrogramAugmentationComposer
 ):
     """Alias of NeuralAudioFingerprintingSpectrogramAugmentationComposer."""
+
+
+def _randrange(
+    num_samples: int, param: Tuple[float, float], generator: Optional[torch.Generator] = None
+) -> Tuple[int, int]:
+    """Generate a random integer in the range [start, end)."""
+    min_samples = int(num_samples * param[0])
+    max_samples = int(num_samples * param[1]) + 1
+    num_masked_samples = torch.randint(min_samples, max_samples, (), generator=generator)
+    num_masked_samples = num_masked_samples.item()
+    start_index = torch.randint(0, num_samples - num_masked_samples, (), generator=generator)
+    start_index = start_index.item()
+    end_index = start_index + num_masked_samples
+
+    return start_index, end_index
