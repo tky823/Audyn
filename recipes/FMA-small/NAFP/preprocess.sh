@@ -12,7 +12,7 @@ log_dir="./log"
 
 dump_format="webdataset"
 
-preprocess="fma"
+preprocess="fma-small"
 data="fma-small"
 
 . ../../_common/parse_options.sh || exit 1;
@@ -32,6 +32,14 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     for subset in "train" "validation" "test"; do
         list_path="${list_dir}/${subset}.txt"
 
+        if [ "${subset}" = "train" ]; then
+            num_samples=1000
+        elif [ "${subset}" = "validation" ]; then
+            num_samples=100
+        else
+            num_samples=100
+        fi
+
         python ./local/save_list.py \
         --config-dir "./conf" \
         hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
@@ -41,7 +49,8 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         preprocess.list_path="${list_path}" \
         preprocess.fma_root="${fma_root}" \
         preprocess.type="${fma_type}" \
-        preprocess.subset="${subset}"
+        preprocess.subset="${subset}" \
+        preprocess.num_samples="${num_samples}"
     done
 fi
 

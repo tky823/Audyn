@@ -1,6 +1,7 @@
 import glob
 import os
 
+import torch
 import torchaudio
 from omegaconf import DictConfig
 from tqdm import tqdm
@@ -31,10 +32,12 @@ def main(config: DictConfig) -> None:
     fma_root = config.preprocess.fma_root
     _type = config.preprocess.type
     subset = config.preprocess.subset
+    num_samples = config.preprocess.num_samples
 
     assert list_path is not None, "Specify preprocess.list_path."
     assert _type is not None, "Specify preprocess.type."
     assert subset is not None, "Specify preprocess.subset."
+    assert num_samples is not None, "Specify preprocess.num_samples."
 
     track_ids = []
 
@@ -63,8 +66,17 @@ def main(config: DictConfig) -> None:
 
     track_ids = sorted(track_ids)
 
+    g = torch.Generator()
+    g.manual_seed(config.system.seed)
+
+    indices = torch.randperm(len(track_ids), generator=g)
+    indices = indices.tolist()
+    indices = indices[:num_samples]
+    indices = sorted(indices)
+
     with open(list_path, mode="w") as f:
-        for track_id in track_ids:
+        for index in indices:
+            track_id = track_ids[index]
             f.write(f"{track_id}\n")
 
 
