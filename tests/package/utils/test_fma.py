@@ -17,7 +17,7 @@ from audyn.utils.data.fma import (
     small_train_track_ids,
     small_validation_track_ids,
 )
-from audyn.utils.data.fma.composer import NAFPWaveformSliceComposer
+from audyn.utils.data.nafp.composer import NAFPWaveformSliceComposer
 
 
 def test_fma() -> None:
