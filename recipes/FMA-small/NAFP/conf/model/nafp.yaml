@@ -1,0 +1,26 @@
+_target_: audyn.models.nafp.ContrastiveNeuralAudioFingerprinter
+backbone:
+  _target_: audyn.modules.nafp.NeuralAudioFingerprinterBackbone
+  in_channels: 1
+  num_features:
+    - ${data.fingerprinting.embedding_dim}
+    - ${.0}
+    - _target_: operator.mul
+      _args_:
+        - ${data.fingerprinting.embedding_dim}
+        - 2
+    - ${.2}
+    - _target_: operator.mul
+      _args_:
+        - ${data.fingerprinting.embedding_dim}
+        - 4
+    - ${.3}
+    - 1024
+    - ${.4}
+  kernel_size: 3
+  stride: 2
+projection:
+  _target_: audyn.modules.nafp.NeuralAudioFingerprinterProjection
+  in_channels: ${..backbone.num_features.7}
+  out_channels: ${data.fingerprinting.embedding_dim}
+  hidden_channels: 32
