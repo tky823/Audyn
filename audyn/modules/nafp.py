@@ -77,6 +77,8 @@ class NeuralAudioFingerprinterBackbone(nn.Module):
 
         self.backbone = nn.ModuleList(backbone)
 
+        self.in_channels = in_channels
+
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         """Forward pass of NeuralAudioFingerprinterBackbone.
 
@@ -87,7 +89,19 @@ class NeuralAudioFingerprinterBackbone(nn.Module):
             torch.Tensor: Downsampled feature of shape (*,).
 
         """
-        x = input
+        in_channels = self.in_channels
+
+        if input.dim() == 3:
+            assert in_channels == 1
+
+            x = input.unsqueeze(dim=-3)
+        elif input.dim() == 4:
+            x = input
+        else:
+            raise ValueError(
+                "Input must be of shape (batch_size, n_bins, n_frames) or "
+                "(batch_size, in_channels, n_bins, n_frames)."
+            )
 
         for block in self.backbone:
             x = block(x)
