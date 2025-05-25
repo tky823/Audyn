@@ -1,0 +1,7 @@
+defaults:
+  - default
+  - _self_
+
+fma_root:
+type:
+subset:
