@@ -6,7 +6,6 @@ set -o pipefail
 stage=0
 stop_stage=0
 
-data_root="../data"
 dump_root="./dump"
 log_root="./log"
 
