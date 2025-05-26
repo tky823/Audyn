@@ -8,7 +8,7 @@ audioset_unbalanced_train_csv_url="http://storage.googleapis.com/us_audioset/you
 audioset_eval_csv_url="http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/eval_segments.csv"
 data_root="../data"
 
-preprocess="audioset"
+preprocess="fma-small"
 
 . ../../_common/parse_options.sh || exit 1;
 
@@ -28,9 +28,9 @@ for csv_url in "${audioset_balanced_train_csv_url}" "${audioset_unbalanced_train
     --config-dir "./conf" \
     hydra.run.dir="log/$(date +"%Y%m%d-%H%M%S")" \
     preprocess="${preprocess}" \
-    preprocess.csv_path="${csv_path}" \
-    preprocess.jsonl_path="${jsonl_path}" \
-    preprocess.download_dir="${download_dir}"
+    preprocess.audioset.csv_path="${csv_path}" \
+    preprocess.audioset.jsonl_path="${jsonl_path}" \
+    preprocess.audioset.download_dir="${download_dir}"
 done
 
 full_jsonl_path="${audioset_jsonl_root}/full_train.jsonl"

@@ -21,18 +21,28 @@ except ImportError:
 def main(config: DictConfig) -> None:
     setup_config(config)
 
-    csv_path = config.preprocess.csv_path
-    jsonl_path = config.preprocess.jsonl_path
-    download_dir = config.preprocess.download_dir
+    csv_path = config.preprocess.audioset.csv_path
+    jsonl_path = config.preprocess.audioset.jsonl_path
+    download_dir = config.preprocess.audioset.download_dir
+    noise_tag = config.preprocess.audioset.tag.noise
+    music_tag = config.preprocess.audioset.tag.music
 
     download(
         csv_path=csv_path,
         jsonl_path=jsonl_path,
         download_dir=download_dir,
+        noise_tag=noise_tag,
+        music_tag=music_tag,
     )
 
 
-def download(csv_path: str, jsonl_path: str, download_dir: str) -> None:
+def download(
+    csv_path: str,
+    jsonl_path: str,
+    download_dir: str,
+    noise_tag: str = "/m/0195fx",
+    music_tag: str = "/m/04rlf",
+) -> None:
     """Download audios by ytdlp."""
     jsonl_dir = os.path.dirname(jsonl_path)
 
@@ -41,9 +51,6 @@ def download(csv_path: str, jsonl_path: str, download_dir: str) -> None:
 
     crawled_ytids = set()
     videos = {}
-
-    noise_tag = "/m/0195fx"  # subway, metro, and underground
-    music_tag = "/m/04rlf"  # music
 
     if os.path.exists(jsonl_path):
         with open(jsonl_path) as f:
