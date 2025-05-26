@@ -36,8 +36,17 @@ if [ ${stage} -le -1 ] && [ ${stop_stage} -ge -1 ]; then
 
     (
         . ../_common/download_metadata.sh \
+<<<<<<< HEAD
         --data-root "${data_root}" \
         --preprocess "${preprocess}"
+=======
+        --audioset-label-csv-url "${audioset_label_csv_url}" \
+        --audioset-ontology-url "${audioset_ontology_url}" \
+        --audioset-balanced-train-csv-url "${audioset_balanced_train_csv_url}" \
+        --audioset-unbalanced-train-csv-url "${audioset_unbalanced_train_csv_url}" \
+        --audioset-eval-csv-url "${audioset_eval_csv_url}" \
+        --data-root "${data_root}"
+>>>>>>> 0ea977c0 ([recipes] Rename download.sh to download_metadata.sh for AudioSet)
     )
 
     (
