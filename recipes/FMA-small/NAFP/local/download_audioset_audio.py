@@ -96,7 +96,7 @@ def download(
         "ignoreerrors": True,
     }
 
-    with open(jsonl_path, mode="w") as f:
+    with open(jsonl_path, mode="a") as f:
         for ytid in tqdm(ytids):
             if ytid in crawled_ytids:
                 continue
