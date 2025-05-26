@@ -5,3 +5,13 @@ defaults:
 fma_root:
 type:
 subset:
+
+# AudioSet
+audioset:
+  csv_path:
+  jsonl_path:
+  download_dir:
+
+  tag:
+    noise: "/m/0195fx"  # subway, metro, and underground
+    music: "/m/04rlf"  # music

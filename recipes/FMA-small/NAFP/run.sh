@@ -43,7 +43,8 @@ if [ ${stage} -le -1 ] && [ ${stop_stage} -ge -1 ]; then
 
     (
         . ./download_audioset_audio.sh \
-        --data-root "${data_root}"
+        --data-root "${data_root}" \
+        --preprocess "${preprocess}"
     )
 fi
 
