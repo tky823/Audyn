@@ -31,21 +31,9 @@ criterion="ntxent"
 if [ ${stage} -le -1 ] && [ ${stop_stage} -ge -1 ]; then
     echo "Stage -1"
 
-    (
-        . ../_common/download.sh \
-        --data-root "${data_root}"
-    )
-
-    (
-        . ./download_audioset_metadata.sh \
-        --data-root "${data_root}"
-    )
-
-    (
-        . ./download_audioset_audio.sh \
-        --data-root "${data_root}" \
-        --preprocess "${preprocess}"
-    )
+    echo "Download dataset from https://ieee-dataport.org/open-access/neural-audio-fingerprint-dataset to ${data_root},"
+    echo "and unzip the file."
+    exit 0;
 fi
 
 if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
