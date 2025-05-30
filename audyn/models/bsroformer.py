@@ -6,49 +6,40 @@ import torch.nn as nn
 from ..modules.bsrnn import (
     BandMergeModule,
     BandSplitModule,
-    BandSplitRNNBackbone,
     MultiChannelBandMergeModule,
     MultiChannelBandSplitModule,
     MultiSourceMultiChannelBandMergeModule,
 )
+from ..modules.bsroformer import BandSplitRoFormerBackbone
+from .bsrnn import (
+    BandSplitRNN,
+)
 
 __all__ = [
-    "BandSplitRNN",
-    "MultiSourceMultiChannelBandSplitRNN",
-    "BSRNN",
-    "MultiSourceMultiChannelBSRNN",
+    "BandSplitRoFormer",
+    "MultiSourceMultiChannelBandSplitRoFormer",
+    "BSRoFormer",
+    "MultiSourceMultiChannelBSRoFormer",
 ]
 
 
-class BandSplitRNN(nn.Module):
-    """Band-split RNN."""
+class BandSplitRoFormer(BandSplitRNN):
+    """Band-split RoFormer."""
 
     def __init__(
         self,
-        bandsplit: Union[nn.Module, BandSplitModule, MultiChannelBandSplitModule],
-        bandmerge: Union[nn.Module, BandMergeModule, MultiChannelBandMergeModule],
-        backbone: Union[BandSplitRNNBackbone, nn.Module],
+        bandsplit: Union[nn.Module, BandSplitModule],
+        bandmerge: Union[nn.Module, BandMergeModule],
+        backbone: Union[BandSplitRoFormerBackbone, nn.Module],
     ) -> None:
-        super().__init__()
-
-        self.bandsplit = bandsplit
-        self.backbone = backbone
-        self.bandmerge = bandmerge
-
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
-        x = self.bandsplit(input)
-        x = self.backbone(x)
-        mask = self.bandmerge(x)
-        output = mask * input
-
-        return output
+        super().__init__(bandsplit, bandmerge, backbone)
 
     @classmethod
     def build_from_config(
         cls,
         in_channels: int,
         version: Union[int, str] = "v7",
-    ) -> "BandSplitRNN":
+    ) -> "BandSplitRoFormer":
         version = str(version)
 
         if version.lower() in ["7", "v7"]:
@@ -170,25 +161,37 @@ class BandSplitRNN(nn.Module):
         bandmerge_hidden_channels = 512
 
         # backbone
+        num_heads = 8
         backbone_hidden_channels = 256
         num_blocks = 6
         is_causal = False
-        norm = True
-        rnn = "lstm"
+        norm = False
+        dropout = 0.1
+        activation = "gelu"
         eps = 1e-5
+        rope_base = 10000
+        share_heads = True
+        norm_first = False
+        bias = True
 
         bandsplit = MultiChannelBandSplitModule(in_channels, bins, embed_dim)
         bandmerge = MultiChannelBandMergeModule(
             in_channels, bins, embed_dim, hidden_channels=bandmerge_hidden_channels
         )
-        backbone = BandSplitRNNBackbone(
+        backbone = BandSplitRoFormerBackbone(
             embed_dim,
-            backbone_hidden_channels,
+            num_heads,
+            hidden_channels=backbone_hidden_channels,
             num_blocks=num_blocks,
             is_causal=is_causal,
             norm=norm,
-            rnn=rnn,
+            dropout=dropout,
+            activation=activation,
             eps=eps,
+            rope_base=rope_base,
+            share_heads=share_heads,
+            norm_first=norm_first,
+            bias=bias,
         )
 
         model = cls(bandsplit, bandmerge, backbone)
@@ -196,18 +199,18 @@ class BandSplitRNN(nn.Module):
         return model
 
 
-class MultiSourceMultiChannelBandSplitRNN(BandSplitRNN):
+class MultiSourceMultiChannelBandSplitRoFormer(BandSplitRoFormer):
 
     def __init__(
         self,
         bandsplit: Union[nn.Module, MultiChannelBandSplitModule],
         bandmerge: Union[nn.Module, MultiSourceMultiChannelBandMergeModule],
-        backbone: Union[BandSplitRNNBackbone, nn.Module],
+        backbone: Union[BandSplitRoFormerBackbone, nn.Module],
     ) -> None:
         super().__init__(bandsplit, bandmerge, backbone)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        """Forward pass of MultiSourceMultiChannelBandSplitRNN.
+        """Forward pass of MultiSourceMultiChannelBandSplitRoFormer.
 
         Args:
             input (torch.Tensor): Spectrogram of shape (*, in_channels, n_bins, n_frames).
@@ -231,7 +234,7 @@ class MultiSourceMultiChannelBandSplitRNN(BandSplitRNN):
         num_sources: int,
         in_channels: int,
         version: Union[int, str] = "v7",
-    ) -> "BandSplitRNN":
+    ) -> "MultiSourceMultiChannelBandSplitRoFormer":
         version = str(version)
 
         if version.lower() in ["7", "v7"]:
@@ -353,12 +356,18 @@ class MultiSourceMultiChannelBandSplitRNN(BandSplitRNN):
         bandmerge_hidden_channels = 512
 
         # backbone
+        num_heads = 8
         backbone_hidden_channels = 256
         num_blocks = 6
         is_causal = False
-        norm = True
-        rnn = "lstm"
+        norm = False
+        dropout = 0.1
+        activation = "gelu"
         eps = 1e-5
+        rope_base = 10000
+        share_heads = True
+        norm_first = False
+        bias = True
 
         bandsplit = MultiChannelBandSplitModule(in_channels, bins, embed_dim)
         bandmerge = MultiSourceMultiChannelBandMergeModule(
@@ -368,14 +377,20 @@ class MultiSourceMultiChannelBandSplitRNN(BandSplitRNN):
             embed_dim,
             hidden_channels=bandmerge_hidden_channels,
         )
-        backbone = BandSplitRNNBackbone(
+        backbone = BandSplitRoFormerBackbone(
             embed_dim,
-            backbone_hidden_channels,
+            num_heads,
+            hidden_channels=backbone_hidden_channels,
             num_blocks=num_blocks,
             is_causal=is_causal,
             norm=norm,
-            rnn=rnn,
+            dropout=dropout,
+            activation=activation,
             eps=eps,
+            rope_base=rope_base,
+            share_heads=share_heads,
+            norm_first=norm_first,
+            bias=bias,
         )
 
         model = cls(bandsplit, bandmerge, backbone)
@@ -383,9 +398,9 @@ class MultiSourceMultiChannelBandSplitRNN(BandSplitRNN):
         return model
 
 
-class BSRNN(BandSplitRNN):
-    """Alias of BandSplitRNN."""
+class BSRoFormer(BandSplitRoFormer):
+    """Alias of BandSplitRoFormer."""
 
 
-class MultiSourceMultiChannelBSRNN(MultiSourceMultiChannelBandSplitRNN):
-    """Alias of MultiSourceMultiChannelBandSplitRNN."""
+class MultiSourceMultiChannelBSRoFormer(MultiSourceMultiChannelBandSplitRoFormer):
+    """Alias of MultiSourceMultiChannelBandSplitRoFormer."""
