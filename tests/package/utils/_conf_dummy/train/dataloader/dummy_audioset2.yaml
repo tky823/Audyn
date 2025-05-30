@@ -5,7 +5,7 @@ train:
   collate_fn:
     _target_: audyn.utils.data.Collator
     composer:
-      _target_: audyn.utils.data.audioset.composer.AudioSetMultiLabelComposer
+      _target_: audyn.utils.data.audioset.AudioSetMultiLabelComposer
       tags_key: tags  # should be compatible with definition in dump files
       multilabel_key: tags_index
 validation:
