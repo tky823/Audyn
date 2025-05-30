@@ -27,7 +27,7 @@ train:
           training: true
           decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
           decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
-        - _target_: audyn.utils.data.composer.AudioFeatureExtractionComposer
+        - _target_: audyn.utils.data.AudioFeatureExtractionComposer
           feature_extractor:
             _target_: audyn.transforms.MusicTaggingTransformerMelSpectrogram.build_from_pretrained
           audio_key: ${..1.output_keys.0}
@@ -69,7 +69,7 @@ validation:
           num_slices: ${data.audio.num_evaluation_slices}
           decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
           decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
-        - _target_: audyn.utils.data.composer.AudioFeatureExtractionComposer
+        - _target_: audyn.utils.data.AudioFeatureExtractionComposer
           feature_extractor:
             _target_: audyn.transforms.MusicTaggingTransformerMelSpectrogram.build_from_pretrained
           audio_key: ${..2.output_key}
