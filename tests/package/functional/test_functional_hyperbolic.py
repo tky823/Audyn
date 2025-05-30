@@ -2,7 +2,7 @@ import pytest
 import torch
 from audyn_test import allclose
 
-from audyn.functional.hyperbolic import mobius_add, mobius_scaler_mul, mobius_sub
+from audyn.functional.hyperbolic import mobius_add, mobius_scalar_mul, mobius_sub
 
 
 @pytest.mark.parametrize("curvature", [-1, -2])
@@ -82,7 +82,7 @@ def test_mobius_sub(curvature: float) -> None:
 
 
 @pytest.mark.parametrize("curvature", [-1, -2])
-def test_mobius_scaler_mul(curvature: float) -> None:
+def test_mobius_scalar_mul(curvature: float) -> None:
     torch.manual_seed(0)
 
     batch_size = 10
@@ -92,6 +92,6 @@ def test_mobius_scaler_mul(curvature: float) -> None:
 
     output_by_add = mobius_add(input, input, curvature=curvature)
     output_by_add = mobius_add(output_by_add, input, curvature=curvature)
-    output = mobius_scaler_mul(input, 3, curvature=curvature)
+    output = mobius_scalar_mul(input, 3, curvature=curvature)
 
     allclose(output, output_by_add, atol=1e-4)
