@@ -1,0 +1,4 @@
+_target_: audyn.models.bsrnn.MultiSourceMultiChannelBandSplitRoFormer.build_from_config
+num_sources: ${data.sources.num_sources}
+in_channels: 1
+version: music-scale
