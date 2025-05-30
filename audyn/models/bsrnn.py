@@ -21,7 +21,7 @@ __all__ = [
 
 
 class BandSplitRNN(nn.Module):
-    """BandSplitRNN."""
+    """Band-split RNN."""
 
     def __init__(
         self,

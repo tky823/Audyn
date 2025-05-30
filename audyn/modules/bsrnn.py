@@ -626,7 +626,7 @@ class MultiChannelBandMergeBlock(nn.Module):
 
 
 class BandSplitRNNBackbone(nn.Module):
-    """Backbone of BandSplitRNN."""
+    """Backbone of Band-split RNN."""
 
     def __init__(
         self,
@@ -693,7 +693,7 @@ class BandSplitRNNBlock(nn.Module):
         )
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        """Forward pass of RNN block for BandSplitRNN.
+        """Forward pass of RNN block for Band-split RNN.
 
         Args:
             input (torch.Tensor): Input feature of shape
@@ -711,8 +711,8 @@ class BandSplitRNNBlock(nn.Module):
 
 
 class IntraRNN(IntraChunkRNN):
-    """RNN for band modeling in BandSplitRNN."""
+    """RNN for band modeling in Band-split RNN."""
 
 
 class InterRNN(InterChunkRNN):
-    """RNN for sequence modeling in BandSplitRNN."""
+    """RNN for sequence modeling in Band-split RNN."""
