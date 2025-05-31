@@ -5,7 +5,7 @@ import torch
 __all__ = [
     "mobius_add",
     "mobius_sub",
-    "mobius_scaler_mul",
+    "mobius_scalar_mul",
 ]
 
 
@@ -101,18 +101,18 @@ def mobius_sub(
     return mobius_add(input, -other, curvature=curvature, dim=dim, eps=eps)
 
 
-def mobius_scaler_mul(
+def mobius_scalar_mul(
     input: torch.Tensor,
     scalar: Union[float, torch.Tensor],
     curvature: Union[float, torch.Tensor] = -1,
     dim: int = -1,
     eps: float = 1e-5,
 ) -> torch.Tensor:
-    """Apply scaler Mobius multiplication.
+    """Apply scalar Mobius multiplication.
 
     Args:
         input (torch.Tensor): Vectors of shape (*, num_features).
-        scalar (float or torch.Tensor): Float scaler or scalers of shape (*,).
+        scalar (float or torch.Tensor): Float scalar or scalars of shape (*,).
         curvature (float or torch.Tensor): Secctional curvature. Default: ``-1``.
 
     Returns:
