@@ -3,9 +3,6 @@
 set -eu
 set -o pipefail
 
-audioset_balanced_train_csv_url="http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/balanced_train_segments.csv"
-audioset_unbalanced_train_csv_url="http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/unbalanced_train_segments.csv"
-audioset_eval_csv_url="http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/eval_segments.csv"
 data_root="../data"
 
 preprocess="audioset"
@@ -17,8 +14,7 @@ audioset_csv_root="${audioset_root}/csv"
 audioset_jsonl_root="${audioset_root}/jsonl"
 audioset_m4a_root="${audioset_root}/m4a"
 
-for csv_url in "${audioset_balanced_train_csv_url}" "${audioset_unbalanced_train_csv_url}" "${audioset_eval_csv_url}"; do
-    csv_filename="$(basename "${csv_url}")"
+for csv_filename in "balanced_train_segments.csv" "unbalanced_train_segments.csv" "eval_segments.csv"; do
     jsonl_filename="${csv_filename/.csv/.jsonl}"
     csv_path="${audioset_csv_root}/${csv_filename}"
     jsonl_path="${audioset_jsonl_root}/${jsonl_filename}"
@@ -36,7 +32,7 @@ done
 full_jsonl_path="${audioset_jsonl_root}/full_train.jsonl"
 :> "${full_jsonl_path}"
 
-for csv_url in "${audioset_balanced_train_csv_url}" "${audioset_unbalanced_train_csv_url}"; do
+for csv_filename in "balanced_train_segments.csv" "unbalanced_train_segments.csv"; do
     csv_filename="$(basename "${csv_url}")"
     jsonl_filename="${csv_filename/.csv/.jsonl}"
     jsonl_path="${audioset_jsonl_root}/${jsonl_filename}"
@@ -47,7 +43,7 @@ done
 full_jsonl_path="${audioset_jsonl_root}/full_validation.jsonl"
 :> "${full_jsonl_path}"
 
-csv_filename="$(basename "${audioset_eval_csv_url}")"
+csv_filename="eval_segments.csv"
 jsonl_filename="${csv_filename/.csv/.jsonl}"
 jsonl_path="${audioset_jsonl_root}/${jsonl_filename}"
 

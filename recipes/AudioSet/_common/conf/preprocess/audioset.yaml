@@ -2,6 +2,10 @@ defaults:
   - default
   - _self_
 
+ontology_root:
+label_root:
+csv_root:
+
 csv_path:
 jsonl_path:
 download_dir:
