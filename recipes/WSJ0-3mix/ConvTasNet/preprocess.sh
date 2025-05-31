@@ -8,7 +8,7 @@ stop_stage=0
 
 wsj0_3mix_root="../data/wsj0-mix/3speakers/wav8k/min"
 dump_root="./dump"
-log_dir="./log"
+log_root="./log"
 
 dump_format="torch"
 
@@ -66,7 +66,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
 
         python ../_common/local/save_features.py \
         --config-dir "./conf" \
-        hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
+        hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
         preprocess="${preprocess}" \
         data="${data}" \
         preprocess.dump_format="${dump_format}" \
