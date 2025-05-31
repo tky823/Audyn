@@ -304,8 +304,10 @@ class RoFormerDecoderLayer(nn.Module):
             d_model,
             nhead,
             dropout=dropout,
-            batch_first=batch_first,
             bias=bias,
+            base=rope_base,
+            share_heads=share_heads,
+            batch_first=batch_first,
             **factory_kwargs,
         )
 
