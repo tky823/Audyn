@@ -23,7 +23,7 @@ train:
           dim: 0
           decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
           decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
-        - _target_: audyn.utils.data.composer.AudioFeatureExtractionComposer
+        - _target_: audyn.utils.data.AudioFeatureExtractionComposer
           feature_extractor:
             _target_: audyn.transforms.STFT
             n_fft: ${data.spectrogram.n_fft}
@@ -37,7 +37,7 @@ train:
           feature_key: mixture_spectrogram
           decode_audio_as_waveform: ${..0.decode_audio_as_waveform}
           decode_audio_as_monoral: ${..0.decode_audio_as_monoral}
-        - _target_: audyn.utils.data.composer.AudioFeatureExtractionComposer
+        - _target_: audyn.utils.data.AudioFeatureExtractionComposer
           feature_extractor:
             _target_: audyn.transforms.STFT
             n_fft: ${data.spectrogram.n_fft}
