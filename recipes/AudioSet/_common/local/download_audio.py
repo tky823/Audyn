@@ -106,12 +106,15 @@ def download(csv_path: str, jsonl_path: str, download_dir: str) -> None:
                 info = ydl.extract_info(url, download=True)
 
                 if info is not None:
-                    path = info["requested_downloads"][-1]["filepath"]
-                    video["root"] = download_dir
-                    video["path"] = os.path.relpath(path, download_dir)
+                    try:
+                        path = info["requested_downloads"][-1]["filepath"]
+                        video["root"] = download_dir
+                        video["path"] = os.path.relpath(path, download_dir)
 
-                    line = json.dumps(video)
-                    f.write(line + "\n")
+                        line = json.dumps(video)
+                        f.write(line + "\n")
+                    except KeyError:
+                        pass
 
 
 class Callback:
