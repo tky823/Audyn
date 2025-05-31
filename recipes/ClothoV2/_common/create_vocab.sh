@@ -4,7 +4,7 @@ set -eu
 set -o pipefail
 
 data_root="../data"
-log_dir="./log"
+log_root="./log"
 
 preprocess="clotho-v2"
 
@@ -16,7 +16,7 @@ vocab_path="${data_root}/vocab.txt"
 
 python ./local/create_vocab.py \
 --config-dir "./conf" \
-hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
+hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
 preprocess="${preprocess}" \
 preprocess.captions_path="${captions_path}" \
 preprocess.vocab_path="${vocab_path}"

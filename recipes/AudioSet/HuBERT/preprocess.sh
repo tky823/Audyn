@@ -11,7 +11,7 @@ validation_name="full_validation"
 
 data_root="../data"
 dump_root="./dump"
-log_dir="./log"
+log_root="./log"
 
 dump_format="torch"
 
@@ -93,7 +93,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
 
         python ./local/save_features.py \
         --config-dir "./conf" \
-        hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
+        hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
         preprocess="${preprocess}" \
         data="${data}" \
         preprocess.list_path="${list_path}" \
@@ -112,7 +112,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
 
         python ./local/save_mfcc.py \
         --config-dir "./conf" \
-        hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
+        hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
         preprocess="${preprocess}" \
         data="${data}" \
         preprocess.list_path="${list_path}" \
@@ -130,7 +130,7 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
 
     python ./local/compute_centroids.py \
     --config-dir "./conf" \
-    hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
+    hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
     preprocess="${preprocess}" \
     data="${data}" \
     preprocess.list_path="${list_path}" \
@@ -149,7 +149,7 @@ if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
 
         python ./local/save_discrete_features.py \
         --config-dir "./conf" \
-        hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
+        hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
         preprocess="${preprocess}" \
         data="${data}" \
         preprocess.list_path="${list_path}" \
@@ -170,7 +170,7 @@ if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
 
         python ./local/unify_all_features.py \
         --config-dir "./conf" \
-        hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
+        hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
         preprocess="${preprocess}" \
         data="${data}" \
         preprocess.list_path="${list_path}" \

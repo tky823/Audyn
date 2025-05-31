@@ -8,7 +8,7 @@ stop_stage=0
 
 data_root="../data"
 dump_root="./dump"
-log_dir="./log"
+log_root="./log"
 
 dump_format="torch"
 
@@ -65,7 +65,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
 
     python ./local/save_categories.py \
     --config-dir "./conf" \
-    hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
+    hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
     preprocess="${preprocess}" \
     data="${data}" \
     preprocess.category_list_path="${category_list_path}" \
@@ -74,7 +74,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     for subset in "train" "validation"; do
         python ./local/save_official_features.py \
         --config-dir "./conf" \
-        hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
+        hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
         preprocess="${preprocess}" \
         data="${data}" \
         preprocess.dump_format="${dump_format}" \

@@ -8,7 +8,7 @@ stop_stage=0
 
 data_root="../data"
 dump_root="./dump"
-log_dir="./log"
+log_root="./log"
 
 preprocess="default"
 data="hifigan"
@@ -87,7 +87,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     for subset in "train" "validation" "test"; do
         python ./local/save_features.py \
         --config-dir "./conf" \
-        hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
+        hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
         preprocess="${preprocess}" \
         data="${data}" \
         preprocess.list_path="${list_dir}/${subset}.txt" \

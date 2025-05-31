@@ -8,7 +8,7 @@ stop_stage=0
 
 data_root="../data"
 dump_root="./dump"
-log_dir="./log"
+log_root="./log"
 
 dump_format="torch"
 
@@ -44,7 +44,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
 
         python ./local/normalize_captions.py \
         --config-dir "./conf" \
-        hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
+        hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
         preprocess="${preprocess}" \
         data="${data}" \
         preprocess.captions_path="${csv_path}" \
@@ -74,7 +74,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
 
         python ./local/save_list.py \
         --config-dir "./conf" \
-        hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
+        hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
         preprocess="${preprocess}" \
         preprocess.list_path="${tmp_path}" \
         preprocess.captions_path="${csv_path}"
@@ -101,7 +101,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
 
         python ./local/save_features.py \
         --config-dir "./conf" \
-        hydra.run.dir="${log_dir}/$(date +"%Y%m%d-%H%M%S")" \
+        hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
         preprocess="${preprocess}" \
         data="${data}" \
         preprocess.list_path="${list_dir}/${subset}.txt" \
