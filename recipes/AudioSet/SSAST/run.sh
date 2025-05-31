@@ -35,7 +35,7 @@ if [ ${stage} -le -1 ] && [ ${stop_stage} -ge -1 ]; then
     echo "Stage -1: Download dataset"
 
     (
-        . ../_common/download.sh \
+        . ../_common/download_metadata.sh \
         --data-root "${data_root}" \
         --preprocess "${preprocess}"
     )
