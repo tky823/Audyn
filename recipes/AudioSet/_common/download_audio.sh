@@ -12,13 +12,13 @@ preprocess="audioset"
 audioset_root="${data_root}/AudioSet"
 audioset_csv_root="${audioset_root}/csv"
 audioset_jsonl_root="${audioset_root}/jsonl"
-audioset_m4a_root="${audioset_root}/m4a"
+audioset_audio_root="${audioset_root}/audio"
 
 for csv_filename in "balanced_train_segments.csv" "unbalanced_train_segments.csv" "eval_segments.csv"; do
     jsonl_filename="${csv_filename/.csv/.jsonl}"
     csv_path="${audioset_csv_root}/${csv_filename}"
     jsonl_path="${audioset_jsonl_root}/${jsonl_filename}"
-    download_dir="${audioset_m4a_root}/${csv_filename/.csv/}"
+    download_dir="${audioset_audio_root}/${csv_filename/.csv/}"
 
     python ../_common/local/download_audio.py \
     --config-dir "../_common/conf" \
@@ -33,7 +33,6 @@ full_jsonl_path="${audioset_jsonl_root}/full_train.jsonl"
 :> "${full_jsonl_path}"
 
 for csv_filename in "balanced_train_segments.csv" "unbalanced_train_segments.csv"; do
-    csv_filename="$(basename "${csv_url}")"
     jsonl_filename="${csv_filename/.csv/.jsonl}"
     jsonl_path="${audioset_jsonl_root}/${jsonl_filename}"
 

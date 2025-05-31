@@ -6,6 +6,8 @@ ontology_root:
 label_root:
 csv_root:
 
+audio_format: mp3
 csv_path:
 jsonl_path:
 download_dir:
+subset:

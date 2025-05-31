@@ -24,15 +24,22 @@ def main(config: DictConfig) -> None:
     csv_path = config.preprocess.csv_path
     jsonl_path = config.preprocess.jsonl_path
     download_dir = config.preprocess.download_dir
+    audio_format = config.preprocess.audio_format
 
     download(
         csv_path=csv_path,
         jsonl_path=jsonl_path,
         download_dir=download_dir,
+        format=audio_format,
     )
 
 
-def download(csv_path: str, jsonl_path: str, download_dir: str) -> None:
+def download(
+    csv_path: str,
+    jsonl_path: str,
+    download_dir: str,
+    format: str = "mp3",
+) -> None:
     """Download audios by ytdlp."""
     jsonl_dir = os.path.dirname(jsonl_path)
 
@@ -73,16 +80,30 @@ def download(csv_path: str, jsonl_path: str, download_dir: str) -> None:
     ids = sorted(list(videos.keys()))
     ids = shuffle_ids(ids)
 
-    base_ydl_opts = {
-        "format": "m4a/bestaudio/best",
-        "postprocessors": [
-            {
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": "m4a",
-            }
-        ],
-        "ignoreerrors": True,
-    }
+    if format == "mp3":
+        base_ydl_opts = {
+            "format": "bestaudio/best",
+            "postprocessors": [
+                {
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "mp3",
+                }
+            ],
+            "ignoreerrors": True,
+        }
+    elif format == "m4a":
+        base_ydl_opts = {
+            "format": "m4a/bestaudio/best",
+            "postprocessors": [
+                {
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "m4a",
+                }
+            ],
+            "ignoreerrors": True,
+        }
+    else:
+        raise ValueError(f"Unsupported format: {format}. Supported formats are 'mp3' and 'm4a'.")
 
     with open(jsonl_path, mode="w") as f:
         for _id in ids:

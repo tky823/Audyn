@@ -20,7 +20,7 @@ data="audioset"
 audioset_root="${data_root}/AudioSet"
 audioset_csv_root="${audioset_root}/csv"
 audioset_jsonl_root="${audioset_root}/jsonl"
-audioset_m4a_root="${audioset_root}/m4a"
+audioset_audio_root="${audioset_root}/audio"
 
 dump_dir="${dump_root}/${data}"
 list_dir="${dump_dir}/list"
@@ -35,26 +35,34 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     :> "${full_list_path}"
 
     subset_name="balanced_train_segments"
+    download_dir="${audioset_audio_root}/${subset_name}"
     list_path="${list_dir}/${subset_name}.txt"
     :> "${list_path}"
 
-    for path in $(ls "${audioset_m4a_root}/${subset_name}"/*/*.m4a); do
-        filename=$(basename "${path}")
-        ytid=${filename/.m4a/}
-        echo "${subset_name}/${ytid}" >> "${list_path}"
-    done
+    python ../_common/local/save_list.py \
+    --config-dir "./conf" \
+    hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
+    preprocess="${preprocess}" \
+    data="${data}" \
+    preprocess.download_dir="${download_dir}" \
+    preprocess.list_path="${list_path}" \
+    preprocess.subset="${subset_name}"
 
     cat "${list_path}" >> "${full_list_path}"
 
     subset_name="unbalanced_train_segments"
+    download_dir="${audioset_audio_root}/${subset_name}"
     list_path="${list_dir}/${subset_name}.txt"
     :> "${list_path}"
 
-    for path in $(ls "${audioset_m4a_root}/${subset_name}"/*/*.m4a); do
-        filename=$(basename "${path}")
-        ytid=${filename/.m4a/}
-        echo "${subset_name}/${ytid}" >> "${list_path}"
-    done
+    python ../_common/local/save_list.py \
+    --config-dir "./conf" \
+    hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
+    preprocess="${preprocess}" \
+    data="${data}" \
+    preprocess.download_dir="${download_dir}" \
+    preprocess.list_path="${list_path}" \
+    preprocess.subset="${subset_name}"
 
     cat "${list_path}" >> "${full_list_path}"
 
@@ -62,14 +70,18 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     :> "${full_list_path}"
 
     subset_name="eval_segments"
+    download_dir="${audioset_audio_root}/${subset_name}"
     list_path="${list_dir}/${subset_name}.txt"
     :> "${list_path}"
 
-    for path in $(ls "${audioset_m4a_root}/${subset_name}"/*/*.m4a); do
-        filename=$(basename "${path}")
-        ytid=${filename/.m4a/}
-        echo "${subset_name}/${ytid}" >> "${list_path}"
-    done
+    python ../_common/local/save_list.py \
+    --config-dir "./conf" \
+    hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
+    preprocess="${preprocess}" \
+    data="${data}" \
+    preprocess.download_dir="${download_dir}" \
+    preprocess.list_path="${list_path}" \
+    preprocess.subset="${subset_name}"
 
     cat "${list_path}" >> "${full_list_path}"
 fi
@@ -82,7 +94,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         list_path="${list_dir}/${subset_name}.txt"
         subset_feature_dir="${feature_dir}/${subset_name}"
         jsonl_path="${audioset_jsonl_root}/${jsonl_filename}"
-        download_dir="${audioset_m4a_root}/${jsonl_filename/.jsonl/}"
+        download_dir="${audioset_audio_root}/${jsonl_filename/.jsonl/}"
 
         python ./local/save_features.py \
         --config-dir "./conf" \
