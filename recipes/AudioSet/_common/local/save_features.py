@@ -47,16 +47,16 @@ def main(config: DictConfig) -> None:
     with open(jsonl_path) as f:
         for line in f:
             video = json.loads(line)
-            ytid = video["ytid"]
-            videos[ytid] = video
+            _id = video["id"]
+            videos[_id] = video
 
     video_subsets = [[] for _ in range(max_workers)]
 
     with open(list_path) as f:
         for idx, line in tqdm(enumerate(f)):
             filename = line.strip()
-            ytid = os.path.basename(filename)
-            video = videos[ytid]
+            _id = os.path.basename(filename)
+            video = videos[_id]
             video_subsets[idx % max_workers].append(video)
 
     queue = Queue()
@@ -106,7 +106,7 @@ def process_webdataset(
         for video in videos:
             feature = {}
 
-            ytid = video["ytid"]
+            _id = video["id"]
             tags = video["tags"]
             root = video["root"]
             m4a_path = os.path.join(root, video["path"])
@@ -115,10 +115,10 @@ def process_webdataset(
             with open(m4a_path, mode="rb") as f:
                 audio = f.read()
 
-            feature["__key__"] = ytid
+            feature["__key__"] = _id
             feature["audio.m4a"] = audio
             feature["tags.json"] = tags
-            feature["filename.txt"] = ytid
+            feature["filename.txt"] = _id
             feature["sample_rate.pth"] = torch.tensor(
                 metadata.sample_rate,
                 dtype=torch.long,
