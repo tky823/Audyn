@@ -1,5 +1,7 @@
+import copy
 import json
 import os
+from datetime import datetime
 from typing import Any, Dict, Iterable, List
 
 import torch
@@ -37,15 +39,15 @@ def download(csv_path: str, jsonl_path: str, download_dir: str) -> None:
     if jsonl_dir:
         os.makedirs(jsonl_dir, exist_ok=True)
 
-    crawled_ytids = set()
+    crawled_ids = set()
     videos = {}
 
     if os.path.exists(jsonl_path):
         with open(jsonl_path) as f:
             for line in f:
                 data = json.loads(line)
-                ytid = data["ytid"]
-                crawled_ytids.add(ytid)
+                _id = data["id"]
+                crawled_ids.add(_id)
 
     with open(csv_path) as f:
         for idx, line in enumerate(f):
@@ -55,22 +57,23 @@ def download(csv_path: str, jsonl_path: str, download_dir: str) -> None:
 
             line = line.strip()
             ytid, start, end, tags = line.split(", ")
+            start = float(start)
+            end = float(end)
+            _id = f"{ytid}_{int(start):03d}-{int(end):03d}"
             tags = tags[1:-1]
             tags = tags.split(",")
-            videos[ytid] = {
+            videos[_id] = {
+                "id": _id,
                 "ytid": ytid,
-                "start": float(start),
-                "end": float(end),
+                "start": start,
+                "end": end,
                 "tags": tags,
             }
 
-    ytids = sorted(list(videos.keys()))
-    ytids = shuffle_ytids(ytids)
+    ids = sorted(list(videos.keys()))
+    ids = shuffle_ids(ids)
 
-    ydl_opts = {
-        "outtmpl": {
-            "default": f"{download_dir}/%(epoch-3600>%Y%d%m%H)s/%(id)s.%(ext)s",
-        },
+    base_ydl_opts = {
         "format": "m4a/bestaudio/best",
         "postprocessors": [
             {
@@ -78,17 +81,26 @@ def download(csv_path: str, jsonl_path: str, download_dir: str) -> None:
                 "preferredcodec": "m4a",
             }
         ],
-        "download_ranges": Callback(videos=videos),
         "ignoreerrors": True,
     }
 
     with open(jsonl_path, mode="w") as f:
-        for ytid in ytids:
-            if ytid in crawled_ytids:
+        for _id in ids:
+            if _id in crawled_ids:
                 continue
 
-            video = videos[ytid]
+            video = videos[_id]
+            ytid = video["ytid"]
+            start = int(video["start"])
+            end = int(video["end"])
             url = f"https://www.youtube.com/watch?v={ytid}"
+
+            now = datetime.now()
+            ydl_opts = copy.deepcopy(base_ydl_opts)
+            ydl_opts["outtmpl"] = {
+                "default": f"{download_dir}/{now.strftime("%Y%m%d%H")}/{ytid}_{start:03d}-{end:03d}.%(ext)s",  # noqa: E501
+            }
+            ydl_opts["download_ranges"] = Callback(video=video)
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
@@ -103,12 +115,11 @@ def download(csv_path: str, jsonl_path: str, download_dir: str) -> None:
 
 
 class Callback:
-    def __init__(self, videos: Dict[str, Any]) -> None:
-        self.videos = videos
+    def __init__(self, video: Dict[str, Any]) -> None:
+        self.video = video
 
     def __call__(self, info_dict: Dict[str, Any], ydl: YoutubeDL) -> Iterable[Dict[str, float]]:
-        ytid = info_dict["id"]
-        video = self.videos[ytid]
+        video = self.video
         start, end = video["start"], video["end"]
 
         yield {
@@ -117,11 +128,12 @@ class Callback:
         }
 
 
-def shuffle_ytids(ytids: List[str]) -> List[str]:
-    indices = torch.randperm(len(ytids)).tolist()
-    ytids = [ytids[idx] for idx in indices]
+def shuffle_ids(ids: List[str]) -> List[str]:
+    indices = torch.randperm(len(ids))
+    indices = indices.tolist()
+    ids = [ids[idx] for idx in indices]
 
-    return ytids
+    return ids
 
 
 if __name__ == "__main__":
