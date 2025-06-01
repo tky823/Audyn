@@ -18,7 +18,7 @@ from audyn.models.ssast import (
     MultiTaskSSASTMPM,
     SelfSupervisedAudioSpectrogramTransformer,
 )
-from audyn.modules.vit import PatchEmbedding, PositionalPatchEmbedding
+from audyn.modules.ast import PatchEmbedding, PositionalPatchEmbedding
 from audyn.utils._github import download_file_from_github_release
 
 
