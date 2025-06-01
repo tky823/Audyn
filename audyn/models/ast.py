@@ -11,12 +11,11 @@ import torch.nn.functional as F
 from omegaconf import OmegaConf
 from torch.nn.common_types import _size_2_t
 
-from ..modules.vit import PositionalPatchEmbedding
+from ..modules.ast import PositionalPatchEmbedding
 from ..utils._github import download_file_from_github_release
 
 __all__ = [
     "AudioSpectrogramTransformer",
-    "PositionalPatchEmbedding",  # for backward compatibility
     "Aggregator",
     "AverageAggregator",
     "HeadTokensAggregator",
@@ -688,12 +687,14 @@ def _create_pretrained_model_configs() -> Dict[str, Dict[str, str]]:
 
     pretrained_model_configs = {
         "ast-base-stride10": {
-            "url": "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev3/ast-base-stride10.pth",  # noqa: E501
+            "url": "https://github.com/tky823/Audyn/releases/download/v0.1.0/ast-base-stride10.pth",  # noqa: E501
             "path": os.path.join(
                 model_cache_dir,
                 "AudioSpectrogramTransformer",
+                "2563e512",
                 "ast-base-stride10.pth",
             ),
+            "sha256": "2563e512143d7318aa41d92254ed77a8d6c06fdbe0250ba5b015b0483cb6f946",
         },
     }
 
@@ -706,6 +707,7 @@ def _align_patch_embedding(
     n_bins: Optional[int] = None,
     n_frames: Optional[int] = None,
 ) -> PositionalPatchEmbedding:
+    patch_embedding_cls = orig_patch_embedding.__class__
     pretrained_embedding_dim = orig_patch_embedding.embedding_dim
     pretrained_kernel_size = orig_patch_embedding.kernel_size
     pretrained_stride = orig_patch_embedding.stride
@@ -727,7 +729,7 @@ def _align_patch_embedding(
     if n_frames is None:
         n_frames = pretrained_n_frames
 
-    new_patch_embedding = PositionalPatchEmbedding(
+    new_patch_embedding = patch_embedding_cls(
         pretrained_embedding_dim,
         kernel_size=pretrained_kernel_size,
         stride=stride,

@@ -179,6 +179,7 @@ class PositionalPatchEmbedding(_PatchEmbedding):
     """Patch embedding + trainable positional embedding.
 
     Args:
+        in_channels (int): Number of input channels.
         embedding_dim (int): Embedding dimension.
         kernel_size (_size_2_t): Kernel size that corresponds to patch.
         stride (_size_2_t): Stride.
@@ -197,6 +198,7 @@ class PositionalPatchEmbedding(_PatchEmbedding):
 
     def __init__(
         self,
+        in_channels: int,
         embedding_dim: int,
         kernel_size: _size_2_t,
         stride: Optional[_size_2_t] = None,
@@ -233,6 +235,7 @@ class PositionalPatchEmbedding(_PatchEmbedding):
 
         stride = _pair(stride)
 
+        self.in_channels = in_channels
         self.embedding_dim = embedding_dim
         self.kernel_size = kernel_size
         self.stride = stride
@@ -240,7 +243,7 @@ class PositionalPatchEmbedding(_PatchEmbedding):
         self.n_frames = n_frames
 
         self.conv2d = nn.Conv2d(
-            1,
+            in_channels,
             embedding_dim,
             kernel_size=kernel_size,
             stride=stride,
@@ -264,7 +267,7 @@ class PositionalPatchEmbedding(_PatchEmbedding):
         """Forward pass of PositionalPatchEmbedding.
 
         Args:
-            input (torch.Tensor): Spectrogram of shape (batch_size, n_bins, n_frames).
+            input (torch.Tensor): Spectrogram of shape (batch_size, in_channels, n_bins, n_frames).
 
         Returns:
             torch.Tensor: (batch_size, height * width + num_head_tokens, embedding_dim),
@@ -272,7 +275,7 @@ class PositionalPatchEmbedding(_PatchEmbedding):
 
         """
         positional_embedding = self.positional_embedding
-        _, n_bins, n_frames = input.size()
+        _, _, n_bins, n_frames = input.size()
         x = self.compute_patch_embedding(input)
         x = x + self.resample_positional_embedding(
             positional_embedding,
@@ -289,24 +292,23 @@ class PositionalPatchEmbedding(_PatchEmbedding):
         """Compute patch embeddings of input feature.
 
         Args:
-            input (torch.Tensor): Spectrogram-like feature of shape (batch_size, n_bins, n_frames).
+            input (torch.Tensor): Spectrogram-like feature of shape
+                (batch_size, in_channels, n_bins, n_frames).
 
         Returns:
             torch.Tensor: Embedded features of shape (batch_size, embedding_dim, height, width).
 
         """
-        x = input.unsqueeze(dim=-3)
-        output = self.conv2d(x)
+        output = self.conv2d(input)
 
         return output
 
     def spectrogram_to_patches(self, input: torch.Tensor) -> torch.Tensor:
         """Convert spectrogram to patches."""
         conv2d = self.conv2d
-        batch_size, n_bins, n_frames = input.size()
-        x = input.view(batch_size, 1, n_bins, n_frames)
+        batch_size, _, n_bins, n_frames = input.size()
         x = F.unfold(
-            x,
+            input,
             kernel_size=conv2d.kernel_size,
             dilation=conv2d.dilation,
             padding=conv2d.padding,
@@ -386,6 +388,7 @@ class PatchEmbedding(_PatchEmbedding):
     """Patch embedding w/o positional embedding.
 
     Args:
+        in_channels (int): Number of input channels.
         embedding_dim (int): Embedding dimension.
         kernel_size (_size_2_t): Kernel size that corresponds to patch.
         stride (_size_2_t): Stride.
@@ -399,6 +402,7 @@ class PatchEmbedding(_PatchEmbedding):
 
     def __init__(
         self,
+        in_channels: int,
         embedding_dim: int,
         kernel_size: _size_2_t,
         stride: Optional[_size_2_t] = None,
@@ -435,6 +439,7 @@ class PatchEmbedding(_PatchEmbedding):
 
         stride = _pair(stride)
 
+        self.in_channels = in_channels
         self.embedding_dim = embedding_dim
         self.kernel_size = kernel_size
         self.stride = stride
@@ -442,7 +447,7 @@ class PatchEmbedding(_PatchEmbedding):
         self.n_frames = n_frames
 
         self.conv2d = nn.Conv2d(
-            1,
+            in_channels,
             embedding_dim,
             kernel_size=kernel_size,
             stride=stride,
@@ -458,7 +463,7 @@ class PatchEmbedding(_PatchEmbedding):
         """Forward pass of PositionalPatchEmbedding.
 
         Args:
-            input (torch.Tensor): Spectrogram of shape (batch_size, n_bins, n_frames).
+            input (torch.Tensor): Spectrogram of shape (batch_size, in_channels, n_bins, n_frames).
 
         Returns:
             torch.Tensor: (batch_size, height * width + num_head_tokens, embedding_dim),
@@ -476,24 +481,23 @@ class PatchEmbedding(_PatchEmbedding):
         """Compute patch embeddings of input feature.
 
         Args:
-            input (torch.Tensor): Spectrogram-like feature of shape (batch_size, n_bins, n_frames).
+            input (torch.Tensor): Spectrogram-like feature of shape
+                (batch_size, in_channels, n_bins, n_frames).
 
         Returns:
             torch.Tensor: Embedded features of shape (batch_size, embedding_dim, height, width).
 
         """
-        x = input.unsqueeze(dim=-3)
-        output = self.conv2d(x)
+        output = self.conv2d(input)
 
         return output
 
     def spectrogram_to_patches(self, input: torch.Tensor) -> torch.Tensor:
         """Convert spectrogram to patches."""
         conv2d = self.conv2d
-        batch_size, n_bins, n_frames = input.size()
-        x = input.view(batch_size, 1, n_bins, n_frames)
+        batch_size, _, n_bins, n_frames = input.size()
         x = F.unfold(
-            x,
+            input,
             kernel_size=conv2d.kernel_size,
             dilation=conv2d.dilation,
             padding=conv2d.padding,
