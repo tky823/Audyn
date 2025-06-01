@@ -1,11 +1,15 @@
+import os
 import warnings
 from abc import abstractmethod
-from typing import Optional
+from collections import OrderedDict
+from typing import Dict, Optional
 
 import torch
 import torch.nn as nn
+from omegaconf import OmegaConf
 
 from ..modules.vit import PatchEmbedding
+from ..utils._github import download_file_from_github_release
 
 __all__ = [
     "OpenAICLIPImageEncoder",
@@ -198,3 +202,85 @@ class LinearHead(Head):
 
 class OpenAICLIPImageEncoder(_CLIPImageEncoder):
     """Wrapper class of _CLIPImageEncoder."""
+
+    @classmethod
+    def build_from_pretrained(
+        cls,
+        pretrained_model_name_or_path: str,
+        aggregator: Optional[Aggregator] = None,
+        head: Optional[Head] = None,
+    ) -> "OpenAICLIPImageEncoder":
+        """Build pretrained OpenAICLIPImageEncoder.
+
+        Args:
+            pretrained_model_name_or_path (str): Path to pretrained model or name of pretrained model.
+            aggregator (nn.Module, optional): Aggregator module.
+            head (nn.Module, optional): Head module.
+
+        Examples:
+
+            >>> from audyn.models import OpenAICLIPImageEncoder
+            >>> model = OpenAICLIPImageEncoder.build_from_pretrained("openai-clip-base-patch32")
+
+        .. note::
+
+            Supported pretrained model names are
+                - openai-clip-base-patch32
+
+        """  # noqa: E501
+        from ..utils._hydra.utils import instantiate  # to avoid circular import
+
+        pretrained_model_configs = _create_pretrained_openai_clip_configs()
+
+        if os.path.exists(pretrained_model_name_or_path):
+            state_dict = torch.load(
+                pretrained_model_name_or_path,
+                map_location=lambda storage, loc: storage,
+                weights_only=True,
+            )
+            model_state_dict: OrderedDict = state_dict["model"]
+            resolved_config = state_dict["resolved_config"]
+            resolved_config = OmegaConf.create(resolved_config)
+            pretrained_model_config = resolved_config.model
+            pretrained_model_config["_target_"] = f"{cls.__module__}.{cls.__name__}"
+            model: OpenAICLIPImageEncoder = instantiate(pretrained_model_config)
+            model.load_state_dict(model_state_dict)
+
+            if aggregator is not None:
+                model.aggregator = aggregator
+
+            if head is not None:
+                model.head = head
+
+            return model
+        elif pretrained_model_name_or_path in pretrained_model_configs:
+            config = pretrained_model_configs[pretrained_model_name_or_path]
+            url = config["url"]
+            path = config["path"]
+            download_file_from_github_release(url, path=path)
+            model = cls.build_from_pretrained(path, aggregator=aggregator, head=head)
+
+            return model
+        else:
+            raise FileNotFoundError(f"{pretrained_model_name_or_path} does not exist.")
+
+
+def _create_pretrained_openai_clip_configs() -> Dict[str, Dict[str, str]]:
+    """Create pretrained_model_configs without circular import error."""
+
+    from ..utils import model_cache_dir
+
+    pretrained_model_configs = {
+        "openai-clip-base-patch32": {
+            "url": "https://github.com/tky823/Audyn/releases/download/v0.1.0/openai-clip-base-patch32.pth",  # noqa: E501
+            "path": os.path.join(
+                model_cache_dir,
+                "OpenAICLIP",
+                "e0df1259",
+                "openai-clip-base-patch32.pth",
+            ),
+            "sha256": "e0df125924b1365e41617454369acca46cddb683845fcb20ad937c0a43921da6",
+        },
+    }
+
+    return pretrained_model_configs
