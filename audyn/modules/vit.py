@@ -183,6 +183,7 @@ class PositionalPatchEmbedding(_PatchEmbedding):
         embedding_dim (int): Embedding dimension.
         kernel_size (_size_2_t): Kernel size that corresponds to patch.
         stride (_size_2_t): Stride.
+        bias (bool): If ``True``, bias is added to embedding.
         insert_cls_token (bool): If ``True``, class token is inserted to beginning of sequence.
         insert_dist_token (bool): If ``True``, distillation token is inserd to beginning sequence.
         dropout (float): Dropout rate.
@@ -202,6 +203,7 @@ class PositionalPatchEmbedding(_PatchEmbedding):
         embedding_dim: int,
         kernel_size: _size_2_t,
         stride: Optional[_size_2_t] = None,
+        bias: bool = True,
         insert_cls_token: bool = False,
         insert_dist_token: bool = False,
         dropout: float = 0,
@@ -239,6 +241,7 @@ class PositionalPatchEmbedding(_PatchEmbedding):
         self.embedding_dim = embedding_dim
         self.kernel_size = kernel_size
         self.stride = stride
+        self.bias = bias
         self.n_bins = n_bins
         self.n_frames = n_frames
 
@@ -247,6 +250,7 @@ class PositionalPatchEmbedding(_PatchEmbedding):
             embedding_dim,
             kernel_size=kernel_size,
             stride=stride,
+            bias=bias,
         )
 
         height, width = self.compute_output_shape(n_bins, n_frames)
@@ -392,6 +396,7 @@ class PatchEmbedding(_PatchEmbedding):
         embedding_dim (int): Embedding dimension.
         kernel_size (_size_2_t): Kernel size that corresponds to patch.
         stride (_size_2_t): Stride.
+        bias (bool): If ``True``, bias is added to embedding.
         insert_cls_token (bool): If ``True``, class token is inserted to beginning of sequence.
         insert_dist_token (bool): If ``True``, distillation token is inserd to beginning sequence.
         dropout (float): Dropout rate.
@@ -406,6 +411,7 @@ class PatchEmbedding(_PatchEmbedding):
         embedding_dim: int,
         kernel_size: _size_2_t,
         stride: Optional[_size_2_t] = None,
+        bias: bool = True,
         insert_cls_token: bool = False,
         insert_dist_token: bool = False,
         dropout: float = 0,
@@ -443,6 +449,7 @@ class PatchEmbedding(_PatchEmbedding):
         self.embedding_dim = embedding_dim
         self.kernel_size = kernel_size
         self.stride = stride
+        self.bias = bias
         self.n_bins = n_bins
         self.n_frames = n_frames
 
@@ -451,6 +458,7 @@ class PatchEmbedding(_PatchEmbedding):
             embedding_dim,
             kernel_size=kernel_size,
             stride=stride,
+            bias=bias,
         )
         self.dropout = nn.Dropout(dropout)
 
