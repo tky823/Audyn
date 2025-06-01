@@ -15,7 +15,7 @@ from audyn.models.ast import (
 )
 from audyn.models.lextransformer import LEXTransformerEncoderLayer
 from audyn.models.roformer import RoFormerEncoderLayer
-from audyn.modules.vit import PatchEmbedding, PositionalPatchEmbedding
+from audyn.modules.ast import PatchEmbedding, PositionalPatchEmbedding
 from audyn.utils._github import download_file_from_github_release
 
 

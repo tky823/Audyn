@@ -1,7 +1,6 @@
 import copy
 import os
 import warnings
-from abc import abstractmethod
 from collections import OrderedDict
 from typing import Dict, Optional, Tuple, Union
 
@@ -11,12 +10,12 @@ import torch.nn.functional as F
 from omegaconf import OmegaConf
 from torch.nn.common_types import _size_2_t
 
-from ..modules.vit import PositionalPatchEmbedding
+from ..models.clip import Aggregator, Head, HeadTokensAggregator
+from ..modules.ast import PositionalPatchEmbedding
 from ..utils._github import download_file_from_github_release
 
 __all__ = [
     "AudioSpectrogramTransformer",
-    "PositionalPatchEmbedding",  # for backward compatibility
     "Aggregator",
     "AverageAggregator",
     "HeadTokensAggregator",
@@ -487,28 +486,6 @@ class AudioSpectrogramTransformer(BaseAudioSpectrogramTransformer):
         return output
 
 
-class Aggregator(nn.Module):
-    """Base class of module to aggregate features."""
-
-    @abstractmethod
-    def forward(
-        self,
-        input: torch.Tensor,
-        padding_mask: Optional[torch.BoolTensor] = None,
-    ) -> torch.Tensor:
-        """Forward pass of Aggregator.
-
-        Args:
-            input (torch.Tensor): Sequence of shape (batch_size, length, embedding_dim).
-            padding_mask (torch.BoolTensor, optional): Padding mask of shape (batch_size, length).
-
-        Returns:
-            torch.Tensor: Aggregated feature of shape (batch_size, embedding_dim).
-
-        """
-        pass
-
-
 class AverageAggregator(Aggregator):
     """Module of aggregation by average operation.
 
@@ -574,86 +551,6 @@ class AverageAggregator(Aggregator):
         return output
 
 
-class HeadTokensAggregator(Aggregator):
-    """Module of aggregation by extraction of head tokens.
-
-    Args:
-        insert_cls_token (bool): Given sequence is assumed to contain [CLS] token.
-        insert_dist_token (bool): Given sequence is assumed to contain [DIST] token.
-
-    """
-
-    def __init__(
-        self,
-        insert_cls_token: bool = True,
-        insert_dist_token: bool = True,
-    ) -> None:
-        super().__init__()
-
-        if not insert_cls_token and not insert_dist_token:
-            raise ValueError(
-                "At least one of insert_cls_token and insert_dist_token should be True."
-            )
-
-        self.insert_cls_token = insert_cls_token
-        self.insert_dist_token = insert_dist_token
-
-    def forward(
-        self,
-        input: torch.Tensor,
-        padding_mask: Optional[torch.BoolTensor] = None,
-    ) -> torch.Tensor:
-        """Forward pass of HeadTokensAggregator.
-
-        Args:
-            input (torch.Tensor): Sequence of shape (batch_size, length, embedding_dim).
-            padding_mask (torch.BoolTensor, optional): Padding mask of shape (batch_size, length).
-
-        Returns:
-            torch.Tensor: Aggregated feature of shape (batch_size, embedding_dim).
-
-        .. note::
-
-            padding_mask is ignored.
-
-        """
-        num_head_tokens = 0
-
-        if self.insert_cls_token:
-            num_head_tokens += 1
-
-        if self.insert_dist_token:
-            num_head_tokens += 1
-
-        head_tokens, _ = torch.split(
-            input, [num_head_tokens, input.size(-2) - num_head_tokens], dim=-2
-        )
-        output = torch.mean(head_tokens, dim=-2)
-
-        return output
-
-    def extra_repr(self) -> str:
-        s = []
-
-        if self.insert_cls_token:
-            s.append("cls_token=True")
-
-        if self.insert_dist_token:
-            s.append("dist_token=True")
-
-        s = ", ".join(s)
-
-        return s
-
-
-class Head(nn.Module):
-    """Base class of Head module to transform aggregated feature."""
-
-    @abstractmethod
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
-        pass
-
-
 class MLPHead(Head):
     def __init__(self, in_channels: int, out_channels: int) -> None:
         super().__init__()
@@ -688,12 +585,14 @@ def _create_pretrained_model_configs() -> Dict[str, Dict[str, str]]:
 
     pretrained_model_configs = {
         "ast-base-stride10": {
-            "url": "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev3/ast-base-stride10.pth",  # noqa: E501
+            "url": "https://github.com/tky823/Audyn/releases/download/v0.1.0/ast-base-stride10.pth",  # noqa: E501
             "path": os.path.join(
                 model_cache_dir,
                 "AudioSpectrogramTransformer",
+                "2563e512",
                 "ast-base-stride10.pth",
             ),
+            "sha256": "2563e512143d7318aa41d92254ed77a8d6c06fdbe0250ba5b015b0483cb6f946",
         },
     }
 
@@ -706,6 +605,7 @@ def _align_patch_embedding(
     n_bins: Optional[int] = None,
     n_frames: Optional[int] = None,
 ) -> PositionalPatchEmbedding:
+    patch_embedding_cls = orig_patch_embedding.__class__
     pretrained_embedding_dim = orig_patch_embedding.embedding_dim
     pretrained_kernel_size = orig_patch_embedding.kernel_size
     pretrained_stride = orig_patch_embedding.stride
@@ -727,7 +627,7 @@ def _align_patch_embedding(
     if n_frames is None:
         n_frames = pretrained_n_frames
 
-    new_patch_embedding = PositionalPatchEmbedding(
+    new_patch_embedding = patch_embedding_cls(
         pretrained_embedding_dim,
         kernel_size=pretrained_kernel_size,
         stride=stride,

@@ -7,6 +7,7 @@ from .clap import (
     MicrosoftAudioEncoder2023,
     MicrosoftCLAPAudioEncoder2023,
 )
+from .clip import OpenAICLIPImageEncoder
 from .conv_tasnet import ConvTasNet
 from .dprnn_tasnet import DPRNNTasNet
 from .encodec import EnCodec
@@ -96,4 +97,6 @@ __all__ = [
     # Music Tagging Transformer
     "MusicTaggingTransformer",
     "MusicTaggingTransformerLinearProbing",
+    # CLIP
+    "OpenAICLIPImageEncoder",
 ]

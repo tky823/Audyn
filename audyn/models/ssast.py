@@ -13,7 +13,7 @@ import torch.nn.functional as F
 from omegaconf import OmegaConf
 from torch.nn.common_types import _size_2_t
 
-from ..modules.vit import PositionalPatchEmbedding
+from ..modules.ast import PositionalPatchEmbedding
 from ..utils._github import download_file_from_github_release
 from .ast import (
     Aggregator,
@@ -1006,16 +1006,20 @@ def _create_pretrained_model_configs() -> Dict[str, Dict[str, str]]:
             "path": os.path.join(
                 model_cache_dir,
                 "SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel",
+                "dd031e5b",
                 "multitask-ssast-patch-base-400.pth",
             ),
+            "sha256": "dd031e5bf6d3e40425e48226dd227de26407cd164dd06b105774e8227873352d",
         },
         "multitask-ssast-frame-base-400": {
             "url": "https://github.com/tky823/Audyn/releases/download/v0.0.1.dev3/multitask-ssast-frame-base-400.pth",  # noqa: E501
             "path": os.path.join(
                 model_cache_dir,
                 "SelfSupervisedAudioSpectrogramTransformerMaskedPatchModel",
+                "333d052d",
                 "multitask-ssast-frame-base-400.pth",
             ),
+            "sha256": "333d052d87875837643cb279f5d993cfd80d9b4dc46b7c96a1ac47a7fd587675",
         },
     }
 
