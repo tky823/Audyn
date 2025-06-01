@@ -78,6 +78,41 @@ class PositionalPatchEmbedding(_PositionalPatchEmbedding):
 
         return output
 
+    def compute_patch_embedding(self, input: torch.Tensor) -> torch.Tensor:
+        """Compute patch embeddings of input feature.
+
+        Args:
+            input (torch.Tensor): Spectrogram-like feature of shape
+                (batch_size, in_channels, n_bins, n_frames) or (batch_size, n_bins, n_frames).
+
+        Returns:
+            torch.Tensor: Embedded features of shape (batch_size, embedding_dim, height, width).
+
+        """
+        if input.dim() == 3:
+            x = input.unsqueeze(dim=-3)
+        elif input.dim() == 4:
+            x = input
+        else:
+            raise ValueError(f"3D or 4D tensor is expected, but {input.dim()}D tensor is given.")
+
+        output = super().compute_patch_embedding(x)
+
+        return output
+
+    def spectrogram_to_patches(self, input: torch.Tensor) -> torch.Tensor:
+        """Convert spectrogram to patches."""
+        if input.dim() == 3:
+            x = input.unsqueeze(dim=-3)
+        elif input.dim() == 4:
+            x = input
+        else:
+            raise ValueError(f"3D or 4D tensor is expected, but {input.dim()}D tensor is given.")
+
+        output = super().spectrogram_to_patches(x)
+
+        return output
+
 
 class PatchEmbedding(_PatchEmbedding):
     """Patch embedding w/o positional embedding for Audio Spectrogram Transformer (AST).
@@ -142,5 +177,40 @@ class PatchEmbedding(_PatchEmbedding):
         """
         x = input.unsqueeze(dim=-3)
         output = super().forward(x)
+
+        return output
+
+    def compute_patch_embedding(self, input: torch.Tensor) -> torch.Tensor:
+        """Compute patch embeddings of input feature.
+
+        Args:
+            input (torch.Tensor): Spectrogram-like feature of shape
+                (batch_size, in_channels, n_bins, n_frames) or (batch_size, n_bins, n_frames).
+
+        Returns:
+            torch.Tensor: Embedded features of shape (batch_size, embedding_dim, height, width).
+
+        """
+        if input.dim() == 3:
+            x = input.unsqueeze(dim=-3)
+        elif input.dim() == 4:
+            x = input
+        else:
+            raise ValueError(f"3D or 4D tensor is expected, but {input.dim()}D tensor is given.")
+
+        output = super().compute_patch_embedding(x)
+
+        return output
+
+    def spectrogram_to_patches(self, input: torch.Tensor) -> torch.Tensor:
+        """Convert spectrogram to patches."""
+        if input.dim() == 3:
+            x = input.unsqueeze(dim=-3)
+        elif input.dim() == 4:
+            x = input
+        else:
+            raise ValueError(f"3D or 4D tensor is expected, but {input.dim()}D tensor is given.")
+
+        output = super().spectrogram_to_patches(x)
 
         return output
