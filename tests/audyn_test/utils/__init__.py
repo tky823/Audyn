@@ -1,4 +1,5 @@
 import os
+import shutil
 import socket
 from urllib.request import Request, urlopen
 
@@ -44,3 +45,13 @@ def download_file(url: str, save_dir: str, chunk_size: int = 8192) -> str:
             f.write(chunk)
 
     return path
+
+
+def clear_cache(**kwargs) -> None:
+    """Remove cache directory by ``shutil.rmtree`` for audyn_test.
+
+    Args:
+        kwargs: Keyword arguments given to ``shutil.rmtree``.
+
+    """
+    shutil.rmtree(audyn_test_cache_dir, **kwargs)
