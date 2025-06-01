@@ -17,6 +17,7 @@ Submodules
    audyn.models.passt
    audyn.models.clap
    audyn.models.roformer
+   audyn.models.clip
 
 Classes
 -------
