@@ -40,9 +40,6 @@ class _CLIPImageEncoder(nn.Module):
         self.aggregator = aggregator
         self.head = head
 
-        assert not embedding.insert_cls_token, "[CLS] token is not supported."
-        assert not embedding.insert_dist_token, "[DST] token is not supported."
-
         if self.aggregator is None and self.head is not None:
             warnings.warn(
                 "Head is given, but aggregator is not given, "
