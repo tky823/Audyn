@@ -17,12 +17,19 @@ __all__ = [
 
 
 class _CLIPImageEncoder(nn.Module):
-    """Base class of CLIP image encoder."""
+    """Base class of CLIP image encoder.
+
+    Args:
+        embedding (audyn.modules.vit.PositionalPatchEmbedding): Patch embedding
+            followed by positional embedding.
+        backbone (nn.TransformerEncoder): Transformer (encoder).
+
+    """
 
     def __init__(
         self,
         embedding: PatchEmbedding,
-        backbone: nn.Module,
+        backbone: nn.TransformerEncoder,
         aggregator: Optional["Aggregator"] = None,
         head: Optional["Head"] = None,
     ) -> None:
