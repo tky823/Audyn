@@ -1,4 +1,5 @@
 import math
+from typing import Union
 
 import torch
 import torch.nn.functional as F
@@ -6,6 +7,7 @@ import torchaudio.functional as aF
 
 __all__ = [
     "compute_loudness",
+    "normalize_by_loudness",
 ]
 
 
@@ -72,6 +74,42 @@ def compute_loudness(
     loudness = -0.691 + 10 * torch.log10(gating_power)
 
     return loudness
+
+
+def normalize_by_loudness(
+    waveform: torch.Tensor,
+    sample_rate: int,
+    loudness: Union[float, torch.Tensor],
+    block_size: float = 0.4,
+) -> torch.Tensor:
+    """Normalize waveform by target loudness level.
+
+    Args:
+        waveform (torch.Tensor): Waveform of shape (*, num_channels, timesteps).
+            ``num_channels`` can be 1 (monaural) or 2 (stereo).
+        sample_rate (int): Sample rate of waveform.
+        loudness (float or torch.Tensor): Target loudness in Loudness Units Full Scale (LUFS).
+            Shape of (*,) is also supported if ``loudness`` is ``torch.Tensor``.
+        block_size (float): Block size in seconds to compute loudness. Default: ``0.4``.
+
+    Returns:
+        torch.Tensor: Normalized waveform of shape (*, num_channels, timesteps).
+
+    """
+    assert waveform.dim() >= 2, "Waveform must have at least 2 dimensions."
+
+    *batch_shape, _, _ = waveform.size()
+    _loudness = compute_loudness(waveform, sample_rate, block_size=block_size)
+
+    _loudness = _loudness.view(*batch_shape, 1, 1)
+
+    if isinstance(loudness, torch.Tensor):
+        loudness = loudness.view(*batch_shape, 1, 1)
+
+    gain = 10 ** ((loudness - _loudness) / 20)
+    waveform = gain * waveform
+
+    return waveform
 
 
 def _apply_peaking_filter(
