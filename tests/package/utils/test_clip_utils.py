@@ -43,7 +43,8 @@ def coco_samples() -> Dict[str, Dict[str, Any]]:
         url = "http://images.cocodataset.org/val2017/000000039769.jpg"
         path = os.path.join(temp_dir, "000000039769.jpg")
         download_file(url, path)
-        image0 = Image.open(open(path, "rb"))
+        image0 = Image.open(path)
+        image0 = image0.copy()
 
     samples = {
         "example0": {
