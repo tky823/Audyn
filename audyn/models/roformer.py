@@ -127,7 +127,10 @@ class RoFormerEncoderLayer(nn.Module):
         device: torch.device = None,
         dtype: torch.dtype = None,
     ) -> None:
-        factory_kwargs = {"device": device, "dtype": dtype}
+        factory_kwargs = {
+            "device": device,
+            "dtype": dtype,
+        }
 
         super().__init__()
 

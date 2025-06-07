@@ -11,15 +11,79 @@ from ..modules.bsrnn import (
     MultiSourceMultiChannelBandMergeModule,
 )
 from ..modules.bsroformer import BandSplitRoFormerBackbone
-from .bsrnn import (
-    BandSplitRNN,
-)
+from ..modules.normalization import RMSNorm
+from .bsrnn import BandSplitRNN
 
 __all__ = [
     "BandSplitRoFormer",
     "MultiSourceMultiChannelBandSplitRoFormer",
     "BSRoFormer",
     "MultiSourceMultiChannelBSRoFormer",
+]
+
+default_bins = [
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    12,
+    12,
+    12,
+    12,
+    12,
+    12,
+    12,
+    12,
+    24,
+    24,
+    24,
+    24,
+    24,
+    24,
+    24,
+    24,
+    48,
+    48,
+    48,
+    48,
+    48,
+    48,
+    48,
+    48,
+    128,
+    129,
 ]
 
 
@@ -38,134 +102,33 @@ class BandSplitRoFormer(BandSplitRNN):
     def build_from_config(
         cls,
         in_channels: int,
+        norm: str = "rms",
         version: Union[int, str] = "v7",
     ) -> "BandSplitRoFormer":
+        from ..modules.bsroformer import BandSplitRoFormerBlock
+        from .bsrnn import music_scale_bins, v7_bins
+
         version = str(version)
 
-        if version.lower() in ["7", "v7"]:
-            bins = [
-                5,
-                5,
-                4,
-                5,
-                5,
-                4,
-                5,
-                5,
-                4,
-                5,
-                12,
-                11,
-                12,
-                11,
-                12,
-                12,
-                11,
-                12,
-                11,
-                12,
-                12,
-                11,
-                23,
-                24,
-                23,
-                23,
-                23,
-                24,
-                23,
-                23,
-                46,
-                47,
-                46,
-                47,
-                46,
-                47,
-                46,
-                47,
-                92,
-                93,
-                96,
-            ]
+        if version.lower() in ["default"]:
+            bins = default_bins
+        elif version.lower() in ["7", "v7"]:
+            bins = v7_bins
         elif version.lower() == "music-scale":
-            bins = [
-                [0, 3],
-                [1, 3],
-                [1, 3],
-                [1, 3],
-                [1, 3],
-                [1, 3],
-                [1, 4],
-                [1, 4],
-                [2, 4],
-                [2, 4],
-                [2, 5],
-                [3, 5],
-                [3, 6],
-                [3, 6],
-                [4, 7],
-                [4, 7],
-                [5, 8],
-                [5, 9],
-                [6, 10],
-                [7, 11],
-                [8, 12],
-                [9, 13],
-                [10, 14],
-                [11, 15],
-                [12, 17],
-                [14, 19],
-                [15, 21],
-                [17, 23],
-                [19, 26],
-                [21, 29],
-                [24, 32],
-                [27, 35],
-                [30, 39],
-                [33, 44],
-                [37, 48],
-                [42, 54],
-                [47, 60],
-                [52, 67],
-                [58, 74],
-                [65, 83],
-                [73, 92],
-                [81, 103],
-                [91, 115],
-                [101, 128],
-                [113, 143],
-                [126, 159],
-                [141, 177],
-                [158, 198],
-                [176, 221],
-                [196, 246],
-                [219, 275],
-                [245, 306],
-                [273, 342],
-                [305, 381],
-                [341, 425],
-                [381, 475],
-                [425, 530],
-                [474, 591],
-                [530, 660],
-                [591, 736],
-                [660, 822],
-                [737, 917],
-                [823, 1024],
-                [918, 1025],
-            ]
+            bins = music_scale_bins
         else:
             raise ValueError(f"Unknown version {version} is found.")
 
         # band split and band merge
-        embed_dim = 128
-        bandmerge_hidden_channels = 512
+        embed_dim = 384
+        bandmerge_hidden_channels = 1534
 
         # backbone
         num_heads = 8
-        backbone_hidden_channels = 256
-        num_blocks = 6
+        backbone_hidden_channels = 2048
+        num_blocks = 12
         is_causal = False
-        norm = False
+        _norm = False
         dropout = 0.1
         activation = "gelu"
         eps = 1e-5
@@ -184,7 +147,7 @@ class BandSplitRoFormer(BandSplitRNN):
             hidden_channels=backbone_hidden_channels,
             num_blocks=num_blocks,
             is_causal=is_causal,
-            norm=norm,
+            norm=_norm,
             dropout=dropout,
             activation=activation,
             eps=eps,
@@ -193,6 +156,89 @@ class BandSplitRoFormer(BandSplitRNN):
             norm_first=norm_first,
             bias=bias,
         )
+
+        if norm in ["layer_norm"]:
+            pass
+        elif norm == "rms":
+            # convert LayerNorm to RMSNorm
+            for block in backbone.backbone:
+                block: BandSplitRoFormerBlock
+                band_block = block.band_block
+                temporal_block = block.temporal_block
+
+                norm1 = band_block.roformer.norm1
+                factory_kwargs = {
+                    "device": norm1.weight.device,
+                    "dtype": norm1.weight.dtype,
+                }
+                if norm1.bias is None:
+                    bias = False
+                else:
+                    bias = True
+
+                band_block.roformer.norm1 = RMSNorm(
+                    norm1.weight.size(),
+                    eps=norm1.eps,
+                    elementwise_affine=norm1.elementwise_affine,
+                    bias=bias,
+                    **factory_kwargs,
+                )
+
+                norm2 = band_block.roformer.norm2
+                factory_kwargs = {
+                    "device": norm1.weight.device,
+                    "dtype": norm1.weight.dtype,
+                }
+                if norm2.bias is None:
+                    bias = False
+                else:
+                    bias = True
+
+                band_block.roformer.norm2 = RMSNorm(
+                    norm2.weight.size(),
+                    eps=norm2.eps,
+                    elementwise_affine=norm2.elementwise_affine,
+                    bias=bias,
+                    **factory_kwargs,
+                )
+
+                norm1 = temporal_block.roformer.norm1
+                factory_kwargs = {
+                    "device": norm1.weight.device,
+                    "dtype": norm1.weight.dtype,
+                }
+                if norm1.bias is None:
+                    bias = False
+                else:
+                    bias = True
+
+                temporal_block.roformer.norm1 = RMSNorm(
+                    norm1.weight.size(),
+                    eps=norm1.eps,
+                    elementwise_affine=norm1.elementwise_affine,
+                    bias=bias,
+                    **factory_kwargs,
+                )
+
+                norm2 = temporal_block.roformer.norm2
+                factory_kwargs = {
+                    "device": norm2.weight.device,
+                    "dtype": norm2.weight.dtype,
+                }
+                if norm2.bias is None:
+                    bias = False
+                else:
+                    bias = True
+
+                temporal_block.roformer.norm2 = RMSNorm(
+                    norm2.weight.size(),
+                    eps=norm2.eps,
+                    elementwise_affine=norm2.elementwise_affine,
+                    bias=bias,
+                    **factory_kwargs,
+                )
+        else:
+            raise ValueError(f"Unknown normalization {norm} is found.")
 
         model = cls(bandsplit, bandmerge, backbone)
 
@@ -233,13 +279,17 @@ class MultiSourceMultiChannelBandSplitRoFormer(BandSplitRoFormer):
         cls,
         num_sources: int,
         in_channels: int,
+        norm: str = "rms",
         version: Union[int, str] = "v7",
     ) -> "MultiSourceMultiChannelBandSplitRoFormer":
+        from ..modules.bsroformer import BandSplitRoFormerBlock
         from .bsrnn import music_scale_bins, v7_bins
 
         version = str(version)
 
-        if version.lower() in ["7", "v7"]:
+        if version.lower() in ["default"]:
+            bins = default_bins
+        elif version.lower() in ["7", "v7"]:
             bins = v7_bins
         elif version.lower() == "music-scale":
             bins = music_scale_bins
@@ -247,15 +297,15 @@ class MultiSourceMultiChannelBandSplitRoFormer(BandSplitRoFormer):
             raise ValueError(f"Unknown version {version} is found.")
 
         # band split and band merge
-        embed_dim = 128
-        bandmerge_hidden_channels = 512
+        embed_dim = 384
+        bandmerge_hidden_channels = 1534
 
         # backbone
         num_heads = 8
-        backbone_hidden_channels = 256
-        num_blocks = 6
+        backbone_hidden_channels = 2048
+        num_blocks = 12
         is_causal = False
-        norm = False
+        _norm = False
         dropout = 0.1
         activation = "gelu"
         eps = 1e-5
@@ -278,7 +328,7 @@ class MultiSourceMultiChannelBandSplitRoFormer(BandSplitRoFormer):
             hidden_channels=backbone_hidden_channels,
             num_blocks=num_blocks,
             is_causal=is_causal,
-            norm=norm,
+            norm=_norm,
             dropout=dropout,
             activation=activation,
             eps=eps,
@@ -287,6 +337,89 @@ class MultiSourceMultiChannelBandSplitRoFormer(BandSplitRoFormer):
             norm_first=norm_first,
             bias=bias,
         )
+
+        if norm in ["layer_norm"]:
+            pass
+        elif norm == "rms":
+            # convert LayerNorm to RMSNorm
+            for block in backbone.backbone:
+                block: BandSplitRoFormerBlock
+                band_block = block.band_block
+                temporal_block = block.temporal_block
+
+                norm1 = band_block.roformer.norm1
+                factory_kwargs = {
+                    "device": norm1.weight.device,
+                    "dtype": norm1.weight.dtype,
+                }
+                if norm1.bias is None:
+                    bias = False
+                else:
+                    bias = True
+
+                band_block.roformer.norm1 = RMSNorm(
+                    norm1.weight.size(),
+                    eps=norm1.eps,
+                    elementwise_affine=norm1.elementwise_affine,
+                    bias=bias,
+                    **factory_kwargs,
+                )
+
+                norm2 = band_block.roformer.norm2
+                factory_kwargs = {
+                    "device": norm1.weight.device,
+                    "dtype": norm1.weight.dtype,
+                }
+                if norm2.bias is None:
+                    bias = False
+                else:
+                    bias = True
+
+                band_block.roformer.norm2 = RMSNorm(
+                    norm2.weight.size(),
+                    eps=norm2.eps,
+                    elementwise_affine=norm2.elementwise_affine,
+                    bias=bias,
+                    **factory_kwargs,
+                )
+
+                norm1 = temporal_block.roformer.norm1
+                factory_kwargs = {
+                    "device": norm1.weight.device,
+                    "dtype": norm1.weight.dtype,
+                }
+                if norm1.bias is None:
+                    bias = False
+                else:
+                    bias = True
+
+                temporal_block.roformer.norm1 = RMSNorm(
+                    norm1.weight.size(),
+                    eps=norm1.eps,
+                    elementwise_affine=norm1.elementwise_affine,
+                    bias=bias,
+                    **factory_kwargs,
+                )
+
+                norm2 = temporal_block.roformer.norm2
+                factory_kwargs = {
+                    "device": norm2.weight.device,
+                    "dtype": norm2.weight.dtype,
+                }
+                if norm2.bias is None:
+                    bias = False
+                else:
+                    bias = True
+
+                temporal_block.roformer.norm2 = RMSNorm(
+                    norm2.weight.size(),
+                    eps=norm2.eps,
+                    elementwise_affine=norm2.elementwise_affine,
+                    bias=bias,
+                    **factory_kwargs,
+                )
+        else:
+            raise ValueError(f"Unknown normalization {norm} is found.")
 
         model = cls(bandsplit, bandmerge, backbone)
 
