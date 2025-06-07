@@ -646,7 +646,7 @@ def convert_dataset_and_dataloader_format_if_necessary(config: DictConfig) -> No
             {"_target_": validation_dataloader_target, **validation_dataloader_kwargs},
             merge=False,
         )
-    elif dump_format in available_dump_formats:
+    elif is_available_dump_format(dump_format):
         # TODO: format conversion other than webdataset.
         pass
     else:
