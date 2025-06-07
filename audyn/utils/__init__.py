@@ -54,7 +54,7 @@ __all__ = [
     "convert_dataset_and_dataloader_format_if_necessary",
     "set_nodes_if_necessary",
     "set_compiler_if_necessary",
-    "register_dump_formats",
+    "register_dump_format",
     "instantiate",
     "instantiate_model",
     "instantiate_gan_generator",
@@ -712,7 +712,7 @@ def set_compiler_if_necessary(config: DictConfig) -> None:
                 )
 
 
-def register_dump_formats(dump_format: str) -> list[str]:
+def register_dump_format(dump_format: str) -> list[str]:
     """Register dump format to available_dump_formats.
 
     Args:
@@ -723,10 +723,10 @@ def register_dump_formats(dump_format: str) -> list[str]:
 
     Examples:
 
-        >>> from audyn.utils import available_dump_formats, register_dump_formats
+        >>> from audyn.utils import available_dump_formats, register_dump_format
         >>> available_dump_formats
         ['torch', 'webdataset', 'birdclef2024', 'musdb18', 'dnr-v2', 'custom']
-        >>> register_dump_formats("new-format")
+        >>> register_dump_format("new-format")
         ['torch', 'webdataset', 'birdclef2024', 'musdb18', 'dnr-v2', 'custom', 'new-format']
         >>> available_dump_formats
         ['torch', 'webdataset', 'birdclef2024', 'musdb18', 'dnr-v2', 'custom', 'new-format']
