@@ -20,11 +20,19 @@ def test_large_bsroformer() -> None:
     batch_size = 4
     n_frames = 128
 
-    # BandSplitRoFormer
-    in_channels = 2
-    version = "v7"
+    # Band-split RoFormer
+    in_channels = 1
+    version = "default"
     model = BandSplitRoFormer.build_from_config(in_channels, version=version)
     n_bins = sum(model.bandsplit.bins)
+
+    num_paramters = 0
+
+    for p in model.parameters():
+        if p.requires_grad:
+            num_paramters += p.numel()
+
+    assert num_paramters == 93126802
 
     shape = (batch_size, in_channels, n_bins, n_frames)
     input = torch.randn(shape) + 1j * torch.randn(shape)
