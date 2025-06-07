@@ -12,13 +12,12 @@ log_root="./log"
 
 dump_format="webdataset"
 
-preprocess="fma-small"
+preprocess="fma"
 data="fma-small"
 
 . ../../_common/parse_options.sh || exit 1;
 
-fma_type="small"
-fma_root="${data_root}/FMA/${fma_type}"
+fma_root="${data_root}/neural-audio-fp-dataset"
 
 dump_dir="${dump_root}/${data}"
 list_dir="${dump_dir}/list"
@@ -29,29 +28,104 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
 
     mkdir -p "${list_dir}"
 
-    for subset in "train" "validation" "test"; do
-        list_path="${list_dir}/${subset}.txt"
+    subset="train"
+    list_path="${list_dir}/${subset}.txt"
 
-        if [ "${subset}" = "train" ]; then
-            num_samples=1000
-        elif [ "${subset}" = "validation" ]; then
-            num_samples=100
-        else
-            num_samples=100
-        fi
+    python ./local/save_training_list.py \
+    --config-dir "./conf" \
+    hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
+    preprocess="${preprocess}" \
+    data="${data}" \
+    preprocess.dump_format="${dump_format}" \
+    preprocess.list_path="${list_path}" \
+    preprocess.fma_root="${fma_root}" \
+    preprocess.subset="${subset}"
 
-        python ./local/save_list.py \
-        --config-dir "./conf" \
-        hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
-        preprocess="${preprocess}" \
-        data="${data}" \
-        preprocess.dump_format="${dump_format}" \
-        preprocess.list_path="${list_path}" \
-        preprocess.fma_root="${fma_root}" \
-        preprocess.type="${fma_type}" \
-        preprocess.subset="${subset}" \
-        preprocess.num_samples="${num_samples}"
-    done
+    list_path="${list_dir}/${subset}_background.txt"
+
+    python ./local/save_training_background_list.py \
+    --config-dir "./conf" \
+    hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
+    preprocess="${preprocess}" \
+    data="${data}" \
+    preprocess.dump_format="${dump_format}" \
+    preprocess.list_path="${list_path}" \
+    preprocess.fma_root="${fma_root}" \
+    preprocess.subset="${subset}"
+
+    list_path="${list_dir}/${subset}_impulse-response.txt"
+
+    python ./local/save_training_impulse_response_list.py \
+    --config-dir "./conf" \
+    hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
+    preprocess="${preprocess}" \
+    data="${data}" \
+    preprocess.dump_format="${dump_format}" \
+    preprocess.list_path="${list_path}" \
+    preprocess.fma_root="${fma_root}" \
+    preprocess.subset="${subset}"
+
+    subset="validation"
+    list_path="${list_dir}/${subset}.txt"
+
+    python ./local/save_validation_list.py \
+    --config-dir "./conf" \
+    hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
+    preprocess="${preprocess}" \
+    data="${data}" \
+    preprocess.dump_format="${dump_format}" \
+    preprocess.list_path="${list_path}" \
+    preprocess.fma_root="${fma_root}" \
+    preprocess.subset="${subset}"
+
+    list_path="${list_dir}/${subset}_background.txt"
+
+    python ./local/save_training_background_list.py \
+    --config-dir "./conf" \
+    hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
+    preprocess="${preprocess}" \
+    data="${data}" \
+    preprocess.dump_format="${dump_format}" \
+    preprocess.list_path="${list_path}" \
+    preprocess.fma_root="${fma_root}" \
+    preprocess.subset="${subset}"
+
+    list_path="${list_dir}/${subset}_impulse-response.txt"
+
+    python ./local/save_training_impulse_response_list.py \
+    --config-dir "./conf" \
+    hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
+    preprocess="${preprocess}" \
+    data="${data}" \
+    preprocess.dump_format="${dump_format}" \
+    preprocess.list_path="${list_path}" \
+    preprocess.fma_root="${fma_root}" \
+    preprocess.subset="${subset}"
+
+    subset="test"
+    list_path="${list_dir}/${subset}_db.txt"
+
+    python ./local/save_evaluation_db_list.py \
+    --config-dir "./conf" \
+    hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
+    preprocess="${preprocess}" \
+    data="${data}" \
+    preprocess.dump_format="${dump_format}" \
+    preprocess.list_path="${list_path}" \
+    preprocess.fma_root="${fma_root}" \
+    preprocess.subset="${subset}"
+
+    list_path="${list_dir}/${subset}_query.txt"
+
+    python ./local/save_evaluation_query_list.py \
+    --config-dir "./conf" \
+    hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
+    preprocess="${preprocess}" \
+    data="${data}" \
+    preprocess.dump_format="${dump_format}" \
+    preprocess.list_path="${list_path}" \
+    preprocess.fma_root="${fma_root}" \
+    preprocess.subset="${subset}"
 fi
 
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
