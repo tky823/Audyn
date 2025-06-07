@@ -23,6 +23,7 @@ available_dump_formats = [
     "musdb18",
     "dnr-v2",
     "wordnet",
+    "fma-small_nafp",
     "custom",
 ]
 
