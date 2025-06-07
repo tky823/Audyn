@@ -40,28 +40,20 @@ def process(filename: str, fma_root: str, feature_dir: str, subset: str, ext: st
     sub_index = os.path.dirname(filename)
     filename = os.path.basename(filename)
 
-    if subset == "train":
+    if subset == "test":
         path = os.path.join(
             fma_root,
             "music",
-            "train-10k-30s",
-            "fma_small_8k_plus_medium_2k",
-            sub_index,
-            f"{filename}.{ext}",
-        )
-    elif subset == "validation":
-        path = os.path.join(
-            fma_root,
-            "music",
-            "val-query-db-500-30s",
-            "db",
+            "test-query-db-500-30s",
+            "query",
+            "snr_00dB_10dB_1s",
             sub_index,
             f"{filename}.{ext}",
         )
     else:
         raise ValueError(f"Unsupported subset {subset} is found.")
 
-    _feature_dir = os.path.join(feature_dir, "music", sub_index)
+    _feature_dir = os.path.join(feature_dir, "query", sub_index)
 
     os.makedirs(_feature_dir, exist_ok=True)
 

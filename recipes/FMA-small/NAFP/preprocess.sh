@@ -10,7 +10,7 @@ data_root="../data"
 dump_root="./dump"
 log_root="./log"
 
-dump_format="webdataset"
+dump_format="fma-small_nafp"
 
 preprocess="fma"
 data="fma-small"
@@ -131,7 +131,7 @@ fi
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     echo "Preprocess stage 2: Save features"
 
-    for subset in "train" "validation" "test"; do
+    for subset in "train" "validation"; do
         list_path="${list_dir}/${subset}.txt"
         subset_feature_dir="${feature_dir}/${subset}"
 
@@ -145,6 +145,38 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         preprocess.dump_format="${dump_format}" \
         preprocess.list_path="${list_path}" \
         preprocess.feature_dir="${subset_feature_dir}" \
-        preprocess.fma_root="${fma_root}"
+        preprocess.fma_root="${fma_root}" \
+        preprocess.subset="${subset}"
     done
+
+    subset="test"
+    subset_feature_dir="${feature_dir}/${subset}"
+
+    mkdir -p "${subset_feature_dir}"
+
+    list_path="${list_dir}/${subset}_db.txt"
+
+    python ./local/save_evaluation_db_features.py \
+    --config-dir "./conf" \
+    hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
+    preprocess="${preprocess}" \
+    data="${data}" \
+    preprocess.dump_format="${dump_format}" \
+    preprocess.list_path="${list_path}" \
+    preprocess.feature_dir="${subset_feature_dir}" \
+    preprocess.fma_root="${fma_root}" \
+    preprocess.subset="${subset}"
+
+    list_path="${list_dir}/${subset}_query.txt"
+
+    python ./local/save_evaluation_query_features.py \
+    --config-dir "./conf" \
+    hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
+    preprocess="${preprocess}" \
+    data="${data}" \
+    preprocess.dump_format="${dump_format}" \
+    preprocess.list_path="${list_path}" \
+    preprocess.feature_dir="${subset_feature_dir}" \
+    preprocess.fma_root="${fma_root}" \
+    preprocess.subset="${subset}"
 fi
