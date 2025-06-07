@@ -25,7 +25,7 @@ class BandSplitRoFormerBackbone(nn.Module):
         num_features: int,
         num_heads: int,
         hidden_channels: int,
-        num_blocks: int = 6,
+        num_blocks: int = 12,
         is_causal: bool = False,
         norm: Optional[
             Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]
