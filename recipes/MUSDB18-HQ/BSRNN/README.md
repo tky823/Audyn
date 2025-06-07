@@ -17,7 +17,7 @@ data="musdb18hq-bass"  # "musdb18hq-bass", "musdb18hq-drums", "musdb18hq-other",
 
 ```sh
 data="musdb18hq-bass"  # "musdb18hq-bass", "musdb18hq-drums", "musdb18hq-other", or "musdb18hq-vocals"
-model="bsrnn-v7"
+model="bsrnn_v7"
 
 . ./run.sh \
 --stage 1 \
@@ -33,7 +33,7 @@ If you resume training from a checkpoint,
 checkpoint=<PATH/TO/BSRNN/CHECKPOINT>  # e.g. exp/<TAG>/model/last.pth
 
 data="musdb18hq-bass"  # "musdb18hq-bass", "musdb18hq-drums", "musdb18hq-other", or "musdb18hq-vocals"
-model="bsrnn-v7"
+model="bsrnn_v7"
 
 . ./run.sh \
 --stage 1 \
