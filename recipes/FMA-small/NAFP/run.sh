@@ -15,10 +15,10 @@ tensorboard_root="./tensorboard"
 data_root="../data"
 dump_root="dump"
 
-dump_format="webdataset"
+dump_format="fma-small_nafp"
 
 system="default"
-preprocess="fma-small"
+preprocess="fma"
 data="fma-small"
 train="nafp_fma-small"
 model="nafp"

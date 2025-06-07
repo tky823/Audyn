@@ -10,7 +10,7 @@ tensorboard_root="./tensorboard"
 tag=""
 continue_from=""
 
-dump_format="dnr-v2"
+dump_format="fma-small_nafp"
 
 system="default"
 preprocess="fma-small"
