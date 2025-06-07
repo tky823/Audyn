@@ -17,7 +17,7 @@ data="musdb18-bass"  # "musdb18-bass", "musdb18-drums", "musdb18-other", or "mus
 
 ```sh
 data="musdb18-bass"
-model="bsroformer_default"
+model="bsroformer-default"
 
 . ./run.sh \
 --stage 1 \
@@ -33,7 +33,7 @@ If you resume training from a checkpoint,
 checkpoint=<PATH/TO/BSROFORMER/CHECKPOINT>  # e.g. exp/<TAG>/model/last.pth
 
 data="musdb18-bass"
-model="bsroformer_default"
+model="bsroformer-default"
 
 . ./run.sh \
 --stage 1 \
