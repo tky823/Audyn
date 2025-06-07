@@ -1,9 +1,24 @@
 # Neural Audio Fingerprinting usine FMA-small
-## Additional dependency
 
-To mix noise to music clips, you need to download ``AudioSet`` by ``yt-dlp``.
-Please install ``yt-dlp`` as follows:
+## Stages
+
+### Stage -1: Downloading dataset
+
+Follow description by running
 
 ```sh
-pip install yt-dlp[default]
+. ./run.sh \
+--stage -1 \
+--stop-stage -1
+```
+
+### Stage 0: Preprocessing
+
+```sh
+data="fma-small"
+
+. ./run.sh \
+--stage 0 \
+--stop-stage 0 \
+--data "${data}"
 ```
