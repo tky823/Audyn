@@ -35,8 +35,8 @@ class BandSplitRoFormerBackbone(nn.Module):
         eps: float = 1e-5,
         rope_base: int = 10000,
         share_heads: bool = True,
-        norm_first: bool = False,
-        bias: bool = True,
+        norm_first: bool = True,
+        bias: bool = False,
     ) -> None:
         super().__init__()
 
@@ -96,8 +96,8 @@ class BandSplitRoFormerBlock(nn.Module):
         eps: float = 1e-5,
         rope_base: int = 10000,
         share_heads: bool = True,
-        norm_first: bool = False,
-        bias: bool = True,
+        norm_first: bool = True,
+        bias: bool = False,
     ) -> None:
         super().__init__()
 
@@ -163,8 +163,8 @@ class IntraChunkRoFormer(nn.Module):
         eps: float = 1e-5,
         rope_base: int = 10000,
         share_heads: bool = True,
-        norm_first: bool = False,
-        bias: bool = True,
+        norm_first: bool = True,
+        bias: bool = False,
     ) -> None:
         super().__init__()
 
@@ -246,8 +246,8 @@ class InterChunkRoFormer(nn.Module):
         eps: float = 1e-5,
         rope_base: int = 10000,
         share_heads: bool = True,
-        norm_first: bool = False,
-        bias: bool = True,
+        norm_first: bool = True,
+        bias: bool = False,
     ) -> None:
         super().__init__()
 

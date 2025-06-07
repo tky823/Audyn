@@ -103,7 +103,7 @@ class BandSplitRoFormer(BandSplitRNN):
         cls,
         in_channels: int,
         norm: str = "rms",
-        version: Union[int, str] = "v7",
+        version: Union[int, str] = "default",
     ) -> "BandSplitRoFormer":
         from ..modules.bsroformer import BandSplitRoFormerBlock
         from .bsrnn import music_scale_bins, v7_bins
@@ -121,11 +121,11 @@ class BandSplitRoFormer(BandSplitRNN):
 
         # band split and band merge
         embed_dim = 384
-        bandmerge_hidden_channels = 1534
+        bandmerge_hidden_channels = 1536
 
         # backbone
         num_heads = 8
-        backbone_hidden_channels = 2048
+        backbone_hidden_channels = 1536
         num_blocks = 12
         is_causal = False
         _norm = False
@@ -135,7 +135,7 @@ class BandSplitRoFormer(BandSplitRNN):
         rope_base = 10000
         share_heads = True
         norm_first = False
-        bias = True
+        bias = False
 
         bandsplit = MultiChannelBandSplitModule(in_channels, bins, embed_dim)
         bandmerge = MultiChannelBandMergeModule(
@@ -280,7 +280,7 @@ class MultiSourceMultiChannelBandSplitRoFormer(BandSplitRoFormer):
         num_sources: int,
         in_channels: int,
         norm: str = "rms",
-        version: Union[int, str] = "v7",
+        version: Union[int, str] = "default",
     ) -> "MultiSourceMultiChannelBandSplitRoFormer":
         from ..modules.bsroformer import BandSplitRoFormerBlock
         from .bsrnn import music_scale_bins, v7_bins
@@ -298,11 +298,11 @@ class MultiSourceMultiChannelBandSplitRoFormer(BandSplitRoFormer):
 
         # band split and band merge
         embed_dim = 384
-        bandmerge_hidden_channels = 1534
+        bandmerge_hidden_channels = 1536
 
         # backbone
         num_heads = 8
-        backbone_hidden_channels = 2048
+        backbone_hidden_channels = 1536
         num_blocks = 12
         is_causal = False
         _norm = False
@@ -312,7 +312,7 @@ class MultiSourceMultiChannelBandSplitRoFormer(BandSplitRoFormer):
         rope_base = 10000
         share_heads = True
         norm_first = False
-        bias = True
+        bias = False
 
         bandsplit = MultiChannelBandSplitModule(in_channels, bins, embed_dim)
         bandmerge = MultiSourceMultiChannelBandMergeModule(
