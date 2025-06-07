@@ -55,6 +55,8 @@ __all__ = [
     "set_nodes_if_necessary",
     "set_compiler_if_necessary",
     "register_dump_format",
+    "list_available_dump_formats",
+    "is_available_dump_format",
     "instantiate",
     "instantiate_model",
     "instantiate_gan_generator",
@@ -716,25 +718,70 @@ def register_dump_format(dump_format: str) -> list[str]:
     """Register dump format to available_dump_formats.
 
     Args:
-        dump_format (str): Dump format to add.
+        dump_format (str): Dump format to register.
 
     Returns:
         list: List of available dump formats.
 
     Examples:
 
-        >>> from audyn.utils import available_dump_formats, register_dump_format
-        >>> available_dump_formats
+        >>> from audyn.utils import list_available_dump_formats, register_dump_format
+        >>> list_available_dump_formats()
         ['torch', 'webdataset', 'birdclef2024', 'musdb18', 'dnr-v2', 'custom']
         >>> register_dump_format("new-format")
         ['torch', 'webdataset', 'birdclef2024', 'musdb18', 'dnr-v2', 'custom', 'new-format']
-        >>> available_dump_formats
+        >>> list_available_dump_formats()
         ['torch', 'webdataset', 'birdclef2024', 'musdb18', 'dnr-v2', 'custom', 'new-format']
 
     """
-    available_dump_formats.append(dump_format)
+    if dump_format in available_dump_formats:
+        pass
+    else:
+        available_dump_formats.append(dump_format)
 
     return available_dump_formats
+
+
+def list_available_dump_formats() -> list[str]:
+    """List available dump formats.
+
+    Returns:
+        list: List of available dump formats.
+
+    Examples:
+
+        >>> from audyn.utils import list_available_dump_formats
+        >>> list_available_dump_formats()
+        ['torch', 'webdataset', 'birdclef2024', 'musdb18', 'dnr-v2', 'custom']
+
+    """
+    return available_dump_formats
+
+
+def is_available_dump_format(dump_format: str) -> bool:
+    """Check if dump format is included in available_dump_formats.
+
+    Args:
+        dump_format (str): Dump format to check.
+
+    Returns:
+        bool: If ``True``, dump format is available.
+
+    Examples:
+
+        >>> from audyn.utils import is_available_dump_format, register_dump_format
+        >>> is_available_dump_format("new-format")
+        False
+        >>> register_dump_format("new-format")
+        ['torch', 'webdataset', 'birdclef2024', 'musdb18', 'dnr-v2', 'custom', 'new-format']
+        >>> is_available_dump_format("new-format")
+        True
+
+    """
+    if dump_format in available_dump_formats:
+        return True
+    else:
+        return False
 
 
 def _search_webdataset_format_dataset(config: DictConfig) -> Tuple[str, Dict[str, Any]]:
