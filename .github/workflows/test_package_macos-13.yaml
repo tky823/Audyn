@@ -1,0 +1,30 @@
+name: Test package on macos-13
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        required: true
+        type: string
+      torch-version:
+        required: true
+        type: string
+    secrets:
+      ACCESS_TOKEN:
+        required: true
+      CODECOV_TOKEN:
+        required: true
+jobs:
+  package:
+    uses: ./.github/workflows/test_package_main.yaml
+    with:
+      # macos-13: x86_64, macos-latest: arm
+      # See https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners
+      os: macos-13
+      python-version: ${{ inputs.python-version }}
+      torch-version: ${{ inputs.torch-version }}
+    secrets:
+      ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+# NOTE: torch-2.3 does not support binary for MacOS x86_64
+#       https://github.com/pytorch/pytorch/issues/114602
