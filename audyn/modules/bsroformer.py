@@ -409,12 +409,14 @@ class RoFormerEncoderLayer(nn.Module):
                 qdim, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs
             )
         elif norm == "rms":
-            if bias is None:
-                layer_norm_kwargs = {}
-            else:
-                layer_norm_kwargs = {"bias": bias}
-
             if hasattr(nn, "RMSNorm"):
+                if bias is None:
+                    layer_norm_kwargs = {}
+                elif bias:
+                    raise ValueError("bias=True is not supported for nn.RMSNorm.")
+                else:
+                    layer_norm_kwargs = {}
+
                 self.norm1 = nn.RMSNorm(
                     qdim, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs
                 )
@@ -423,6 +425,11 @@ class RoFormerEncoderLayer(nn.Module):
                 )
             else:
                 from .normalization import RMSNorm
+
+                if bias is None:
+                    layer_norm_kwargs = {}
+                else:
+                    layer_norm_kwargs = {"bias": bias}
 
                 self.norm1 = RMSNorm(
                     qdim, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs
