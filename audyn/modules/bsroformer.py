@@ -40,12 +40,12 @@ class BandSplitRoFormerBackbone(nn.Module):
             Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]
         ] = False,
         dropout: float = 0.1,
-        activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.relu,
+        activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.gelu,
         eps: float = 1e-5,
         rope_base: int = 10000,
         share_heads: bool = True,
         norm_first: bool = True,
-        bias: bool = False,
+        bias: Optional[bool] = None,
     ) -> None:
         super().__init__()
 
@@ -103,12 +103,12 @@ class BandSplitRoFormerBlock(nn.Module):
             Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]
         ] = False,
         dropout: float = 0.1,
-        activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.relu,
+        activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.gelu,
         eps: float = 1e-5,
         rope_base: int = 10000,
         share_heads: bool = True,
         norm_first: bool = True,
-        bias: bool = False,
+        bias: Optional[bool] = None,
     ) -> None:
         super().__init__()
 
@@ -173,12 +173,12 @@ class IntraChunkRoFormer(nn.Module):
             Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]
         ] = False,
         dropout: float = 0.1,
-        activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.relu,
+        activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.gelu,
         eps: float = 1e-5,
         rope_base: int = 10000,
         share_heads: bool = True,
         norm_first: bool = True,
-        bias: bool = False,
+        bias: Optional[bool] = None,
     ) -> None:
         super().__init__()
 
@@ -261,12 +261,12 @@ class InterChunkRoFormer(nn.Module):
             Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]
         ] = False,
         dropout: float = 0.1,
-        activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.relu,
+        activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.gelu,
         eps: float = 1e-5,
         rope_base: int = 10000,
         share_heads: bool = True,
         norm_first: bool = True,
-        bias: bool = False,
+        bias: Optional[bool] = None,
     ) -> None:
         super().__init__()
 
@@ -357,7 +357,7 @@ class RoFormerEncoderLayer(nn.Module):
         qdim: Optional[int] = None,
         kdim: Optional[int] = None,
         vdim: Optional[int] = None,
-        bias: bool = False,
+        bias: Optional[bool] = None,
         device: torch.device = None,
         dtype: torch.dtype = None,
     ) -> None:
@@ -367,13 +367,6 @@ class RoFormerEncoderLayer(nn.Module):
         }
 
         super().__init__()
-
-        if IS_TORCH_LT_2_1:
-            assert bias, "Only bias=True is supported for torch < 2.1."
-
-            layer_norm_kwargs = {}
-        else:
-            layer_norm_kwargs = {"bias": bias}
 
         if qdim is None:
             qdim = d_model
@@ -399,6 +392,16 @@ class RoFormerEncoderLayer(nn.Module):
         self.norm_first = norm_first
 
         if norm == "layer_norm":
+            if bias is None:
+                bias = True
+
+            if IS_TORCH_LT_2_1:
+                assert bias, "Only bias=True is supported for torch < 2.1."
+
+                layer_norm_kwargs = {}
+            else:
+                layer_norm_kwargs = {"bias": bias}
+
             self.norm1 = nn.LayerNorm(
                 qdim, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs
             )
@@ -406,6 +409,11 @@ class RoFormerEncoderLayer(nn.Module):
                 qdim, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs
             )
         elif norm == "rms":
+            if bias is None:
+                layer_norm_kwargs = {}
+            else:
+                layer_norm_kwargs = {"bias": bias}
+
             if hasattr(nn, "RMSNorm"):
                 self.norm1 = nn.RMSNorm(
                     qdim, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs
@@ -523,13 +531,14 @@ class RoFormerEncoderLayer(nn.Module):
 
 
 class RotaryPositionalMultiheadAttention(_RotaryPositionalMultiheadAttention):
+    """Multi-head attention with rotary positional encoding for BSRoFormer."""
 
     def __init__(
         self,
         embed_dim: int,
         num_heads: int,
         dropout: float = 0.1,
-        bias: bool = False,
+        bias: Optional[bool] = None,
         add_bias_kv: bool = False,
         add_zero_attn: bool = False,
         qdim: Optional[int] = None,
@@ -591,6 +600,9 @@ class RotaryPositionalMultiheadAttention(_RotaryPositionalMultiheadAttention):
             self.register_parameter("q_proj_weight", None)
             self.register_parameter("k_proj_weight", None)
             self.register_parameter("v_proj_weight", None)
+
+        if bias is None:
+            bias = False
 
         if bias:
             self.in_proj_bias = nn.Parameter(torch.empty(3 * embed_dim, **factory_kwargs))
