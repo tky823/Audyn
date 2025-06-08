@@ -65,8 +65,8 @@ def test_bsroformer() -> None:
 
     batch_size = 4
     bins = [15, 11, 7]
-    n_frames = 128
-    num_features, hidden_channels = 8, 6
+    n_frames = 64
+    num_features, head_channels, hidden_channels = 8, 4, 6
     shape = (batch_size, sum(bins), n_frames)
     num_heads = 2
     num_blocks = 3
@@ -74,7 +74,7 @@ def test_bsroformer() -> None:
     bandsplit = BandSplitModule(bins, num_features)
     bandmerge = BandMergeModule(bins, num_features)
     backbone = BandSplitRoFormerBackbone(
-        num_features, num_heads, hidden_channels, num_blocks=num_blocks
+        num_features, num_heads, head_channels, hidden_channels, num_blocks=num_blocks
     )
     model = BandSplitRoFormer(bandsplit, bandmerge, backbone)
     input = torch.randn(shape) + 1j * torch.randn(shape)
@@ -87,7 +87,7 @@ def test_bsroformer() -> None:
     bandsplit = BandSplitModule(bins, num_features)
     bandmerge = BandMergeModule(bins, num_features)
     backbone = BandSplitRoFormerBackbone(
-        num_features, num_heads, hidden_channels, num_blocks=num_blocks
+        num_features, num_heads, head_channels, hidden_channels, num_blocks=num_blocks
     )
     model = BandSplitRoFormer(bandsplit, bandmerge, backbone)
     input = torch.randn(shape) + 1j * torch.randn(shape)
@@ -102,8 +102,8 @@ def test_multichannel_bsroformer() -> None:
     batch_size = 4
     in_channels = 3
     bins = [15, 11, 5, 2]
-    n_frames = 128
-    num_features, hidden_channels = 8, 6
+    n_frames = 64
+    num_features, head_channels, hidden_channels = 8, 4, 6
     shape = (batch_size, in_channels, sum(bins), n_frames)
     num_heads = 2
     num_blocks = 3
@@ -111,7 +111,7 @@ def test_multichannel_bsroformer() -> None:
     bandsplit = MultiChannelBandSplitModule(in_channels, bins, num_features)
     bandmerge = MultiChannelBandMergeModule(in_channels, bins, num_features)
     backbone = BandSplitRoFormerBackbone(
-        num_features, num_heads, hidden_channels, num_blocks=num_blocks
+        num_features, num_heads, head_channels, hidden_channels, num_blocks=num_blocks
     )
     model = BandSplitRoFormer(bandsplit, bandmerge, backbone)
     input = torch.randn(shape) + 1j * torch.randn(shape)
@@ -124,7 +124,7 @@ def test_multichannel_bsroformer() -> None:
     bandsplit = MultiChannelBandSplitModule(in_channels, bins, num_features)
     bandmerge = MultiChannelBandMergeModule(in_channels, bins, num_features)
     backbone = BandSplitRoFormerBackbone(
-        num_features, num_heads, hidden_channels, num_blocks=num_blocks
+        num_features, num_heads, head_channels, hidden_channels, num_blocks=num_blocks
     )
     model = BandSplitRoFormer(bandsplit, bandmerge, backbone)
     input = torch.randn(shape) + 1j * torch.randn(shape)
@@ -139,8 +139,8 @@ def test_multisource_multichannel_bsroformer() -> None:
     batch_size = 4
     in_channels = 1
     bins = [15, 11, 5, 2]
-    n_frames = 128
-    num_features, hidden_channels = 8, 6
+    n_frames = 64
+    num_features, head_channels, hidden_channels = 8, 4, 6
     shape = (batch_size, in_channels, sum(bins), n_frames)
     num_sources = 3
     num_heads = 2
@@ -151,7 +151,7 @@ def test_multisource_multichannel_bsroformer() -> None:
         num_sources, in_channels, bins, num_features
     )
     backbone = BandSplitRoFormerBackbone(
-        num_features, num_heads, hidden_channels, num_blocks=num_blocks
+        num_features, num_heads, head_channels, hidden_channels, num_blocks=num_blocks
     )
     model = MultiSourceMultiChannelBandSplitRoFormer(bandsplit, bandmerge, backbone)
     input = torch.randn(shape) + 1j * torch.randn(shape)
@@ -166,7 +166,7 @@ def test_multisource_multichannel_bsroformer() -> None:
         num_sources, in_channels, bins, num_features
     )
     backbone = BandSplitRoFormerBackbone(
-        num_features, num_heads, hidden_channels, num_blocks=num_blocks
+        num_features, num_heads, head_channels, hidden_channels, num_blocks=num_blocks
     )
     model = MultiSourceMultiChannelBandSplitRoFormer(bandsplit, bandmerge, backbone)
     input = torch.randn(shape) + 1j * torch.randn(shape)
