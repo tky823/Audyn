@@ -13,7 +13,6 @@ from torch.nn.common_types import _size_1_t
 from torch.nn.modules.utils import _single
 
 from ..modules.transformer import get_activation
-from .normalization import RMSNorm
 
 __all__ = [
     "StackedConvNeXtBlock1d",
@@ -200,6 +199,11 @@ def _get_normalization(
     if normalization.lower() in ["layer", "layer_norm", "ln"]:
         return nn.LayerNorm(num_features, eps=eps)
     elif normalization.lower() == "rms":
-        return RMSNorm(num_features, eps=eps)
+        if hasattr(nn, "RMSNorm"):
+            return nn.RMSNorm(num_features, eps=eps)
+        else:
+            from .normalization import RMSNorm
+
+            return RMSNorm(num_features, eps=eps)
 
     raise RuntimeError(f"normalization should be layer/rms, not {normalization}.")

@@ -1,4 +1,5 @@
 import numbers
+import warnings
 
 import torch
 import torch.nn as nn
@@ -31,6 +32,9 @@ class RMSNorm(nn.Module):
         device=None,
         dtype=None,
     ) -> None:
+        if hasattr(nn, "RMSNorm"):
+            warnings.warn("Use nn.RMSNorm instead.", DeprecationWarning, stacklevel=1)
+
         factory_kwargs = {
             "device": device,
             "dtype": dtype,
@@ -80,6 +84,12 @@ class RMSNorm(nn.Module):
             output = self.weight * x + self.bias
 
         return output
+
+    def extra_repr(self) -> str:
+        s = "{normalized_shape}, eps={eps}, " "elementwise_affine={elementwise_affine}".format(
+            **self.__dict__
+        )
+        return s
 
 
 class GlobalLayerNorm(nn.Module):
