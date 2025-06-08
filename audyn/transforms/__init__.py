@@ -17,6 +17,7 @@ from .hubert import HuBERTMFCC
 from .kaldi import KaldiMelSpectrogram, KaldiMFCC
 from .librosa import LibrosaMelSpectrogram
 from .music_tagging_transformer import MusicTaggingTransformerMelSpectrogram
+from .musicfm import MusicFMMelSpectrogram
 from .resample import DynamicResample
 from .slicer import WaveformSlicer
 from .stft import (
@@ -64,4 +65,6 @@ __all__ = [
     "MicrosoftAudioEncoder2023MelSpectrogram",
     # music tagging transformer
     "MusicTaggingTransformerMelSpectrogram",
+    # MusicFM
+    "MusicFMMelSpectrogram",
 ]
