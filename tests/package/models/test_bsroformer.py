@@ -18,10 +18,10 @@ from audyn.modules.bsroformer import BandSplitRoFormerBackbone
 @pytest.mark.slow
 def test_large_bsroformer() -> None:
     batch_size = 4
-    n_frames = 128
+    n_frames = 64
 
     # Band-split RoFormer
-    in_channels = 1
+    in_channels = 2
     version = "default"
     model = BandSplitRoFormer.build_from_config(in_channels, version=version)
     n_bins = sum(model.bandsplit.bins)
@@ -32,11 +32,13 @@ def test_large_bsroformer() -> None:
         if p.requires_grad:
             num_paramters += p.numel()
 
-    assert num_paramters == 93126802
+    assert num_paramters == 93672756
 
     shape = (batch_size, in_channels, n_bins, n_frames)
     input = torch.randn(shape) + 1j * torch.randn(shape)
-    output = model(input)
+
+    with torch.no_grad():
+        output = model(input)
 
     assert output.size() == input.size()
 
@@ -51,7 +53,9 @@ def test_large_bsroformer() -> None:
 
     shape = (batch_size, in_channels, n_bins, n_frames)
     input = torch.randn(shape) + 1j * torch.randn(shape)
-    output = model(input)
+
+    with torch.no_grad():
+        output = model(input)
 
     assert output.size() == (batch_size, num_sources, in_channels, n_bins, n_frames)
 
