@@ -1,4 +1,5 @@
 import numbers
+import warnings
 
 import torch
 import torch.nn as nn
@@ -31,6 +32,9 @@ class RMSNorm(nn.Module):
         device=None,
         dtype=None,
     ) -> None:
+        if hasattr(nn, "RMSNorm"):
+            warnings.warn("Use nn.RMSNorm instead.", DeprecationWarning, stacklevel=1)
+
         factory_kwargs = {
             "device": device,
             "dtype": dtype,
