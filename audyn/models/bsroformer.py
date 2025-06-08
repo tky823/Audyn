@@ -11,7 +11,6 @@ from ..modules.bsrnn import (
     MultiSourceMultiChannelBandMergeModule,
 )
 from ..modules.bsroformer import BandSplitRoFormerBackbone
-from ..modules.normalization import RMSNorm
 from .bsrnn import BandSplitRNN
 
 __all__ = [
@@ -88,7 +87,14 @@ default_bins = [
 
 
 class BandSplitRoFormer(BandSplitRNN):
-    """Band-split RoFormer."""
+    """Band-split RoFormer.
+
+    Args:
+        bandsplit (nn.Module or BandSplitModule): Module for band-splitting.
+        bandmerge (nn.Module or BandMergeModule): Module for band-merging.
+        backbone (nn.Module or BandSplitRoFormerBackbone): Backbone module for RoFormer.
+
+    """
 
     def __init__(
         self,
@@ -102,10 +108,18 @@ class BandSplitRoFormer(BandSplitRNN):
     def build_from_config(
         cls,
         in_channels: int,
-        norm: str = "rms",
         version: Union[int, str] = "default",
     ) -> "BandSplitRoFormer":
-        from ..modules.bsroformer import BandSplitRoFormerBlock
+        """Build Band-split RoFormer from configuration.
+
+        Args:
+            in_channels (int): Number of input channels.
+            version (Union[int, str]): Version of the model. Default is ``"default"``.
+
+        Returns:
+            BandSplitRoFormer: Built Band-split RoFormer.
+
+        """
         from .bsrnn import music_scale_bins, v7_bins
 
         version = str(version)
@@ -125,6 +139,7 @@ class BandSplitRoFormer(BandSplitRNN):
 
         # backbone
         num_heads = 8
+        backbone_head_channels = 64
         backbone_hidden_channels = 1536
         num_blocks = 12
         is_causal = False
@@ -134,7 +149,7 @@ class BandSplitRoFormer(BandSplitRNN):
         eps = 1e-5
         rope_base = 10000
         share_heads = True
-        norm_first = False
+        norm_first = True
         bias = False
 
         bandsplit = MultiChannelBandSplitModule(in_channels, bins, embed_dim)
@@ -144,6 +159,7 @@ class BandSplitRoFormer(BandSplitRNN):
         backbone = BandSplitRoFormerBackbone(
             embed_dim,
             num_heads,
+            head_channels=backbone_head_channels,
             hidden_channels=backbone_hidden_channels,
             num_blocks=num_blocks,
             is_causal=is_causal,
@@ -156,96 +172,20 @@ class BandSplitRoFormer(BandSplitRNN):
             norm_first=norm_first,
             bias=bias,
         )
-
-        if norm in ["layer_norm"]:
-            pass
-        elif norm == "rms":
-            # convert LayerNorm to RMSNorm
-            for block in backbone.backbone:
-                block: BandSplitRoFormerBlock
-                band_block = block.band_block
-                temporal_block = block.temporal_block
-
-                norm1 = band_block.roformer.norm1
-                factory_kwargs = {
-                    "device": norm1.weight.device,
-                    "dtype": norm1.weight.dtype,
-                }
-                if norm1.bias is None:
-                    bias = False
-                else:
-                    bias = True
-
-                band_block.roformer.norm1 = RMSNorm(
-                    norm1.weight.size(),
-                    eps=norm1.eps,
-                    elementwise_affine=norm1.elementwise_affine,
-                    bias=bias,
-                    **factory_kwargs,
-                )
-
-                norm2 = band_block.roformer.norm2
-                factory_kwargs = {
-                    "device": norm1.weight.device,
-                    "dtype": norm1.weight.dtype,
-                }
-                if norm2.bias is None:
-                    bias = False
-                else:
-                    bias = True
-
-                band_block.roformer.norm2 = RMSNorm(
-                    norm2.weight.size(),
-                    eps=norm2.eps,
-                    elementwise_affine=norm2.elementwise_affine,
-                    bias=bias,
-                    **factory_kwargs,
-                )
-
-                norm1 = temporal_block.roformer.norm1
-                factory_kwargs = {
-                    "device": norm1.weight.device,
-                    "dtype": norm1.weight.dtype,
-                }
-                if norm1.bias is None:
-                    bias = False
-                else:
-                    bias = True
-
-                temporal_block.roformer.norm1 = RMSNorm(
-                    norm1.weight.size(),
-                    eps=norm1.eps,
-                    elementwise_affine=norm1.elementwise_affine,
-                    bias=bias,
-                    **factory_kwargs,
-                )
-
-                norm2 = temporal_block.roformer.norm2
-                factory_kwargs = {
-                    "device": norm2.weight.device,
-                    "dtype": norm2.weight.dtype,
-                }
-                if norm2.bias is None:
-                    bias = False
-                else:
-                    bias = True
-
-                temporal_block.roformer.norm2 = RMSNorm(
-                    norm2.weight.size(),
-                    eps=norm2.eps,
-                    elementwise_affine=norm2.elementwise_affine,
-                    bias=bias,
-                    **factory_kwargs,
-                )
-        else:
-            raise ValueError(f"Unknown normalization {norm} is found.")
-
         model = cls(bandsplit, bandmerge, backbone)
 
         return model
 
 
 class MultiSourceMultiChannelBandSplitRoFormer(BandSplitRoFormer):
+    """Band-split RoFormer for multi-source and multi-channel input.
+
+    Args:
+        bandsplit (nn.Module or MultiChannelBandSplitModule): Module for band-splitting.
+        bandmerge (nn.Module or MultiSourceMultiChannelBandMergeModule): Module for band-merging.
+        backbone (nn.Module or BandSplitRoFormerBackbone): Backbone module for RoFormer.
+
+    """
 
     def __init__(
         self,
@@ -279,10 +219,18 @@ class MultiSourceMultiChannelBandSplitRoFormer(BandSplitRoFormer):
         cls,
         num_sources: int,
         in_channels: int,
-        norm: str = "rms",
         version: Union[int, str] = "default",
     ) -> "MultiSourceMultiChannelBandSplitRoFormer":
-        from ..modules.bsroformer import BandSplitRoFormerBlock
+        """Build Band-split RoFormer from configuration.
+
+        Args:
+            in_channels (int): Number of input channels.
+            version (Union[int, str]): Version of the model. Default is ``"default"``.
+
+        Returns:
+            MultiSourceMultiChannelBandSplitRoFormer: Built Band-split RoFormer.
+
+        """
         from .bsrnn import music_scale_bins, v7_bins
 
         version = str(version)
@@ -302,6 +250,7 @@ class MultiSourceMultiChannelBandSplitRoFormer(BandSplitRoFormer):
 
         # backbone
         num_heads = 8
+        backbone_head_channels = 64
         backbone_hidden_channels = 1536
         num_blocks = 12
         is_causal = False
@@ -311,7 +260,7 @@ class MultiSourceMultiChannelBandSplitRoFormer(BandSplitRoFormer):
         eps = 1e-5
         rope_base = 10000
         share_heads = True
-        norm_first = False
+        norm_first = True
         bias = False
 
         bandsplit = MultiChannelBandSplitModule(in_channels, bins, embed_dim)
@@ -325,6 +274,7 @@ class MultiSourceMultiChannelBandSplitRoFormer(BandSplitRoFormer):
         backbone = BandSplitRoFormerBackbone(
             embed_dim,
             num_heads,
+            head_channels=backbone_head_channels,
             hidden_channels=backbone_hidden_channels,
             num_blocks=num_blocks,
             is_causal=is_causal,
@@ -337,89 +287,6 @@ class MultiSourceMultiChannelBandSplitRoFormer(BandSplitRoFormer):
             norm_first=norm_first,
             bias=bias,
         )
-
-        if norm in ["layer_norm"]:
-            pass
-        elif norm == "rms":
-            # convert LayerNorm to RMSNorm
-            for block in backbone.backbone:
-                block: BandSplitRoFormerBlock
-                band_block = block.band_block
-                temporal_block = block.temporal_block
-
-                norm1 = band_block.roformer.norm1
-                factory_kwargs = {
-                    "device": norm1.weight.device,
-                    "dtype": norm1.weight.dtype,
-                }
-                if norm1.bias is None:
-                    bias = False
-                else:
-                    bias = True
-
-                band_block.roformer.norm1 = RMSNorm(
-                    norm1.weight.size(),
-                    eps=norm1.eps,
-                    elementwise_affine=norm1.elementwise_affine,
-                    bias=bias,
-                    **factory_kwargs,
-                )
-
-                norm2 = band_block.roformer.norm2
-                factory_kwargs = {
-                    "device": norm1.weight.device,
-                    "dtype": norm1.weight.dtype,
-                }
-                if norm2.bias is None:
-                    bias = False
-                else:
-                    bias = True
-
-                band_block.roformer.norm2 = RMSNorm(
-                    norm2.weight.size(),
-                    eps=norm2.eps,
-                    elementwise_affine=norm2.elementwise_affine,
-                    bias=bias,
-                    **factory_kwargs,
-                )
-
-                norm1 = temporal_block.roformer.norm1
-                factory_kwargs = {
-                    "device": norm1.weight.device,
-                    "dtype": norm1.weight.dtype,
-                }
-                if norm1.bias is None:
-                    bias = False
-                else:
-                    bias = True
-
-                temporal_block.roformer.norm1 = RMSNorm(
-                    norm1.weight.size(),
-                    eps=norm1.eps,
-                    elementwise_affine=norm1.elementwise_affine,
-                    bias=bias,
-                    **factory_kwargs,
-                )
-
-                norm2 = temporal_block.roformer.norm2
-                factory_kwargs = {
-                    "device": norm2.weight.device,
-                    "dtype": norm2.weight.dtype,
-                }
-                if norm2.bias is None:
-                    bias = False
-                else:
-                    bias = True
-
-                temporal_block.roformer.norm2 = RMSNorm(
-                    norm2.weight.size(),
-                    eps=norm2.eps,
-                    elementwise_affine=norm2.elementwise_affine,
-                    bias=bias,
-                    **factory_kwargs,
-                )
-        else:
-            raise ValueError(f"Unknown normalization {norm} is found.")
 
         model = cls(bandsplit, bandmerge, backbone)
 
