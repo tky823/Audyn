@@ -10,7 +10,6 @@ from torch.nn.modules.linear import NonDynamicallyQuantizableLinear
 
 from ..functional.activation import scaled_dot_product_attention
 from ..functional.bitnet import bitlinear158, bitlinear158_inference, quantize_weight
-from .normalization import RMSNorm
 
 __all__ = [
     "BitLinear158",
@@ -907,6 +906,11 @@ def _get_normalization(
     if normalization.lower() in ["layer", "layer_norm", "ln"]:
         return nn.LayerNorm(num_features, eps=eps)
     elif normalization.lower() == "rms":
-        return RMSNorm(num_features, eps=eps)
+        if hasattr(nn, "RMSNorm"):
+            return nn.RMSNorm(num_features, eps=eps)
+        else:
+            from .normalization import RMSNorm
+
+            return RMSNorm(num_features, eps=eps)
 
     raise RuntimeError(f"normalization should be layer/rms, not {normalization}.")

@@ -9,7 +9,6 @@ from torch.nn.modules.activation import NonDynamicallyQuantizableLinear
 from .activation import (
     RotaryPositionalMultiheadAttention as _RotaryPositionalMultiheadAttention,
 )
-from .normalization import RMSNorm
 from .positional_encoding import RotaryPositionalEmbedding
 from .tasnet import get_layer_norm
 from .transformer import get_activation
@@ -407,8 +406,22 @@ class RoFormerEncoderLayer(nn.Module):
                 qdim, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs
             )
         elif norm == "rms":
-            self.norm1 = RMSNorm(qdim, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs)
-            self.norm2 = RMSNorm(qdim, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs)
+            if hasattr(nn, "RMSNorm"):
+                self.norm1 = nn.RMSNorm(
+                    qdim, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs
+                )
+                self.norm2 = nn.RMSNorm(
+                    qdim, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs
+                )
+            else:
+                from .normalization import RMSNorm
+
+                self.norm1 = RMSNorm(
+                    qdim, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs
+                )
+                self.norm2 = RMSNorm(
+                    qdim, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs
+                )
         else:
             raise ValueError(f"Unsupported norm type {norm} is found.")
 
