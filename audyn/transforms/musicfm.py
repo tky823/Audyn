@@ -61,6 +61,8 @@ class MusicFMMelSpectrogram(aT.MelSpectrogram):
         onesided: Optional[bool] = None,
         norm: Optional[str] = None,
         mel_scale: str = "htk",
+        mean: float = 0,
+        std: float = 1.0,
         dtype: Optional[torch.dtype] = torch.float32,
     ) -> None:
         super().__init__(
@@ -84,6 +86,9 @@ class MusicFMMelSpectrogram(aT.MelSpectrogram):
         )
 
         self.amplitude_to_db = aT.AmplitudeToDB()
+
+        self.mean = mean
+        self.std = std
         self.dtype = dtype
 
     def forward(self, waveform: torch.Tensor) -> torch.Tensor:
@@ -110,8 +115,10 @@ class MusicFMMelSpectrogram(aT.MelSpectrogram):
 
         with torch.autocast(device_type=device_type, dtype=dtype, enabled=enabled):
             spectrogram = super().forward(waveform)
-            spectrogram = self.amplitude_to_db(spectrogram)
             spectrogram, _ = torch.split(spectrogram, [spectrogram.size(-1) - 1, 1], dim=-1)
+            spectrogram = self.amplitude_to_db(spectrogram)
+
+        spectrogram = (spectrogram - self.mean) / self.std
 
         return spectrogram
 
@@ -149,7 +156,7 @@ class MusicFMMelSpectrogram(aT.MelSpectrogram):
             weights_only=True,
         )
 
-        transform = cls()
+        transform = cls(mean=6.768444971712967, std=18.417922652295623)
         transform.load_state_dict(state_dict)
 
         return transform
