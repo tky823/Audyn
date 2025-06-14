@@ -4,6 +4,7 @@ from typing import Any, Dict, Iterable, Optional, Union, overload
 
 import hydra
 import torch
+import torch.distributed as dist
 import torch.nn as nn
 from omegaconf import DictConfig, ListConfig, OmegaConf
 from torch.optim import Optimizer
@@ -107,6 +108,7 @@ def instantiate(config: Any, *args, **kwargs) -> Any:
 def instantiate_model(
     config_or_path: Union[str, DictConfig],
     *args,
+    convert_sync_batchnorm: bool = True,
     load_weights: Optional[bool] = None,
     **kwargs,
 ) -> nn.Module:
@@ -115,6 +117,7 @@ def instantiate_model(
     Args:
         config_or_path (str or DictConfig): Config of model.
         args: Positional arguments given to ``instantiate``.
+        convert_sync_batchnorm: (bool): If ``True``, model uses ``nn.SyncBatchNorm``.
         load_weights (bool, optional): If ``True``, model loads pretrained weights.
             Default: ``False``.
         kwargs: Keyword arguments given to ``instantiate``.
@@ -123,6 +126,8 @@ def instantiate_model(
         nn.Module: Constructed model.
 
     """
+    is_distributed = dist.is_available() and dist.is_initialized()
+
     if load_weights is None:
         load_weights = False
 
@@ -138,6 +143,9 @@ def instantiate_model(
         model_config = OmegaConf.create(model_config)
         model: nn.Module = instantiate(model_config, *args, **kwargs)
 
+        if is_distributed and convert_sync_batchnorm:
+            model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+
         if load_weights:
             model.load_state_dict(state_dict["model"])
 
@@ -149,6 +157,9 @@ def instantiate_model(
 
         model_config = config_or_path
         model: nn.Module = instantiate(model_config, *args, **kwargs)
+
+        if is_distributed and convert_sync_batchnorm:
+            model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
     else:
         raise NotImplementedError(f"{type(config_or_path)} is not supported.")
 
@@ -157,12 +168,15 @@ def instantiate_model(
 
 def instantiate_gan_generator(
     config_or_path: Union[str, DictConfig],
+    *,
+    convert_sync_batchnorm: bool = True,
     load_weights: Optional[bool] = None,
 ) -> nn.Module:
     """Instantiate generator in GANs.
 
     Args:
         config_or_path (str or DictConfig): Config of model.
+        convert_sync_batchnorm: (bool): If ``True``, model uses ``nn.SyncBatchNorm``.
         load_weights (bool, optional): If ``True``, model loads pretrained weights.
             Default: ``False``.
 
@@ -170,6 +184,8 @@ def instantiate_gan_generator(
         nn.Module: Constructed model.
 
     """
+    is_distributed = dist.is_available() and dist.is_initialized()
+
     if load_weights is None:
         load_weights = False
 
@@ -184,6 +200,9 @@ def instantiate_gan_generator(
         model_config: Dict[str, Any] = resolved_config["model"]
         generator_config = OmegaConf.create(model_config["generator"])
         generator: nn.Module = instantiate(generator_config)
+
+        if is_distributed and convert_sync_batchnorm:
+            generator = nn.SyncBatchNorm.convert_sync_batchnorm(generator)
 
         if load_weights:
             generator.load_state_dict(state_dict["model"]["generator"])
@@ -202,6 +221,9 @@ def instantiate_gan_generator(
             generator_config = model_config
 
         generator: nn.Module = instantiate(generator_config)
+
+        if is_distributed and convert_sync_batchnorm:
+            generator = nn.SyncBatchNorm.convert_sync_batchnorm(generator)
     else:
         raise NotImplementedError(f"{type(config_or_path)} is not supported.")
 
@@ -210,12 +232,15 @@ def instantiate_gan_generator(
 
 def instantiate_gan_discriminator(
     config_or_path: Union[str, DictConfig],
+    *,
+    convert_sync_batchnorm: bool = True,
     load_weights: Optional[bool] = None,
 ) -> nn.Module:
     """Instantiate discriminator in GANs.
 
     Args:
         config_or_path (str or DictConfig): Config of model.
+        convert_sync_batchnorm: (bool): If ``True``, model uses ``nn.SyncBatchNorm``.
         load_weights (bool, optional): If ``True``, model loads pretrained weights.
             Default: ``False``.
 
@@ -223,6 +248,8 @@ def instantiate_gan_discriminator(
         nn.Module: Constructed model.
 
     """
+    is_distributed = dist.is_available() and dist.is_initialized()
+
     if load_weights is None:
         load_weights = False
 
@@ -237,6 +264,9 @@ def instantiate_gan_discriminator(
         model_config: Dict[str, Any] = resolved_config["model"]
         discriminator_config = OmegaConf.create(model_config["discriminator"])
         discriminator: nn.Module = instantiate(discriminator_config)
+
+        if is_distributed and convert_sync_batchnorm:
+            discriminator = nn.SyncBatchNorm.convert_sync_batchnorm(discriminator)
 
         if load_weights:
             discriminator.load_state_dict(state_dict["model"]["discriminator"])
@@ -255,6 +285,9 @@ def instantiate_gan_discriminator(
             discriminator_config = model_config
 
         discriminator: nn.Module = instantiate(discriminator_config)
+
+        if is_distributed and convert_sync_batchnorm:
+            discriminator = nn.SyncBatchNorm.convert_sync_batchnorm(discriminator)
     else:
         raise NotImplementedError(f"{type(config_or_path)} is not supported.")
 
@@ -265,6 +298,8 @@ def instantiate_cascade_text_to_wave(
     config: DictConfig,
     text_to_feat_checkpoint: str,
     feat_to_wave_checkpoint: str,
+    *,
+    convert_sync_batchnorm: bool = True,
     load_weights: Optional[bool] = None,
 ) -> "CascadeTextToWave":
     """Instantiate cascade text-to-wave model.
@@ -273,12 +308,15 @@ def instantiate_cascade_text_to_wave(
         config (DictConfig): Config of cascase text-to-wave model.
         text_to_feat_checkpoint (str): Path to pretrained text-to-feat model.
         feat_to_wave_checkpoint (str): Path to pretrained feat-to-wave model.
+        convert_sync_batchnorm: (bool): If ``True``, model uses ``nn.SyncBatchNorm``.
         load_weights (bool, optional): If ``True``, model loads pretrained weights.
 
     Returns:
         CascadeTextToWave: Constructed cascase text-to-wave model.
 
     """
+    is_distributed = dist.is_available() and dist.is_initialized()
+
     if load_weights is None:
         load_weights = False
 
@@ -328,6 +366,9 @@ def instantiate_cascade_text_to_wave(
         text_to_feat=text_to_feat,
         feat_to_wave=feat_to_wave,
     )
+
+    if is_distributed and convert_sync_batchnorm:
+        model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
 
     if load_weights:
         if is_text_to_feat_gan:
