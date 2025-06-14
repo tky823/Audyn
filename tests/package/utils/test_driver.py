@@ -2,7 +2,6 @@ import importlib
 import os
 import sys
 import tempfile
-import warnings
 from datetime import timedelta
 from os.path import dirname, join, realpath, relpath
 from typing import Any, Dict, List, Optional, Tuple
@@ -152,8 +151,6 @@ def test_base_drivers(
         )
 
         if config.system.compile.enable:
-            warnings.warn(config.system, UserWarning, stacklevel=2)
-            warnings.warn(config.system.compile.enable, UserWarning, stacklevel=2)
             compile_kwargs = config.system.compile.kwargs
 
             if compile_kwargs is None:
@@ -977,8 +974,6 @@ def test_base_driver_for_riemann_sgd(monkeypatch: MonkeyPatch) -> None:
         )
 
         if config.system.compile.enable:
-            warnings.warn(config.system, UserWarning, stacklevel=2)
-            warnings.warn(config.system.compile.enable, UserWarning, stacklevel=2)
             compile_kwargs = config.system.compile.kwargs
 
             if compile_kwargs is None:
