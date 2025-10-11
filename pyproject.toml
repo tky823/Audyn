@@ -23,7 +23,7 @@ dependencies = [
     "torchaudio",
     "torchvision",
     "tensorboard",
-    "numpy < 2.0",  # for tensorboard
+    "numpy",
     "webdataset",
     "inflect",
 ]
