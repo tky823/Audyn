@@ -47,6 +47,7 @@ jobs:
       - name: Install dependencies (Ubuntu)
         if: ${{ inputs.os == 'ubuntu-latest' }}
         run: |
+          . tests/scripts/free_ubuntu_disk.sh
           . tests/scripts/install_ubuntu_dependencies.sh
       - name: Install dependencies (MacOS)
         if: ${{ inputs.os == 'macos-13' || inputs.os == 'macos-latest' }}
@@ -165,6 +166,7 @@ jobs:
       - name: Install dependencies (Ubuntu)
         if: ${{ inputs.os == 'ubuntu-latest' }}
         run: |
+          . tests/scripts/free_ubuntu_disk.sh
           . tests/scripts/install_ubuntu_dependencies.sh
       - name: Install dependencies (MacOS)
         if: ${{ inputs.os == 'macos-13' || inputs.os == 'macos-latest' }}
