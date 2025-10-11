@@ -64,7 +64,7 @@ def test_crossmodal_mean_average_precision_ddp_itemwise(strategy: str) -> None:
     world_size = 2
 
     k = 5
-    batch_size = 5
+    batch_size = 2
     embedding_dim = 3
 
     torch.manual_seed(seed)
@@ -165,7 +165,7 @@ def test_crossmodal_mean_average_precision_ddp_batchwise(strategy: str) -> None:
 
     k = 5
     num_total_samples = 11
-    batch_size = 5
+    batch_size = 2
     embedding_dim = 3
 
     torch.manual_seed(seed)
@@ -309,7 +309,7 @@ def test_crossmodal_median_rank_ddp_itemwise(mink: int, strategy: str) -> None:
     seed = 0
     world_size = 2
 
-    batch_size = 5
+    batch_size = 2
     embedding_dim = 3
 
     torch.manual_seed(seed)
@@ -410,7 +410,7 @@ def test_crossmodal_median_rank_ddp_batchwise(mink: int, strategy: str) -> None:
     world_size = 2
 
     num_total_samples = 11
-    batch_size = 5
+    batch_size = 2
     embedding_dim = 3
 
     torch.manual_seed(seed)
@@ -511,7 +511,7 @@ def run_crossmodal_mean_average_precision_itemwise(
     rank: int,
     world_size: int,
     port: int,
-    batch_size: int = 5,
+    batch_size: int = 2,
     embedding_dim: int = 3,
     strategy: str = "oracle",
     k: int = 5,
@@ -559,7 +559,7 @@ def run_crossmodal_mean_average_precision_batchwise(
     world_size: int,
     port: int,
     num_total_samples: int = 11,
-    batch_size: int = 5,
+    batch_size: int = 2,
     embedding_dim: int = 3,
     strategy: str = "oracle",
     k: int = 5,
@@ -606,7 +606,7 @@ def run_crossmodal_median_rank_itemwise(
     rank: int,
     world_size: int,
     port: int,
-    batch_size: int = 5,
+    batch_size: int = 2,
     embedding_dim: int = 3,
     strategy: str = "oracle",
     mink: int = 0,
@@ -654,7 +654,7 @@ def run_crossmodal_median_rank_batchwise(
     world_size: int,
     port: int,
     num_total_samples: int = 11,
-    batch_size: int = 5,
+    batch_size: int = 2,
     embedding_dim: int = 3,
     strategy: str = "oracle",
     mink: int = 0,
