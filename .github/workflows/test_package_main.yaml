@@ -110,6 +110,7 @@ jobs:
         if: ${{ inputs.os == 'windows-latest' && startsWith(github.head_ref, 'release/') }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          MPLBACKEND: AGG
           USE_LIBUV: 0
         run: |
           pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml --runslow -p no:faulthandler tests/package/
@@ -117,6 +118,7 @@ jobs:
         if: ${{ inputs.os == 'windows-latest' && ! startsWith(github.head_ref, 'release/') }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          MPLBACKEND: AGG
           USE_LIBUV: 0
         run: |
           pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml -p no:faulthandler tests/package/
