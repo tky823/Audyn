@@ -26,7 +26,7 @@ def overwrite_pyproject_toml(path: str, torch_version: str) -> None:
             for line in f_in:
                 if unspecified in line:
                     line = line.replace(unspecified, specified)
-                elif '"numpy,"' in line and is_torch_lt_2_3:
+                elif '"numpy",' in line and is_torch_lt_2_3:
                     line = line.replace('"numpy",', '"numpy<2.0",')
 
                 f_out.write(line)
