@@ -19,6 +19,9 @@ on:
         required: true
       CODECOV_TOKEN:
         required: true
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}-${{ inputs.os }}-${{ inputs.python-version }}-${{ inputs.torch-version }}
+  cancel-in-progress: true
 jobs:
   package:
     name: Run package tests
@@ -69,14 +72,14 @@ jobs:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
           uv pip install packaging
-          python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${env:TORCH_VERSION}
+          uv run python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${env:TORCH_VERSION}
       - name: Overwrite torch version in pyproject.toml (Ubuntu & MacOS)
         if: ${{ steps.windows_torch_installation.conclusion == 'skipped' }}
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
           uv pip install packaging
-          python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
+          uv run python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
       - name: Install dependencies
         env:
           MACOSX_DEPLOYMENT_TARGET: '10.13'
@@ -96,17 +99,17 @@ jobs:
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
-          python tests/scripts/verify_torch_version.py --torch-version ${env:TORCH_VERSION}
+          uv run python tests/scripts/verify_torch_version.py --torch-version ${env:TORCH_VERSION}
       - name: Verify version of torch (Ubuntu & MacOS)
         if: ${{ steps.windows_torch_verification.conclusion == 'skipped' }}
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
-          python tests/scripts/verify_torch_version.py --torch-version ${TORCH_VERSION}
+          uv run python tests/scripts/verify_torch_version.py --torch-version ${TORCH_VERSION}
       - name: Show backend of torchaudio
         run: |
-          python -c "import torchaudio; print(torchaudio.list_audio_backends())"
-          python -c "import torchaudio; assert len(torchaudio.list_audio_backends()) > 0"
+          uv run python -c "import torchaudio; print(torchaudio.list_audio_backends())"
+          uv run python -c "import torchaudio; assert len(torchaudio.list_audio_backends()) > 0"
       - name: Pytest for torch.hub
         if: ${{ inputs.python-version == '3.9' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.1.0' }}
         env:
@@ -205,7 +208,7 @@ jobs:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
           uv pip install packaging
-          python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
+          uv run python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
       - name: Install dependencies
         env:
           MACOSX_DEPLOYMENT_TARGET: '10.13'
@@ -231,11 +234,11 @@ jobs:
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
-          python tests/scripts/verify_torch_version.py --torch-version ${TORCH_VERSION}
+          uv run python tests/scripts/verify_torch_version.py --torch-version ${TORCH_VERSION}
       - name: Show backend of torchaudio
         run: |
-          python -c "import torchaudio; print(torchaudio.list_audio_backends())"
-          python -c "import torchaudio; assert len(torchaudio.list_audio_backends()) > 0"
+          uv run python -c "import torchaudio; print(torchaudio.list_audio_backends())"
+          uv run python -c "import torchaudio; assert len(torchaudio.list_audio_backends()) > 0"
       - name: Recipe test
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
