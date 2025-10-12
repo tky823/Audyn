@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
 # FFmpeg
 brew install ffmpeg@6
 homebrew_prefix="$(brew --prefix)"
