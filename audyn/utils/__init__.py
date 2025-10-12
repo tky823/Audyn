@@ -22,6 +22,7 @@ from ._hydra.utils import (
     instantiate_model,
     instantiate_optimizer,
 )
+from .cache import get_cache_dir, get_model_cache_dir
 from .clip_grad import GANGradClipper, GradClipper
 from .data import select_accelerator
 from .data.dataloader import (
@@ -68,9 +69,8 @@ __all__ = [
     "GANGradClipper",
 ]
 
-_home_dir = os.path.expanduser("~")
-audyn_cache_dir = os.getenv("AUDYN_CACHE_DIR") or os.path.join(_home_dir, ".cache", "audyn")
-model_cache_dir = os.path.join(audyn_cache_dir, "models")
+audyn_cache_dir = get_cache_dir()
+model_cache_dir = get_model_cache_dir()
 
 
 def clear_cache(**kwargs) -> None:
