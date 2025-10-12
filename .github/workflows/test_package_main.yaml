@@ -65,28 +65,28 @@ jobs:
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
-          uv pip install packaging --system
+          pip install packaging
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${env:TORCH_VERSION}
       - name: Overwrite torch version in pyproject.toml (Ubuntu & MacOS)
         if: steps.windows_torch_installation.conclusion == 'skipped'
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
-          uv pip install packaging --system
+          pip install packaging
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
       - name: Install dependencies
         env:
           MACOSX_DEPLOYMENT_TARGET: '10.13'
         run: |
-          uv pip install --upgrade pip --system
-          uv pip install -e ".[dev,tests]" --system
+          pip install --upgrade pip
+          pip install -e ".[dev,tests]"
       - name: Install dependencies (Windows)
         if: ${{ inputs.os == 'windows-latest' }}
         run: |
-          uv pip install soundfile --system
+          pip install soundfile
       - name: Show dependencies
         run: |
-          uv pip list --system
+          pip list
       - name: Verify version of torch (Windows)
         id: windows_torch_verification
         if: ${{ inputs.os == 'windows-latest' }}
@@ -191,28 +191,28 @@ jobs:
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
-          uv pip install packaging --system
+          pip install packaging
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${env:TORCH_VERSION}
       - name: Overwrite torch version in pyproject.toml (Ubuntu & MacOS)
         if: ${{ steps.windows_torch_installation.conclusion == 'skipped' }}
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
-          uv pip install packaging --system
+          pip install packaging
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
       - name: Install dependencies
         env:
           MACOSX_DEPLOYMENT_TARGET: '10.13'
         run: |
-          uv pip install --upgrade pip --system
-          uv pip install -e ".[recipes]" --system
+          pip install --upgrade pip
+          pip install -e ".[recipes]"
       - name: Install dependencies (Windows)
         if: ${{ inputs.os == 'windows-latest' }}
         run: |
-          uv pip install soundfile --system
+          pip install soundfile
       - name: Show dependencies
         run: |
-          uv pip list --system
+          pip list
       - name: Verify version of torch (Windows)
         id: windows_torch_verification
         if: ${{ inputs.os == 'windows-latest' }}
