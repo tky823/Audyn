@@ -31,4 +31,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
           cd docs/
-          sphinx-build -W ./ ./_build/html/
+          uv run sphinx-build -W ./ ./_build/html/

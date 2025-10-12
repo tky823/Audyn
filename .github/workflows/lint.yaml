@@ -21,14 +21,13 @@ jobs:
         run: |
           uv python install
           uv venv
-          which python pip
       - name: Install dependencies
         run: |
           uv pip install --upgrade pip
           uv pip install -e ".[dev]"
       - name: Run linters
         run: |
-          ruff check audyn
+          uv run ruff check audyn
       - name: Run formatters
         run: |
-          ruff format --check audyn
+          uv run ruff format --check audyn
