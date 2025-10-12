@@ -20,6 +20,7 @@ jobs:
       - name: Set up Python 3.13
         run: |
           uv python install
+          uv venv
           which python pip
       - name: Install dependencies
         run: |

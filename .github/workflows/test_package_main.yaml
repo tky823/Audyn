@@ -34,6 +34,7 @@ jobs:
       - name: Set up Python ${{ inputs.python-version }}
         run: |
           uv python install
+          uv venv
       - name: Restore cache
         uses: actions/cache/restore@v4
         with:
@@ -160,6 +161,7 @@ jobs:
       - name: Set up Python ${{ inputs.python-version }}
         run: |
           uv python install
+          uv venv
       - name: Restore cache
         uses: actions/cache/restore@v4
         with:
