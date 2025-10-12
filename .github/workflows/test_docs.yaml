@@ -18,13 +18,12 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install dependencies (Ubuntu)
-        if: ${{ runner.os == 'ubuntu' }}
+        if: ${{ runner.os == 'Linux' }}
         run: |
           . tests/scripts/free_ubuntu_disk.sh
           . tests/scripts/install_ubuntu_dependencies.sh
       - name: Install dependencies
         run: |
-          echo ${{ runner.os }}
           uv pip install --system ".[docs]"
       - name: Build docs
         env:
