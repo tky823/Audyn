@@ -32,4 +32,3 @@ jobs:
       - name: Run formatters
         run: |
           ruff format --check audyn tests
-  
