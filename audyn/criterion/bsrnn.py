@@ -38,7 +38,6 @@ class SpectrogramL1Loss(nn.Module):
 
 
 class WaveformL1Loss(nn.Module):
-
     def __init__(
         self,
         n_fft: int,
@@ -112,7 +111,6 @@ class WaveformL1Loss(nn.Module):
 
 
 class SpectrogramL1SNR(nn.Module):
-
     def __init__(self, reduction: str = "mean", eps: float = 1e-8) -> None:
         super().__init__()
 
@@ -148,7 +146,6 @@ class SpectrogramL1SNR(nn.Module):
 
 
 class WaveformL1SNR(nn.Module):
-
     def __init__(
         self,
         n_fft: int,

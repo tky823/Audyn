@@ -308,8 +308,7 @@ class KaldiMFCC(nn.Module):
                 num_ceps = mfcc_kwargs["num_ceps"]
 
                 assert n_mfcc == num_ceps, (
-                    f"n_mfcc ({n_mfcc}) should be equal to "
-                    f"num_ceps ({num_ceps}) in mfcc_kwargs."
+                    f"n_mfcc ({n_mfcc}) should be equal to num_ceps ({num_ceps}) in mfcc_kwargs."
                 )
             else:
                 mfcc_kwargs["num_ceps"] = n_mfcc

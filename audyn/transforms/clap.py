@@ -606,9 +606,9 @@ class MicrosoftCLAPAudioEncoder2023MelSpectrogram(aT.MelSpectrogram):
     ) -> None:
         if max_length is not None:
             if max_duration is not None:
-                assert max_length == int(
-                    sample_rate * max_duration
-                ), "length and duration is not consistent."
+                assert max_length == int(sample_rate * max_duration), (
+                    "length and duration is not consistent."
+                )
         elif max_duration is not None:
             max_length = int(sample_rate * max_duration)
 

@@ -157,9 +157,9 @@ class PaSST(BaseAudioSpectrogramTransformer):
         x = self.sequence_to_patches(x, height=height, width=width)
         x, _ = self.dropout(x)
 
-        assert (
-            x.dim() == 3
-        ), "Return of dropout should be 3D (batch_size, max_length, embedding_dim)."
+        assert x.dim() == 3, (
+            "Return of dropout should be 3D (batch_size, max_length, embedding_dim)."
+        )
 
         x = self.prepend_tokens(x, tokens=head_tokens)
         output = self.transformer_forward(x)

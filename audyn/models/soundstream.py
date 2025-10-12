@@ -608,9 +608,9 @@ class SpectrogramDiscriminator(nn.Module):
     ) -> None:
         super().__init__()
 
-        assert len(num_features) - 1 == len(
-            down_scale
-        ), "Number of items is inconsistent between num_features and down_scale."
+        assert len(num_features) - 1 == len(down_scale), (
+            "Number of items is inconsistent between num_features and down_scale."
+        )
 
         if type(transform) is bool:
             if transform:

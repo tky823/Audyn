@@ -325,7 +325,6 @@ class WaveGlow(BaseFlow):
 
 
 class MultiSpeakerWaveGlow(WaveGlow):
-
     def __init__(
         self,
         in_channels: int,
@@ -490,7 +489,6 @@ class MultiSpeakerWaveGlow(WaveGlow):
 
 
 class StackedWaveGlowBlock(BaseFlow):
-
     def __init__(
         self,
         in_channels: Union[int, List[int]],
@@ -585,7 +583,6 @@ class StackedWaveGlowBlock(BaseFlow):
 
 
 class WaveGlowBlock(BaseFlow):
-
     def __init__(
         self,
         in_channels: Union[int, List[int]],

@@ -440,9 +440,9 @@ class GANTrainer(BaseTrainer):
             key_mapping=discriminator_key_mapping.real,
         )
 
-        assert (
-            set(named_fake_output.keys()) & set(named_real_output.keys()) == set()
-        ), "named_fake_output and named_real_output should be disjointed."
+        assert set(named_fake_output.keys()) & set(named_real_output.keys()) == set(), (
+            "named_fake_output and named_real_output should be disjointed."
+        )
 
         named_output = {}
         named_output.update(named_fake_output)
@@ -518,15 +518,15 @@ class GANTrainer(BaseTrainer):
             key_mapping=discriminator_key_mapping.real,
         )
 
-        assert (
-            set(named_fake_output.keys()) & set(named_real_output.keys()) == set()
-        ), "named_fake_output and named_real_output should be disjointed."
-        assert (
-            set(named_real_output.keys()) & set(named_fake.keys()) == set()
-        ), "named_real_output and named_fake should be disjointed."
-        assert (
-            set(named_fake.keys()) & set(named_fake_output.keys()) == set()
-        ), "named_fake and named_fake_output should be disjointed."
+        assert set(named_fake_output.keys()) & set(named_real_output.keys()) == set(), (
+            "named_fake_output and named_real_output should be disjointed."
+        )
+        assert set(named_real_output.keys()) & set(named_fake.keys()) == set(), (
+            "named_real_output and named_fake should be disjointed."
+        )
+        assert set(named_fake.keys()) & set(named_fake_output.keys()) == set(), (
+            "named_fake and named_fake_output should be disjointed."
+        )
 
         named_output = {}
         named_output.update(named_fake_output)
@@ -706,15 +706,15 @@ class GANTrainer(BaseTrainer):
             key_mapping=discriminator_key_mapping.real,
         )
 
-        assert (
-            set(named_fake_output.keys()) & set(named_real_output.keys()) == set()
-        ), "named_fake_output and named_real_output should be disjointed."
-        assert (
-            set(named_real_output.keys()) & set(named_fake.keys()) == set()
-        ), "named_real_output and named_fake should be disjointed."
-        assert (
-            set(named_fake.keys()) & set(named_fake_output.keys()) == set()
-        ), "named_fake and named_fake_output should be disjointed."
+        assert set(named_fake_output.keys()) & set(named_real_output.keys()) == set(), (
+            "named_fake_output and named_real_output should be disjointed."
+        )
+        assert set(named_real_output.keys()) & set(named_fake.keys()) == set(), (
+            "named_real_output and named_fake should be disjointed."
+        )
+        assert set(named_fake.keys()) & set(named_fake_output.keys()) == set(), (
+            "named_fake and named_fake_output should be disjointed."
+        )
 
         named_output = {}
         named_output.update(named_fake_output)
@@ -1159,9 +1159,9 @@ class GANTrainer(BaseTrainer):
             if isinstance(self.optimizer.discriminator, MovingAverageWrapper):
                 self.optimizer.discriminator.set_moving_average_model()
                 unwrapped_discriminator = unwrap(self.unwrapped_model.discriminator)
-                state_dict[state_dict_key][
-                    discriminator_key
-                ] = unwrapped_discriminator.state_dict()
+                state_dict[state_dict_key][discriminator_key] = (
+                    unwrapped_discriminator.state_dict()
+                )
                 self.optimizer.discriminator.remove_moving_average_model()
             else:
                 state_dict[state_dict_key][discriminator_key] = None

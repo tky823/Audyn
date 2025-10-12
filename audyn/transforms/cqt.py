@@ -158,9 +158,9 @@ class ConstantQTransform(nn.Module):
                 invalid_kwargs
             )
         else:
-            assert (
-                not sparse
-            ), "Sparse implementation is not supported when by_octave=False. Set sparse=False."
+            assert not sparse, (
+                "Sparse implementation is not supported when by_octave=False. Set sparse=False."
+            )
             assert len(kwargs) == 0, "Invalid keyword arguments {} are given".format(
                 set(kwargs.keys())
             )
@@ -176,9 +176,9 @@ class ConstantQTransform(nn.Module):
         )
 
         if by_octave:
-            assert isinstance(
-                bins_per_octave, int
-            ), "bins_per_octave should be int when by_octave=True."
+            assert isinstance(bins_per_octave, int), (
+                "bins_per_octave should be int when by_octave=True."
+            )
 
             num_repeats = math.ceil(n_bins / bins_per_octave)
             divided_by = 2 ** (num_repeats - 1)
@@ -195,9 +195,9 @@ class ConstantQTransform(nn.Module):
                 padding = (divided_by - hop_length % divided_by) % divided_by
                 hop_length = hop_length + padding
 
-            assert (
-                hop_length % divided_by == 0
-            ), f"Given hop length ({hop_length}) is not divisible by {divided_by}."
+            assert hop_length % divided_by == 0, (
+                f"Given hop length ({hop_length}) is not divisible by {divided_by}."
+            )
 
             # to reduce error, extract one octave kernel from full-band
             _, kernel = torch.split(kernel, [n_bins - bins_per_octave, bins_per_octave], dim=0)
@@ -511,9 +511,9 @@ class ConstantQTransform(nn.Module):
             )
         else:
             assert start_bin == 0, f"'start_bin' is expected to 0, but given {start_bin}."
-            assert end_bin == spectrogram.size(
-                -2
-            ), f"'end_bin' is expected to {spectrogram.size(-2)}, but given {end_bin}."
+            assert end_bin == spectrogram.size(-2), (
+                f"'end_bin' is expected to {spectrogram.size(-2)}, but given {end_bin}."
+            )
 
         # Parseval's theorem
         spectrogram = torch.matmul(kernel.conj(), spectrogram) / n_fft

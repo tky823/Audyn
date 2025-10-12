@@ -444,12 +444,12 @@ class CausalSelfAttention2d(nn.Module):
         self.k_proj = nn.Linear(in_channels, kdim)
         self.v_proj = nn.Linear(in_channels, out_channels)
 
-        assert (
-            out_channels % num_heads == 0
-        ), f"out_channels ({out_channels}) should be divisible by num_heads ({num_heads})"
-        assert (
-            kdim % num_heads == 0
-        ), f"kdim ({kdim}) should be divisible by num_heads ({num_heads})"
+        assert out_channels % num_heads == 0, (
+            f"out_channels ({out_channels}) should be divisible by num_heads ({num_heads})"
+        )
+        assert kdim % num_heads == 0, (
+            f"kdim ({kdim}) should be divisible by num_heads ({num_heads})"
+        )
 
         self.out_channels = out_channels
         self.kdim = kdim

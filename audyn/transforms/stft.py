@@ -10,7 +10,6 @@ __all__ = [
 
 
 class ShortTimeFourierTransform(nn.Module):
-
     def __init__(self, **kwargs) -> None:
         super().__init__()
 
@@ -41,7 +40,6 @@ class ShortTimeFourierTransform(nn.Module):
 
 
 class InverseShortTimeFourierTransform(nn.Module):
-
     def __init__(self, **kwargs) -> None:
         super().__init__()
 

@@ -152,7 +152,6 @@ class PoincareEmbedding(ManifoldEmbedding):
 
 
 class NegativeSamplingPoincareEmbedding(PoincareEmbedding):
-
     def forward(
         self,
         anchor: torch.LongTensor,
@@ -169,9 +168,9 @@ class NegativeSamplingPoincareEmbedding(PoincareEmbedding):
     def build_from_manifold(
         cls, manifold: PoincareEmbedding
     ) -> "NegativeSamplingPoincareEmbedding":
-        assert isinstance(
-            manifold, PoincareEmbedding
-        ), "Only PoincareEmbedding is supported as manifold."
+        assert isinstance(manifold, PoincareEmbedding), (
+            "Only PoincareEmbedding is supported as manifold."
+        )
 
         return cls(
             manifold.num_embeddings,

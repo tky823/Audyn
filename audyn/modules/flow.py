@@ -114,9 +114,9 @@ class AffineCoupling(BaseFlow):
         logdet: torch.Tensor = None,
         reverse: bool = False,
     ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
-        assert (
-            input.dim() == 2
-        ), f"'input' is expected to be 2-D tensor, but given {input.dim()}-D tensor."
+        assert input.dim() == 2, (
+            f"'input' is expected to be 2-D tensor, but given {input.dim()}-D tensor."
+        )
 
         logdet = self.initialize_logdet_if_necessary(logdet, device=input.device)
 
@@ -180,7 +180,9 @@ class ChannelSplitFlow(BaseFlow):
 
         self.channels = channels
 
-    def forward(self, *args, logdet: torch.Tensor = None, reverse: bool = False) -> Union[
+    def forward(
+        self, *args, logdet: torch.Tensor = None, reverse: bool = False
+    ) -> Union[
         Tuple[torch.Tensor, torch.Tensor],
         Tuple[Tuple[torch.Tensor, torch.Tensor], torch.Tensor],
     ]:

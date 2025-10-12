@@ -254,12 +254,12 @@ class TrainableAbsolutePositionalMultiheadAttention(_MultiheadAttention):
         query_length, batch_size, _ = query.size()
         key_length, _, _ = key.size()
 
-        assert (
-            query_length <= max_length
-        ), f"Query length should be smaller than or equal to {max_length}."
-        assert (
-            key_length <= max_length
-        ), f"Key length should be smaller than or equal to {max_length}."
+        assert query_length <= max_length, (
+            f"Query length should be smaller than or equal to {max_length}."
+        )
+        assert key_length <= max_length, (
+            f"Key length should be smaller than or equal to {max_length}."
+        )
 
         key_padding_mask = F._canonical_mask(
             mask=key_padding_mask,
