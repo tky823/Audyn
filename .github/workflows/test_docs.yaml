@@ -25,10 +25,12 @@ jobs:
       - name: Install dependencies
         run: |
           uv venv --python 3.13
+          source .venv/bin/activate
           uv pip install --system ".[docs]"
       - name: Build docs
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
+          source .venv/bin/activate
           cd docs/
           uv run sphinx-build -W ./ ./_build/html/
