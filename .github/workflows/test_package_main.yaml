@@ -58,6 +58,8 @@ jobs:
         run: |
           . tests/scripts/install_macos_dependencies.sh
       - name: Show version of FFmpeg
+        # TODO: support Windows
+        if: ${{ inputs.os != 'windows-latent' }}
         run: |
           ffmpeg -version
       - name: Overwrite torch version in pyproject.toml (Windows)
@@ -69,7 +71,7 @@ jobs:
           pip install packaging
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${env:TORCH_VERSION}
       - name: Overwrite torch version in pyproject.toml (Ubuntu & MacOS)
-        if: steps.windows_torch_installation.conclusion == 'skipped'
+        if: ${{ steps.windows_torch_installation.conclusion == 'skipped' }}
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
