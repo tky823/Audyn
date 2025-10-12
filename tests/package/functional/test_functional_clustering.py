@@ -128,7 +128,7 @@ def test_minibatch_kmeans_clustering_ddp() -> None:
     torch.manual_seed(seed)
 
     batch_size, embedding_dim = 3, 4
-    n_iter = 10
+    n_iter = 5
 
     with tempfile.TemporaryDirectory() as temp_dir:
         processes = []

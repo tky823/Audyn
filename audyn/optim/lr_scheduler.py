@@ -1,6 +1,8 @@
 import math
 from typing import Any, Dict, List, Optional, Union
 
+import torch
+from packaging import version
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LambdaLR
 
@@ -25,6 +27,8 @@ __all__ = [
     "GANLR",
 ]
 
+IS_TORCH_GTE_2_7 = version.parse(torch.__version__) >= version.parse("2.7")
+
 
 class _DummyLRScheduler:
     """Dummy learning rate scheduler which does not change learning rate."""
@@ -47,18 +51,28 @@ class _DummyLR(_DummyLRScheduler):
 
 
 class TransformerLRScheduler(_LRScheduler):
+
     def __init__(
         self,
         optimizer: Optimizer,
         d_model: int,
         warmup_steps: int = 4000,
         last_epoch: int = -1,
-        verbose: bool = False,
+        **kwargs,
     ) -> None:
         self.d_model = d_model
         self.warmup_steps = warmup_steps
 
-        super().__init__(optimizer, last_epoch=last_epoch, verbose=verbose)
+        if IS_TORCH_GTE_2_7:
+            verbose = kwargs.pop("verbose", False)
+
+            assert not verbose, "verbose=True is not supported."
+
+        super().__init__(
+            optimizer,
+            last_epoch=last_epoch,
+            **kwargs,
+        )
 
     def get_lr(self):
         step_count = self._step_count
@@ -104,7 +118,7 @@ class ExponentialWarmupLinearCooldownLRScheduler(LambdaLR):
         cooldown_steps: int,
         last_factor: float = 1,
         last_epoch: int = -1,
-        verbose: bool = False,
+        **kwargs,
     ) -> None:
         def _lr_scheduler_lambda(step: int) -> float:
             if step < warmup_steps:
@@ -121,11 +135,16 @@ class ExponentialWarmupLinearCooldownLRScheduler(LambdaLR):
 
             return factor
 
+        if IS_TORCH_GTE_2_7:
+            verbose = kwargs.pop("verbose", False)
+
+            assert not verbose, "verbose=True is not supported."
+
         super().__init__(
             optimizer,
             lr_lambda=_lr_scheduler_lambda,
             last_epoch=last_epoch,
-            verbose=verbose,
+            **kwargs,
         )
 
 

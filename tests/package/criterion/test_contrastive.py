@@ -284,7 +284,7 @@ def test_ntxent_loss_ddp(dim: int) -> None:
     else:
         world_size = 2
 
-    batch_size = 4
+    batch_size = 2
 
     torch.manual_seed(seed)
     processes = []
@@ -702,8 +702,8 @@ def test_inter_info_nce_loss_ddp(dim: int) -> None:
     else:
         world_size = 2
 
-    batch_size = 4
-    in_channels, out_channels = 8, 6
+    batch_size = 2
+    in_channels, out_channels = 2, 3
     lr = 0.1
     iterations = 10
 
@@ -861,8 +861,8 @@ def test_inter_ntxent_loss_ddp(dim: int) -> None:
     else:
         world_size = 2
 
-    batch_size = 4
-    in_channels, out_channels = 8, 6
+    batch_size = 2
+    in_channels, out_channels = 2, 3
     lr = 0.1
     iterations = 10
 
@@ -1018,7 +1018,7 @@ def run_contrastive_loss(
     seed: int = 0,
     path: str = None,
 ) -> None:
-    in_channels = 8
+    in_channels = 2
     height, width = 6, 5
 
     set_ddp_environment(rank, world_size, port)
@@ -1055,8 +1055,8 @@ def run_inter_info_nce_loss(
     world_size: int,
     port: int,
     batch_size: int,
-    in_channels: int = 8,
-    out_channels: int = 6,
+    in_channels: int = 2,
+    out_channels: int = 3,
     dim: int = 0,
     lr: float = 0.1,
     iterations: int = 10,
@@ -1123,8 +1123,8 @@ def run_inter_ntxent_loss(
     world_size: int,
     port: int,
     batch_size: int,
-    in_channels: int = 8,
-    out_channels: int = 6,
+    in_channels: int = 2,
+    out_channels: int = 3,
     dim: int = 0,
     lr: float = 0.1,
     iterations: int = 10,

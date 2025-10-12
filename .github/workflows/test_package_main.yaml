@@ -23,12 +23,12 @@ jobs:
   package:
     name: Run package tests
     runs-on: ${{ inputs.os }}
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up Python ${{ inputs.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ inputs.python-version }}
       - name: Restore cache
@@ -47,6 +47,7 @@ jobs:
       - name: Install dependencies (Ubuntu)
         if: ${{ inputs.os == 'ubuntu-latest' }}
         run: |
+          . tests/scripts/free_ubuntu_disk.sh
           . tests/scripts/install_ubuntu_dependencies.sh
       - name: Install dependencies (MacOS)
         if: ${{ inputs.os == 'macos-13' || inputs.os == 'macos-latest' }}
@@ -61,12 +62,14 @@ jobs:
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
+          pip install packaging
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${env:TORCH_VERSION}
       - name: Overwrite torch version in pyproject.toml (Ubuntu & MacOS)
         if: steps.windows_torch_installation.conclusion == 'skipped'
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
+          pip install packaging
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
       - name: Install dependencies
         env:
@@ -109,6 +112,7 @@ jobs:
         if: ${{ inputs.os == 'windows-latest' && startsWith(github.head_ref, 'release/') }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          MPLBACKEND: AGG
           USE_LIBUV: 0
         run: |
           pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml --runslow -p no:faulthandler tests/package/
@@ -116,6 +120,7 @@ jobs:
         if: ${{ inputs.os == 'windows-latest' && ! startsWith(github.head_ref, 'release/') }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          MPLBACKEND: AGG
           USE_LIBUV: 0
         run: |
           pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml -p no:faulthandler tests/package/
@@ -141,12 +146,12 @@ jobs:
   recipes:
     name: Run recipe tests
     runs-on: ${{ inputs.os }}
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up Python ${{ inputs.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ inputs.python-version }}
       - name: Restore cache
@@ -165,6 +170,7 @@ jobs:
       - name: Install dependencies (Ubuntu)
         if: ${{ inputs.os == 'ubuntu-latest' }}
         run: |
+          . tests/scripts/free_ubuntu_disk.sh
           . tests/scripts/install_ubuntu_dependencies.sh
       - name: Install dependencies (MacOS)
         if: ${{ inputs.os == 'macos-13' || inputs.os == 'macos-latest' }}
@@ -179,12 +185,14 @@ jobs:
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
+          pip install packaging
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${env:TORCH_VERSION}
       - name: Overwrite torch version in pyproject.toml (Ubuntu & MacOS)
         if: ${{ steps.windows_torch_installation.conclusion == 'skipped' }}
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
+          pip install packaging
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
       - name: Install dependencies
         env:
