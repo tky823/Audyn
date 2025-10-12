@@ -24,6 +24,7 @@ jobs:
           . tests/scripts/install_ubuntu_dependencies.sh
       - name: Install dependencies
         run: |
+          uv venv --python 3.13
           uv pip install --system ".[docs]"
       - name: Build docs
         env:
