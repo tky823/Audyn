@@ -17,16 +17,19 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.13"
+      - name: Install dependencies (Ubuntu)
+        run: |
+          . tests/scripts/free_ubuntu_disk.sh
+          . tests/scripts/install_ubuntu_dependencies.sh
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
+          uv venv --python 3.13
+          source .venv/bin/activate
           pip install -e ".[dev]"
       - name: Run linters
         run: |
-          # See pyproject.toml
-          isort --line-length 99 audyn
-          flake8 --max-line-length=99 --ignore=E203,W503,W504,E704 audyn
+          ruff check audyn
       - name: Run formatters
         run: |
-          python -m black --config pyproject.toml --check audyn tests
+          ruff format --check audyn tests
   
