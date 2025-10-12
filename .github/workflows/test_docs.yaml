@@ -23,8 +23,8 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          pip install --upgrade pip
-          pip install ".[docs]"
+          uv pip install --upgrade pip --system
+          uv pip install ".[docs]" --system
       - name: Build docs
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}

@@ -23,8 +23,8 @@ jobs:
           which python pip
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
-          pip install -e ".[dev]"
+          uv pip install --upgrade pip --system
+          uv pip install -e ".[dev]" --system
       - name: Run linters
         run: |
           ruff check audyn
