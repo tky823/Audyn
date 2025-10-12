@@ -17,12 +17,8 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.13"
-      - name: Install dependencies (Windows)
-        if: ${{ inputs.os == 'windows-latest' }}
-        run: |
-          powershell -File tests/scripts/install_windows_dependencies.ps1
       - name: Install dependencies (Ubuntu)
-        if: ${{ inputs.os == 'ubuntu-latest' }}
+        if: ${{ runner.os == 'ubuntu' }}
         run: |
           . tests/scripts/free_ubuntu_disk.sh
           . tests/scripts/install_ubuntu_dependencies.sh
