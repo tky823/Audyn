@@ -53,6 +53,10 @@ jobs:
         if: ${{ inputs.os == 'macos-13' || inputs.os == 'macos-latest' }}
         run: |
           . tests/scripts/install_macos_dependencies.sh
+      - name: Show available paths (Windows)
+        if: ${{ inputs.os == 'windows-latest' }}
+        run: |
+          $env:PATH -split ';' | Select-String "chocolatey"
       - name: Show version of FFmpeg
         run: |
           ffmpeg -version
