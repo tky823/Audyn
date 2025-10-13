@@ -53,10 +53,6 @@ jobs:
         if: ${{ inputs.os == 'macos-13' || inputs.os == 'macos-latest' }}
         run: |
           . tests/scripts/install_macos_dependencies.sh
-      - name: Show version of FFmpeg (Windows)
-        if: ${{ inputs.os == 'windows-latest' }}
-        run: |
-          ls "C:\ProgramData\chocolatey\bin"
       - name: Show version of FFmpeg
         run: |
           ffmpeg -version
