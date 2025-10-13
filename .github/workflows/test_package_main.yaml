@@ -60,18 +60,20 @@ jobs:
         id: windows_torch_installation
         if: ${{ inputs.os == 'windows-latest' }}
         env:
+          PYTHON_VERSION: ${{ inputs.python-version }}
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
-          uv venv --python ${env:TORCH_VERSION}
+          uv venv --python ${env:PYTHON_VERSION}
           .venv\Scripts\Activate.ps1
           uv pip install packaging
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${env:TORCH_VERSION}
       - name: Overwrite torch version in pyproject.toml (Ubuntu & MacOS)
         if: steps.windows_torch_installation.conclusion == 'skipped'
         env:
+          PYTHON_VERSION: ${{ inputs.python-version }}
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
-          uv venv --python ${TORCH_VERSION}
+          uv venv --python ${PYTHON_VERSION}
           source .venv/bin/activate
           uv pip install packaging
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
@@ -197,18 +199,20 @@ jobs:
         id: windows_torch_installation
         if: ${{ inputs.os == 'windows-latest' }}
         env:
+          PYTHON_VERSION: ${{ inputs.python-version }}
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
-          uv venv --python ${env:TORCH_VERSION}
+          uv venv --python ${env:PYTHON_VERSION}
           .venv\Scripts\Activate.ps1
           uv pip install packaging
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${env:TORCH_VERSION}
       - name: Overwrite torch version in pyproject.toml (Ubuntu & MacOS)
         if: ${{ steps.windows_torch_installation.conclusion == 'skipped' }}
         env:
+          PYTHON_VERSION: ${{ inputs.python-version }}
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
-          uv venv --python ${TORCH_VERSION}
+          uv venv --python ${PYTHON_VERSION}
           source .venv/bin/activate
           uv pip install packaging
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
