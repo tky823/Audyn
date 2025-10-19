@@ -53,15 +53,10 @@ jobs:
         if: ${{ inputs.os == 'macos-13' || inputs.os == 'macos-latest' }}
         run: |
           . tests/scripts/install_macos_dependencies.sh
-      - name: Show available paths (Windows)
-        if: ${{ inputs.os == 'windows-latest' }}
-        run: |
-          $env:PATH -split ';' | Select-String "chocolatey"
       - name: Show version of FFmpeg
         run: |
           ffmpeg -version
       - name: Overwrite torch version in pyproject.toml (Windows)
-        id: windows_torch_installation
         if: ${{ inputs.os == 'windows-latest' }}
         env:
           PYTHON_VERSION: ${{ inputs.python-version }}
@@ -72,7 +67,7 @@ jobs:
           uv pip install packaging
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${env:TORCH_VERSION}
       - name: Overwrite torch version in pyproject.toml (Ubuntu & MacOS)
-        if: steps.windows_torch_installation.conclusion == 'skipped'
+        if: ${{ inputs.os != 'windows-latest' }}
         env:
           PYTHON_VERSION: ${{ inputs.python-version }}
           TORCH_VERSION: ${{ inputs.torch-version }}
@@ -82,13 +77,12 @@ jobs:
           uv pip install packaging
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
       - name: Install dependencies (Windows)
-        id: windows_installation
         if: ${{ inputs.os == 'windows-latest' }}
         run: |
           .venv\Scripts\Activate.ps1
           uv pip install -e ".[dev,tests]"
       - name: Install dependencies (Ubuntu & MacOS)
-        if: steps.windows_installation.conclusion == 'skipped'
+        if: ${{ inputs.os != 'windows-latest' }}
         env:
           MACOSX_DEPLOYMENT_TARGET: '10.13'
         run: |
@@ -100,18 +94,16 @@ jobs:
           .venv\Scripts\Activate.ps1
           uv pip install soundfile
       - name: Show dependencies (Windows)
-        id: windows_show_dependencies
         if: ${{ inputs.os == 'windows-latest' }}
         run: |
           .venv\Scripts\Activate.ps1
           uv pip list
       - name: Show dependencies (Ubuntu & MacOS)
-        if: steps.windows_show_dependencies.conclusion == 'skipped'
+        if: ${{ inputs.os != 'windows-latest' }}
         run: |
           source .venv/bin/activate
           uv pip list
       - name: Verify version of torch (Windows)
-        id: windows_torch_verification
         if: ${{ inputs.os == 'windows-latest' }}
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
@@ -119,21 +111,20 @@ jobs:
           .venv\Scripts\Activate.ps1
           python tests/scripts/verify_torch_version.py --torch-version ${env:TORCH_VERSION}
       - name: Verify version of torch (Ubuntu & MacOS)
-        if: ${{ steps.windows_torch_verification.conclusion == 'skipped' }}
+        if: ${{ inputs.os != 'windows-latest' }}
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
           source .venv/bin/activate
           python tests/scripts/verify_torch_version.py --torch-version ${TORCH_VERSION}
       - name: Show backend of torchaudio (Windows)
-        id: windows_torchaudio_backend_verification
         if: ${{ inputs.os == 'windows-latest' }}
         run: |
           .venv\Scripts\Activate.ps1
           python -c "import torchaudio; print(torchaudio.list_audio_backends())"
           python -c "import torchaudio; assert len(torchaudio.list_audio_backends()) > 0"
       - name: Show backend of torchaudio (Ubuntu & MacOS)
-        if: ${{ steps.windows_torchaudio_backend_verification.conclusion == 'skipped' }}
+        if: ${{ inputs.os != 'windows-latest' }}
         run: |
           source .venv/bin/activate
           python -c "import torchaudio; print(torchaudio.list_audio_backends())"
@@ -222,7 +213,6 @@ jobs:
         run: |
           ffmpeg -version
       - name: Overwrite torch version in pyproject.toml (Windows)
-        id: windows_torch_installation
         if: ${{ inputs.os == 'windows-latest' }}
         env:
           PYTHON_VERSION: ${{ inputs.python-version }}
@@ -233,7 +223,7 @@ jobs:
           uv pip install packaging
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${env:TORCH_VERSION}
       - name: Overwrite torch version in pyproject.toml (Ubuntu & MacOS)
-        if: ${{ steps.windows_torch_installation.conclusion == 'skipped' }}
+        if: ${{ inputs.os != 'windows-latest' }}
         env:
           PYTHON_VERSION: ${{ inputs.python-version }}
           TORCH_VERSION: ${{ inputs.torch-version }}
@@ -253,12 +243,17 @@ jobs:
         run: |
           .venv\Scripts\Activate.ps1
           uv pip install soundfile
-      - name: Show dependencies
+      - name: Show dependencies (Windows)
+        if: ${{ inputs.os == 'windows-latest' }}
+        run: |
+          .venv\Scripts\Activate.ps1
+          uv pip list
+      - name: Show dependencies (Ubuntu & MacOS)
+        if: ${{ inputs.os != 'windows-latest' }}
         run: |
           source .venv/bin/activate
           uv pip list
       - name: Verify version of torch (Windows)
-        id: windows_torch_verification
         if: ${{ inputs.os == 'windows-latest' }}
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
@@ -266,18 +261,34 @@ jobs:
           .venv\Scripts\Activate.ps1
           python tests/scripts/verify_torch_version.py --torch-version ${env:TORCH_VERSION}
       - name: Verify version of torch (Ubuntu & MacOS)
-        if: ${{ steps.windows_torch_verification.conclusion == 'skipped' }}
+        if: ${{ inputs.os != 'windows-latest' }}
         env:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
           source .venv/bin/activate
           python tests/scripts/verify_torch_version.py --torch-version ${TORCH_VERSION}
-      - name: Show backend of torchaudio
+      - name: Show backend of torchaudio (Windows)
+        if: ${{ inputs.os == 'windows-latest' }}
+        run: |
+          .venv\Scripts\Activate.ps1
+          python -c "import torchaudio; print(torchaudio.list_audio_backends())"
+          python -c "import torchaudio; assert len(torchaudio.list_audio_backends()) > 0"
+      - name: Show backend of torchaudio (Ubuntu & MacOS)
+        if: ${{ inputs.os != 'windows-latest' }}
         run: |
           source .venv/bin/activate
           python -c "import torchaudio; print(torchaudio.list_audio_backends())"
           python -c "import torchaudio; assert len(torchaudio.list_audio_backends()) > 0"
-      - name: Recipe test
+      - name: Recipe test (Windows)
+        if: ${{ inputs.os == 'windows-latest' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: |
+          .venv\Scripts\Activate.ps1
+          cd tests/recipes/
+          . ./test_all.sh
+      - name: Recipe test (Ubuntu & MacOS)
+        if: ${{ inputs.os != 'windows-latest' }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
