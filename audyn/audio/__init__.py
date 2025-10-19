@@ -42,3 +42,16 @@ class AudioMetadata:
 def info(path: str, **kwargs) -> AudioMetadata:
     """Wrapper function of torchaudio.info."""
     return AudioMetadata(path, **kwargs)
+
+
+def list_audio_backends() -> list[str]:
+    """Wrapper function of torchaudio.list_audio_backends."""
+    if IS_TORCHAUDIO_LT_2_9:
+        return torchaudio.list_audio_backends()
+    else:
+        try:
+            import torchcodec  # noqa: F401
+
+            return ["ffmpeg"]
+        except RuntimeError:
+            return []
