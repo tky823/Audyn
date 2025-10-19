@@ -2744,7 +2744,9 @@ class BaseGenerator(BaseDriver):
         if is_torchaudio_lt_2_1:
             audio_backend = torchaudio.get_audio_backend()
         else:
-            audio_backends = torchaudio.list_audio_backends()
+            from ..audio import list_audio_backends
+
+            audio_backends = list_audio_backends()
 
             if len(audio_backends) == 0:
                 # torchaudio.list_audio_backends sometimes returns [].

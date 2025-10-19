@@ -8,7 +8,7 @@ import torchaudio
 from packaging import version
 from torch.utils.data import Dataset, IterableDataset, RandomSampler, get_worker_info
 
-from ....audio import info as torchaudio_info
+from ...audio import info as torchaudio_info
 from .distributed import DistributedRandomStemsMUSDB18Sampler
 from .sampler import RandomStemsMUSDB18Sampler
 
