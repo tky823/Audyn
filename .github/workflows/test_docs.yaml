@@ -21,9 +21,18 @@ jobs:
         run: |
           . tests/scripts/free_ubuntu_disk.sh
           . tests/scripts/install_ubuntu_dependencies.sh
+      - name: Overwrite torch version in pyproject.toml (Ubuntu & MacOS)
+        if: ${{ inputs.os != 'windows-latest' }}
+        env:
+          PYTHON_VERSION: "3.13"
+          TORCH_VERSION: "2.6"
+        run: |
+          uv venv --python ${PYTHON_VERSION}
+          source .venv/bin/activate
+          uv pip install packaging
+          python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
       - name: Install dependencies
         run: |
-          uv venv --python 3.13
           source .venv/bin/activate
           uv pip install ".[docs]"
       - name: Build docs
