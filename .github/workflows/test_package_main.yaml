@@ -40,14 +40,10 @@ jobs:
           key: audyn-${{ runner.os }}-${{ github.sha }}
           restore-keys: |
             audyn-${{ runner.os }}-
-      - name: Install uv dependencies (Windows)
+      - name: Install dependencies (Windows)
         if: ${{ inputs.os == 'windows-latest' }}
         run: |
-          powershell -File tests/scripts/install_windows_uv_dependencies.ps1
-      - name: Install ffmpeg dependencies (Windows)
-        if: ${{ inputs.os == 'windows-latest' }}
-        run: |
-          powershell -File tests/scripts/install_windows_ffmpeg_dependencies.ps1
+          powershell -File tests/scripts/install_windows_dependencies.ps1
       - name: Install dependencies (Ubuntu)
         if: ${{ inputs.os == 'ubuntu-latest' }}
         run: |
