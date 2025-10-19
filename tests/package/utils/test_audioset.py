@@ -398,7 +398,7 @@ def run_distributed_weighted_audioset_webdataset_sampler(
         backend="gloo",
         world_size=world_size,
         rank=rank,
-        timeout=timedelta(minutes=5),
+        timeout=timedelta(minutes=1),
     )
     torch.manual_seed(seed)
 

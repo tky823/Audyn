@@ -318,7 +318,7 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str) -> None:
             init_method=config.system.distributed.init_method,
             rank=int(os.environ["RANK"]),
             world_size=int(os.environ["WORLD_SIZE"]),
-            timeout=timedelta(minutes=5),
+            timeout=timedelta(minutes=1),
         )
         torch.manual_seed(config.system.seed)
 
@@ -517,7 +517,7 @@ def test_base_trainer_ddp_for_audioset(
             init_method=config.system.distributed.init_method,
             rank=int(os.environ["RANK"]),
             world_size=int(os.environ["WORLD_SIZE"]),
-            timeout=timedelta(minutes=5),
+            timeout=timedelta(minutes=1),
         )
         torch.manual_seed(config.system.seed)
 
@@ -695,7 +695,7 @@ def test_base_trainer_ddp_for_musdb18(
             init_method=config.system.distributed.init_method,
             rank=int(os.environ["RANK"]),
             world_size=int(os.environ["WORLD_SIZE"]),
-            timeout=timedelta(minutes=5),
+            timeout=timedelta(minutes=1),
         )
         torch.manual_seed(config.system.seed)
 
@@ -845,7 +845,7 @@ def test_base_trainer_ddp_for_dnr(
             init_method=config.system.distributed.init_method,
             rank=int(os.environ["RANK"]),
             world_size=int(os.environ["WORLD_SIZE"]),
-            timeout=timedelta(minutes=5),
+            timeout=timedelta(minutes=1),
         )
         torch.manual_seed(config.system.seed)
 
@@ -1819,7 +1819,7 @@ def test_gan_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str, dataloader_t
             init_method=config.system.distributed.init_method,
             rank=int(os.environ["RANK"]),
             world_size=int(os.environ["WORLD_SIZE"]),
-            timeout=timedelta(minutes=5),
+            timeout=timedelta(minutes=1),
         )
         torch.manual_seed(config.system.seed)
 
