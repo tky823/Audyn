@@ -81,7 +81,14 @@ jobs:
           source .venv/bin/activate
           uv pip install packaging
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
-      - name: Install dependencies
+      - name: Install dependencies (Windows)
+        id: windows_installation
+        if: ${{ inputs.os == 'windows-latest' }}
+        run: |
+          .venv\Scripts\Activate.ps1
+          uv pip install -e ".[dev,tests]"
+      - name: Install dependencies (Ubuntu & MacOS)
+        if: steps.windows_installation.conclusion == 'skipped'
         env:
           MACOSX_DEPLOYMENT_TARGET: '10.13'
         run: |
@@ -92,7 +99,14 @@ jobs:
         run: |
           .venv\Scripts\Activate.ps1
           uv pip install soundfile
-      - name: Show dependencies
+      - name: Show dependencies (Windows)
+        id: windows_show_dependencies
+        if: ${{ inputs.os == 'windows-latest' }}
+        run: |
+          .venv\Scripts\Activate.ps1
+          uv pip list
+      - name: Show dependencies (Ubuntu & MacOS)
+        if: steps.windows_show_dependencies.conclusion == 'skipped'
         run: |
           source .venv/bin/activate
           uv pip list
@@ -111,7 +125,15 @@ jobs:
         run: |
           source .venv/bin/activate
           python tests/scripts/verify_torch_version.py --torch-version ${TORCH_VERSION}
-      - name: Show backend of torchaudio
+      - name: Show backend of torchaudio (Windows)
+        id: windows_torchaudio_backend_verification
+        if: ${{ inputs.os == 'windows-latest' }}
+        run: |
+          .venv\Scripts\Activate.ps1
+          python -c "import torchaudio; print(torchaudio.list_audio_backends())"
+          python -c "import torchaudio; assert len(torchaudio.list_audio_backends()) > 0"
+      - name: Show backend of torchaudio (Ubuntu & MacOS)
+        if: ${{ steps.windows_torchaudio_backend_verification.conclusion == 'skipped' }}
         run: |
           source .venv/bin/activate
           python -c "import torchaudio; print(torchaudio.list_audio_backends())"
@@ -131,7 +153,7 @@ jobs:
           MPLBACKEND: AGG
           USE_LIBUV: 0
         run: |
-          source .venv/bin/activate
+          .venv\Scripts\Activate.ps1
           uv run pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml --runslow -p no:faulthandler tests/package/
       - name: Pytest for updating package (Windows)
         if: ${{ inputs.os == 'windows-latest' && ! startsWith(github.head_ref, 'release/') }}
