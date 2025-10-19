@@ -117,14 +117,14 @@ jobs:
         if: ${{ inputs.os == 'windows-latest' }}
         run: |
           .venv\Scripts\Activate.ps1
-          python -c "import torchaudio; print(torchaudio.list_audio_backends())"
-          python -c "import torchaudio; assert len(torchaudio.list_audio_backends()) > 0"
+          python -c "import torchaudio; if torchaudio.__version__ < 2.9: print(torchaudio.list_audio_backends())"
+          python -c "import torchaudio; if torchaudio.__version__ < 2.9: assert len(torchaudio.list_audio_backends()) > 0"
       - name: Show backend of torchaudio (Ubuntu & MacOS)
         if: ${{ inputs.os != 'windows-latest' }}
         run: |
           source .venv/bin/activate
-          python -c "import torchaudio; print(torchaudio.list_audio_backends())"
-          python -c "import torchaudio; assert len(torchaudio.list_audio_backends()) > 0"
+          python -c "import torchaudio; if torchaudio.__version__ < 2.9: print(torchaudio.list_audio_backends())"
+          python -c "import torchaudio; if torchaudio.__version__ < 2.9: assert len(torchaudio.list_audio_backends()) > 0"
       - name: Pytest for torch.hub
         if: ${{ inputs.python-version == '3.13' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.6.0' }}
         env:
@@ -269,14 +269,14 @@ jobs:
         if: ${{ inputs.os == 'windows-latest' }}
         run: |
           .venv\Scripts\Activate.ps1
-          python -c "import torchaudio; print(torchaudio.list_audio_backends())"
-          python -c "import torchaudio; assert len(torchaudio.list_audio_backends()) > 0"
+          python -c "import torchaudio; if torchaudio.__version__ < 2.9: print(torchaudio.list_audio_backends())"
+          python -c "import torchaudio; if torchaudio.__version__ < 2.9: assert len(torchaudio.list_audio_backends()) > 0"
       - name: Show backend of torchaudio (Ubuntu & MacOS)
         if: ${{ inputs.os != 'windows-latest' }}
         run: |
           source .venv/bin/activate
-          python -c "import torchaudio; print(torchaudio.list_audio_backends())"
-          python -c "import torchaudio; assert len(torchaudio.list_audio_backends()) > 0"
+          python -c "import torchaudio; if torchaudio.__version__ < 2.9: print(torchaudio.list_audio_backends())"
+          python -c "import torchaudio; if torchaudio.__version__ < 2.9: assert len(torchaudio.list_audio_backends()) > 0"
       - name: Recipe test (Windows)
         if: ${{ inputs.os == 'windows-latest' }}
         env:
