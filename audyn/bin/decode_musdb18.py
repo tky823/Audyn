@@ -4,8 +4,9 @@ import shutil
 import tempfile
 from typing import Optional
 
+import torchaudio
 from omegaconf import DictConfig
-from torchaudio.io import StreamReader, StreamWriter
+from packaging import version
 
 from ..utils._hydra import main as audyn_main
 from ..utils.data.musdb18 import (
@@ -21,6 +22,8 @@ try:
     IS_TQDM_AVAILABLE = True
 except ImportError:
     IS_TQDM_AVAILABLE = False
+
+IS_TORCHAUDIO_LT_2_9 = version.parse(torchaudio.__version__) < version.parse("2.9")
 
 
 @audyn_main(config_name="decode-musdb18")
@@ -174,35 +177,57 @@ def decode_file(mp4_path: str, wav_path: str, frames_per_chunk: int = 44100) -> 
         os.makedirs(track_dir, exist_ok=True)
 
     with tempfile.TemporaryDirectory() as temp_dir:
+        output_format = "wav"
         temp_mp4_path = os.path.join(temp_dir, "raw.stem.mp4")
-        temp_wav_path = os.path.join(temp_dir, "SOURCE.wav")
+        temp_wav_path = os.path.join(temp_dir, f"SOURCE.{output_format}")
 
         shutil.copy2(mp4_path, temp_mp4_path)
 
         for stream_idx, source in enumerate(["mixture"] + sources):
-            reader = StreamReader(temp_mp4_path)
-            writer = StreamWriter(temp_wav_path.replace("SOURCE", source))
+            if IS_TORCHAUDIO_LT_2_9:
+                from torchaudio.io import StreamReader, StreamWriter
 
-            stream_info = reader.get_src_stream_info(stream_idx)
-            sample_rate = stream_info.sample_rate
-            num_channels = stream_info.num_channels
+                reader = StreamReader(temp_mp4_path)
+                writer = StreamWriter(temp_wav_path.replace("SOURCE", source))
 
-            assert sample_rate == 44100
+                stream_info = reader.get_src_stream_info(stream_idx)
+                sample_rate = stream_info.sample_rate
+                num_channels = stream_info.num_channels
 
-            sample_rate = int(sample_rate)
+                assert sample_rate == 44100
 
-            reader.add_audio_stream(
-                frames_per_chunk=frames_per_chunk,
-                stream_index=stream_idx,
-            )
-            writer.add_audio_stream(
-                sample_rate=sample_rate,
-                num_channels=num_channels,
-            )
+                sample_rate = int(sample_rate)
 
-            with writer.open():
-                for (chunk,) in reader.stream():
-                    writer.write_audio_chunk(0, chunk)
+                reader.add_audio_stream(
+                    frames_per_chunk=frames_per_chunk,
+                    stream_index=stream_idx,
+                )
+                writer.add_audio_stream(
+                    sample_rate=sample_rate,
+                    num_channels=num_channels,
+                )
+
+                with writer.open():
+                    for (chunk,) in reader.stream():
+                        writer.write_audio_chunk(0, chunk)
+            else:
+                from torchcodec.decoders import AudioDecoder
+                from torchcodec.encoders import AudioEncoder
+
+                reader = AudioDecoder(temp_mp4_path, stream_index=stream_idx)
+
+                samples = reader.get_all_samples()
+                sample_rate = samples.sample_rate
+
+                assert sample_rate == 44100
+
+                # TODO: chunk-wise processing
+                with open(temp_wav_path.replace("SOURCE", source), mode="ab") as f:
+                    writer = AudioEncoder(
+                        samples.data,
+                        sample_rate=sample_rate,
+                    )
+                    writer.to_file_like(f, format=output_format)
 
             shutil.copy2(
                 temp_wav_path.replace("SOURCE", source), wav_path.replace("SOURCE", source)
