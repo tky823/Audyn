@@ -81,6 +81,7 @@ jobs:
         run: |
           .venv\Scripts\Activate.ps1
           uv pip install -e ".[dev,tests]"
+          uv pip install soundfile
       - name: Install dependencies (Ubuntu & MacOS)
         if: ${{ inputs.os != 'windows-latest' }}
         env:
@@ -88,11 +89,6 @@ jobs:
         run: |
           source .venv/bin/activate
           uv pip install -e ".[dev,tests]"
-      - name: Install dependencies (Windows)
-        if: ${{ inputs.os == 'windows-latest' }}
-        run: |
-          .venv\Scripts\Activate.ps1
-          uv pip install soundfile
       - name: Show dependencies (Windows)
         if: ${{ inputs.os == 'windows-latest' }}
         run: |
@@ -130,7 +126,7 @@ jobs:
           python -c "import torchaudio; print(torchaudio.list_audio_backends())"
           python -c "import torchaudio; assert len(torchaudio.list_audio_backends()) > 0"
       - name: Pytest for torch.hub
-        if: ${{ inputs.python-version == '3.9' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.1.0' }}
+        if: ${{ inputs.python-version == '3.13' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.6.0' }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           GITHUB_HEAD_REF: ${{ github.head_ref }}
@@ -170,7 +166,7 @@ jobs:
           source .venv/bin/activate
           uv run pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml tests/package/
       - name: Upload coverage reports to Codecov
-        if: ${{ inputs.python-version == '3.12' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.6.0' }}
+        if: ${{ inputs.python-version == '3.13' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.6.0' }}
         uses: codecov/codecov-action@v3
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -232,17 +228,19 @@ jobs:
           source .venv/bin/activate
           uv pip install packaging
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
-      - name: Install dependencies
+      - name: Install dependencies (Windows)
+        if: ${{ inputs.os == 'windows-latest' }}
+        run: |
+          .venv\Scripts\Activate.ps1
+          uv pip install -e ".[recipes]"
+          uv pip install soundfile
+      - name: Install dependencies (Ubuntu & MacOS)
+        if: ${{ inputs.os != 'windows-latest' }}
         env:
           MACOSX_DEPLOYMENT_TARGET: '10.13'
         run: |
           source .venv/bin/activate
           uv pip install -e ".[recipes]"
-      - name: Install dependencies (Windows)
-        if: ${{ inputs.os == 'windows-latest' }}
-        run: |
-          .venv\Scripts\Activate.ps1
-          uv pip install soundfile
       - name: Show dependencies (Windows)
         if: ${{ inputs.os == 'windows-latest' }}
         run: |
