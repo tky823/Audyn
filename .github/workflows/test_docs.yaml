@@ -25,7 +25,7 @@ jobs:
         run: |
           uv venv --python 3.13
           source .venv/bin/activate
-          uv pip install --system ".[docs]"
+          uv pip install ".[docs]"
       - name: Build docs
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
