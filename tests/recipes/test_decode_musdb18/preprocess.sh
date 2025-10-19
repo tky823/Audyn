@@ -19,7 +19,7 @@ musdb18_root="${data_root}/MUSDB18-7s"
 audyn-download-musdb18 \
 type="${type}" \
 root="${data_root}" \
-musdb18_root="${musdb18_root}" \
+musdb18_root="${musdb18_root}"
 
 audyn-decode-musdb18 \
 mp4_root="${musdb18_root}" \
