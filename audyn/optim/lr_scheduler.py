@@ -51,7 +51,6 @@ class _DummyLR(_DummyLRScheduler):
 
 
 class TransformerLRScheduler(_LRScheduler):
-
     def __init__(
         self,
         optimizer: Optimizer,

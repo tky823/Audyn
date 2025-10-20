@@ -37,23 +37,23 @@ class NeuralAudioFingerprinterBackbone(nn.Module):
             if num_layers is None:
                 num_layers = len(num_features)
             else:
-                assert (
-                    len(num_features) == num_layers
-                ), "num_features and num_layers must have same length if both are specified."
+                assert len(num_features) == num_layers, (
+                    "num_features and num_layers must have same length if both are specified."
+                )
 
         if isinstance(kernel_size, int):
             kernel_size = [kernel_size] * num_layers
         else:
-            assert (
-                len(kernel_size) == num_layers
-            ), "kernel_size and num_layers must have same length if both are specified."
+            assert len(kernel_size) == num_layers, (
+                "kernel_size and num_layers must have same length if both are specified."
+            )
 
         if isinstance(stride, int):
             stride = [stride] * num_layers
         else:
-            assert (
-                len(stride) == num_layers
-            ), "stride and num_layers must have same length if both are specified."
+            assert len(stride) == num_layers, (
+                "stride and num_layers must have same length if both are specified."
+            )
 
         backbone = []
 
@@ -216,7 +216,6 @@ class StackedConvBlock(nn.Module):
 
 
 class ConvBlock(nn.Module):
-
     def __init__(
         self,
         in_channels: int,

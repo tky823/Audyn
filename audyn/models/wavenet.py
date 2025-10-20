@@ -408,7 +408,6 @@ class WaveNet(nn.Module):
 
 
 class MultiSpeakerWaveNet(WaveNet):
-
     def __init__(
         self,
         in_channels: int,

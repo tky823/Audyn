@@ -125,9 +125,9 @@ def quantize_residual_vector(
     if isinstance(weight, torch.Tensor):
         n_dims = weight.dim()
 
-        assert (
-            n_dims == 3
-        ), "Shape of weight is expected to be (num_layers, codebook_size, embedding_dim)."
+        assert n_dims == 3, (
+            "Shape of weight is expected to be (num_layers, codebook_size, embedding_dim)."
+        )
     elif isinstance(weight, list):
         pass
     else:

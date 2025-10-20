@@ -162,9 +162,9 @@ class BitMultiheadAttention158(nn.Module):
         self.batch_first = batch_first
         self.head_dim = embed_dim // num_heads
 
-        assert (
-            self.head_dim * num_heads == self.embed_dim
-        ), "embed_dim must be divisible by num_heads"
+        assert self.head_dim * num_heads == self.embed_dim, (
+            "embed_dim must be divisible by num_heads"
+        )
 
         if norm is None:
             query_norm = None

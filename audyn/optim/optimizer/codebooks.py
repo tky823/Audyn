@@ -1013,9 +1013,9 @@ def _pack_param_state(
             assert k == "params", "Only params is supported."
 
             for p in v:
-                assert isinstance(
-                    p, torch.Tensor
-                ), "Only torch.Tensor is supported, but found {}.".format(type(p))
+                assert isinstance(p, torch.Tensor), (
+                    "Only torch.Tensor is supported, but found {}.".format(type(p))
+                )
 
                 packed_state.update({param_mappings[id(p)]: p.data})
 
@@ -1048,9 +1048,9 @@ def _pack_state(groups: List[Any], mappings: Dict[int, int]) -> Dict[int, Any]:
 
     for group in groups:
         for p in group:
-            assert isinstance(
-                p, torch.Tensor
-            ), "Only torch.Tensor is supported, but found {}.".format(type(p))
+            assert isinstance(p, torch.Tensor), (
+                "Only torch.Tensor is supported, but found {}.".format(type(p))
+            )
 
             packed_state.update({mappings[id(p)]: p.data})
 

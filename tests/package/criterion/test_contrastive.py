@@ -1225,7 +1225,6 @@ def update_inter_contrastive_modules(
     optimizer: SGD,
     iterations: int = 1,
 ) -> torch.Tensor:
-
     for _ in range(iterations):
         output_one = model_one(input)
         output_other = model_other(other)

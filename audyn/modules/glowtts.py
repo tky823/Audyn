@@ -330,10 +330,10 @@ class MaskedInvertiblePointwiseConv1d(InvertiblePointwiseConv1d):
 
         batch_size, num_features, num_frames = input.size()
 
-        assert (
-            num_features % num_splits == 0
-        ), "num_features ({}) should be divisible by num_splits {}.".format(
-            num_features, num_splits
+        assert num_features % num_splits == 0, (
+            "num_features ({}) should be divisible by num_splits {}.".format(
+                num_features, num_splits
+            )
         )
 
         logdet = self.initialize_logdet_if_necessary(logdet, device=input.device)
@@ -527,7 +527,6 @@ class MaskedWaveNetAffineCoupling(WaveNetAffineCoupling):
 
 
 class MaskedStackedResidualConvBlock1d(StackedResidualConvBlock1d):
-
     def __init__(
         self,
         in_channels: int,
@@ -565,10 +564,10 @@ class MaskedStackedResidualConvBlock1d(StackedResidualConvBlock1d):
             if dilation_rate > 1:
                 dilation = dilation_rate**layer_idx
 
-                assert (
-                    stride == 1
-                ), "When dilated convolution, stride is expected to be 1, but {} is given.".format(
-                    stride
+                assert stride == 1, (
+                    "When dilated convolution, stride is expected to be 1, but {} is given.".format(
+                        stride
+                    )
                 )
             else:
                 dilation = 1

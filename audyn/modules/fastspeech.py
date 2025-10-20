@@ -80,9 +80,9 @@ class FFTrBlock(nn.Module):
         batch_first = self.batch_first
 
         if IS_TORCH_LT_1_11:
-            assert (
-                average_attn_weights
-            ), f"Only average_attn_weights=True is supported for torch={torch.__version__}."
+            assert average_attn_weights, (
+                f"Only average_attn_weights=True is supported for torch={torch.__version__}."
+            )
             kwargs = {}
         else:
             kwargs = {"average_attn_weights": average_attn_weights}
@@ -325,9 +325,9 @@ class MultiheadSelfAttentionBlock(nn.Module):
         residual = x
 
         if IS_TORCH_LT_1_11:
-            assert (
-                average_attn_weights
-            ), f"Only average_attn_weights=True is supported for torch={torch.__version__}."
+            assert average_attn_weights, (
+                f"Only average_attn_weights=True is supported for torch={torch.__version__}."
+            )
             kwargs = {}
         else:
             kwargs = {"average_attn_weights": average_attn_weights}

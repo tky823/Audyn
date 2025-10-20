@@ -201,7 +201,6 @@ class BandSplitRNN(nn.Module):
 
 
 class MultiSourceMultiChannelBandSplitRNN(BandSplitRNN):
-
     def __init__(
         self,
         bandsplit: Union[nn.Module, MultiChannelBandSplitModule],

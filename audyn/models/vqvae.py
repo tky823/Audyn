@@ -13,7 +13,6 @@ __all__ = [
 
 
 class VQVAE(BaseVAE):
-
     @overload
     def __init__(
         self,
@@ -70,19 +69,19 @@ class VQVAE(BaseVAE):
             if len(args) == 1:
                 (vector_quantizer,) = args
 
-                assert isinstance(
-                    vector_quantizer, nn.Module
-                ), "nn.Module is required as positional argument."
+                assert isinstance(vector_quantizer, nn.Module), (
+                    "nn.Module is required as positional argument."
+                )
             else:
-                assert (
-                    "vector_quantizer" in kwargs
-                ), "vector_quantizer is required as keyword argument."
+                assert "vector_quantizer" in kwargs, (
+                    "vector_quantizer is required as keyword argument."
+                )
 
                 (vector_quantizer,) = kwargs["vector_quantizer"]
 
-                assert isinstance(
-                    vector_quantizer, nn.Module
-                ), "nn.Module is required as vector_quantizer."
+                assert isinstance(vector_quantizer, nn.Module), (
+                    "nn.Module is required as vector_quantizer."
+                )
         else:
             required_keys = ["codebook_size", "embedding_dim"]
             optional_keys = ["init_by_kmeans", "seed"]
@@ -247,7 +246,6 @@ class VQVAE(BaseVAE):
 
 
 class GumbelVQVAE(VQVAE):
-
     @overload
     def __init__(
         self,
@@ -304,19 +302,19 @@ class GumbelVQVAE(VQVAE):
             if len(args) == 1:
                 (vector_quantizer,) = args
 
-                assert isinstance(
-                    vector_quantizer, nn.Module
-                ), "nn.Module is required as positional argument."
+                assert isinstance(vector_quantizer, nn.Module), (
+                    "nn.Module is required as positional argument."
+                )
             else:
-                assert (
-                    "vector_quantizer" in kwargs
-                ), "vector_quantizer is required as keyword argument."
+                assert "vector_quantizer" in kwargs, (
+                    "vector_quantizer is required as keyword argument."
+                )
 
                 (vector_quantizer,) = kwargs["vector_quantizer"]
 
-                assert isinstance(
-                    vector_quantizer, nn.Module
-                ), "nn.Module is required as vector_quantizer."
+                assert isinstance(vector_quantizer, nn.Module), (
+                    "nn.Module is required as vector_quantizer."
+                )
         else:
             required_keys = ["codebook_size", "embedding_dim"]
             optional_keys = ["init_by_kmeans", "seed"]

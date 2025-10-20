@@ -86,7 +86,7 @@ class RMSNorm(nn.Module):
         return output
 
     def extra_repr(self) -> str:
-        s = "{normalized_shape}, eps={eps}, " "elementwise_affine={elementwise_affine}".format(
+        s = "{normalized_shape}, eps={eps}, elementwise_affine={elementwise_affine}".format(
             **self.__dict__
         )
         return s

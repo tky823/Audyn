@@ -14,7 +14,7 @@ description = "A PyTorch toolkit for audio synthesis."
 readme = "README.md"
 license = {file = "LICENSE"}
 urls = {url = "https://github.com/tky823/Audyn"}
-requires-python = ">=3.9, <4"
+requires-python = ">=3.10, <4"
 dependencies = [
     "omegaconf",
     "hydra-core",
@@ -36,9 +36,7 @@ recipes = [
     "tqdm",
 ]
 dev = [
-    "flake8",
-    "black",
-    "isort"
+    "ruff",
 ]
 docs = [
     "sphinx",
@@ -82,15 +80,17 @@ audyn = [
     "*yaml",
 ]
 
-[tool.black]
+[tool.ruff]
 line-length = 99
 
-[tools.flake8]
-max-line-length = 99
-
-[tool.isort]
-profile = "black"
-line_length = 99
+[tool.ruff.lint.isort]
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "first-party",
+    "local-folder",
+]
 
 [tool.pytest.ini_options]
 # to import relative paths

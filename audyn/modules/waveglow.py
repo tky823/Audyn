@@ -177,10 +177,10 @@ class StackedResidualConvBlock1d(nn.Module):
             if dilation_rate > 1:
                 dilation = dilation_rate**layer_idx
 
-                assert (
-                    stride == 1
-                ), "When dilated convolution, stride is expected to be 1, but {} is given.".format(
-                    stride
+                assert stride == 1, (
+                    "When dilated convolution, stride is expected to be 1, but {} is given.".format(
+                        stride
+                    )
                 )
             else:
                 dilation = 1

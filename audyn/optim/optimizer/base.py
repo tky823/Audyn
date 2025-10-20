@@ -127,9 +127,9 @@ class MovingAverageWrapper(Optimizer):
                 assert k == "params", "Only params is supported."
 
                 for p in params:
-                    assert isinstance(
-                        p, torch.Tensor
-                    ), "Only torch.Tensor is supported, but found {}.".format(type(p))
+                    assert isinstance(p, torch.Tensor), (
+                        "Only torch.Tensor is supported, but found {}.".format(type(p))
+                    )
 
                     packed_state.update({param_mappings[id(p)]: p.data})
 

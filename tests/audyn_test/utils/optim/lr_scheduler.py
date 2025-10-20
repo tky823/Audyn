@@ -10,7 +10,6 @@ IS_TORCH_GTE_2_7 = version.parse(torch.__version__) >= version.parse("2.7")
 
 class DummyLRScheduler(_LRScheduler):
     def __init__(self, optimizer: Optimizer, last_epoch: int = -1, **kwargs) -> None:
-
         if IS_TORCH_GTE_2_7:
             verbose = kwargs.pop("verbose", False)
 

@@ -58,9 +58,9 @@ def kmeans_clustering(
                 f"with centroids.size(0)={expected_num_clusters}."
             )
 
-        assert centroids.size(-1) == input.size(
-            -1
-        ), "Feature dimension of centroids is different from input."
+        assert centroids.size(-1) == input.size(-1), (
+            "Feature dimension of centroids is different from input."
+        )
 
     for _ in range(n_iter):
         indices = _compute_nearest_centroid_indices(input, centroids=centroids)
@@ -161,9 +161,9 @@ def online_kmeans_clustering(
     else:
         num_accumulated_assignments = num_accumulated_assignments.to(dtype)
 
-    assert (
-        centroids.size(-1) == embedding_dim
-    ), "Feature dimension of centroids is different from input."
+    assert centroids.size(-1) == embedding_dim, (
+        "Feature dimension of centroids is different from input."
+    )
 
     if is_distributed:
         # gather input

@@ -16,6 +16,6 @@ def allclose(
     """
     loss_max = torch.abs(input - other).max()
 
-    assert torch.allclose(
-        input, other, rtol=rtol, atol=atol, equal_nan=equal_nan
-    ), f"Max absolute error: {loss_max}."
+    assert torch.allclose(input, other, rtol=rtol, atol=atol, equal_nan=equal_nan), (
+        f"Max absolute error: {loss_max}."
+    )

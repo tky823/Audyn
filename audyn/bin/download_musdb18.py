@@ -65,7 +65,9 @@ def download_musdb18(config: DictConfig) -> None:
     elif _type == "hq":
         url = "https://zenodo.org/records/3338373/files/musdb18hq.zip"
     elif _type == "7s":
-        url = "https://zenodo.org/api/files/1ff52183-071a-4a59-923f-7a31c4762d43/MUSDB18-7-STEMS.zip"  # noqa: E501
+        url = (
+            "https://zenodo.org/api/files/1ff52183-071a-4a59-923f-7a31c4762d43/MUSDB18-7-STEMS.zip"  # noqa: E501
+        )
     else:
         raise RuntimeError(f"{_type} is not supported as type. Choose default, hq, or 7s.")
 

@@ -222,19 +222,16 @@ class TextToFeatTrainer(BaseTrainer):
                 named_feat_to_wave_output,
             ) = self.feat_to_wave_forward(named_data, named_output, key_mapping=key_mapping)
 
-            assert (
-                set(named_output.keys()) & set(named_transform_middle_output.keys()) == set()
-            ), "named_output and named_transform_middle_output should be disjointed."
-            assert (
-                set(named_output.keys()) & set(named_feat_to_wave_output.keys()) == set()
-            ), "named_output and named_feat_to_wave_output should be disjointed."
+            assert set(named_output.keys()) & set(named_transform_middle_output.keys()) == set(), (
+                "named_output and named_transform_middle_output should be disjointed."
+            )
+            assert set(named_output.keys()) & set(named_feat_to_wave_output.keys()) == set(), (
+                "named_output and named_feat_to_wave_output should be disjointed."
+            )
             assert (
                 set(named_transform_middle_output.keys()) & set(named_feat_to_wave_output.keys())
                 == set()
-            ), (
-                "named_transform_middle_output and named_feat_to_wave_output "
-                "should be disjointed."
-            )
+            ), "named_transform_middle_output and named_feat_to_wave_output should be disjointed."
 
             # update named_output by outputs of feat-to-wave model
             named_output.update(named_transform_middle_output)
@@ -332,19 +329,16 @@ class TextToFeatTrainer(BaseTrainer):
                 forward_method="inference",
             )
 
-            assert (
-                set(named_output.keys()) & set(named_transform_middle_output.keys()) == set()
-            ), "named_output and named_transform_middle_output should be disjointed."
-            assert (
-                set(named_output.keys()) & set(named_feat_to_wave_output.keys()) == set()
-            ), "named_output and named_feat_to_wave_output should be disjointed."
+            assert set(named_output.keys()) & set(named_transform_middle_output.keys()) == set(), (
+                "named_output and named_transform_middle_output should be disjointed."
+            )
+            assert set(named_output.keys()) & set(named_feat_to_wave_output.keys()) == set(), (
+                "named_output and named_feat_to_wave_output should be disjointed."
+            )
             assert (
                 set(named_transform_middle_output.keys()) & set(named_feat_to_wave_output.keys())
                 == set()
-            ), (
-                "named_transform_middle_output and named_feat_to_wave_output "
-                "should be disjointed."
-            )
+            ), "named_transform_middle_output and named_feat_to_wave_output should be disjointed."
 
             # update named_output by outputs of feat-to-wave model
             named_output.update(named_transform_middle_output)

@@ -1900,9 +1900,9 @@ class BaseTrainer(BaseDriver):
             duration (torch.Tensor): (src_length,) or (tgt_length, src_length).
 
         """
-        assert (
-            duration.dim() == 1 or duration.dim() == 2
-        ), f"duration is expected to be 1D or 2D tesor, but given as {duration.dim()}D tensor."
+        assert duration.dim() == 1 or duration.dim() == 2, (
+            f"duration is expected to be 1D or 2D tesor, but given as {duration.dim()}D tensor."
+        )
 
         if duration.dim() == 1:
             eye = torch.eye(duration.size(-1), dtype=torch.long, device=duration.device)
@@ -1990,9 +1990,9 @@ class BaseTrainer(BaseDriver):
                     )
 
     def write_spectrogram(self, tag: str, spectrogram: torch.Tensor, global_step: Any = 1) -> None:
-        assert (
-            spectrogram.dim() == 2
-        ), f"spectrogram is expected to be 2D tesor, but given as {spectrogram.dim()}D tensor."
+        assert spectrogram.dim() == 2, (
+            f"spectrogram is expected to be 2D tesor, but given as {spectrogram.dim()}D tensor."
+        )
 
         spectrogram = spectrogram.detach().cpu()
 
@@ -2061,9 +2061,9 @@ class BaseTrainer(BaseDriver):
 
     def write_waveform(self, tag: str, waveform: torch.Tensor, global_step: Any = 1) -> None:
         if waveform.dim() == 2:
-            assert (
-                waveform.size(0) == 1
-            ), "First dimension is expected to be 1, but given {}.".format(waveform.size(0))
+            assert waveform.size(0) == 1, (
+                "First dimension is expected to be 1, but given {}.".format(waveform.size(0))
+            )
 
             waveform = waveform.squeeze(dim=0)
         elif waveform.dim() != 1:
@@ -2156,9 +2156,9 @@ class BaseTrainer(BaseDriver):
 
         """
         if waveform.dim() == 2:
-            assert (
-                waveform.size(0) == 1
-            ), "First dimension is expected to be 1, but given {}.".format(waveform.size(0))
+            assert waveform.size(0) == 1, (
+                "First dimension is expected to be 1, but given {}.".format(waveform.size(0))
+            )
 
             waveform = waveform.squeeze(dim=0)
         elif waveform.dim() != 1:
@@ -2846,9 +2846,9 @@ class BaseGenerator(BaseDriver):
 
     def save_spectrogram(self, path: str, spectrogram: torch.Tensor) -> None:
         """Save spectrogram using matplotlib."""
-        assert (
-            spectrogram.dim() == 2
-        ), f"spectrogram is expected to be 2D tesor, but given as {spectrogram.dim()}D tensor."
+        assert spectrogram.dim() == 2, (
+            f"spectrogram is expected to be 2D tesor, but given as {spectrogram.dim()}D tensor."
+        )
 
         spectrogram = spectrogram.detach().cpu()
 
