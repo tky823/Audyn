@@ -1,0 +1,156 @@
+name: Store cache
+on:
+  workflow_dispatch:
+    inputs:
+      os:
+        description: "Operating system"
+        required: true
+        default: "ubuntu-latest"
+        type: choice
+        options:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+      python-version:
+        description: "Python version"
+        required: true
+        default: "3.12"
+        type: string
+      torch-version:
+        description: "PyTorch version"
+        required: true
+        default: "2.6.0"
+        type: string
+jobs:
+  package-and-recipes:
+    name: Run package tests
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Set up Python ${{ inputs.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python-version }}
+      - name: Install dependencies (Windows)
+        if: ${{ inputs.os == 'windows-latest' }}
+        run: |
+          powershell -File tests/scripts/install_windows_dependencies.ps1
+      - name: Install dependencies (Ubuntu)
+        if: ${{ inputs.os == 'ubuntu-latest' }}
+        run: |
+          . tests/scripts/install_ubuntu_dependencies.sh
+      - name: Install dependencies (MacOS)
+        if: ${{ inputs.os == 'macos-13' || inputs.os == 'macos-latest' }}
+        run: |
+          . tests/scripts/install_macos_dependencies.sh
+      - name: Show version of FFmpeg
+        run: |
+          ffmpeg -version
+      - name: Overwrite torch version in pyproject.toml (Windows)
+        if: ${{ inputs.os == 'windows-latest' }}
+        env:
+          PYTHON_VERSION: ${{ inputs.python-version }}
+          TORCH_VERSION: ${{ inputs.torch-version }}
+        run: |
+          uv venv --python ${env:PYTHON_VERSION}
+          uv pip install packaging
+          python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${env:TORCH_VERSION}
+      - name: Overwrite torch version in pyproject.toml (Ubuntu & MacOS)
+        if: ${{ inputs.os != 'windows-latest' }}
+        env:
+          PYTHON_VERSION: ${{ inputs.python-version }}
+          TORCH_VERSION: ${{ inputs.torch-version }}
+        run: |
+          uv venv --python ${PYTHON_VERSION}
+          uv pip install packaging
+          python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
+      - name: Install dependencies (Windows)
+        if: ${{ inputs.os == 'windows-latest' }}
+        run: |
+          .venv\Scripts\Activate.ps1
+          uv pip install -e ".[recipes]"
+          uv pip install soundfile
+      - name: Install dependencies (Ubuntu & MacOS)
+        if: ${{ inputs.os != 'windows-latest' }}
+        env:
+          MACOSX_DEPLOYMENT_TARGET: '10.13'
+        run: |
+          source .venv/bin/activate
+          uv pip install -e ".[recipes]"
+      - name: Show dependencies (Windows)
+        if: ${{ inputs.os == 'windows-latest' }}
+        run: |
+          .venv\Scripts\Activate.ps1
+          uv pip list
+      - name: Show dependencies (Ubuntu & MacOS)
+        if: ${{ inputs.os != 'windows-latest' }}
+        run: |
+          source .venv/bin/activate
+          uv pip list
+      - name: Verify version of torch (Windows)
+        if: ${{ inputs.os == 'windows-latest' }}
+        env:
+          TORCH_VERSION: ${{ inputs.torch-version }}
+        run: |
+          .venv\Scripts\Activate.ps1
+          python tests/scripts/verify_torch_version.py --torch-version ${env:TORCH_VERSION}
+      - name: Verify version of torch (Ubuntu & MacOS)
+        if: ${{ inputs.os != 'windows-latest' }}
+        env:
+          TORCH_VERSION: ${{ inputs.torch-version }}
+        run: |
+          source .venv/bin/activate
+          python tests/scripts/verify_torch_version.py --torch-version ${TORCH_VERSION}
+      - name: Show backend of torchaudio (Windows)
+        if: ${{ inputs.os == 'windows-latest' }}
+        run: |
+          .venv\Scripts\Activate.ps1
+          python -c "import torchaudio; print(torchaudio.list_audio_backends())"
+          python -c "import torchaudio; assert len(torchaudio.list_audio_backends()) > 0"
+      - name: Show backend of torchaudio (Ubuntu & MacOS)
+        if: ${{ inputs.os != 'windows-latest' }}
+        run: |
+          source .venv/bin/activate
+          python -c "import torchaudio; print(torchaudio.list_audio_backends())"
+          python -c "import torchaudio; assert len(torchaudio.list_audio_backends()) > 0"
+      - name: Pytest for updating package (Windows)
+        if: ${{ inputs.os == 'windows-latest' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          MPLBACKEND: AGG
+          USE_LIBUV: 0
+        run: |
+          .venv\Scripts\Activate.ps1
+          uv run pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml -p no:faulthandler tests/package/
+      - name: Pytest for updating package (Ubuntu & MacOS)
+        if: ${{ inputs.os != 'windows-latest' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: |
+          source .venv/bin/activate
+          uv run pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml tests/package/
+      - name: Recipe test (Windows)
+        if: ${{ inputs.os == 'windows-latest' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: |
+          .venv\Scripts\Activate.ps1
+          cd tests/recipes/
+          . ./test_all.sh
+      - name: Recipe test (Ubuntu & MacOS)
+        if: ${{ inputs.os != 'windows-latest' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: |
+          source .venv/bin/activate
+          cd tests/recipes/
+          . ./test_all.sh
+      - name: Store cache
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cache/audyn
+            ~/.cache/audyn_test
+          key: audyn-${{ runner.os }}-${{ github.sha }}
