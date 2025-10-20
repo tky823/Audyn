@@ -132,7 +132,7 @@ jobs:
           GITHUB_HEAD_REF: ${{ github.head_ref }}
         run: |
           source .venv/bin/activate
-          uv run pytest -vvv tests/torchhub/
+          uv run --active pytest -vvv tests/torchhub/
       - name: Pytest for releasing package (Windows)
         if: ${{ inputs.os == 'windows-latest' && startsWith(github.head_ref, 'release/') }}
         env:
@@ -141,7 +141,7 @@ jobs:
           USE_LIBUV: 0
         run: |
           .venv\Scripts\Activate.ps1
-          uv run pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml --runslow -p no:faulthandler tests/package/
+          uv run --active pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml --runslow -p no:faulthandler tests/package/
       - name: Pytest for updating package (Windows)
         if: ${{ inputs.os == 'windows-latest' && ! startsWith(github.head_ref, 'release/') }}
         env:
@@ -150,21 +150,21 @@ jobs:
           USE_LIBUV: 0
         run: |
           .venv\Scripts\Activate.ps1
-          uv run pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml -p no:faulthandler tests/package/
+          uv run  --activepytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml -p no:faulthandler tests/package/
       - name: Pytest for releasing package (Ubuntu & MacOS)
         if: ${{ inputs.os != 'windows-latest' && startsWith(github.head_ref, 'release/') }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
           source .venv/bin/activate
-          uv run pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml --runslow tests/package/
+          uv run --active pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml --runslow tests/package/
       - name: Pytest for updating package (Ubuntu & MacOS)
         if: ${{ inputs.os != 'windows-latest' && ! startsWith(github.head_ref, 'release/') }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
           source .venv/bin/activate
-          uv run pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml tests/package/
+          uv run --active pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml tests/package/
       - name: Upload coverage reports to Codecov
         if: ${{ inputs.python-version == '3.13' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.6.0' }}
         uses: codecov/codecov-action@v3
