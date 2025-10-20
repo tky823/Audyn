@@ -148,7 +148,7 @@ jobs:
           USE_LIBUV: 0
         run: |
           .venv\Scripts\Activate.ps1
-          uv run  --activepytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml -p no:faulthandler tests/package/
+          uv run  --active pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml -p no:faulthandler tests/package/
       - name: Pytest for releasing package (Ubuntu & MacOS)
         if: ${{ inputs.os != 'windows-latest' && startsWith(github.head_ref, 'release/') }}
         env:
