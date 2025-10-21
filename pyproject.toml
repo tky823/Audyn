@@ -22,7 +22,7 @@ dependencies = [
     "torch",
     "torchaudio",
     "torchvision",
-    "torchcodec",
+    "torchcodec; sys_platform != 'darwin' or platform_machine != 'arm64'",
     "tensorboard",
     "numpy",
     "webdataset",
