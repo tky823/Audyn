@@ -5,9 +5,10 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 import torch
 import torch.distributed as dist
 import torchaudio
+from packaging import version
 from torch.utils.data import Dataset, IterableDataset, RandomSampler, get_worker_info
-from torchaudio.io import StreamReader
 
+from ...audio import info as torchaudio_info
 from .distributed import DistributedRandomStemsMUSDB18Sampler
 from .sampler import RandomStemsMUSDB18Sampler
 
@@ -18,6 +19,8 @@ __all__ = [
     "DistributedRandomStemsMUSDB18Dataset",
     "Track",
 ]
+
+IS_TORCHAUDIO_LT_2_9 = version.parse(torchaudio.__version__) < version.parse("2.9")
 
 
 class MUSDB18(Dataset):
@@ -244,7 +247,7 @@ class StemsMUSDB18Dataset(Dataset):
             if self.training:
                 if self.align_stems:
                     if frame_offset is None:
-                        metadata = torchaudio.info(path)
+                        metadata = torchaudio_info(path)
                         num_all_frames = metadata.num_frames
                         num_frames = int(metadata.sample_rate * duration)
                         frame_offset = torch.randint(
@@ -252,7 +255,7 @@ class StemsMUSDB18Dataset(Dataset):
                         )
                         frame_offset = frame_offset.item()
                 else:
-                    metadata = torchaudio.info(path)
+                    metadata = torchaudio_info(path)
                     num_all_frames = metadata.num_frames
                     num_frames = int(metadata.sample_rate * duration)
                     frame_offset = torch.randint(
@@ -262,7 +265,7 @@ class StemsMUSDB18Dataset(Dataset):
             else:
                 if self.align_stems:
                     if frame_offset is None:
-                        metadata = torchaudio.info(path)
+                        metadata = torchaudio_info(path)
                         num_all_frames = metadata.num_frames
                         num_frames = int(metadata.sample_rate * duration)
                         frame_offset = (num_all_frames - num_frames) // 2
@@ -547,7 +550,7 @@ class RandomStemsMUSDB18Dataset(IterableDataset):
 
     def load_randomly_sliced_audio(self, path: str) -> Tuple[torch.Tensor, int]:
         duration = self.duration
-        metadata = torchaudio.info(path)
+        metadata = torchaudio_info(path)
         num_all_frames = metadata.num_frames
         num_frames = int(metadata.sample_rate * duration)
         frame_offset = torch.randint(0, num_all_frames - num_frames, (), generator=self.generator)
@@ -639,8 +642,9 @@ class DistributedRandomStemsMUSDB18Dataset(IterableDataset):
 
         if rank >= num_replicas or rank < 0:
             raise ValueError(
-                "Invalid rank {}, rank should be in the interval"
-                " [0, {}]".format(rank, num_replicas - 1)
+                "Invalid rank {}, rank should be in the interval [0, {}]".format(
+                    rank, num_replicas - 1
+                )
             )
 
         if drop_last is None:
@@ -856,7 +860,7 @@ class DistributedRandomStemsMUSDB18Dataset(IterableDataset):
 
     def load_randomly_sliced_audio(self, path: str) -> Tuple[torch.Tensor, int]:
         duration = self.duration
-        metadata = torchaudio.info(path)
+        metadata = torchaudio_info(path)
         num_all_frames = metadata.num_frames
         num_frames = int(metadata.sample_rate * duration)
         frame_offset = torch.randint(0, num_all_frames - num_frames, (), generator=self.generator)
@@ -1108,38 +1112,60 @@ def _load_single_stream(
         filename = f"{name}.stem.mp4"
         stream_idx = streams.index(instrument)
         path = os.path.join(root, subset, filename)
-        reader = StreamReader(path)
-        stream_info = reader.get_src_stream_info(stream_idx)
-        sample_rate = stream_info.sample_rate
-        timestamp = frame_offset / sample_rate
 
-        assert sample_rate == 44100
+        if IS_TORCHAUDIO_LT_2_9:
+            from torchaudio.io import StreamReader
 
-        sample_rate = int(sample_rate)
+            reader = StreamReader(path)
+            stream_info = reader.get_src_stream_info(stream_idx)
+            sample_rate = stream_info.sample_rate
+            timestamp = frame_offset / sample_rate
 
-        if num_frames < 0:
-            reader.add_audio_stream(
-                frames_per_chunk=sample_rate,
-                stream_index=stream_idx,
-            )
+            assert sample_rate == 44100
 
-            waveform = []
+            sample_rate = int(sample_rate)
 
-            for (chunk,) in reader.stream():
-                waveform.append(chunk)
+            if num_frames < 0:
+                reader.add_audio_stream(
+                    frames_per_chunk=sample_rate,
+                    stream_index=stream_idx,
+                )
 
-            waveform = torch.cat(waveform, dim=0)
+                waveform = []
+
+                for (chunk,) in reader.stream():
+                    waveform.append(chunk)
+
+                waveform = torch.cat(waveform, dim=0)
+            else:
+                reader.add_audio_stream(
+                    frames_per_chunk=sample_rate,
+                    stream_index=stream_idx,
+                )
+                reader.seek(timestamp)
+                reader.fill_buffer()
+                (waveform,) = reader.pop_chunks()
+
+            waveform = waveform.permute(1, 0)
+            waveform = waveform.contiguous()
         else:
-            reader.add_audio_stream(
-                frames_per_chunk=sample_rate,
-                stream_index=stream_idx,
-            )
-            reader.seek(timestamp)
-            reader.fill_buffer()
-            (waveform,) = reader.pop_chunks()
+            from torchcodec.decoders import AudioDecoder
 
-        waveform = waveform.permute(1, 0)
-        waveform = waveform.contiguous()
+            reader = AudioDecoder(path, stream_index=stream_idx)
+
+            sample_rate = reader.metadata.sample_rate
+
+            assert sample_rate == 44100
+
+            timestamp = frame_offset / sample_rate
+
+            if num_frames < 0:
+                samples = reader.get_samples_played_in_range(timestamp)
+                waveform = samples.data
+            else:
+                stop_timestamp = (frame_offset + num_frames) / sample_rate
+                samples = reader.get_samples_played_in_range(timestamp, stop_timestamp)
+                waveform = samples.data
     else:
         raise ValueError(f"{ext} is not supported as extension.")
 

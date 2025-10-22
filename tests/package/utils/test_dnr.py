@@ -273,7 +273,7 @@ def run_distributed_dnr_dataset_sampler(
         backend="gloo",
         world_size=world_size,
         rank=rank,
-        timeout=timedelta(minutes=5),
+        timeout=timedelta(minutes=1),
     )
     torch.manual_seed(seed)
 

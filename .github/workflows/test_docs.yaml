@@ -41,4 +41,4 @@ jobs:
         run: |
           source .venv/bin/activate
           cd docs/
-          uv run sphinx-build -W ./ ./_build/html/
+          uv run --active sphinx-build -W ./ ./_build/html/

@@ -7,6 +7,7 @@ import torch.distributed as dist
 import torchaudio
 from torch.utils.data import Dataset, IterableDataset, RandomSampler, get_worker_info
 
+from ...audio import info as torchaudio_info
 from .distributed import DistributedRandomStemsDNRSampler
 from .sampler import RandomStemsDNRSampler
 
@@ -247,7 +248,7 @@ class StemsDNRDataset(Dataset):
             if self.training:
                 if self.align_stems:
                     if frame_offset is None:
-                        metadata = torchaudio.info(path)
+                        metadata = torchaudio_info(path)
                         num_all_frames = metadata.num_frames
                         num_frames = int(metadata.sample_rate * duration)
                         frame_offset = torch.randint(
@@ -255,7 +256,7 @@ class StemsDNRDataset(Dataset):
                         )
                         frame_offset = frame_offset.item()
                 else:
-                    metadata = torchaudio.info(path)
+                    metadata = torchaudio_info(path)
                     num_all_frames = metadata.num_frames
                     num_frames = int(metadata.sample_rate * duration)
                     frame_offset = torch.randint(
@@ -265,7 +266,7 @@ class StemsDNRDataset(Dataset):
             else:
                 if self.align_stems:
                     if frame_offset is None:
-                        metadata = torchaudio.info(path)
+                        metadata = torchaudio_info(path)
                         num_all_frames = metadata.num_frames
                         num_frames = int(metadata.sample_rate * duration)
                         frame_offset = (num_all_frames - num_frames) // 2
@@ -573,7 +574,7 @@ class RandomStemsDNRDataset(IterableDataset):
 
     def load_randomly_sliced_audio(self, path: str) -> Tuple[torch.Tensor, int]:
         duration = self.duration
-        metadata = torchaudio.info(path)
+        metadata = torchaudio_info(path)
         num_all_frames = metadata.num_frames
         num_frames = int(metadata.sample_rate * duration)
         frame_offset = torch.randint(0, num_all_frames - num_frames, (), generator=self.generator)
@@ -662,8 +663,9 @@ class DistributedRandomStemsDNRDataset(IterableDataset):
 
         if rank >= num_replicas or rank < 0:
             raise ValueError(
-                "Invalid rank {}, rank should be in the interval"
-                " [0, {}]".format(rank, num_replicas - 1)
+                "Invalid rank {}, rank should be in the interval [0, {}]".format(
+                    rank, num_replicas - 1
+                )
             )
 
         if drop_last is None:
@@ -897,7 +899,7 @@ class DistributedRandomStemsDNRDataset(IterableDataset):
 
     def load_randomly_sliced_audio(self, path: str) -> Tuple[torch.Tensor, int]:
         duration = self.duration
-        metadata = torchaudio.info(path)
+        metadata = torchaudio_info(path)
         num_all_frames = metadata.num_frames
         num_frames = int(metadata.sample_rate * duration)
         frame_offset = torch.randint(0, num_all_frames - num_frames, (), generator=self.generator)
