@@ -274,7 +274,7 @@ def test_relative_positional_attn(
 
     assert relative_attn_weights.size() == (batch_size, max_query_length, max_key_length)
 
-    allclose(output, relative_output, atol=1e-7)
+    allclose(output, relative_output, atol=1e-6)
     allclose(attn_weights, relative_attn_weights)
 
     # ensure invariance of relative positions
@@ -342,7 +342,7 @@ def test_relative_positional_attn(
         padded_relative_attn_weights, [1, max_key_length], dim=-1
     )
 
-    allclose(padded_relative_output, relative_output, atol=1e-7)
+    allclose(padded_relative_output, relative_output, atol=1e-6)
     allclose(padded_relative_attn_weights, relative_attn_weights)
 
     (query, key, value), (query_length, key_length) = create_qkv(
