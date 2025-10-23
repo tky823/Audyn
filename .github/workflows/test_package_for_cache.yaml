@@ -55,6 +55,7 @@ jobs:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
           uv venv --python ${env:PYTHON_VERSION}
+          .venv\Scripts\Activate.ps1
           uv pip install packaging
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${env:TORCH_VERSION}
       - name: Overwrite torch version in pyproject.toml (Ubuntu & MacOS)
@@ -64,6 +65,7 @@ jobs:
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
           uv venv --python ${PYTHON_VERSION}
+          source .venv/bin/activate
           uv pip install packaging
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
       - name: Install dependencies (Windows)
