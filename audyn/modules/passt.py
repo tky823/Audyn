@@ -24,7 +24,8 @@ class DisentangledPositionalPatchEmbedding(nn.Module):
         kernel_size (_size_2_t): Kernel size that corresponds to patch.
         stride (_size_2_t): Stride.
         insert_cls_token (bool): If ``True``, class token is inserted to beginning of sequence.
-        insert_dist_token (bool): If ``True``, distillation token is inserd to beginning sequence.
+        insert_dist_token (bool): If ``True``, distillation token is inserted to beginning
+            sequence.
         dropout (float): Dropout rate.
         n_bins (int): Number of input bins.
         n_frames (int): Number of input frames.

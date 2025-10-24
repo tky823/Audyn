@@ -23,7 +23,8 @@ class PatchEmbedding(_PatchEmbedding):
             multiple chunks.
         fusion (bool or nn.Module, optional): Whether to apply fusion.
         insert_cls_token (bool): If ``True``, class token is inserted to beginning of sequence.
-        insert_dist_token (bool): If ``True``, distillation token is inserd to beginning sequence.
+        insert_dist_token (bool): If ``True``, distillation token is inserted to beginning
+            sequence.
         dropout (float): Dropout rate.
         n_bins (int): Number of input bins.
         height (int): Height of image-like patchgram.
