@@ -72,13 +72,13 @@ jobs:
         if: ${{ inputs.os == 'windows-latest' }}
         run: |
           .venv\Scripts\Activate.ps1
-          uv pip install -e ".[recipes]"
+          uv pip install -e ".[tests,recipes]"
           uv pip install soundfile
       - name: Install dependencies (Ubuntu & MacOS)
         if: ${{ inputs.os != 'windows-latest' }}
         run: |
           source .venv/bin/activate
-          uv pip install -e ".[recipes]"
+          uv pip install -e ".[tests,recipes]"
       - name: Show dependencies (Windows)
         if: ${{ inputs.os == 'windows-latest' }}
         run: |
