@@ -569,11 +569,6 @@ class RotaryPositionalMultiheadAttention(_RotaryPositionalMultiheadAttention):
                 f" got embed_dim={embed_dim} and num_heads={num_heads} instead"
             )
 
-        factory_kwargs = {
-            "device": device,
-            "dtype": dtype,
-        }
-
         self.embed_dim = embed_dim
         self.qdim = qdim if qdim is not None else embed_dim
         self.kdim = kdim if kdim is not None else embed_dim
