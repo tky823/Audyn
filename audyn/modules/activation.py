@@ -7,7 +7,10 @@ import torch.nn.functional as F
 from packaging import version
 
 from ..functional.activation import scaled_dot_product_attention
-from .positional_encoding import ExtrapolatablePositionalEmbedding, RotaryPositionalEmbedding
+from .positional_encoding import (
+    ExtrapolatablePositionalEmbedding,
+    RotaryPositionalEmbedding,
+)
 
 __all__ = [
     "TrainableAbsolutePositionalMultiheadAttention",
