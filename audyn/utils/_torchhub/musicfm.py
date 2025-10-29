@@ -48,4 +48,3 @@ def musicfm(
     )
 
     return model
-    return model
