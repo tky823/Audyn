@@ -3,6 +3,7 @@ from .music_tagging_transformer import (
     music_tagging_transformer,
     music_tagging_transformer_melspectrogram,
 )
+from .musicfm import musicfm, musicfm_melspectrogram
 from .passt import passt_base
 from .ssast import multitask_ssast_base_400, ssast_base_400
 
@@ -13,4 +14,6 @@ __all__ = [
     "passt_base",
     "music_tagging_transformer",
     "music_tagging_transformer_melspectrogram",
+    "musicfm",
+    "musicfm_melspectrogram",
 ]
