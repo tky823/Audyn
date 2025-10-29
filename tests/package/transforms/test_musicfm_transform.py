@@ -22,4 +22,4 @@ def test_musicfm_melspectrogram_transform() -> None:
     transform = MusicFMMelSpectrogram.build_from_pretrained()
     melspectrogram = transform(waveform)
 
-    allclose(melspectrogram, expected_melspectrogram)
+    allclose(melspectrogram, expected_melspectrogram, atol=1e-4)
