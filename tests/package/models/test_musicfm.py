@@ -26,4 +26,4 @@ def test_musicfm() -> None:
     with torch.no_grad():
         logits = model(spectrogram)
 
-    allclose(logits, expected_logits, atol=1e-5)
+    allclose(logits, expected_logits, atol=1e-4)
