@@ -4,7 +4,7 @@ from typing import Callable, Dict, Optional
 import torch
 import torchaudio.transforms as aT
 
-from ..amp import get_autocast_device_type
+from ..amp import autocast, get_autocast_device_type
 from ..utils._github import download_file_from_github_release
 
 __all__ = [
@@ -113,7 +113,7 @@ class MusicFMMelSpectrogram(aT.MelSpectrogram):
                 f"Unsupported dtype {dtype} is given. Use float32, float16, or bfloat16."
             )
 
-        with torch.autocast(device_type=device_type, dtype=dtype, enabled=enabled):
+        with autocast(device_type=device_type, dtype=dtype, enabled=enabled):
             spectrogram = super().forward(waveform)
             spectrogram, _ = torch.split(spectrogram, [spectrogram.size(-1) - 1, 1], dim=-1)
             spectrogram = self.amplitude_to_db(spectrogram)
