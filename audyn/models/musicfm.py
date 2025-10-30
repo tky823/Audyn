@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 from omegaconf import OmegaConf
 
-from ..utils.data.download import download_file
+from ..utils._github import download_file_from_github_release
 
 
 class MusicFM(nn.Module):
@@ -86,7 +86,7 @@ class MusicFM(nn.Module):
             config = pretrained_model_configs[pretrained_model_name_or_path]
             url = config["url"]
             path = config["path"]
-            download_file(url, path=path)
+            download_file_from_github_release(url, path=path)
             model = cls.build_from_pretrained(
                 path,
                 aggregator=aggregator,
@@ -124,9 +124,9 @@ def _create_pretrained_model_configs() -> Dict[str, Dict[str, str]]:
 
     pretrained_model_configs = {
         "musicfm_msd": {
-            "url": "https://huggingface.co/tky823/AudynZoo/resolve/main/musicfm_msd.pth",  # noqa: E501
-            "path": os.path.join(model_cache_dir, "MusicFM", "22a0fbef", "musidfm_msd.pth"),
-            "sha256": "22a0fbef9724f4e5f3d0132fd845415f4fb94bc33eef3e975d427500434a6542",
+            "url": "https://github.com/tky823/Audyn/releases/download/v0.2.0/musicfm_msd.pth",  # noqa: E501
+            "path": os.path.join(model_cache_dir, "MusicFM", "4f9c8861", "musicfm_msd.pth"),
+            "sha256": "4f9c886171bc4154a558752faeb83ef1147c227579085e192d581d3fd284de1c",
         },
     }
 
