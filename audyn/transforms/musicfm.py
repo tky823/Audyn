@@ -3,6 +3,7 @@ from typing import Callable, Dict, Optional
 
 import torch
 import torchaudio.transforms as aT
+from packaging import version
 
 from ..amp import autocast, get_autocast_device_type
 from ..utils._github import download_file_from_github_release
@@ -10,6 +11,8 @@ from ..utils._github import download_file_from_github_release
 __all__ = [
     "MusicFMMelSpectrogram",
 ]
+
+IS_TORCH_LT_2_3 = version.parse(torch.__version__) < version.parse("2.3")
 
 
 class MusicFMMelSpectrogram(aT.MelSpectrogram):
@@ -113,12 +116,29 @@ class MusicFMMelSpectrogram(aT.MelSpectrogram):
                 f"Unsupported dtype {dtype} is given. Use float32, float16, or bfloat16."
             )
 
-        with autocast(device_type=device_type, dtype=dtype, enabled=enabled):
-            spectrogram = super().forward(waveform)
-            spectrogram, _ = torch.split(spectrogram, [spectrogram.size(-1) - 1, 1], dim=-1)
-            spectrogram = self.amplitude_to_db(spectrogram)
+        if IS_TORCH_LT_2_3 and not enabled:
+            spectrogram = self._forward(waveform)
+        else:
+            with autocast(device_type=device_type, dtype=dtype, enabled=enabled):
+                spectrogram = self._forward(waveform)
 
         spectrogram = (spectrogram - self.mean) / self.std
+
+        return spectrogram
+
+    def _forward(self, waveform: torch.Tensor) -> torch.Tensor:
+        """Forward pass of MelSpectrogram without normalization.
+
+        Args:
+            waveform (torch.Tensor): Waveform of shape (*, timesteps).
+
+        Returns:
+            torch.Tensor: Mel-spectrogram of shape (*, n_mels, n_frames).
+
+        """
+        spectrogram = super().forward(waveform)
+        spectrogram, _ = torch.split(spectrogram, [spectrogram.size(-1) - 1, 1], dim=-1)
+        spectrogram = self.amplitude_to_db(spectrogram)
 
         return spectrogram
 
