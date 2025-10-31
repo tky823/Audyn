@@ -1,5 +1,5 @@
 import math
-from typing import Optional
+from typing import Optional, Tuple
 
 import torch
 import torch.nn.functional as F
@@ -18,7 +18,7 @@ def scaled_dot_product_attention(
     dropout_p: float = 0.0,
     need_weights: bool = False,
     **kwargs,
-) -> torch.Tensor:
+) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
     """Wrapper function of torch.nn.functional.scaled_dot_product_attention.
 
     torch.nn.functional.scaled_dot_product_attention supports memory-efficient attention
@@ -40,7 +40,10 @@ def scaled_dot_product_attention(
         scale (float, optional): This parameter is supported by ``torch>=2.1``.
 
     Returns:
-        torch.Tensor: Output of shape (batch_size, num_heads, query_length, head_dim).
+        tuple: Tuple of tensors containing:
+            - torch.Tensor: Output of shape (batch_size, num_heads, query_length, head_dim).
+            - torch.Tensor: Optional attention weights of shape
+                (batch_size, query_length, key_length).
 
     """
     if IS_TORCH_LT_2_0 or need_weights:

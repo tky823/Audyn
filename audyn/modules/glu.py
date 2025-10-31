@@ -58,6 +58,7 @@ class GLU1d(nn.Module):
         stride: _size_1_t = 1,
         padding: _size_1_t = 0,
         dilation: _size_1_t = 1,
+        bias: bool = True,
     ) -> None:
         super().__init__()
 
@@ -74,6 +75,7 @@ class GLU1d(nn.Module):
             stride=stride,
             padding=padding,
             dilation=dilation,
+            bias=bias,
         )
         self.map_gate = nn.Conv1d(
             in_channels,
@@ -82,6 +84,7 @@ class GLU1d(nn.Module):
             stride=stride,
             padding=padding,
             dilation=dilation,
+            bias=bias,
         )
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
@@ -105,6 +108,7 @@ class GLU2d(nn.Module):
         stride: _size_2_t = 1,
         padding: _size_2_t = 0,
         dilation: _size_2_t = 1,
+        bias: bool = True,
     ) -> None:
         super().__init__()
 
@@ -121,6 +125,7 @@ class GLU2d(nn.Module):
             stride=stride,
             padding=padding,
             dilation=dilation,
+            bias=bias,
         )
         self.map_gate = nn.Conv2d(
             in_channels,
@@ -129,6 +134,7 @@ class GLU2d(nn.Module):
             stride=stride,
             padding=padding,
             dilation=dilation,
+            bias=bias,
         )
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:

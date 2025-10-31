@@ -95,6 +95,12 @@ Music Tagging Transformer
 
     >>> import torch
     >>> repo = "tky823/Audyn"
+    >>> transform = "music_tagging_transformer_melspectrogram"
+    >>> music_tagging_transformer_melspectrogram = torch.hub.load(
+    ...     repo,
+    ...     transform,
+    ...     skip_validation=False,
+    ... )
     >>> model = "music_tagging_transformer"
     >>> role = "teacher"
     >>> teacher_music_tagging_transformer = torch.hub.load(
@@ -102,17 +108,6 @@ Music Tagging Transformer
     ...     model,
     ...     skip_validation=False,
     ...     role=role,
-    ... )
-
-.. code-block:: python
-
-    >>> import torch
-    >>> repo = "tky823/Audyn"
-    >>> transform = "music_tagging_transformer_melspectrogram"
-    >>> music_tagging_transformer_melspectrogram = torch.hub.load(
-    ...     repo,
-    ...     transform,
-    ...     skip_validation=False,
     ... )
 
 - Student model trained by MSD.
@@ -128,4 +123,30 @@ Music Tagging Transformer
     ...     model,
     ...     skip_validation=False,
     ...     role=role,
+    ... )
+
+MusicFM
+-------
+
+- The weights are extracted from the original implementation.
+- In terms of reproducibility, it is recommended to load predefined Mel-spectrogram transform as well.
+- The model is pretrained by Million Song Dataset (MSD).
+
+.. code-block:: python
+
+    >>> import torch
+    >>> repo = "tky823/Audyn"
+    >>> transform = "musicfm_melspectrogram"
+    >>> musicfm_melspectrogram = torch.hub.load(
+    ...     repo,
+    ...     transform,
+    ...     skip_validation=False,
+    ... )
+    >>> model = "musicfm"
+    >>> dataset = "msd"
+    >>> musicfm = torch.hub.load(
+    ...     repo,
+    ...     model,
+    ...     skip_validation=False,
+    ...     dataset=dataset,
     ... )
