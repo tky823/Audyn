@@ -28,7 +28,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
 
     mkdir -p "${list_dir}"
 
-    subset="train"
+    subset="training"
     list_path="${list_dir}/${subset}.txt"
 
     python ./local/save_training_list.py \
@@ -102,7 +102,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     preprocess.fma_root="${fma_root}" \
     preprocess.subset="${subset}"
 
-    subset="test"
+    subset="evaluation"
     list_path="${list_dir}/${subset}_db.txt"
 
     python ./local/save_evaluation_db_list.py \
@@ -131,7 +131,7 @@ fi
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     echo "Preprocess stage 2: Save features"
 
-    for subset in "train" "validation"; do
+    for subset in "training" "validation"; do
         list_path="${list_dir}/${subset}.txt"
         subset_feature_dir="${feature_dir}/${subset}"
 
@@ -149,7 +149,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         preprocess.subset="${subset}"
     done
 
-    subset="test"
+    subset="evaluation"
     subset_feature_dir="${feature_dir}/${subset}"
 
     mkdir -p "${subset_feature_dir}"

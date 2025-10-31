@@ -17,7 +17,7 @@ def main(config: DictConfig) -> None:
 
     assert list_path is not None, "Specify preprocess.list_path."
     assert subset is not None, "Specify preprocess.subset."
-    assert subset == "test", "'test' is expected as subset."
+    assert subset == "evaluation", "'evaluation' is expected as subset."
 
     subset_dir = os.path.join(
         fma_root,

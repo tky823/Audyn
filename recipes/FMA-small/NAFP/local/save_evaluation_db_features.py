@@ -40,7 +40,7 @@ def process(filename: str, fma_root: str, feature_dir: str, subset: str, ext: st
     sub_index = os.path.dirname(filename)
     filename = os.path.basename(filename)
 
-    if subset == "test":
+    if subset == "evaluation":
         path = os.path.join(
             fma_root,
             "music",

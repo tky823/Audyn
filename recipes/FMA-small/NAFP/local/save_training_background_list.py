@@ -18,7 +18,9 @@ def main(config: DictConfig) -> None:
 
     assert list_path is not None, "Specify preprocess.list_path."
     assert subset is not None, "Specify preprocess.subset."
-    assert subset in ["train", "validation"], "'train' or 'validation' is expected as subset."
+    assert subset in ["training", "validation"], (
+        "'training' or 'validation' is expected as subset."
+    )
 
     subset_dir = os.path.join(fma_root, "aug", "bg", "tr")
     paths = sorted(glob.glob(os.path.join(subset_dir, "**", "*.wav"), recursive=True))

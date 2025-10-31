@@ -18,7 +18,7 @@ def main(config: DictConfig) -> None:
 
     assert list_path is not None, "Specify preprocess.list_path."
     assert subset is not None, "Specify preprocess.subset."
-    assert subset in "train", "'train' is expected as subset."
+    assert subset in "training", "'training' is expected as subset."
 
     subset_dir = os.path.join(fma_root, "music", "train-10k-30s", "fma_small_8k_plus_medium_2k")
     paths = sorted(glob.glob(os.path.join(subset_dir, "*", "*.wav")))
