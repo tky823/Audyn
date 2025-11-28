@@ -52,7 +52,7 @@ def process(filename: str, fma_root: str, feature_dir: str, subset: str, ext: st
     else:
         raise ValueError(f"Unsupported subset {subset} is found.")
 
-    _feature_dir = os.path.join(feature_dir, "background", sub_name)
+    _feature_dir = os.path.join(feature_dir, "impulse_response", sub_name)
 
     os.makedirs(_feature_dir, exist_ok=True)
 
