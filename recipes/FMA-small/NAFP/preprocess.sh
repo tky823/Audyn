@@ -132,12 +132,38 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     echo "Preprocess stage 2: Save features"
 
     for subset in "training" "validation"; do
-        list_path="${list_dir}/${subset}.txt"
         subset_feature_dir="${feature_dir}/${subset}"
+        list_path="${list_dir}/${subset}.txt"
 
         mkdir -p "${subset_feature_dir}"
 
         python ./local/save_features.py \
+        --config-dir "./conf" \
+        hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
+        preprocess="${preprocess}" \
+        data="${data}" \
+        preprocess.dump_format="${dump_format}" \
+        preprocess.list_path="${list_path}" \
+        preprocess.feature_dir="${subset_feature_dir}" \
+        preprocess.fma_root="${fma_root}" \
+        preprocess.subset="${subset}"
+
+        list_path="${list_dir}/${subset}_background.txt"
+
+        python ./local/save_background_features.py \
+        --config-dir "./conf" \
+        hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
+        preprocess="${preprocess}" \
+        data="${data}" \
+        preprocess.dump_format="${dump_format}" \
+        preprocess.list_path="${list_path}" \
+        preprocess.feature_dir="${subset_feature_dir}" \
+        preprocess.fma_root="${fma_root}" \
+        preprocess.subset="${subset}"
+
+        list_path="${list_dir}/${subset}_impulse-response.txt"
+
+        python ./local/save_impulse_response_features.py \
         --config-dir "./conf" \
         hydra.run.dir="${log_root}/$(date +"%Y%m%d-%H%M%S")" \
         preprocess="${preprocess}" \
