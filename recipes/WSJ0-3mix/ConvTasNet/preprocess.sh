@@ -22,16 +22,16 @@ list_dir="${dump_dir}/list"
 feature_dir="${dump_dir}/feature"
 
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
-    echo "Preprocess stage 1: Split data into training/validation/test"
+    echo "Preprocess stage 1: Split data into training/validation/evaluation"
 
     mkdir -p "${list_dir}"
 
-    for subset in "train" "validation" "test"; do
-        if [ "${subset}" = "train" ]; then
+    for subset in "training" "validation" "evaluation"; do
+        if [ "${subset}" = "training" ]; then
             subset_name="tr"
         elif [ "${subset}" = "validation" ]; then
             subset_name="cv"
-        elif [ "${subset}" = "test" ]; then
+        elif [ "${subset}" = "evaluation" ]; then
             subset_name="tt"
         else
             echo "Invalid subset is given."
@@ -50,12 +50,12 @@ fi
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     echo "Preprocess stage 2: Save features"
 
-    for subset in "train" "validation" "test"; do
-        if [ "${subset}" = "train" ]; then
+    for subset in "training" "validation" "evaluation"; do
+        if [ "${subset}" = "training" ]; then
             subset_name="tr"
         elif [ "${subset}" = "validation" ]; then
             subset_name="cv"
-        elif [ "${subset}" = "test" ]; then
+        elif [ "${subset}" = "evaluation" ]; then
             subset_name="tt"
         else
             echo "Invalid subset is given."
