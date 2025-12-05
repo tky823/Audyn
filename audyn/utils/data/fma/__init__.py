@@ -1,4 +1,5 @@
 from ._download import download_track_ids
+from .dataset import FreeMusicArchiveNAFPDataset
 
 __all__ = [
     "small_train_track_ids",
@@ -13,6 +14,7 @@ __all__ = [
     "full_train_track_ids",
     "full_validation_track_ids",
     "full_test_track_ids",
+    "FreeMusicArchiveNAFPDataset",
 ]
 
 
