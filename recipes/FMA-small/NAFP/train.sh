@@ -37,7 +37,6 @@ tensorboard_dir="${tensorboard_root}/${tag}"
 cmd=$(
     audyn-parse-run-command \
     --config-dir "./conf" \
-    hydra.run.dir="./log/$(date +"%Y%m%d-%H%M%S")" \
     system="${system}"
 )
 
@@ -53,10 +52,14 @@ optimizer="${optimizer}" \
 lr_scheduler="${lr_scheduler}" \
 criterion="${criterion}" \
 preprocess.dump_format="${dump_format}" \
-train.dataset.train.list_path="${list_dir}/train.txt" \
-train.dataset.train.feature_dir="${feature_dir}/train" \
+train.dataset.train.list_path="${list_dir}/training.txt" \
+train.dataset.train.feature_dir="${feature_dir}/training" \
+train.dataset.train.background_list_path="${feature_dir}/training_background.txt" \
+train.dataset.train.impulse_response_list_path="${feature_dir}/training_impulse-response.txt" \
 train.dataset.validation.list_path="${list_dir}/validation.txt" \
 train.dataset.validation.feature_dir="${feature_dir}/validation" \
+train.dataset.validation.background_list_path="${feature_dir}/validation_background.txt" \
+train.dataset.validation.impulse_response_list_path="${feature_dir}/validation_impulse-response.txt" \
 train.resume.continue_from="${continue_from}" \
 train.output.exp_dir="${exp_dir}" \
 train.output.tensorboard_dir="${tensorboard_dir}"

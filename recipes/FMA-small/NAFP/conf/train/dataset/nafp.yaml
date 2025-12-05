@@ -1,13 +1,17 @@
 defaults:
-  - torch
+  - default
   - _self_
 
 train:
+  _target_: audyn.utils.data.fma.FreeMusicArchiveNAFPDataset
   list_path:
   feature_dir:
-  decode_audio_as_waveform: false
+  background_list_path:
+  impulse_response_list_path:
 
 validation:
+  _target_: ${..train._target_}
   list_path:
   feature_dir:
-  decode_audio_as_waveform: ${..train.decode_audio_as_waveform}
+  background_list_path:
+  impulse_response_list_path:
