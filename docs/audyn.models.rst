@@ -596,3 +596,373 @@ Music Tagging Transformer
     >>> likelihood = F.sigmoid(logit)
     >>> print(likelihood.size())
     torch.Size([4, 10])
+
+EnCodec
+^^^^^^^
+
+.. autoclass:: audyn.models.EnCodec
+
+.. code-block:: python
+
+    >>> import torch
+    >>> from audyn.models import EnCodec
+    >>> torch.manual_seed(0)
+    >>> model = EnCodec.build_from_pretrained("encodec_24khz")
+    >>> print(model)
+    EnCodec(
+      (encoder): Encoder(
+        (conv1d_in): ParametrizedConv1d(
+          1, 32, kernel_size=(7,), stride=(1,)
+          (parametrizations): ModuleDict(
+            (weight): ParametrizationList(
+              (0): _WeightNorm()
+            )
+          )
+        )
+        (backbone): Sequential(
+          (0): EncoderBlock(
+            (backbone): Sequential(
+              (0): ResidualUnit1d(
+                (conv1d_in): ParametrizedConv1d(
+                  32, 16, kernel_size=(3,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+                (conv1d_out): ParametrizedConv1d(
+                  16, 32, kernel_size=(1,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+                (shortcut): ParametrizedConv1d(
+                  32, 32, kernel_size=(1,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+              )
+            )
+            (conv1d): ParametrizedConv1d(
+              32, 64, kernel_size=(4,), stride=(2,)
+              (parametrizations): ModuleDict(
+                (weight): ParametrizationList(
+                  (0): _WeightNorm()
+                )
+              )
+            )
+          )
+          (1): EncoderBlock(
+            (backbone): Sequential(
+              (0): ResidualUnit1d(
+                (conv1d_in): ParametrizedConv1d(
+                  64, 32, kernel_size=(3,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+                (conv1d_out): ParametrizedConv1d(
+                  32, 64, kernel_size=(1,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+                (shortcut): ParametrizedConv1d(
+                  64, 64, kernel_size=(1,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+              )
+            )
+            (conv1d): ParametrizedConv1d(
+              64, 128, kernel_size=(8,), stride=(4,)
+              (parametrizations): ModuleDict(
+                (weight): ParametrizationList(
+                  (0): _WeightNorm()
+                )
+              )
+            )
+          )
+          (2): EncoderBlock(
+            (backbone): Sequential(
+              (0): ResidualUnit1d(
+                (conv1d_in): ParametrizedConv1d(
+                  128, 64, kernel_size=(3,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+                (conv1d_out): ParametrizedConv1d(
+                  64, 128, kernel_size=(1,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+                (shortcut): ParametrizedConv1d(
+                  128, 128, kernel_size=(1,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+              )
+            )
+            (conv1d): ParametrizedConv1d(
+              128, 256, kernel_size=(10,), stride=(5,)
+              (parametrizations): ModuleDict(
+                (weight): ParametrizationList(
+                  (0): _WeightNorm()
+                )
+              )
+            )
+          )
+          (3): EncoderBlock(
+            (backbone): Sequential(
+              (0): ResidualUnit1d(
+                (conv1d_in): ParametrizedConv1d(
+                  256, 128, kernel_size=(3,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+                (conv1d_out): ParametrizedConv1d(
+                  128, 256, kernel_size=(1,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+                (shortcut): ParametrizedConv1d(
+                  256, 256, kernel_size=(1,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+              )
+            )
+            (conv1d): ParametrizedConv1d(
+              256, 512, kernel_size=(16,), stride=(8,)
+              (parametrizations): ModuleDict(
+                (weight): ParametrizationList(
+                  (0): _WeightNorm()
+                )
+              )
+            )
+          )
+        )
+        (rnn): LSTM(512, 512, num_layers=2, batch_first=True)
+        (conv1d_out): ParametrizedConv1d(
+          512, 128, kernel_size=(7,), stride=(1,)
+          (parametrizations): ModuleDict(
+            (weight): ParametrizationList(
+              (0): _WeightNorm()
+            )
+          )
+        )
+      )
+      (vector_quantizer): ResidualVectorQuantizer(
+        (codebooks): ModuleList(
+          (0-31): 32 x Embedding(1024, 128)
+        )
+      )
+      (decoder): Decoder(
+        (conv1d_in): ParametrizedConv1d(
+          128, 512, kernel_size=(7,), stride=(1,)
+          (parametrizations): ModuleDict(
+            (weight): ParametrizationList(
+              (0): _WeightNorm()
+            )
+          )
+        )
+        (rnn): LSTM(512, 512, num_layers=2, batch_first=True)
+        (backbone): Sequential(
+          (0): DecoderBlock(
+            (conv1d): ParametrizedConvTranspose1d(
+              512, 256, kernel_size=(16,), stride=(8,)
+              (parametrizations): ModuleDict(
+                (weight): ParametrizationList(
+                  (0): _WeightNorm()
+                )
+              )
+            )
+            (backbone): Sequential(
+              (0): ResidualUnit1d(
+                (conv1d_in): ParametrizedConv1d(
+                  256, 128, kernel_size=(3,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+                (conv1d_out): ParametrizedConv1d(
+                  128, 256, kernel_size=(1,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+                (shortcut): ParametrizedConv1d(
+                  256, 256, kernel_size=(1,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+              )
+            )
+          )
+          (1): DecoderBlock(
+            (conv1d): ParametrizedConvTranspose1d(
+              256, 128, kernel_size=(10,), stride=(5,)
+              (parametrizations): ModuleDict(
+                (weight): ParametrizationList(
+                  (0): _WeightNorm()
+                )
+              )
+            )
+            (backbone): Sequential(
+              (0): ResidualUnit1d(
+                (conv1d_in): ParametrizedConv1d(
+                  128, 64, kernel_size=(3,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+                (conv1d_out): ParametrizedConv1d(
+                  64, 128, kernel_size=(1,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+                (shortcut): ParametrizedConv1d(
+                  128, 128, kernel_size=(1,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+              )
+            )
+          )
+          (2): DecoderBlock(
+            (conv1d): ParametrizedConvTranspose1d(
+              128, 64, kernel_size=(8,), stride=(4,)
+              (parametrizations): ModuleDict(
+                (weight): ParametrizationList(
+                  (0): _WeightNorm()
+                )
+              )
+            )
+            (backbone): Sequential(
+              (0): ResidualUnit1d(
+                (conv1d_in): ParametrizedConv1d(
+                  64, 32, kernel_size=(3,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+                (conv1d_out): ParametrizedConv1d(
+                  32, 64, kernel_size=(1,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+                (shortcut): ParametrizedConv1d(
+                  64, 64, kernel_size=(1,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+              )
+            )
+          )
+          (3): DecoderBlock(
+            (conv1d): ParametrizedConvTranspose1d(
+              64, 32, kernel_size=(4,), stride=(2,)
+              (parametrizations): ModuleDict(
+                (weight): ParametrizationList(
+                  (0): _WeightNorm()
+                )
+              )
+            )
+            (backbone): Sequential(
+              (0): ResidualUnit1d(
+                (conv1d_in): ParametrizedConv1d(
+                  32, 16, kernel_size=(3,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+                (conv1d_out): ParametrizedConv1d(
+                  16, 32, kernel_size=(1,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+                (shortcut): ParametrizedConv1d(
+                  32, 32, kernel_size=(1,), stride=(1,)
+                  (parametrizations): ModuleDict(
+                    (weight): ParametrizationList(
+                      (0): _WeightNorm()
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+        (conv1d_out): ParametrizedConv1d(
+          32, 1, kernel_size=(7,), stride=(1,)
+          (parametrizations): ModuleDict(
+            (weight): ParametrizationList(
+              (0): _WeightNorm()
+            )
+          )
+        )
+      )
+    )
+    >>> waveform = torch.randn((4, 1, 10 * 24000))
+    >>> output, encoded, hierarchical_quantized, hierarchical_residual, indices = model(waveform)
+    >>> print(output.size(), hierarchical_quantized.size(), hierarchical_residual.size(), indices.size())
+    torch.Size([4, 1, 240000]) torch.Size([4, 18, 128, 750]) torch.Size([4, 18, 128, 750]) torch.Size([4, 18, 750])
