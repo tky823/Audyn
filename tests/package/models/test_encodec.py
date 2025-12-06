@@ -1,8 +1,12 @@
+import os
+
 import pytest
 import torch
 from audyn_test import allclose
+from audyn_test.utils import audyn_test_cache_dir
 
 from audyn.models.encodec import Decoder, EnCodec, Encoder
+from audyn.utils._github import download_file_from_github_release
 
 
 @pytest.mark.parametrize("is_causal", [True, False])
@@ -85,6 +89,29 @@ def test_official_encodec(is_causal: bool) -> None:
             _hierarchical_quantized = torch.sum(hierarchical_quantized[:stage_idx], dim=0)
 
             allclose(_hierarchical_quantized + _hierarchical_residual, encoded, atol=1e-5)
+
+    # regression test
+    url = (
+        "https://github.com/tky823/Audyn/releases/download/v0.2.1/test_official_encodec_24kHz.pth"  # noqa: E501  # noqa: E501
+    )
+
+    filename = os.path.basename(url)
+    path = os.path.join(audyn_test_cache_dir, filename)
+    download_file_from_github_release(url, path)
+
+    data = torch.load(path, weights_only=True)
+
+    model = EnCodec.build_from_pretrained("encodec_24khz")
+
+    input = data["input"]
+    expected_output = data["output"]
+
+    model.eval()
+
+    with torch.no_grad():
+        output, encoded, hierarchical_quantized, hierarchical_residual, indices = model(input)
+
+    allclose(output, expected_output, atol=1e-5)
 
     num_parameters = 0
 
