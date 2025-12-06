@@ -78,7 +78,7 @@ class RVQVAE(BaseVAE):
                     "vector_quantizer is required as keyword argument."
                 )
 
-                (vector_quantizer,) = kwargs["vector_quantizer"]
+                vector_quantizer = kwargs["vector_quantizer"]
 
                 assert isinstance(vector_quantizer, nn.Module), (
                     "nn.Module is required as vector_quantizer."
