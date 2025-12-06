@@ -24,7 +24,7 @@ IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
 
 class EnCodec(RVQVAE):
-    """EnCodec using residual vector quantizer.
+    r"""EnCodec using residual vector quantizer.
 
     Args:
         encoder (nn.Module): Encoder which returns latent feature of
