@@ -163,7 +163,12 @@ class EnCodec(RVQVAE):
             pretrained_model_config = resolved_config.model
             pretrained_model_config["_target_"] = f"{cls.__module__}.{cls.__name__}"
             model: EnCodec = instantiate(pretrained_model_config)
+            # For backward compatibility, weight_norm is removed here.
+            model.encoder.remove_weight_norm_()
+            model.decoder.remove_weight_norm_()
             model.load_state_dict(model_state_dict)
+            model.encoder.weight_norm_()
+            model.decoder.weight_norm_()
 
             return model
         elif pretrained_model_name_or_path in pretrained_model_configs:
@@ -337,6 +342,25 @@ class Encoder(nn.Module):
         self.registered_weight_norms.add("conv1d_in")
         self.registered_weight_norms.add("conv1d_out")
 
+    def remove_weight_norm_(self) -> None:
+        if IS_TORCH_LT_2_1:
+            remove_weight_norm_fn = nn.utils.remove_weight_norm
+            remove_weight_norm_args = ()
+        else:
+            remove_weight_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_weight_norm_args = ("weight",)
+
+        for block in self.backbone:
+            block: EncoderBlock
+            block.remove_weight_norm_()
+
+        self.registered_weight_norms.remove("backbone")
+
+        self.conv1d_in = remove_weight_norm_fn(self.conv1d_in, *remove_weight_norm_args)
+        self.conv1d_out = remove_weight_norm_fn(self.conv1d_out, *remove_weight_norm_args)
+        self.registered_weight_norms.remove("conv1d_in")
+        self.registered_weight_norms.remove("conv1d_out")
+
 
 class Decoder(nn.Module):
     """Decoder of EnCodec."""
@@ -499,6 +523,25 @@ class Decoder(nn.Module):
         self.registered_weight_norms.add("conv1d_in")
         self.registered_weight_norms.add("conv1d_out")
 
+    def remove_weight_norm_(self) -> None:
+        if IS_TORCH_LT_2_1:
+            remove_weight_norm_fn = nn.utils.remove_weight_norm
+            remove_weight_norm_args = ()
+        else:
+            remove_weight_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_weight_norm_args = ("weight",)
+
+        for block in self.backbone:
+            block: EncoderBlock
+            block.remove_weight_norm_()
+
+        self.registered_weight_norms.remove("backbone")
+
+        self.conv1d_in = remove_weight_norm_fn(self.conv1d_in, *remove_weight_norm_args)
+        self.conv1d_out = remove_weight_norm_fn(self.conv1d_out, *remove_weight_norm_args)
+        self.registered_weight_norms.remove("conv1d_in")
+        self.registered_weight_norms.remove("conv1d_out")
+
 
 def _get_rnn(rnn_type: Union[str, Type]) -> Type:
     if isinstance(rnn_type, type):
@@ -522,10 +565,10 @@ def _create_pretrained_encodec_configs() -> Dict[str, Dict[str, str]]:
             "path": os.path.join(
                 model_cache_dir,
                 "EnCodec",
-                "ba0d91b1",
+                "7f737d31",
                 "encodec_24khz.pth",
             ),
-            "sha256": "ba0d91b1af7037505ac2ed543950fdeb202a37d0c7bc62cdffa28fd8b21f6353",
+            "sha256": "7f737d318e0dac4d140cad0f38a7184128c795cfebf764341e631d381ae33c3c",
         },
     }
 

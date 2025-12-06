@@ -107,11 +107,31 @@ class EncoderBlock(nn.Module):
             weight_norm_fn = nn.utils.parametrizations.weight_norm
 
         if "backbone" not in self.registered_weight_norms:
-            self.backbone.weight_norm_()
+            for unit in self.backbone:
+                unit: ResidualUnit1d
+                unit.weight_norm_()
+
             self.registered_weight_norms.add("backbone")
 
         self.conv1d = weight_norm_fn(self.conv1d)
         self.registered_weight_norms.add("conv1d")
+
+    def remove_weight_norm_(self) -> None:
+        if IS_TORCH_LT_2_1:
+            remove_weight_norm_fn = nn.utils.remove_weight_norm
+            remove_weight_norm_args = ()
+        else:
+            remove_weight_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_weight_norm_args = ("weight",)
+
+        for unit in self.backbone:
+            unit: ResidualUnit1d
+            unit.remove_weight_norm_()
+
+        self.registered_weight_norms.remove("backbone")
+
+        self.conv1d = remove_weight_norm_fn(self.conv1d, *remove_weight_norm_args)
+        self.registered_weight_norms.remove("conv1d")
 
 
 class DecoderBlock(nn.Module):
@@ -211,11 +231,31 @@ class DecoderBlock(nn.Module):
             weight_norm_fn = nn.utils.parametrizations.weight_norm
 
         if "backbone" not in self.registered_weight_norms:
-            self.backbone.weight_norm_()
+            for unit in self.backbone:
+                unit: ResidualUnit1d
+                unit.weight_norm_()
+
             self.registered_weight_norms.add("backbone")
 
         self.conv1d = weight_norm_fn(self.conv1d)
         self.registered_weight_norms.add("conv1d")
+
+    def remove_weight_norm_(self) -> None:
+        if IS_TORCH_LT_2_1:
+            remove_weight_norm_fn = nn.utils.remove_weight_norm
+            remove_weight_norm_args = ()
+        else:
+            remove_weight_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_weight_norm_args = ("weight",)
+
+        for unit in self.backbone:
+            unit: ResidualUnit1d
+            unit.remove_weight_norm_()
+
+        self.registered_weight_norms.remove("backbone")
+
+        self.conv1d = remove_weight_norm_fn(self.conv1d, *remove_weight_norm_args)
+        self.registered_weight_norms.remove("conv1d")
 
 
 class ResidualUnit1d(nn.Module):
@@ -323,6 +363,24 @@ class ResidualUnit1d(nn.Module):
         if self.shortcut is not None:
             self.shortcut = weight_norm_fn(self.shortcut)
             self.registered_weight_norms.add("shortcut")
+
+    def remove_weight_norm_(self) -> None:
+        if IS_TORCH_LT_2_1:
+            remove_weight_norm_fn = nn.utils.remove_weight_norm
+            remove_weight_norm_args = ()
+        else:
+            remove_weight_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_weight_norm_args = ("weight",)
+
+        self.conv1d_in = remove_weight_norm_fn(self.conv1d_in, *remove_weight_norm_args)
+        self.conv1d_out = remove_weight_norm_fn(self.conv1d_out, *remove_weight_norm_args)
+
+        self.registered_weight_norms.remove("conv1d_in")
+        self.registered_weight_norms.remove("conv1d_out")
+
+        if self.shortcut is not None:
+            self.shortcut = remove_weight_norm_fn(self.shortcut, *remove_weight_norm_args)
+            self.registered_weight_norms.remove("shortcut")
 
 
 def _pad1d(
