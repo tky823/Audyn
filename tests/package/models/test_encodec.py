@@ -92,19 +92,19 @@ def test_official_encodec(is_causal: bool) -> None:
         if p.requires_grad:
             num_parameters += p.numel()
 
-    assert num_parameters == 18870114
+    assert num_parameters == 19046114
 
 
 def test_encodec_encoder() -> None:
     torch.manual_seed(0)
 
-    in_channels, out_channels, hidden_channels = 1, 128, 32
+    in_channels, out_channels, hidden_channels = 1, 32, 8
     depth_rate = 2
-    kernel_size_in, kernel_size_out, kernel_size = 7, 7, 3
-    stride = [2, 4, 5, 8]
+    kernel_size_in, kernel_size_out, kernel_size = 5, 5, 3
+    stride = [2, 5]
 
     batch_size = 4
-    length_in = 1600
+    length_in = 400
 
     input = torch.randn((batch_size, in_channels, length_in))
 
@@ -129,13 +129,13 @@ def test_encodec_encoder() -> None:
 
 
 def test_encodec_decoder() -> None:
-    in_channels, out_channels, hidden_channels = 128, 1, 32
+    in_channels, out_channels, hidden_channels = 32, 1, 8
     depth_rate = 2
-    kernel_size_in, kernel_size_out, kernel_size = 7, 7, 3
-    stride = [8, 5, 4, 2]
+    kernel_size_in, kernel_size_out, kernel_size = 5, 5, 3
+    stride = [5, 2]
 
     batch_size = 4
-    length_in = 100
+    length_in = 40
 
     input = torch.randn((batch_size, in_channels, length_in))
 
