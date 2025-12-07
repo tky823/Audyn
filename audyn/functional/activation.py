@@ -65,6 +65,7 @@ def scaled_dot_product_attention(
 
     batch_size, num_heads, key_length, head_dim = key.size()
 
+    # Masks are converted to float for F.scaled_dot_product_attention
     key_padding_mask = F._canonical_mask(
         mask=key_padding_mask,
         mask_name="key_padding_mask",
@@ -72,7 +73,6 @@ def scaled_dot_product_attention(
         other_name="attn_mask",
         target_type=query.dtype,
     )
-
     attn_mask = F._canonical_mask(
         mask=attn_mask,
         mask_name="attn_mask",
@@ -82,14 +82,17 @@ def scaled_dot_product_attention(
         check_other=False,
     )
 
-    if key_padding_mask is not None:
+    if key_padding_mask is None:
+        if attn_mask is not None and attn_mask.dim() == 3:
+            attn_mask = attn_mask.view(batch_size, num_heads, -1, key_length)
+    else:
         key_padding_mask = key_padding_mask.view(batch_size, 1, 1, key_length)
 
         if attn_mask is None:
             attn_mask = key_padding_mask
         else:
             if attn_mask.dim() == 3:
-                attn_mask.view(batch_size, num_heads, -1, key_length)
+                attn_mask = attn_mask.view(batch_size, num_heads, -1, key_length)
             else:
                 assert attn_mask.dim() == 2
 

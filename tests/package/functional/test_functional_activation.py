@@ -12,10 +12,13 @@ from audyn.functional.activation import scaled_dot_product_attention
 
 @pytest.mark.parametrize("use_key_padding_mask", [True, False])
 @pytest.mark.parametrize("use_attn_mask", [True, False])
+@pytest.mark.parametrize("share_attn_mask", [True, False])
 @pytest.mark.skipif(
     version.parse(torch.__version__) < version.parse("2.0"), reason="torch >= 2.0 is required."
 )
-def test_scaled_dot_product_attention(use_key_padding_mask: bool, use_attn_mask: bool) -> None:
+def test_scaled_dot_product_attention(
+    use_key_padding_mask: bool, use_attn_mask: bool, share_attn_mask: bool
+) -> None:
     torch.manual_seed(0)
 
     batch_first = True
@@ -48,7 +51,10 @@ def test_scaled_dot_product_attention(use_key_padding_mask: bool, use_attn_mask:
     if not use_key_padding_mask:
         key_padding_mask = None
 
-    if not use_attn_mask:
+    if use_attn_mask:
+        if not share_attn_mask:
+            attn_mask = attn_mask.expand(batch_size * num_heads, -1, -1)
+    else:
         attn_mask = None
 
     output_sdpa, _ = scaled_dot_product_attention(
@@ -72,14 +78,17 @@ def test_scaled_dot_product_attention(use_key_padding_mask: bool, use_attn_mask:
         check_other=False,
     )
 
-    if key_padding_mask is not None:
+    if key_padding_mask is None:
+        if attn_mask is not None and attn_mask.dim() == 3:
+            attn_mask = attn_mask.view(batch_size, num_heads, -1, max_key_length)
+    else:
         key_padding_mask = key_padding_mask.view(batch_size, 1, 1, max_key_length)
 
         if attn_mask is None:
             attn_mask = key_padding_mask
         else:
             if attn_mask.dim() == 3:
-                attn_mask.view(batch_size, num_heads, -1, max_key_length)
+                attn_mask = attn_mask.view(batch_size, num_heads, -1, max_key_length)
             else:
                 assert attn_mask.dim() == 2
 
