@@ -82,7 +82,10 @@ def scaled_dot_product_attention(
         check_other=False,
     )
 
-    if key_padding_mask is not None:
+    if key_padding_mask is None:
+        if attn_mask is not None and attn_mask.dim() == 3:
+            attn_mask = attn_mask.view(batch_size, num_heads, -1, key_length)
+    else:
         key_padding_mask = key_padding_mask.view(batch_size, 1, 1, key_length)
 
         if attn_mask is None:
