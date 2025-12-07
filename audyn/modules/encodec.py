@@ -1,3 +1,4 @@
+import math
 from typing import Callable, Optional, Union
 
 import torch
@@ -24,6 +25,7 @@ class EncoderBlock(nn.Module):
         kernel_size: _size_1_t,
         stride: _size_1_t,
         dilation_rate: _size_1_t = 1,
+        padding_mode: str = "reflect",
         num_layers: int = 1,
         activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.elu,
         weight_regularization: Optional[str] = "weight_norm",
@@ -42,6 +44,7 @@ class EncoderBlock(nn.Module):
                 in_channels,
                 kernel_size=kernel_size,
                 dilation=dilation,
+                padding_mode=padding_mode,
                 activation=activation,
                 weight_regularization=weight_regularization,
                 is_causal=is_causal,
@@ -67,6 +70,7 @@ class EncoderBlock(nn.Module):
 
         self.kernel_size_out = _single(kernel_size_out)
         self.stride = stride
+        self.padding_mode = padding_mode
         self.weight_regularization = weight_regularization
         self.is_causal = is_causal
 
@@ -83,20 +87,15 @@ class EncoderBlock(nn.Module):
             )
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        (kernel_size_out,) = self.kernel_size_out
-        (stride,) = self.stride
-        padding = kernel_size_out - stride
-
-        if self.is_causal:
-            padding_left = padding
-            padding_right = 0
-        else:
-            padding_left = padding // 2
-            padding_right = padding - padding_left
-
-        x = F.pad(input, (padding_left, padding_right))
-        x = self.backbone(x)
+        x = self.backbone(input)
         x = self.nonlinear1d(x)
+        x = _pad1d(
+            x,
+            kernel_size=self.kernel_size_out,
+            stride=self.stride,
+            mode=self.padding_mode,
+            is_causal=self.is_causal,
+        )
         output = self.conv1d(x)
 
         return output
@@ -108,11 +107,31 @@ class EncoderBlock(nn.Module):
             weight_norm_fn = nn.utils.parametrizations.weight_norm
 
         if "backbone" not in self.registered_weight_norms:
-            self.backbone.weight_norm_()
+            for unit in self.backbone:
+                unit: ResidualUnit1d
+                unit.weight_norm_()
+
             self.registered_weight_norms.add("backbone")
 
         self.conv1d = weight_norm_fn(self.conv1d)
         self.registered_weight_norms.add("conv1d")
+
+    def remove_weight_norm_(self) -> None:
+        if IS_TORCH_LT_2_1:
+            remove_weight_norm_fn = nn.utils.remove_weight_norm
+            remove_weight_norm_args = ()
+        else:
+            remove_weight_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_weight_norm_args = ("weight",)
+
+        for unit in self.backbone:
+            unit: ResidualUnit1d
+            unit.remove_weight_norm_()
+
+        self.registered_weight_norms.remove("backbone")
+
+        self.conv1d = remove_weight_norm_fn(self.conv1d, *remove_weight_norm_args)
+        self.registered_weight_norms.remove("conv1d")
 
 
 class DecoderBlock(nn.Module):
@@ -125,6 +144,7 @@ class DecoderBlock(nn.Module):
         kernel_size: _size_1_t,
         stride: _size_1_t,
         dilation_rate: _size_1_t = 1,
+        padding_mode: str = "reflect",
         num_layers: int = 1,
         activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.elu,
         weight_regularization: Optional[str] = "weight_norm",
@@ -158,6 +178,7 @@ class DecoderBlock(nn.Module):
                 out_channels,
                 kernel_size=kernel_size,
                 dilation=dilation,
+                padding_mode=padding_mode,
                 activation=activation,
                 weight_regularization=weight_regularization,
                 is_causal=is_causal,
@@ -168,6 +189,7 @@ class DecoderBlock(nn.Module):
 
         self.kernel_size_in = _single(kernel_size_in)
         self.stride = stride
+        self.padding_mode = padding_mode
         self.weight_regularization = weight_regularization
         self.is_causal = is_causal
 
@@ -209,11 +231,31 @@ class DecoderBlock(nn.Module):
             weight_norm_fn = nn.utils.parametrizations.weight_norm
 
         if "backbone" not in self.registered_weight_norms:
-            self.backbone.weight_norm_()
+            for unit in self.backbone:
+                unit: ResidualUnit1d
+                unit.weight_norm_()
+
             self.registered_weight_norms.add("backbone")
 
         self.conv1d = weight_norm_fn(self.conv1d)
         self.registered_weight_norms.add("conv1d")
+
+    def remove_weight_norm_(self) -> None:
+        if IS_TORCH_LT_2_1:
+            remove_weight_norm_fn = nn.utils.remove_weight_norm
+            remove_weight_norm_args = ()
+        else:
+            remove_weight_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_weight_norm_args = ("weight",)
+
+        for unit in self.backbone:
+            unit: ResidualUnit1d
+            unit.remove_weight_norm_()
+
+        self.registered_weight_norms.remove("backbone")
+
+        self.conv1d = remove_weight_norm_fn(self.conv1d, *remove_weight_norm_args)
+        self.registered_weight_norms.remove("conv1d")
 
 
 class ResidualUnit1d(nn.Module):
@@ -224,6 +266,8 @@ class ResidualUnit1d(nn.Module):
         kernel_size (_size_1_t): Kernel size of first convolution.
         dilation (_size_1_t): Dilation of first convolution. Default: ``1``.
         is_causal (bool): If ``True``, causality is guaranteed.
+        use_shortcut (bool): If ``True``, use learned pointwise convolution for shortcut.
+            Default: ``True``.
 
     """
 
@@ -232,9 +276,11 @@ class ResidualUnit1d(nn.Module):
         num_features: int,
         kernel_size: _size_1_t,
         dilation: _size_1_t = 1,
+        padding_mode: str = "reflect",
         activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.elu,
         weight_regularization: Optional[str] = "weight_norm",
         is_causal: bool = True,
+        use_shortcut: bool = True,
     ) -> None:
         super().__init__()
 
@@ -257,8 +303,14 @@ class ResidualUnit1d(nn.Module):
         self.nonlinear1d_out = activation_out
         self.conv1d_out = nn.Conv1d(num_features // 2, num_features, kernel_size=1)
 
+        if use_shortcut:
+            self.shortcut = nn.Conv1d(num_features, num_features, kernel_size=1)
+        else:
+            self.shortcut = None
+
         self.kernel_size = kernel_size
         self.dilation = dilation
+        self.padding_mode = padding_mode
         self.weight_regularization = weight_regularization
         self.is_causal = is_causal
 
@@ -266,23 +318,21 @@ class ResidualUnit1d(nn.Module):
         self._reset_parameters()
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        (kernel_size,) = self.kernel_size
-        (dilation,) = self.dilation
+        residual = input
 
-        dilated_kernel_size = (kernel_size - 1) * dilation + 1
-
-        if self.is_causal:
-            padding = dilated_kernel_size // 2
-            x = F.pad(input, (padding, padding))
-        else:
-            padding = dilated_kernel_size // 2
-            x = F.pad(input, (2 * padding, 0))
-
-        x = self.nonlinear1d_in(x)
+        x = self.nonlinear1d_in(input)
+        x = _pad1d(
+            x, kernel_size=self.kernel_size, mode=self.padding_mode, is_causal=self.is_causal
+        )
         x = self.conv1d_in(x)
         x = self.nonlinear1d_out(x)
+        x = _pad1d(x, kernel_size=1, mode=self.padding_mode, is_causal=self.is_causal)
         x = self.conv1d_out(x)
-        output = x + input
+
+        if self.shortcut is not None:
+            output = x + self.shortcut(residual)
+        else:
+            output = x
 
         return output
 
@@ -309,3 +359,55 @@ class ResidualUnit1d(nn.Module):
 
         self.registered_weight_norms.add("conv1d_in")
         self.registered_weight_norms.add("conv1d_out")
+
+        if self.shortcut is not None:
+            self.shortcut = weight_norm_fn(self.shortcut)
+            self.registered_weight_norms.add("shortcut")
+
+    def remove_weight_norm_(self) -> None:
+        if IS_TORCH_LT_2_1:
+            remove_weight_norm_fn = nn.utils.remove_weight_norm
+            remove_weight_norm_args = ()
+        else:
+            remove_weight_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_weight_norm_args = ("weight",)
+
+        self.conv1d_in = remove_weight_norm_fn(self.conv1d_in, *remove_weight_norm_args)
+        self.conv1d_out = remove_weight_norm_fn(self.conv1d_out, *remove_weight_norm_args)
+
+        self.registered_weight_norms.remove("conv1d_in")
+        self.registered_weight_norms.remove("conv1d_out")
+
+        if self.shortcut is not None:
+            self.shortcut = remove_weight_norm_fn(self.shortcut, *remove_weight_norm_args)
+            self.registered_weight_norms.remove("shortcut")
+
+
+def _pad1d(
+    input: torch.Tensor,
+    kernel_size: _size_1_t,
+    stride: _size_1_t = 1,
+    dilation: _size_1_t = 1,
+    mode: str = "reflect",
+    is_causal: bool = True,
+) -> torch.Tensor:
+    (kernel_size,) = _single(kernel_size)
+    (stride,) = _single(stride)
+    (dilation,) = _single(dilation)
+
+    padding = (kernel_size - 1) * dilation + 1 - stride
+
+    n_frames = math.ceil((input.size(-1) - kernel_size + padding) / stride)
+    length = n_frames * stride + kernel_size - padding
+    extra_padding = length - input.size(-1)
+
+    if is_causal:
+        padding_left = padding
+        padding_right = 0
+    else:
+        padding_left = padding // 2
+        padding_right = padding - padding_left
+
+    output = F.pad(input, (padding_left, padding_right + extra_padding), mode=mode)
+
+    return output

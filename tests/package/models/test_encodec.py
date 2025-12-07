@@ -1,8 +1,12 @@
+import os
+
 import pytest
 import torch
 from audyn_test import allclose
+from audyn_test.utils import audyn_test_cache_dir
 
 from audyn.models.encodec import Decoder, EnCodec, Encoder
+from audyn.utils._github import download_file_from_github_release
 
 
 @pytest.mark.parametrize("is_causal", [True, False])
@@ -86,25 +90,48 @@ def test_official_encodec(is_causal: bool) -> None:
 
             allclose(_hierarchical_quantized + _hierarchical_residual, encoded, atol=1e-5)
 
+    # regression test
+    url = (
+        "https://github.com/tky823/Audyn/releases/download/v0.2.1/test_official_encodec_24kHz.pth"  # noqa: E501  # noqa: E501
+    )
+
+    filename = os.path.basename(url)
+    path = os.path.join(audyn_test_cache_dir, filename)
+    download_file_from_github_release(url, path)
+
+    data = torch.load(path, weights_only=True)
+
+    model = EnCodec.build_from_pretrained("encodec_24khz")
+
+    input = data["input"]
+    expected_output = data["output"]
+
+    model.eval()
+
+    with torch.no_grad():
+        output, encoded, hierarchical_quantized, hierarchical_residual, indices = model(input)
+
+    allclose(output, expected_output, atol=1e-5)
+
     num_parameters = 0
 
     for p in model.parameters():
         if p.requires_grad:
             num_parameters += p.numel()
 
-    assert num_parameters == 18870114
+    assert num_parameters == 19046114
 
 
 def test_encodec_encoder() -> None:
     torch.manual_seed(0)
 
-    in_channels, out_channels, hidden_channels = 1, 128, 32
+    in_channels, out_channels, hidden_channels = 1, 32, 8
     depth_rate = 2
-    kernel_size_in, kernel_size_out, kernel_size = 7, 7, 3
-    stride = [2, 4, 5, 8]
+    kernel_size_in, kernel_size_out, kernel_size = 5, 5, 3
+    stride = [2, 5]
 
     batch_size = 4
-    length_in = 1600
+    length_in = 400
 
     input = torch.randn((batch_size, in_channels, length_in))
 
@@ -129,13 +156,13 @@ def test_encodec_encoder() -> None:
 
 
 def test_encodec_decoder() -> None:
-    in_channels, out_channels, hidden_channels = 128, 1, 32
+    in_channels, out_channels, hidden_channels = 32, 1, 8
     depth_rate = 2
-    kernel_size_in, kernel_size_out, kernel_size = 7, 7, 3
-    stride = [8, 5, 4, 2]
+    kernel_size_in, kernel_size_out, kernel_size = 5, 5, 3
+    stride = [5, 2]
 
     batch_size = 4
-    length_in = 100
+    length_in = 40
 
     input = torch.randn((batch_size, in_channels, length_in))
 
