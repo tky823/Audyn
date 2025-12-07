@@ -28,9 +28,9 @@ class EnCodec(RVQVAE):
 
     Args:
         encoder (nn.Module): Encoder which returns latent feature of
-            shape (batch_size, embedding_dim, *).
+            shape (batch_size, embedding_dim, \*).
         decoder (nn.Module): Decoder which takes latent feature of
-            shape (batch_size, embedding_dim, *).
+            shape (batch_size, embedding_dim, \*).
         codebook_size (int): Size of codebook.
         embedding_dim (int): Number of embedding dimension.
         num_stages (int): Number of residual stages of RVQ.
