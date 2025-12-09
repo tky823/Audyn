@@ -119,7 +119,7 @@ def download(
             now = datetime.now()
             ydl_opts = copy.deepcopy(base_ydl_opts)
             ydl_opts["outtmpl"] = {
-                "default": f"{download_dir}/{now.strftime("%Y%m%d%H")}/{ytid}_{start:03d}-{end:03d}.%(ext)s",  # noqa: E501
+                "default": f"{download_dir}/{now.strftime('%Y%m%d%H')}/{ytid}_{start:03d}-{end:03d}.%(ext)s",  # noqa: E501
             }
             ydl_opts["download_ranges"] = Callback(video=video)
 

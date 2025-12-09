@@ -16,10 +16,14 @@ def main(config: DictConfig) -> None:
     csv_root = config.preprocess.csv_root
 
     ontology_url = "https://raw.githubusercontent.com/audioset/ontology/master/ontology.json"
-    label_url = "http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/class_labels_indices.csv"  # noqa: E501
+    label_url = (
+        "http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/class_labels_indices.csv"  # noqa: E501
+    )
     balanced_train_csv_url = "http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/balanced_train_segments.csv"  # noqa: E501
     unbalanced_train_csv_url = "http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/unbalanced_train_segments.csv"  # noqa: E501
-    eval_csv_url = "http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/eval_segments.csv"  # noqa: E501
+    eval_csv_url = (
+        "http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/eval_segments.csv"  # noqa: E501
+    )
 
     os.makedirs(ontology_root, exist_ok=True)
     os.makedirs(label_root, exist_ok=True)
