@@ -1,4 +1,4 @@
-name: macos-13/3.10/2.2
+name: macos-15-intel/3.11/2.2
 on:
   push:
     branches:
@@ -8,9 +8,9 @@ on:
       - main
 jobs:
   package:
-    uses: ./.github/workflows/test_package_macos-13.yaml
+    uses: ./.github/workflows/test_package_macos-15-intel.yaml
     with:
-      python-version: "3.10"
+      python-version: "3.11"
       torch-version: "2.2.0"
     secrets:
       ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
