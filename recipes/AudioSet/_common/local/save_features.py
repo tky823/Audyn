@@ -11,13 +11,13 @@ from multiprocessing import Process, Queue
 from typing import Any, Dict, List
 
 import torch
-import torchaudio
 import webdataset as wds
 from omegaconf import DictConfig
 from tqdm import tqdm
 
 import audyn
 from audyn.utils import setup_config
+from audyn.utils.audio import info as torchaudio_info
 
 
 @audyn.main()
@@ -110,7 +110,7 @@ def process_webdataset(
             tags = video["tags"]
             root = video["root"]
             m4a_path = os.path.join(root, video["path"])
-            metadata = torchaudio.info(m4a_path)
+            metadata = torchaudio_info(m4a_path)
 
             with open(m4a_path, mode="rb") as f:
                 audio = f.read()

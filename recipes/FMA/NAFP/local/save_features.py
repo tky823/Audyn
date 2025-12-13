@@ -1,13 +1,13 @@
 import os
 
 import torch
-import torchaudio
 import webdataset as wds
 from omegaconf import DictConfig
 from tqdm import tqdm
 
 import audyn
 from audyn.utils import setup_config
+from audyn.utils.audio import info as torchaudio_info
 
 
 @audyn.main()
@@ -47,7 +47,7 @@ def process_webdataset(
     name = f"{name:03d}"
     mp3_path = os.path.join(fma_root, "audio", name, f"{track_id:06d}.{ext}")
 
-    metadata = torchaudio.info(mp3_path, format=ext)
+    metadata = torchaudio_info(mp3_path, format=ext)
 
     with open(mp3_path, mode="rb") as f:
         audio = f.read()

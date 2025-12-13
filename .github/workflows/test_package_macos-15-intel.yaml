@@ -1,4 +1,4 @@
-name: Test package on macos-13
+name: Test package on macos-15-intel
 on:
   workflow_call:
     inputs:
@@ -17,9 +17,10 @@ jobs:
   package:
     uses: ./.github/workflows/test_package_main.yaml
     with:
-      # macos-13: x86_64, macos-latest: arm
+      # macos-15-intel: x86_64, macos-latest: arm
       # See https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners
-      os: macos-13
+      # and https://github.com/actions/runner-images/issues/13046
+      os: macos-15-intel
       python-version: ${{ inputs.python-version }}
       torch-version: ${{ inputs.torch-version }}
     secrets:
