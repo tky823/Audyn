@@ -5,7 +5,13 @@ import torch
 from audyn_test import allclose
 from audyn_test.utils import audyn_test_cache_dir
 
-from audyn.models.encodec import Decoder, EnCodec, Encoder
+from audyn.models.encodec import (
+    Decoder,
+    EnCodec,
+    Encoder,
+    encodec_24khz_codebook_size,
+    encodec_24khz_num_codebooks,
+)
 from audyn.utils._github import download_file_from_github_release
 
 
@@ -102,6 +108,9 @@ def test_official_encodec(is_causal: bool) -> None:
     data = torch.load(path, weights_only=True)
 
     model = EnCodec.build_from_pretrained("encodec_24khz")
+
+    assert model.num_codebooks == encodec_24khz_num_codebooks
+    assert model.codebook_size == encodec_24khz_codebook_size
 
     input = data["input"]
     expected_output = data["output"]

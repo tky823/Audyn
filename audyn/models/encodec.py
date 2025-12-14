@@ -18,9 +18,14 @@ __all__ = [
     "EnCodec",
     "Encoder",
     "Decoder",
+    "encodec_24khz_num_codebooks",
+    "encodec_24khz_codebook_size",
 ]
 
 IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
+
+encodec_24khz_num_codebooks = 32
+encodec_24khz_codebook_size = 1024
 
 
 class EnCodec(RVQVAE):

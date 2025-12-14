@@ -298,3 +298,18 @@ class RVQVAE(BaseVAE):
         quantized, residual, indices = self.vector_quantizer(input)
 
         return quantized, residual, indices
+
+    @property
+    def num_stages(self) -> int:
+        """Number of stages (codebooks) in residual vector quantization."""
+        return self.vector_quantizer.num_stages
+
+    @property
+    def num_codebooks(self) -> int:
+        """Number of codebooks (stages) in residual vector quantization."""
+        return self.num_stages
+
+    @property
+    def codebook_size(self) -> int:
+        """Codebook size of each codebook in residual vector quantization."""
+        return self.vector_quantizer.codebook_size

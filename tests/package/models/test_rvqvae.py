@@ -56,6 +56,10 @@ def test_rvqvae(init_vq: bool) -> None:
             dropout=False,
         )
 
+    assert model.num_stages == num_stages
+    assert model.num_codebooks == num_stages
+    assert model.codebook_size == codebook_size
+
     input = torch.randn((batch_size, in_channels, height, width))
     reconstructed, encoded, hierarchical_quantized, hierarchical_residual, indices = model(input)
     quantized = hierarchical_quantized.sum(dim=1)
