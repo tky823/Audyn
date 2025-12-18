@@ -18,6 +18,7 @@ __all__ = [
     "TransformerXLRelativePositionalMultiheadAttention",
     "RotaryPositionalMultiheadAttention",
     "ExtrapolatablePositionalMultiheadAttention",
+    "SlidingWindowMultiheadAttention",
 ]
 
 IS_TORCH_LT_2_0 = version.parse(torch.__version__) < version.parse("2.0")
@@ -1462,3 +1463,209 @@ class ExtrapolatablePositionalMultiheadAttention(_MultiheadAttention):
         output = x.view(input_length, batch_size, embed_dim)
 
         return output
+
+
+class SlidingWindowMultiheadAttention(_MultiheadAttention):
+    """Sliding window multihead attention."""
+
+    def __init__(
+        self,
+        embed_dim: int,
+        num_heads: int,
+        dropout: float = 0,
+        bias: bool = True,
+        add_bias_kv: bool = False,
+        add_zero_attn: bool = False,
+        kdim: Optional[int] = None,
+        vdim: Optional[int] = None,
+        window_size: int = None,
+        batch_first: bool = False,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
+    ) -> None:
+        factory_kwargs = {
+            "device": device,
+            "dtype": dtype,
+        }
+        super().__init__(
+            embed_dim,
+            num_heads,
+            dropout=dropout,
+            bias=bias,
+            add_bias_kv=add_bias_kv,
+            add_zero_attn=add_zero_attn,
+            kdim=kdim,
+            vdim=vdim,
+            batch_first=batch_first,
+            **factory_kwargs,
+        )
+
+        if add_bias_kv:
+            raise NotImplementedError("add_bias_kv is not supported.")
+
+        if add_zero_attn:
+            raise NotImplementedError("add_zero_attn is not supported.")
+
+        if window_size is None:
+            raise ValueError("window_size must be specified.")
+
+        self.window_size = window_size
+
+    def forward(
+        self,
+        query: torch.Tensor,
+        key: torch.Tensor,
+        value: torch.Tensor,
+        key_padding_mask: Optional[torch.Tensor] = None,
+        need_weights: bool = True,
+        average_attn_weights: bool = True,
+        **kwargs,
+    ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        """Forward pass of SlidingWindowMultiheadAttention.
+
+        Args:
+            query (torch.Tensor): Sequence of shape (batch_size, query_length, embed_dim)
+                if ``batch_first=True``, otherwise (query_length, batch_size, embed_dim).
+            key (torch.Tensor): Sequence of shape (batch_size, key_length, embed_dim)
+                if ``batch_first=True``, otherwise (key_length, batch_size, embed_dim).
+            value (torch.Tensor): Sequence of shape (batch_size, key_length, embed_dim)
+                if ``batch_first=True``, otherwise (key_length, batch_size, embed_dim).
+            need_weights (bool): If True, returns attention weights. Default: True.
+            average_attn_weights (bool): If True, returns averaged attention weights over heads.
+                Default: True.
+
+        Returns:
+            tuple: Tuple of tensors containing
+
+                - torch.Tensor: Sequence of same shape as query input.
+                - torch.Tensor: Attention weights of shape
+                    (batch_size, query_length, 2 * window_size + 1) if
+                    ``average_attn_weights=True``, otherwise
+                    (batch_size, num_heads, query_length, 2 * window_size + 1).
+                    Returns None if ``need_weights=False``.
+
+        """
+        attn_mask = kwargs.pop("attn_mask", None)
+
+        if attn_mask is not None:
+            raise ValueError("attn_mask is not supported.")
+
+        if need_weights:
+            raise ValueError("Returning attention weights is not supported.")
+
+        self.validate_kwargs(kwargs)
+
+        embed_dim = self.embed_dim
+        dropout = self.dropout
+        batch_first = self.batch_first
+        num_heads = self.num_heads
+        in_proj_weight = self.in_proj_weight
+        in_proj_bias = self.in_proj_bias
+        window_size = self.window_size
+
+        head_dim = embed_dim // num_heads
+
+        if batch_first:
+            if key is value:
+                if query is key:
+                    query = key = value = query.transpose(1, 0)
+                else:
+                    query = query.transpose(1, 0)
+                    key = key.transpose(1, 0)
+                    value = key
+            else:
+                query = query.transpose(1, 0)
+                key = key.transpose(1, 0)
+                value = value.transpose(1, 0)
+
+        query_length, batch_size, _ = query.size()
+        key_length, _, _ = key.size()
+
+        if self._qkv_same_embed_dim:
+            q_proj_weight, k_proj_weight, v_proj_weight = torch.split(
+                in_proj_weight, [embed_dim] * 3, dim=-2
+            )
+        else:
+            q_proj_weight = self.q_proj_weight
+            k_proj_weight = self.k_proj_weight
+            v_proj_weight = self.v_proj_weight
+
+        if self.in_proj_bias is None:
+            q_proj_bias, k_proj_bias, v_proj_bias = None, None, None
+        else:
+            q_proj_bias, k_proj_bias, v_proj_bias = torch.split(
+                in_proj_bias, [embed_dim] * 3, dim=0
+            )
+
+        q = F.linear(query, q_proj_weight, bias=q_proj_bias)
+        k = F.linear(key, k_proj_weight, bias=k_proj_bias)
+        v = F.linear(value, v_proj_weight, bias=v_proj_bias)
+
+        q = q.view(query_length, batch_size, num_heads, head_dim)
+        k = k.view(key_length, batch_size * num_heads, head_dim, 1)
+        v = v.view(key_length, batch_size * num_heads, head_dim, 1)
+
+        k = k.permute(1, 2, 3, 0)
+        v = v.permute(1, 2, 3, 0)
+        k = F.pad(k, (window_size, query_length - key_length + window_size))
+        v = F.pad(v, (window_size, query_length - key_length + window_size))
+
+        k = F.unfold(k, kernel_size=(1, 2 * window_size + 1), stride=(1, 1))
+        v = F.unfold(v, kernel_size=(1, 2 * window_size + 1), stride=(1, 1))
+        k = k.view(batch_size, num_heads, head_dim, 2 * window_size + 1, query_length)
+        v = v.view(batch_size, num_heads, head_dim, 2 * window_size + 1, query_length)
+        q = q.permute(1, 0, 2, 3).contiguous()
+        k = k.permute(0, 4, 1, 3, 2).contiguous()
+        v = v.permute(0, 4, 1, 3, 2).contiguous()
+        q = q.view(batch_size * query_length, num_heads, 1, head_dim)
+        k = k.view(batch_size * query_length, num_heads, 2 * window_size + 1, head_dim)
+        v = v.view(batch_size * query_length, num_heads, 2 * window_size + 1, head_dim)
+
+        if key_padding_mask is None:
+            attn_mask = torch.zeros((batch_size, key_length), dtype=torch.bool, device=k.device)
+            attn_mask = F.pad(
+                attn_mask, (window_size, query_length - key_length + window_size), value=True
+            )
+        else:
+            if key_padding_mask.dtype != torch.bool:
+                raise ValueError("key_padding_mask dtype must be torch.bool.")
+
+            attn_mask = F.pad(
+                key_padding_mask,
+                (window_size, query_length - key_length + window_size),
+                value=True,
+            )
+
+        attn_mask = attn_mask.to(k.dtype)
+        attn_mask = attn_mask.view(batch_size, 1, 1, query_length + 2 * window_size)
+        attn_mask = F.unfold(attn_mask, kernel_size=(1, 2 * window_size + 1), stride=(1, 1))
+        attn_mask = attn_mask.to(torch.bool)
+        attn_mask = attn_mask.permute(0, 2, 1).contiguous()
+        attn_mask = attn_mask.view(batch_size * query_length, 1, 1, 2 * window_size + 1)
+        is_non_padding = torch.logical_not(attn_mask)
+        is_padding = is_non_padding.sum(dim=-1, keepdim=True) == 0
+        attn_mask = attn_mask.masked_fill(is_padding, False)
+        attn_mask = attn_mask.expand(-1, num_heads, 1, -1)
+
+        dropout_p = dropout if self.training else 0
+
+        qkv, _ = scaled_dot_product_attention(
+            q,
+            k,
+            v,
+            attn_mask=attn_mask,
+            dropout_p=dropout_p,
+            need_weights=need_weights,
+        )
+        qkv = qkv.view(batch_size, query_length, num_heads * head_dim)
+
+        if batch_first:
+            pass
+        else:
+            qkv = qkv.permute(1, 0, 2).contiguous()
+
+        output = self.out_proj(qkv)
+
+        attn_weights = None
+
+        return output, attn_weights
