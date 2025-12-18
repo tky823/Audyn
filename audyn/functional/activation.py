@@ -316,7 +316,8 @@ def sliding_window_multihead_attention(
         need_weights=need_weights,
     )
     qkv = qkv.view(batch_size, query_length, num_heads * head_dim)
-    output = F.linear(qkv, out_proj_weight, bias=out_proj_bias)
+    x = F.linear(qkv, out_proj_weight, bias=out_proj_bias)
+    output = x.transpose(0, 1)
 
     attn_weights = None
 

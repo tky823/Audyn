@@ -1604,8 +1604,8 @@ class SlidingWindowMultiheadAttention(_MultiheadAttention):
         )
 
         if batch_first:
-            output = x
-        else:
             output = x.permute(1, 0, 2).contiguous()
+        else:
+            output = x
 
         return output, attn_weights
