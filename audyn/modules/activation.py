@@ -1553,9 +1553,6 @@ class SlidingWindowMultiheadAttention(_MultiheadAttention):
         if attn_mask is not None:
             raise ValueError("attn_mask is not supported.")
 
-        if need_weights:
-            raise ValueError("Returning attention weights is not supported.")
-
         self.validate_kwargs(kwargs)
 
         embed_dim = self.embed_dim

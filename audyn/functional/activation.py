@@ -157,7 +157,7 @@ def sliding_window_multihead_attention(
     k_proj_weight: torch.Tensor | None = None,
     v_proj_weight: torch.Tensor | None = None,
     average_attn_weights: bool = True,
-) -> torch.Tensor:
+) -> tuple[torch.Tensor, torch.Tensor | None]:
     """Sliding window multi-head attention mechanism.
 
     This function implements multi-head attention with a sliding window constraint,
@@ -224,9 +224,6 @@ def sliding_window_multihead_attention(
 
     if attn_mask is not None:
         raise ValueError("attn_mask is not supported.")
-
-    if need_weights:
-        raise ValueError("Returning attention weights is not supported.")
 
     head_dim = embed_dim_to_check // num_heads
 
@@ -307,7 +304,7 @@ def sliding_window_multihead_attention(
 
     dropout_p = dropout_p if training else 0
 
-    qkv, _ = scaled_dot_product_attention(
+    qkv, attn_weights = scaled_dot_product_attention(
         q,
         k,
         v,
@@ -319,6 +316,21 @@ def sliding_window_multihead_attention(
     x = F.linear(qkv, out_proj_weight, bias=out_proj_bias)
     output = x.transpose(0, 1)
 
-    attn_weights = None
+    if need_weights:
+        attn_weights = attn_weights.view(batch_size, query_length, num_heads, 2 * window_size + 1)
+        attn_weights = attn_weights.permute(0, 2, 1, 3)
+        attn_weights = F.pad(attn_weights, (0, query_length))
+        attn_weights = attn_weights.view(
+            batch_size, num_heads, query_length * (2 * window_size + query_length + 1)
+        )
+        attn_weights = F.pad(attn_weights, (0, -query_length))
+        attn_weights = attn_weights.view(batch_size, num_heads, query_length, -1)
+        attn_weights = F.pad(
+            attn_weights, (-window_size, -window_size + key_length - query_length)
+        )
+        if average_attn_weights:
+            attn_weights = attn_weights.mean(dim=-3)
+    else:
+        attn_weights = None
 
     return output, attn_weights
