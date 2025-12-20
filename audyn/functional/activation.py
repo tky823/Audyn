@@ -297,9 +297,6 @@ def sliding_window_multihead_attention(
     attn_mask = attn_mask.to(torch.bool)
     attn_mask = attn_mask.permute(0, 2, 1).contiguous()
     attn_mask = attn_mask.view(batch_size * query_length, 1, 1, 2 * window_size + 1)
-    is_non_padding = torch.logical_not(attn_mask)
-    is_padding = is_non_padding.sum(dim=-1, keepdim=True) == 0
-    attn_mask = attn_mask.masked_fill(is_padding, False)
     attn_mask = attn_mask.expand(-1, num_heads, 1, -1)
 
     dropout_p = dropout_p if training else 0

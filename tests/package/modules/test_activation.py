@@ -913,9 +913,6 @@ def test_sliding_window_attn(
     if use_attn_mask:
         attn_mask = diagonal_attn_mask.expand(batch_size, -1, -1)
         attn_mask = attn_mask | key_padding_mask.unsqueeze(dim=-2)
-        is_non_padding = torch.logical_not(attn_mask)
-        is_padding = is_non_padding.sum(dim=-1, keepdim=True) == 0
-        attn_mask = attn_mask.masked_fill(is_padding, False)
         attn_mask = attn_mask.repeat_interleave(num_heads, dim=0)
     else:
         attn_mask = diagonal_attn_mask
@@ -942,6 +939,7 @@ def test_sliding_window_attn(
     if not batch_first:
         padding_mask = padding_mask.transpose(0, 1)
 
+    # ignore positions where all attention weights are masked
     swa_output = swa_output.masked_fill(padding_mask.unsqueeze(dim=-1), 0)
     output = output.masked_fill(padding_mask.unsqueeze(dim=-1), 0)
 
