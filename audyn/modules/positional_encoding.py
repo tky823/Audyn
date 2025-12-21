@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 
 from ..functional.positional_encoding import (
-    extrapolatable_rotary_positional_encoding,
-    rotary_positional_encoding,
+    extrapolatable_rotary_positional_embedding,
+    rotary_positional_embedding,
 )
 
 __all__ = [
@@ -99,7 +99,7 @@ class RotaryPositionalEmbedding(nn.Module):
             torch.Tensor: Sequence of same shape as input.
 
         """
-        output = rotary_positional_encoding(input, base=self.base, batch_first=self.batch_first)
+        output = rotary_positional_embedding(input, base=self.base, batch_first=self.batch_first)
 
         return output
 
@@ -146,7 +146,7 @@ class ExtrapolatablePositionalEmbedding(nn.Module):
             torch.Tensor: Sequence of same shape as input.
 
         """
-        output = extrapolatable_rotary_positional_encoding(
+        output = extrapolatable_rotary_positional_embedding(
             input,
             invert_decay=self.invert_decay,
             smooth=self.smooth,

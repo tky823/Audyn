@@ -1,10 +1,10 @@
 import torch
 
 
-def rotary_positional_encoding(
+def rotary_positional_embedding(
     input: torch.Tensor, base: float = 10000, batch_first: bool = True
 ) -> torch.Tensor:
-    """Rotary positional encoding (RoPE).
+    """Rotary positional embedding (RoPE).
 
     Args:
         input (torch.Tensor): Query or key of shape (batch_size, length, num_features)
@@ -51,14 +51,14 @@ def rotary_positional_encoding(
     return output
 
 
-def extrapolatable_rotary_positional_encoding(
+def extrapolatable_rotary_positional_embedding(
     input: torch.Tensor,
     invert_decay: bool,
     smooth: float = 0.4,
     base: float = 10000,
     batch_first: bool = True,
 ) -> torch.Tensor:
-    """Extrapolatable rotary positional encoding (xPos).
+    """Extrapolatable rotary positional embedding (xPos).
 
     Args:
         input (torch.Tensor): Query or key of shape (batch_size, length, num_features)
