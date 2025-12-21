@@ -6,7 +6,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from packaging import version
 
-from ..functional.activation import scaled_dot_product_attention
+from ..functional.activation import (
+    scaled_dot_product_attention,
+    sliding_window_multihead_attention,
+)
 from .positional_encoding import (
     ExtrapolatablePositionalEmbedding,
     RotaryPositionalEmbedding,
@@ -18,6 +21,7 @@ __all__ = [
     "TransformerXLRelativePositionalMultiheadAttention",
     "RotaryPositionalMultiheadAttention",
     "ExtrapolatablePositionalMultiheadAttention",
+    "SlidingWindowMultiheadAttention",
 ]
 
 IS_TORCH_LT_2_0 = version.parse(torch.__version__) < version.parse("2.0")
@@ -1462,3 +1466,143 @@ class ExtrapolatablePositionalMultiheadAttention(_MultiheadAttention):
         output = x.view(input_length, batch_size, embed_dim)
 
         return output
+
+
+class SlidingWindowMultiheadAttention(_MultiheadAttention):
+    """Sliding window multihead attention."""
+
+    def __init__(
+        self,
+        embed_dim: int,
+        num_heads: int,
+        dropout: float = 0,
+        bias: bool = True,
+        add_bias_kv: bool = False,
+        add_zero_attn: bool = False,
+        kdim: Optional[int] = None,
+        vdim: Optional[int] = None,
+        window_size: int = None,
+        batch_first: bool = False,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
+    ) -> None:
+        factory_kwargs = {
+            "device": device,
+            "dtype": dtype,
+        }
+        super().__init__(
+            embed_dim,
+            num_heads,
+            dropout=dropout,
+            bias=bias,
+            add_bias_kv=add_bias_kv,
+            add_zero_attn=add_zero_attn,
+            kdim=kdim,
+            vdim=vdim,
+            batch_first=batch_first,
+            **factory_kwargs,
+        )
+
+        if add_bias_kv:
+            raise NotImplementedError("add_bias_kv is not supported.")
+
+        if add_zero_attn:
+            raise NotImplementedError("add_zero_attn is not supported.")
+
+        if window_size is None:
+            raise ValueError("window_size must be specified.")
+
+        self.window_size = window_size
+
+    def forward(
+        self,
+        query: torch.Tensor,
+        key: torch.Tensor,
+        value: torch.Tensor,
+        key_padding_mask: Optional[torch.Tensor] = None,
+        need_weights: bool = True,
+        average_attn_weights: bool = True,
+        **kwargs,
+    ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        """Forward pass of SlidingWindowMultiheadAttention.
+
+        Args:
+            query (torch.Tensor): Sequence of shape (batch_size, query_length, embed_dim)
+                if ``batch_first=True``, otherwise (query_length, batch_size, embed_dim).
+            key (torch.Tensor): Sequence of shape (batch_size, key_length, embed_dim)
+                if ``batch_first=True``, otherwise (key_length, batch_size, embed_dim).
+            value (torch.Tensor): Sequence of shape (batch_size, key_length, embed_dim)
+                if ``batch_first=True``, otherwise (key_length, batch_size, embed_dim).
+            need_weights (bool): If True, returns attention weights. Default: True.
+            average_attn_weights (bool): If True, returns averaged attention weights over heads.
+                Default: True.
+
+        Returns:
+            tuple: Tuple of tensors containing
+
+                - torch.Tensor: Sequence of same shape as query input.
+                - torch.Tensor: Attention weights of shape
+                    (batch_size, query_length, 2 * window_size + 1) if
+                    ``average_attn_weights=True``, otherwise
+                    (batch_size, num_heads, query_length, 2 * window_size + 1).
+                    Returns None if ``need_weights=False``.
+
+        """
+        attn_mask = kwargs.pop("attn_mask", None)
+
+        if attn_mask is not None:
+            raise ValueError("attn_mask is not supported.")
+
+        self.validate_kwargs(kwargs)
+
+        embed_dim = self.embed_dim
+        dropout = self.dropout
+        batch_first = self.batch_first
+        num_heads = self.num_heads
+        window_size = self.window_size
+
+        if batch_first:
+            if key is value:
+                if query is key:
+                    query = key = value = query.transpose(1, 0)
+                else:
+                    query = query.transpose(1, 0)
+                    key = key.transpose(1, 0)
+                    value = key
+            else:
+                query = query.transpose(1, 0)
+                key = key.transpose(1, 0)
+                value = value.transpose(1, 0)
+
+        x, attn_weights = sliding_window_multihead_attention(
+            query,
+            key,
+            value,
+            embed_dim,
+            num_heads=num_heads,
+            in_proj_weight=self.in_proj_weight,
+            in_proj_bias=self.in_proj_bias,
+            bias_k=None,
+            bias_v=None,
+            add_zero_attn=False,
+            dropout_p=dropout,
+            out_proj_weight=self.out_proj.weight,
+            out_proj_bias=self.out_proj.bias,
+            window_size=window_size,
+            training=self.training,
+            key_padding_mask=key_padding_mask,
+            need_weights=need_weights,
+            attn_mask=attn_mask,
+            use_separate_proj_weight=not self._qkv_same_embed_dim,
+            q_proj_weight=self.q_proj_weight,
+            k_proj_weight=self.k_proj_weight,
+            v_proj_weight=self.v_proj_weight,
+            average_attn_weights=average_attn_weights,
+        )
+
+        if batch_first:
+            output = x.permute(1, 0, 2).contiguous()
+        else:
+            output = x
+
+        return output, attn_weights

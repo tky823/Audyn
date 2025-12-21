@@ -9,6 +9,7 @@ from audyn.modules.activation import (
     ExtrapolatablePositionalMultiheadAttention,
     RelativePositionalMultiheadAttention,
     RotaryPositionalMultiheadAttention,
+    SlidingWindowMultiheadAttention,
     TrainableAbsolutePositionalMultiheadAttention,
     TransformerXLRelativePositionalMultiheadAttention,
 )
@@ -838,6 +839,125 @@ def test_extrapolatable_positional_attn(
 
     if need_weights:
         assert xpos_attn_weights.size() == (batch_size, max_query_length, max_key_length)
+
+
+@pytest.mark.parametrize("bias", [True, False])
+@pytest.mark.parametrize("batch_first", [True, False])
+@pytest.mark.parametrize("use_attn_mask", [True, False])
+@pytest.mark.parametrize("need_weights", [True, False])
+@pytest.mark.parametrize("average_attn_weights", [True, False])
+def test_sliding_window_attn(
+    bias: bool,
+    batch_first: bool,
+    use_attn_mask: bool,
+    need_weights: bool,
+    average_attn_weights: bool,
+) -> None:
+    torch.manual_seed(0)
+
+    batch_size = 3
+    max_query_length, max_key_length = 12, 10
+    embed_dim = 8
+    num_heads = 4
+    window_size = 2
+
+    (query, key, value), (query_length, key_length) = create_qkv(
+        batch_size, max_query_length, max_key_length, embed_dim, batch_first=batch_first
+    )
+    max_query_length = torch.max(query_length).item()
+    max_key_length = torch.max(key_length).item()
+
+    if use_attn_mask:
+        key_padding_mask, _ = create_padding_masks(query_length, key_length)
+    else:
+        key_padding_mask = None
+
+    mha = nn.MultiheadAttention(
+        embed_dim,
+        num_heads,
+        bias=bias,
+        batch_first=batch_first,
+    )
+    swa_mha = SlidingWindowMultiheadAttention(
+        embed_dim,
+        num_heads,
+        bias=bias,
+        window_size=window_size,
+        batch_first=batch_first,
+    )
+
+    swa_mha.eval()
+
+    swa_output, swa_attn_weights = swa_mha(
+        query,
+        key,
+        value,
+        key_padding_mask=key_padding_mask,
+        need_weights=need_weights,
+        average_attn_weights=average_attn_weights,
+    )
+
+    if batch_first:
+        assert swa_output.size() == (batch_size, max_query_length, embed_dim)
+    else:
+        assert swa_output.size() == (max_query_length, batch_size, embed_dim)
+
+    mha.load_state_dict(swa_mha.state_dict())
+    mha.eval()
+
+    # attention mask for sliding window
+    query_indices = torch.arange(max_query_length)
+    key_indices = torch.arange(max_key_length)
+    diagonal_attn_mask = torch.abs(key_indices - query_indices.unsqueeze(dim=-1)) > window_size
+
+    if use_attn_mask:
+        attn_mask = diagonal_attn_mask.expand(batch_size, -1, -1)
+        attn_mask = attn_mask | key_padding_mask.unsqueeze(dim=-2)
+        attn_mask = attn_mask.repeat_interleave(num_heads, dim=0)
+    else:
+        attn_mask = diagonal_attn_mask
+
+    output, attn_weights = mha(
+        query,
+        key,
+        value,
+        key_padding_mask=key_padding_mask,
+        attn_mask=attn_mask,
+        need_weights=need_weights,
+        average_attn_weights=average_attn_weights,
+    )
+
+    if use_attn_mask:
+        key_padding_mask = key_padding_mask.view(batch_size, 1, max_key_length)
+        padding_mask = key_padding_mask | diagonal_attn_mask
+    else:
+        padding_mask = diagonal_attn_mask.expand(batch_size, -1, -1)
+
+    non_padding_mask = torch.logical_not(padding_mask)
+    padding_mask = non_padding_mask.sum(dim=-1) == 0
+
+    if not batch_first:
+        padding_mask = padding_mask.transpose(0, 1)
+
+    # ignore positions where all attention weights are masked
+    swa_output = swa_output.masked_fill(padding_mask.unsqueeze(dim=-1), 0)
+    output = output.masked_fill(padding_mask.unsqueeze(dim=-1), 0)
+
+    assert torch.allclose(swa_output, output, atol=1e-7)
+
+    if need_weights:
+        if not batch_first:
+            padding_mask = padding_mask.transpose(0, 1)
+
+        if average_attn_weights:
+            padding_mask = padding_mask.view(batch_size, max_query_length, 1)
+        else:
+            padding_mask = padding_mask.view(batch_size, 1, max_query_length, 1)
+
+        swa_attn_weights = swa_attn_weights.masked_fill(padding_mask, 0)
+        attn_weights = attn_weights.masked_fill(padding_mask, 0)
+
+        assert torch.allclose(swa_attn_weights, attn_weights, atol=1e-7)
 
 
 def create_qkv(
