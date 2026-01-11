@@ -14,6 +14,7 @@ Submodules
    audyn.utils.data.birdclef
    audyn.utils.data.musdb18
    audyn.utils.data.mtg_jamendo
+   audyn.utils.data.jamendo_max_caps
 
 Create dataset
 --------------
