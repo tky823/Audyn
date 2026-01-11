@@ -23,6 +23,7 @@ def download_metadata(
         url = base_url.format(index=index)
         filename = os.path.basename(url)
         path = os.path.join(root, filename)
+
         download_file_from_github_release(
             url,
             path,
@@ -30,8 +31,8 @@ def download_metadata(
             chunk_size=chunk_size,
         )
 
-    _metadata = _load_metadata(path)
-    metadata.extend(_metadata)
+        _metadata = _load_metadata(path)
+        metadata.extend(_metadata)
 
     return metadata
 
