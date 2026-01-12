@@ -19,7 +19,7 @@ def download_metadata(
 
     metadata = []
 
-    for index in range(13):
+    for index in range(4):
         url = base_url.format(index=index)
         filename = os.path.basename(url)
         path = os.path.join(root, filename)
