@@ -40,7 +40,7 @@ def download_metadata(
 def _load_metadata(path: str) -> List[Dict[str, Any]]:
     metadata = []
 
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             data = json.loads(line)
