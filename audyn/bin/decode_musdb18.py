@@ -222,12 +222,14 @@ def decode_file(mp4_path: str, wav_path: str, frames_per_chunk: int = 44100) -> 
                 assert sample_rate == 44100
 
                 # TODO: chunk-wise processing
-                with open(temp_wav_path.replace("SOURCE", source), mode="ab") as f:
-                    writer = AudioEncoder(
-                        samples.data,
-                        sample_rate=sample_rate,
-                    )
-                    writer.to_file_like(f, format=output_format)
+                writer = AudioEncoder(
+                    samples.data,
+                    sample_rate=sample_rate,
+                )
+                writer.to_file(
+                    temp_wav_path.replace("SOURCE", source),
+                    sample_rate=sample_rate,
+                )
 
             shutil.copy2(
                 temp_wav_path.replace("SOURCE", source), wav_path.replace("SOURCE", source)
