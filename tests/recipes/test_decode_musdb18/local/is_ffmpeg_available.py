@@ -1,8 +1,8 @@
-import torchaudio
+from audyn.utils.audio import list_audio_backends
 
 
 def main() -> None:
-    is_available = "ffmpeg" in torchaudio.list_audio_backends()
+    is_available = "ffmpeg" in list_audio_backends()
     print(is_available)
 
 
