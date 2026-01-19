@@ -107,14 +107,14 @@ jobs:
         if: ${{ inputs.os == 'windows-latest' }}
         run: |
           .venv\Scripts\Activate.ps1
-          python -c "import torchaudio; print(torchaudio.list_audio_backends())"
-          python -c "import torchaudio; assert len(torchaudio.list_audio_backends()) > 0"
+          python tests/scripts/list_torchaudio_backends.py
+          python tests/scripts/verify_torchaudio_backends.py
       - name: Show backend of torchaudio (Ubuntu & MacOS)
         if: ${{ inputs.os != 'windows-latest' }}
         run: |
           source .venv/bin/activate
-          python -c "import torchaudio; print(torchaudio.list_audio_backends())"
-          python -c "import torchaudio; assert len(torchaudio.list_audio_backends()) > 0"
+          python tests/scripts/list_torchaudio_backends.py
+          python tests/scripts/verify_torchaudio_backends.py
       - name: Pytest for updating package (Windows)
         if: ${{ inputs.os == 'windows-latest' }}
         env:
