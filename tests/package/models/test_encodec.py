@@ -11,6 +11,8 @@ from audyn.models.encodec import (
     Encoder,
     encodec_24khz_codebook_size,
     encodec_24khz_num_codebooks,
+    encodec_32khz_codebook_size,
+    encodec_32khz_num_codebooks,
 )
 from audyn.utils._github import download_file_from_github_release
 
@@ -19,9 +21,8 @@ from audyn.utils._github import download_file_from_github_release
 def test_official_encodec(is_causal: bool) -> None:
     torch.manual_seed(0)
 
-    is_causal = True
-
-    in_channels, embedding_dim, hidden_channels = 1, 128, 32
+    in_channels = 1
+    embedding_dim, hidden_channels = 128, 32
     depth_rate = 2
     kernel_size_out = kernel_size_in = 7
     kernel_size = 3
@@ -96,39 +97,52 @@ def test_official_encodec(is_causal: bool) -> None:
 
             allclose(_hierarchical_quantized + _hierarchical_residual, encoded, atol=1e-5)
 
-    # regression test
-    url = (
-        "https://github.com/tky823/Audyn/releases/download/v0.2.1/test_official_encodec_24kHz.pth"  # noqa: E501  # noqa: E501
-    )
+    if is_causal:
+        # regression test
+        for sample_rate in [24, 32]:
+            url = f"https://github.com/tky823/Audyn/releases/download/v0.2.1/test_official_encodec_{sample_rate}kHz.pth"  # noqa: E501
 
-    filename = os.path.basename(url)
-    path = os.path.join(audyn_test_cache_dir, filename)
-    download_file_from_github_release(url, path)
+            filename = os.path.basename(url)
+            path = os.path.join(audyn_test_cache_dir, filename)
+            download_file_from_github_release(url, path)
 
-    data = torch.load(path, weights_only=True)
+            data = torch.load(path, weights_only=True)
 
-    model = EnCodec.build_from_pretrained("encodec_24khz")
+            model = EnCodec.build_from_pretrained(f"encodec_{sample_rate}khz")
 
-    assert model.num_codebooks == encodec_24khz_num_codebooks
-    assert model.codebook_size == encodec_24khz_codebook_size
+            if sample_rate == 24:
+                assert model.num_codebooks == encodec_24khz_num_codebooks
+                assert model.codebook_size == encodec_24khz_codebook_size
+            elif sample_rate == 32:
+                assert model.num_codebooks == encodec_32khz_num_codebooks
+                assert model.codebook_size == encodec_32khz_codebook_size
+            else:
+                raise ValueError(f"Unsupported sample rate {sample_rate}.")
 
-    input = data["input"]
-    expected_output = data["output"]
+            input = data["input"]
+            expected_output = data["output"]
 
-    model.eval()
+            model.eval()
 
-    with torch.no_grad():
-        output, encoded, hierarchical_quantized, hierarchical_residual, indices = model(input)
+            with torch.no_grad():
+                output, encoded, hierarchical_quantized, hierarchical_residual, indices = model(
+                    input
+                )
 
-    allclose(output, expected_output, atol=1e-5)
+            allclose(output, expected_output, atol=1e-5)
 
-    num_parameters = 0
+            num_parameters = 0
 
-    for p in model.parameters():
-        if p.requires_grad:
-            num_parameters += p.numel()
+            for p in model.parameters():
+                if p.requires_grad:
+                    num_parameters += p.numel()
 
-    assert num_parameters == 19046114
+            if sample_rate == 24:
+                assert num_parameters == 19046114
+            elif sample_rate == 32:
+                assert num_parameters == 57933250
+            else:
+                raise ValueError(f"Unsupported sample rate {sample_rate}.")
 
 
 def test_encodec_encoder() -> None:

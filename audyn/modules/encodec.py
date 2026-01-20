@@ -30,6 +30,7 @@ class EncoderBlock(nn.Module):
         activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.elu,
         weight_regularization: Optional[str] = "weight_norm",
         is_causal: bool = True,
+        use_shortcut: bool = True,
     ) -> None:
         super().__init__()
 
@@ -48,6 +49,7 @@ class EncoderBlock(nn.Module):
                 activation=activation,
                 weight_regularization=weight_regularization,
                 is_causal=is_causal,
+                use_shortcut=use_shortcut,
             )
             backbone.append(unit)
 
@@ -149,6 +151,7 @@ class DecoderBlock(nn.Module):
         activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.elu,
         weight_regularization: Optional[str] = "weight_norm",
         is_causal: bool = True,
+        use_shortcut: bool = True,
     ) -> None:
         super().__init__()
 
@@ -182,6 +185,7 @@ class DecoderBlock(nn.Module):
                 activation=activation,
                 weight_regularization=weight_regularization,
                 is_causal=is_causal,
+                use_shortcut=use_shortcut,
             )
             backbone.append(unit)
 
@@ -214,8 +218,8 @@ class DecoderBlock(nn.Module):
             padding_left = 0
             padding_right = padding
         else:
-            padding_left = padding // 2
-            padding_right = padding - padding_left
+            padding_right = padding // 2
+            padding_left = padding - padding_right
 
         x = self.nonlinear1d(input)
         x = self.conv1d(x)
@@ -329,10 +333,10 @@ class ResidualUnit1d(nn.Module):
         x = _pad1d(x, kernel_size=1, mode=self.padding_mode, is_causal=self.is_causal)
         x = self.conv1d_out(x)
 
-        if self.shortcut is not None:
-            output = x + self.shortcut(residual)
+        if self.shortcut is None:
+            output = x + residual
         else:
-            output = x
+            output = x + self.shortcut(residual)
 
         return output
 
@@ -405,8 +409,8 @@ def _pad1d(
         padding_left = padding
         padding_right = 0
     else:
-        padding_left = padding // 2
-        padding_right = padding - padding_left
+        padding_right = padding // 2
+        padding_left = padding - padding_right
 
     output = F.pad(input, (padding_left, padding_right + extra_padding), mode=mode)
 

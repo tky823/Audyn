@@ -20,12 +20,16 @@ __all__ = [
     "Decoder",
     "encodec_24khz_num_codebooks",
     "encodec_24khz_codebook_size",
+    "encodec_32khz_num_codebooks",
+    "encodec_32khz_codebook_size",
 ]
 
 IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
 
 encodec_24khz_num_codebooks = 32
 encodec_24khz_codebook_size = 1024
+encodec_32khz_num_codebooks = 4
+encodec_32khz_codebook_size = 2048
 
 
 class EnCodec(RVQVAE):
@@ -149,6 +153,7 @@ class EnCodec(RVQVAE):
 
             Supported pretrained model names are
                 - encodec_24khz
+                - encodec_32khz
 
         """  # noqa: E501
         from ..utils._github import download_file_from_github_release
@@ -209,6 +214,8 @@ class Encoder(nn.Module):
         activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.elu,
         weight_regularization: Optional[str] = "weight_norm",
         is_causal: bool = True,
+        is_rnn_causal: Optional[bool] = None,
+        use_shortcut: bool = True,
     ) -> None:
         super().__init__()
 
@@ -236,15 +243,17 @@ class Encoder(nn.Module):
                 activation=activation,
                 weight_regularization=weight_regularization,
                 is_causal=is_causal,
+                use_shortcut=use_shortcut,
             )
             backbone.append(block)
             _in_channels = _out_channels
 
         self.backbone = nn.Sequential(*backbone)
 
+        is_rnn_causal = is_causal if is_rnn_causal is None else is_rnn_causal
         rnn_cls = _get_rnn(rnn_type)
 
-        if is_causal:
+        if is_rnn_causal:
             self.rnn = rnn_cls(
                 _out_channels,
                 _out_channels,
@@ -277,6 +286,7 @@ class Encoder(nn.Module):
         self.stride = stride
         self.padding_mode = padding_mode
         self.is_causal = is_causal
+        self.is_rnn_causal = is_rnn_causal
 
         self.registered_weight_norms = set()
 
@@ -388,6 +398,8 @@ class Decoder(nn.Module):
         activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.elu,
         weight_regularization: Optional[str] = "weight_norm",
         is_causal: bool = True,
+        is_rnn_causal: Optional[bool] = None,
+        use_shortcut: bool = True,
     ) -> None:
         super().__init__()
 
@@ -400,9 +412,10 @@ class Decoder(nn.Module):
             stride=1,
         )
 
+        is_rnn_causal = is_causal if is_rnn_causal is None else is_rnn_causal
         rnn_cls = _get_rnn(rnn_type)
 
-        if is_causal:
+        if is_rnn_causal:
             self.rnn = rnn_cls(
                 _out_channels,
                 _out_channels,
@@ -436,6 +449,7 @@ class Decoder(nn.Module):
                 activation=activation,
                 weight_regularization=weight_regularization,
                 is_causal=is_causal,
+                use_shortcut=use_shortcut,
             )
             backbone.append(block)
             _in_channels = _out_channels
@@ -457,6 +471,7 @@ class Decoder(nn.Module):
         self.kernel_size_out = _single(kernel_size_out)
         self.padding_mode = padding_mode
         self.is_causal = is_causal
+        self.is_rnn_causal = is_rnn_causal
 
         self.registered_weight_norms = set()
 
@@ -574,6 +589,16 @@ def _create_pretrained_encodec_configs() -> Dict[str, Dict[str, str]]:
                 "encodec_24khz.pth",
             ),
             "sha256": "7f737d318e0dac4d140cad0f38a7184128c795cfebf764341e631d381ae33c3c",
+        },
+        "encodec_32khz": {
+            "url": "https://github.com/tky823/Audyn/releases/download/v0.2.1/encodec_32kHz.pth",  # noqa: E501
+            "path": os.path.join(
+                model_cache_dir,
+                "EnCodec",
+                "cce4e5fc",
+                "encodec_32khz.pth",
+            ),
+            "sha256": "cce4e5fc356b3d48836e9988b7d12ca721cd9a90543655ab47d667649ddfaf13",
         },
     }
 
