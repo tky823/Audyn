@@ -31,6 +31,8 @@ from audyn.optim.optimizer import (
     RiemannSGD,
 )
 
+_MP_START_METHOD = "forkserver" if sys.platform != "win32" else "spawn"
+
 
 @pytest.mark.parametrize("build_from_optim_class", [True, False])
 def test_exponential_moving_average_wrapper(build_from_optim_class: bool):
@@ -294,9 +296,10 @@ def test_exponential_moving_average_codebook_optimizer_ddp(is_rvq: bool) -> None
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
+        ctx = mp.get_context(_MP_START_METHOD)
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            process = mp.Process(
+            process = ctx.Process(
                 target=train_exponential_moving_average_codebook_optimizer,
                 args=(rank, world_size, port, build_model),
                 kwargs={

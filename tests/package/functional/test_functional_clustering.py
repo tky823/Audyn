@@ -19,6 +19,9 @@ from audyn.functional.clustering import (
 
 IS_WINDOWS = sys.platform == "win32"
 
+# Use forkserver on Unix-like systems (faster), spawn on Windows (only option)
+_MP_START_METHOD = "forkserver" if sys.platform != "win32" else "spawn"
+
 
 def test_kmeans_clustering() -> None:
     torch.manual_seed(0)
@@ -66,11 +69,12 @@ def test_kmeans_clustering_ddp() -> None:
     n_iter = 10
 
     with tempfile.TemporaryDirectory() as temp_dir:
+        ctx = mp.get_context(_MP_START_METHOD)
         processes = []
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            process = mp.Process(
+            process = ctx.Process(
                 target=run_kmeans_clustering,
                 args=(rank, world_size, port),
                 kwargs={
@@ -131,11 +135,12 @@ def test_minibatch_kmeans_clustering_ddp() -> None:
     n_iter = 5
 
     with tempfile.TemporaryDirectory() as temp_dir:
+        ctx = mp.get_context(_MP_START_METHOD)
         processes = []
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            process = mp.Process(
+            process = ctx.Process(
                 target=run_minibatch_kmeans_clustering,
                 args=(rank, world_size, port),
                 kwargs={

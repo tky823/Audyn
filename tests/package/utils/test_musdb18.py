@@ -1,5 +1,6 @@
 import glob
 import os
+import sys
 import tempfile
 import warnings
 from datetime import timedelta
@@ -29,6 +30,8 @@ from audyn.utils.data.musdb18.dataset import (
     StemsMUSDB18Dataset,
     Track,
 )
+
+_MP_START_METHOD = "forkserver" if sys.platform != "win32" else "spawn"
 
 
 def test_musdb18() -> None:
@@ -213,11 +216,12 @@ def test_distributed_musdb18_dataset(
             for track_name in train_track_names:
                 f_list.write(track_name + "\n")
 
+        ctx = mp.get_context(_MP_START_METHOD)
         processes = []
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            process = mp.Process(
+            process = ctx.Process(
                 target=run_distributed_musdb18_dataset_sampler,
                 args=(rank, world_size, port),
                 kwargs={

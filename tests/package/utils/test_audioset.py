@@ -1,4 +1,5 @@
 import os
+import sys
 import tempfile
 from datetime import timedelta
 from typing import Any, Dict, Optional
@@ -26,6 +27,8 @@ from audyn.utils.data.audioset.dataset import (
     WeightedAudioSetWebDataset,
 )
 from audyn.utils.data.collator import Collator
+
+_MP_START_METHOD = "forkserver" if sys.platform != "win32" else "spawn"
 
 
 @pytest.mark.parametrize("dataset_type", [None, "PaSST"])
@@ -226,11 +229,12 @@ def test_distributed_weighted_audioset_webdataset_sampler(
 
         assert len(os.listdir(feature_dir)) == (len(audioset_samples) - 1) // max_shard_count + 1
 
+        ctx = mp.get_context(_MP_START_METHOD)
         processes = []
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            process = mp.Process(
+            process = ctx.Process(
                 target=run_distributed_weighted_audioset_webdataset_sampler,
                 args=(rank, world_size, port),
                 kwargs={

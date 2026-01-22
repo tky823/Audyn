@@ -27,6 +27,9 @@ from audyn.criterion.contrastive import (
 
 IS_LINUX = sys.platform.startswith("linux")
 
+# Use forkserver on Unix-like systems (faster), spawn on Windows (only option)
+_MP_START_METHOD = "forkserver" if sys.platform != "win32" else "spawn"
+
 
 @pytest.mark.parametrize("reduction", ["mean", "sum", "none"])
 def test_info_nce_loss(reduction: str) -> None:
@@ -123,9 +126,11 @@ def test_info_nce_loss_ddp(dim: int) -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
+        ctx = mp.get_context(_MP_START_METHOD)
+
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            process = mp.Process(
+            process = ctx.Process(
                 target=run_contrastive_loss,
                 args=(rank, world_size, port),
                 kwargs={
@@ -158,7 +163,7 @@ def test_info_nce_loss_ddp(dim: int) -> None:
             else:
                 criterion_cls = IntraInfoNCELoss
 
-            process = mp.Process(
+            process = ctx.Process(
                 target=run_contrastive_loss,
                 args=(rank, world_size, port),
                 kwargs={
@@ -290,9 +295,11 @@ def test_ntxent_loss_ddp(dim: int) -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
+        ctx = mp.get_context(_MP_START_METHOD)
+
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            process = mp.Process(
+            process = ctx.Process(
                 target=run_contrastive_loss,
                 args=(rank, world_size, port),
                 kwargs={
@@ -325,7 +332,7 @@ def test_ntxent_loss_ddp(dim: int) -> None:
             else:
                 criterion_cls = IntraNTXentLoss
 
-            process = mp.Process(
+            process = ctx.Process(
                 target=run_contrastive_loss,
                 args=(rank, world_size, port),
                 kwargs={
@@ -711,10 +718,12 @@ def test_inter_info_nce_loss_ddp(dim: int) -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
+        ctx = mp.get_context(_MP_START_METHOD)
+
         # multiple devices
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            process = mp.Process(
+            process = ctx.Process(
                 target=run_inter_info_nce_loss,
                 args=(rank, world_size, port),
                 kwargs={
@@ -870,10 +879,12 @@ def test_inter_ntxent_loss_ddp(dim: int) -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
+        ctx = mp.get_context(_MP_START_METHOD)
+
         # multiple devices
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            process = mp.Process(
+            process = ctx.Process(
                 target=run_inter_ntxent_loss,
                 args=(rank, world_size, port),
                 kwargs={
