@@ -280,7 +280,7 @@ def run_distributed_musdb18_dataset_sampler(
         backend="gloo",
         world_size=world_size,
         rank=rank,
-        timeout=timedelta(minutes=1),
+        timeout=timedelta(seconds=10),
     )
     torch.manual_seed(seed)
 

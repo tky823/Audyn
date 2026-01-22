@@ -235,7 +235,7 @@ def run_kmeans_clustering(
         init_method=config.distributed.init_method,
         rank=int(os.environ["RANK"]),
         world_size=int(os.environ["WORLD_SIZE"]),
-        timeout=timedelta(minutes=1),
+        timeout=timedelta(seconds=10),
     )
     torch.manual_seed(config.seed)
 
@@ -309,7 +309,7 @@ def run_minibatch_kmeans_clustering(
         init_method=config.distributed.init_method,
         rank=int(os.environ["RANK"]),
         world_size=int(os.environ["WORLD_SIZE"]),
-        timeout=timedelta(minutes=1),
+        timeout=timedelta(seconds=10),
     )
     torch.manual_seed(config.seed)
 
