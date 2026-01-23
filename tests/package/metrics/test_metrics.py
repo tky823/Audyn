@@ -1,4 +1,5 @@
 import os
+import sys
 import tempfile
 from datetime import timedelta
 
@@ -9,6 +10,9 @@ from audyn_test.utils import select_random_port
 from audyn_test.utils.ddp import retry_on_file_not_found, set_ddp_environment
 
 from audyn.metrics import MeanMetric
+
+# Use forkserver on Unix-like systems (faster), spawn on Windows (only option)
+_MP_START_METHOD = "forkserver" if sys.platform != "win32" else "spawn"
 
 
 def test_mean_metric() -> None:
@@ -51,7 +55,7 @@ def test_mean_metric_ddp() -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        ctx = mp.get_context("spawn")
+        ctx = mp.get_context(_MP_START_METHOD)
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
@@ -116,7 +120,7 @@ def run_mean_metric(
         backend="gloo",
         rank=rank,
         world_size=world_size,
-        timeout=timedelta(minutes=1),
+        timeout=timedelta(seconds=10),
     )
     torch.manual_seed(seed)
 

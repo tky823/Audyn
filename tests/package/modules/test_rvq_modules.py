@@ -18,6 +18,7 @@ from audyn.functional.vector_quantization import quantize_vector
 from audyn.modules.rvq import ResidualVectorQuantizer
 
 IS_WINDOWS = sys.platform == "win32"
+_MP_START_METHOD = "forkserver" if sys.platform != "win32" else "spawn"
 
 
 def test_residual_vector_quantizer() -> None:
@@ -119,9 +120,10 @@ def test_residual_vector_quantizer_ddp() -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
+        ctx = mp.get_context(_MP_START_METHOD)
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            process = mp.Process(
+            process = ctx.Process(
                 target=train_dummy_rvqvae,
                 args=(rank, world_size, port),
                 kwargs={
@@ -301,7 +303,7 @@ def train_dummy_rvqvae(
         init_method=config.distributed.init_method,
         rank=int(os.environ["RANK"]),
         world_size=int(os.environ["WORLD_SIZE"]),
-        timeout=timedelta(minutes=1),
+        timeout=timedelta(seconds=10),
     )
     torch.manual_seed(config.seed)
 

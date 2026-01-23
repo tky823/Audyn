@@ -1,4 +1,5 @@
 import os
+import sys
 import tempfile
 
 import torch
@@ -16,6 +17,8 @@ from audyn.modules.glowtts import (
     MaskedWaveNetAffineCoupling,
 )
 from audyn.modules.waveglow import WaveNetAffineCoupling
+
+_MP_START_METHOD = "forkserver" if sys.platform != "win32" else "spawn"
 
 
 def test_masked_act_norm1d() -> None:
@@ -231,9 +234,10 @@ def test_masked_act_norm1d_ddp() -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
+        ctx = mp.get_context(_MP_START_METHOD)
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            process = mp.Process(
+            process = ctx.Process(
                 target=train_dummy_masked_act_norm1d,
                 args=(rank, world_size, port),
                 kwargs={

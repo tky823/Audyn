@@ -1,4 +1,5 @@
 import os
+import sys
 import tempfile
 
 import torch
@@ -13,6 +14,8 @@ from audyn.modules.glow import (
     InvertiblePointwiseConv1d,
     InvertiblePointwiseConv2d,
 )
+
+_MP_START_METHOD = "forkserver" if sys.platform != "win32" else "spawn"
 
 
 def test_invertible_pointwise_conv1d():
@@ -143,9 +146,10 @@ def test_act_norm1d_ddp() -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
+        ctx = mp.get_context(_MP_START_METHOD)
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            process = mp.Process(
+            process = ctx.Process(
                 target=train_dummy_act_norm1d,
                 args=(rank, world_size, port),
                 kwargs={

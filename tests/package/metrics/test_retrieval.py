@@ -17,6 +17,9 @@ from audyn.metrics.retrieval import MeanAveragePrecision, MedianRank
 IS_WINDOWS = sys.platform == "win32"
 parameters_mink = [0, 1]
 
+# Use forkserver on Unix-like systems (faster), spawn on Windows (only option)
+_MP_START_METHOD = "forkserver" if sys.platform != "win32" else "spawn"
+
 
 @pytest.mark.parametrize("mink", parameters_mink)
 def test_mean_average_precision_oracle(mink: int) -> None:
@@ -78,7 +81,7 @@ def test_mean_average_precision_ddp_oracle(mink: int) -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        ctx = mp.get_context("spawn")
+        ctx = mp.get_context(_MP_START_METHOD)
 
         for process_rank in range(world_size):
             path = os.path.join(temp_dir, f"{process_rank}.pth")
@@ -160,7 +163,7 @@ def test_mean_average_precision_ddp_known_map(mink: int) -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        ctx = mp.get_context("spawn")
+        ctx = mp.get_context(_MP_START_METHOD)
 
         for process_rank in range(world_size):
             path = os.path.join(temp_dir, f"{process_rank}.pth")
@@ -290,7 +293,7 @@ def test_median_rank_ddp(ranks: str, mink: int) -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        ctx = mp.get_context("spawn")
+        ctx = mp.get_context(_MP_START_METHOD)
 
         for process_rank in range(world_size):
             path = os.path.join(temp_dir, f"{process_rank}.pth")
@@ -366,7 +369,7 @@ def run_mean_average_precision(
 ) -> None:
     set_ddp_environment(process_rank, world_size, port)
 
-    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
+    dist.init_process_group(backend="gloo", timeout=timedelta(seconds=10))
     torch.manual_seed(seed)
 
     g = torch.Generator()
@@ -418,7 +421,7 @@ def run_median_rank(
         backend="gloo",
         rank=process_rank,
         world_size=world_size,
-        timeout=timedelta(minutes=1),
+        timeout=timedelta(seconds=10),
     )
     torch.manual_seed(seed)
 

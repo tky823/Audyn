@@ -1,5 +1,6 @@
 import glob
 import os
+import sys
 import tempfile
 import warnings
 from datetime import timedelta
@@ -29,6 +30,8 @@ from audyn.utils.data.dnr.dataset import (
     StemsDNRDataset,
     Track,
 )
+
+_MP_START_METHOD = "forkserver" if sys.platform != "win32" else "spawn"
 
 
 def test_dnr() -> None:
@@ -206,11 +209,12 @@ def test_distributed_dnr_dataset(
                 line = f"{track_name}\n"
                 f_list.write(line)
 
+        ctx = mp.get_context(_MP_START_METHOD)
         processes = []
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
-            process = mp.Process(
+            process = ctx.Process(
                 target=run_distributed_dnr_dataset_sampler,
                 args=(rank, world_size, port),
                 kwargs={
@@ -273,7 +277,7 @@ def run_distributed_dnr_dataset_sampler(
         backend="gloo",
         world_size=world_size,
         rank=rank,
-        timeout=timedelta(minutes=1),
+        timeout=timedelta(seconds=10),
     )
     torch.manual_seed(seed)
 

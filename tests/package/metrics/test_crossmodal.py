@@ -1,4 +1,5 @@
 import os
+import sys
 import tempfile
 from datetime import timedelta
 
@@ -15,6 +16,9 @@ from audyn.metrics.crossmodal import (
 )
 
 parameters_mink = [0, 1]
+
+# Use forkserver on Unix-like systems (faster), spawn on Windows (only option)
+_MP_START_METHOD = "forkserver" if sys.platform != "win32" else "spawn"
 
 
 def test_crossmodal_mean_average_precision() -> None:
@@ -71,7 +75,7 @@ def test_crossmodal_mean_average_precision_ddp_itemwise(strategy: str) -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        ctx = mp.get_context("spawn")
+        ctx = mp.get_context(_MP_START_METHOD)
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
@@ -172,7 +176,7 @@ def test_crossmodal_mean_average_precision_ddp_batchwise(strategy: str) -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        ctx = mp.get_context("spawn")
+        ctx = mp.get_context(_MP_START_METHOD)
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
@@ -316,7 +320,7 @@ def test_crossmodal_median_rank_ddp_itemwise(mink: int, strategy: str) -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        ctx = mp.get_context("spawn")
+        ctx = mp.get_context(_MP_START_METHOD)
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
@@ -417,7 +421,7 @@ def test_crossmodal_median_rank_ddp_batchwise(mink: int, strategy: str) -> None:
     processes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        ctx = mp.get_context("spawn")
+        ctx = mp.get_context(_MP_START_METHOD)
 
         for rank in range(world_size):
             path = os.path.join(temp_dir, f"{rank}.pth")
@@ -524,7 +528,7 @@ def run_crossmodal_mean_average_precision_itemwise(
         backend="gloo",
         rank=rank,
         world_size=world_size,
-        timeout=timedelta(minutes=1),
+        timeout=timedelta(seconds=10),
     )
     torch.manual_seed(seed)
 
@@ -573,7 +577,7 @@ def run_crossmodal_mean_average_precision_batchwise(
 ) -> None:
     set_ddp_environment(rank, world_size, port)
 
-    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
+    dist.init_process_group(backend="gloo", timeout=timedelta(seconds=10))
     torch.manual_seed(seed)
 
     g = torch.Generator()
@@ -620,7 +624,7 @@ def run_crossmodal_median_rank_itemwise(
 ) -> None:
     set_ddp_environment(rank, world_size, port)
 
-    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
+    dist.init_process_group(backend="gloo", timeout=timedelta(seconds=10))
     torch.manual_seed(seed)
 
     g = torch.Generator()
@@ -668,7 +672,7 @@ def run_crossmodal_median_rank_batchwise(
 ) -> None:
     set_ddp_environment(rank, world_size, port)
 
-    dist.init_process_group(backend="gloo", timeout=timedelta(minutes=1))
+    dist.init_process_group(backend="gloo", timeout=timedelta(seconds=10))
     torch.manual_seed(seed)
 
     g = torch.Generator()
