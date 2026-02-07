@@ -3,6 +3,7 @@ import torch
 from audyn_test.utils.github import retrieve_git_branch
 
 dataset_parameters = [
+    "fma",
     "msd",
 ]
 
@@ -27,6 +28,7 @@ def test_music_tagging_transformer(dataset: str) -> None:
         repo,
         transform,
         skip_validation=False,
+        dataset=dataset,
     )
     model = torch.hub.load(
         repo,
