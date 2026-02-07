@@ -13,22 +13,32 @@ __all__ = [
 ]
 
 
-def musicfm_melspectrogram() -> MusicFMMelSpectrogram:
-    """Build MusicTaggingTransformerMelSpectrogram."""
-    transform = MusicFMMelSpectrogram.build_from_pretrained()
+def musicfm_melspectrogram(
+    dataset: int = "fma",
+) -> MusicFMMelSpectrogram:
+    """Build MusicTaggingTransformerMelSpectrogram.
+
+    Args:
+        dataset (str): Dataset in pretraining.
+
+    Returns:
+        MusicFMMelSpectrogram: MelSpectrogramTransform.
+
+    """
+    transform = MusicFMMelSpectrogram.build_from_pretrained(dataset=dataset)
 
     return transform
 
 
 def musicfm(
-    dataset: int = "msd",
+    dataset: str = "fma",
     aggregator: Optional[nn.Module] = None,
     head: Optional[nn.Module] = None,
 ) -> MusicFM:
     """Build MusicFM.
 
     Args:
-        dataset (int): Dataset in pretraining.
+        dataset (str): Dataset in pretraining.
         aggregator (nn.Module, optional): Aggregator module.
         head (nn.Module, optional): Head module.
 
@@ -36,7 +46,9 @@ def musicfm(
         MusicFM: Pretrained MusicFM.
 
     """
-    if dataset == "msd":
+    if dataset == "fma":
+        pretrained_model_name = "musicfm_fma"
+    elif dataset == "msd":
         pretrained_model_name = "musicfm_msd"
     else:
         raise ValueError(f"{dataset} is not supported as dataset.")
