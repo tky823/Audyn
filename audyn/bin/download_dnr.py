@@ -74,8 +74,8 @@ def download_dnr(config: DictConfig) -> None:
             _download_dnr(_url, path, chunk_size=chunk_size)
 
     if unpack:
-        merged_path = targz_template.format(0)
-        merged_path = merged_path[:-3]
+        merged_filename = targz_template.format(0)
+        merged_path = os.path.join(root, merged_filename[:-3])
 
         with open(merged_path, "wb") as f_out:
             for idx in range(num_files):
@@ -85,14 +85,12 @@ def download_dnr(config: DictConfig) -> None:
                 with open(path, "rb") as f_in:
                     f_out.write(f_in.read())
 
-        root = os.path.dirname(path)
         default_name = "DnR-V2"
 
         if dnr_root is None:
             dnr_root = os.path.join(root, default_name)
 
-        unpacked_root = os.path.join(dnr_root, "audio")
-        _unpack_targz(merged_path, unpacked_root=unpacked_root)
+        _unpack_targz(merged_path, dnr_root=dnr_root)
 
 
 def _download_dnr(url: str, path: str, chunk_size: int = DEFAULT_CHUNK_SIZE) -> None:
@@ -115,5 +113,5 @@ def _unpack_targz(path: str, dnr_root: str) -> None:
 
         os.makedirs(dnr_root, exist_ok=True)
 
-        for temp_path in glob.glob(os.path.join(temp_dir, "*")):
+        for temp_path in glob.glob(os.path.join(temp_dir, "dnr_v2", "*")):
             shutil.move(temp_path, dnr_root)
