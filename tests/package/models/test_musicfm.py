@@ -10,13 +10,27 @@ from audyn.utils._github import download_file_from_github_release
 
 def test_musicfm() -> None:
     # regression test
-    url = "https://github.com/tky823/Audyn/releases/download/v0.2.0/test_official_musicfm.pth"  # noqa: E501
+    url = "https://github.com/tky823/Audyn/releases/download/v0.3.0/test_official_musicfm.pth"  # noqa: E501
     path = os.path.join(audyn_test_cache_dir, "test_official_musicfm.pth")
     download_file_from_github_release(url, path)
 
     data = torch.load(path, weights_only=True)
 
-    spectrogram = data["spectrogram"]
+    # FMA
+    spectrogram = data["fma"]["spectrogram"]
+    expected_logits = data["fma"]["logits"]
+
+    model = MusicFM.build_from_pretrained("musicfm_fma")
+
+    model.eval()
+
+    with torch.no_grad():
+        logits = model(spectrogram)
+
+    allclose(logits, expected_logits, atol=1e-4)
+
+    # MSD
+    spectrogram = data["msd"]["spectrogram"]
     expected_logits = data["msd"]["logits"]
 
     model = MusicFM.build_from_pretrained("musicfm_msd")
