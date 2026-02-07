@@ -130,20 +130,41 @@ MusicFM
 
 - The weights are extracted from the original implementation.
 - In terms of reproducibility, it is recommended to load predefined Mel-spectrogram transform as well.
-- The model is pretrained by Million Song Dataset (MSD).
+- The model is pretrained by Free Music Archive (FMA) or Million Song Dataset (MSD).
 
 .. code-block:: python
 
     >>> import torch
     >>> repo = "tky823/Audyn"
+    >>> dataset = "fma"
     >>> transform = "musicfm_melspectrogram"
     >>> musicfm_melspectrogram = torch.hub.load(
     ...     repo,
     ...     transform,
     ...     skip_validation=False,
+    ...     dataset=dataset,
     ... )
     >>> model = "musicfm"
+    >>> musicfm = torch.hub.load(
+    ...     repo,
+    ...     model,
+    ...     skip_validation=False,
+    ...     dataset=dataset,
+    ... )
+
+.. code-block:: python
+
+    >>> import torch
+    >>> repo = "tky823/Audyn"
     >>> dataset = "msd"
+    >>> transform = "musicfm_melspectrogram"
+    >>> musicfm_melspectrogram = torch.hub.load(
+    ...     repo,
+    ...     transform,
+    ...     skip_validation=False,
+    ...     dataset=dataset,
+    ... )
+    >>> model = "musicfm"
     >>> musicfm = torch.hub.load(
     ...     repo,
     ...     model,

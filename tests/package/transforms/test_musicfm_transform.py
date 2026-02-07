@@ -10,16 +10,28 @@ from audyn.utils._github import download_file_from_github_release
 
 def test_musicfm_melspectrogram_transform() -> None:
     # regression test
-    url = "https://github.com/tky823/Audyn/releases/download/v0.2.0/test_official_musicfm.pth"  # noqa: E501
+    url = "https://github.com/tky823/Audyn/releases/download/v0.3.0/test_official_musicfm.pth"  # noqa: E501
     path = os.path.join(audyn_test_cache_dir, "test_official_musicfm.pth")
     download_file_from_github_release(url, path)
 
     data = torch.load(path, weights_only=True)
 
     waveform = data["waveform"]
-    expected_melspectrogram = data["spectrogram"]
 
-    transform = MusicFMMelSpectrogram.build_from_pretrained()
+    # FMA
+    dataset = "fma"
+    expected_melspectrogram = data[dataset]["spectrogram"]
+
+    transform = MusicFMMelSpectrogram.build_from_pretrained(dataset=dataset)
+    melspectrogram = transform(waveform)
+
+    allclose(melspectrogram, expected_melspectrogram, atol=1e-4)
+
+    # MSD
+    dataset = "msd"
+    expected_melspectrogram = data[dataset]["spectrogram"]
+
+    transform = MusicFMMelSpectrogram.build_from_pretrained(dataset=dataset)
     melspectrogram = transform(waveform)
 
     allclose(melspectrogram, expected_melspectrogram, atol=1e-4)

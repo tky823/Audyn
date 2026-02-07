@@ -143,7 +143,12 @@ class MusicFMMelSpectrogram(aT.MelSpectrogram):
         return spectrogram
 
     @classmethod
-    def build_from_pretrained(cls) -> "MusicFMMelSpectrogram":
+    def build_from_pretrained(
+        cls,
+        dataset: Optional[str] = None,
+        mean: Optional[float] = None,
+        std: Optional[float] = None,
+    ) -> "MusicFMMelSpectrogram":
         """Build MusicFMMelSpectrogram from pretraind one.
 
         Due to lack of backward compatibility of ``torchaudio.transforms.MelSpectrogram``,
@@ -154,7 +159,7 @@ class MusicFMMelSpectrogram(aT.MelSpectrogram):
             >>> import torch
             >>> from audyn.transforms import MusicFMMelSpectrogram
             >>> torch.manual_seed(0)
-            >>> transform = MusicFMMelSpectrogram.build_from_pretrained()
+            >>> transform = MusicFMMelSpectrogram.build_from_pretrained(dataset="fma")
             >>> sample_rate = transform.sample_rate
             >>> print(sample_rate)
             24000
@@ -163,20 +168,48 @@ class MusicFMMelSpectrogram(aT.MelSpectrogram):
             >>> print(spectrogram.size())
             torch.Size([128, 3000])
 
+        .. note::
+
+            Supported pretrained model names are
+                - fma
+                - musicfm_msd
+
         """
         from ..utils import model_cache_dir
 
-        url = "https://github.com/tky823/Audyn/releases/download/v0.2.0/musicfm_melspectrogram.pth"  # noqa: E501
-        path = os.path.join(model_cache_dir, "MusicFM", "72f9d23e", "musicfm_melspectrogram.pth")
-        download_file_from_github_release(url, path=path)
+        if dataset is None:
+            if mean is None:
+                mean = 0
 
-        state_dict = torch.load(
-            path,
-            map_location=lambda storage, loc: storage,
-            weights_only=True,
-        )
+            if std is None:
+                std = 1
 
-        transform = cls(mean=6.768444971712967, std=18.417922652295623)
-        transform.load_state_dict(state_dict)
+            transform = cls(mean=mean, std=std)
+        else:
+            assert mean is None and std is None, "mean and std should be None."
+
+            url = "https://github.com/tky823/Audyn/releases/download/v0.2.0/musicfm_melspectrogram.pth"  # noqa: E501
+            path = os.path.join(
+                model_cache_dir, "MusicFM", "72f9d23e", "musicfm_melspectrogram.pth"
+            )
+            download_file_from_github_release(url, path=path)
+
+            state_dict = torch.load(
+                path,
+                map_location=lambda storage, loc: storage,
+                weights_only=True,
+            )
+
+            if dataset.lower() == "fma":
+                mean = 3.0710578151459664
+                std = 20.999089814337626
+            elif dataset.lower() == "msd":
+                mean = 6.768444971712967
+                std = 18.417922652295623
+            else:
+                raise ValueError(f"Unsupported dataset {dataset} is given.")
+
+            transform = cls(mean=mean, std=std)
+            transform.load_state_dict(state_dict)
 
         return transform
