@@ -1,0 +1,3 @@
+_target_: audyn_test.models.DummyTextToFeat
+vocab_size:
+num_features:

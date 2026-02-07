@@ -1,0 +1,50 @@
+defaults:
+  - dataset: dummy_text-to-feat
+  - dataloader: default
+  - output: dummy
+  - _self_
+
+dataloader:
+  train:
+    shuffle: false
+  validation:
+    shuffle: false
+
+key_mapping:
+  train:
+    input:
+      input: text
+      duration: text_duration
+    output: estimated_melspectrogram
+  validation:
+    text_to_feat: ${..train}
+    transform_middle:
+      input:
+        input: estimated_melspectrogram
+      output: transformed_estimated_melspectrogram
+    feat_to_wave:
+      input:
+        input: transformed_estimated_melspectrogram
+      output: estimated_waveform
+  inference:
+    text_to_feat:
+      input:
+        input: text
+      output: estimated_melspectrogram
+    transform_middle: ${..validation.transform_middle}
+    feat_to_wave: ${..validation.feat_to_wave}
+
+resume:
+  continue_from:
+
+pretrained_feat_to_wave:
+  path:
+  transform_middle:
+    _target_: audyn.models.text_to_wave.FastSpeechWaveNetBridge
+
+record:
+
+steps:
+  epochs:
+  iterations:
+  lr_scheduler: iteration

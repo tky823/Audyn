@@ -1,0 +1,22 @@
+defaults:
+  - default
+  - _self_
+
+train:
+  batch_size:
+  collate_fn:
+    _target_: audyn.utils.data.Collator
+    composer:
+      _target_: audyn.utils.data.Mixer
+      input_keys:
+        - drums
+        - bass
+        - other
+        - vocals
+      output_key: mixture
+      decode_audio_as_waveform: true
+      decode_audio_as_monoral: false
+  shuffle:
+validation:
+  batch_size:
+  collate_fn: ${..train.collate_fn}

@@ -1,0 +1,18 @@
+- name: loss1
+  criterion:
+    _target_: audyn_test.criterion.CustomCriterion
+  weight: 1
+  key_mapping:
+    estimated:
+      input: criterion_input
+    target:
+      target: target
+- name: loss2
+  criterion:
+    _target_: audyn_test.criterion.CustomCriterion
+  weight: 1
+  key_mapping:
+    estimated:
+      input: criterion_input
+    target:
+      target: target

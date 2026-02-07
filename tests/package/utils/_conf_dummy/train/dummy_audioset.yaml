@@ -1,0 +1,22 @@
+defaults:
+  - dataset: dummy_audioset1
+  - dataloader: default
+  - output: dummy
+  - _self_
+
+key_mapping:
+  train:
+    input:
+      input: audio
+    output: criterion_input
+  validation: ${.train}
+
+resume:
+  continue_from:
+
+record:
+
+steps:
+  epochs:
+  iterations:
+  lr_scheduler: iteration

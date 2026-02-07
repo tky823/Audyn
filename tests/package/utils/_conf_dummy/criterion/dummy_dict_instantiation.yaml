@@ -1,0 +1,21 @@
+_target_: audyn.criterion.MultiCriteria
+loss1:
+  _target_: audyn.criterion.BaseCriterionWrapper
+  criterion:
+    _target_: audyn_test.criterion.CustomCriterion
+  weight: 1
+  key_mapping:
+    estimated:
+      input: criterion_input
+    target:
+      target: target
+loss2:
+  _target_: audyn.criterion.BaseCriterionWrapper
+  criterion:
+    _target_: audyn_test.criterion.CustomCriterion
+  weight: 1
+  key_mapping:
+    estimated:
+      input: criterion_input
+    target:
+      target: target

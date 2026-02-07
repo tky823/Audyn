@@ -1,0 +1,5 @@
+- name: riemann
+  lr_scheduler:
+    _target_: audyn.optim.lr_scheduler.BurnInLRScheduler
+    burnin_step: 2
+    burnin_scale: 0.01

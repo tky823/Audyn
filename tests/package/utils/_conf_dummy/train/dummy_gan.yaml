@@ -1,0 +1,48 @@
+defaults:
+  - dataloader: default
+  - output: dummy
+  - record: dummy_gan
+  - _self_
+
+dataset:
+  train:
+    _target_: audyn_test.utils.data.DummyGANDataset
+    size:
+    min_length: 5
+    max_length: 10
+  validation:
+    _target_: audyn_test.utils.data.DummyGANDataset
+    size:
+    min_length: 5
+    max_length: 10
+
+key_mapping:
+  train:
+    generator:
+      input:
+        noise: noise
+      output: fake
+    discriminator:
+      fake:
+        input:
+          waveform: ${....generator.output}
+        output: fake_prob
+      real:
+        input:
+          waveform: input
+        output: real_prob
+  validation: ${.train}
+
+clip_gradient:
+  _target_: torch.nn.utils.clip_grad_norm_
+  max_norm: 10
+
+resume:
+  continue_from:
+
+steps:
+  epochs:
+  iterations:
+  lr_scheduler:
+    generator: iteration
+    discriminator: iteration

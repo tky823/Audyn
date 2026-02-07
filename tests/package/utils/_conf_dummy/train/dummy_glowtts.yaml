@@ -1,0 +1,89 @@
+defaults:
+  - dataset: dummy_text-to-feat
+  - dataloader: default
+  - output: dummy
+  - _self_
+
+dataloader:
+  train:
+    shuffle: false
+  validation:
+    shuffle: false
+
+key_mapping:
+  train:
+    input:
+      src: text
+      tgt: melspectrogram
+      src_length: text_length
+      tgt_length: melspectrogram_length
+    output:
+      - - src_latent
+        - tgt_latent
+      - - log_est_duration
+        - ml_duration
+      - - src_padding_mask
+        - tgt_padding_mask
+      - logdet
+  validation: ${.train}
+  inference:
+    input:
+      src: text
+      src_length: text_length
+    output:
+      - estimated_log_melspectrogram
+      - estimated_duration
+
+clip_gradient:
+  _target_: torch.nn.utils.clip_grad_norm_
+  max_norm: 10
+
+resume:
+  continue_from:
+
+record:
+  duration:
+    iteration:
+      every: 1
+      sample_size: 1
+      key_mapping:
+        output:
+          ml_duration: "Extracted alignment (iteration)"
+          log_est_duration: "Estimated alignment (iteration)"
+        reference:
+          text_duration: "Target alignment (iteration)"
+      transforms:
+        output:
+          log_est_duration:
+            _target_: audyn.utils.duration.transform_log_duration
+            _partial_: true
+            min_duration: 0
+            dtype: ${const:torch.long}
+        reference:
+    epoch:
+      every: 1
+      sample_size: 1
+      key_mapping:
+        validation:
+          output:
+            ml_duration: "Extracted alignment (epoch)"
+            log_est_duration: "Estimated alignment (epoch)"
+          reference:
+        inference:
+          output:
+            estimated_duration: "Estimated alignment of inference (epoch)"
+          reference:
+            text_duration: "Target alignment of inference (epoch)"
+      transforms:
+        validation: ${...iteration.transforms}
+        inference:
+          output:
+            estimated_duration:
+              _target_: audyn.utils.duration.to_long
+              _partial_: true
+          reference:
+
+steps:
+  epochs:
+  iterations:
+  lr_scheduler: iteration
