@@ -1,7 +1,0 @@
-_target_: audyn.modules.negative_sampling.NegativeSamplingModel
-embedding:
-  _target_: audyn.modules.PoincareEmbedding
-  num_embeddings: ${const:audyn.utils.data.wordnet.num_mammal_tags}
-  embedding_dim: 2
-  curvature: -1
-  dim: -1

@@ -1,5 +1,0 @@
-_target_: audyn.models.text_to_wave.CascadeTextToWave
-text_to_feat:
-feat_to_wave:
-transform_middle:
-  _target_: audyn.models.text_to_wave.FastSpeechWaveNetBridge

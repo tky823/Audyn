@@ -1,4 +1,0 @@
-generator:
-  _target_: audyn_test.utils.optim.lr_scheduler.DummyLRScheduler
-discriminator:
-  _target_: audyn_test.utils.optim.lr_scheduler.DummyLRScheduler
