@@ -54,6 +54,7 @@ class MusicFM(nn.Module):
         .. note::
 
             Supported pretrained model names are
+                - fma
                 - musicfm_msd
 
         """  # noqa: E501
@@ -123,6 +124,11 @@ def _create_pretrained_model_configs() -> Dict[str, Dict[str, str]]:
     from ..utils import model_cache_dir
 
     pretrained_model_configs = {
+        "musicfm_fma": {
+            "url": "https://github.com/tky823/Audyn/releases/download/v0.3.0/musicfm_fma.pth",  # noqa: E501
+            "path": os.path.join(model_cache_dir, "MusicFM", "6e732c6c", "musicfm_fma.pth"),
+            "sha256": "6e732c6c181f4bcf8f7337178d5c576bf9b6e5f930c86b0f36b723a7d3cf3335",
+        },
         "musicfm_msd": {
             "url": "https://github.com/tky823/Audyn/releases/download/v0.2.0/musicfm_msd.pth",  # noqa: E501
             "path": os.path.join(model_cache_dir, "MusicFM", "4f9c8861", "musicfm_msd.pth"),
