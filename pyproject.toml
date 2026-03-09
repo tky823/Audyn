@@ -1,6 +1,6 @@
 [build-system]
 requires = [
-    "setuptools<81",
+    "setuptools < 81",
     "torch",
 ]
 build-backend = "setuptools.build_meta"
@@ -27,6 +27,7 @@ dependencies = [
     "numpy",
     "webdataset",
     "inflect",
+    "setuptools < 81",
 ]
 dynamic = [
     "version",
