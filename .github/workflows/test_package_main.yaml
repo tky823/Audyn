@@ -96,14 +96,14 @@ jobs:
         if: ${{ inputs.os == 'windows-latest' }}
         run: |
           .venv\Scripts\Activate.ps1
-          python tests/scripts/is_torchcodec_required.py `
+          python tests/scripts/overwrite_torchcodec_requirement.py `
           --path requirements-torchcodec.txt
           uv pip install -r requirements-torchcodec.txt
       - name: Install torchcodec (Ubuntu & MacOS)
         if: ${{ inputs.os != 'windows-latest' }}
         run: |
           source .venv/bin/activate
-          python tests/scripts/is_torchcodec_required.py \
+          python tests/scripts/overwrite_torchcodec_requirement.py \
           --path requirements-torchcodec.txt
           uv pip install -r requirements-torchcodec.txt
       - name: Show dependencies (Windows)
@@ -260,14 +260,14 @@ jobs:
         if: ${{ inputs.os == 'windows-latest' }}
         run: |
           .venv\Scripts\Activate.ps1
-          python tests/scripts/is_torchcodec_required.py `
+          python tests/scripts/overwrite_torchcodec_requirement.py `
           --path requirements-torchcodec.txt
           uv pip install -r requirements-torchcodec.txt
       - name: Install torchcodec (Ubuntu & MacOS)
         if: ${{ inputs.os != 'windows-latest' }}
         run: |
           source .venv/bin/activate
-          python tests/scripts/is_torchcodec_required.py \
+          python tests/scripts/overwrite_torchcodec_requirement.py \
           --path requirements-torchcodec.txt
           uv pip install -r requirements-torchcodec.txt
       - name: Show dependencies (Windows)
