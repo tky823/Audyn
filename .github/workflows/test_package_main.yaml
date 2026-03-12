@@ -237,6 +237,22 @@ jobs:
         run: |
           source .venv/bin/activate
           uv pip install -e ".[recipes]"
+      - name: Install torchcodec (Windows)
+        if: ${{ inputs.os == 'windows-latest' }}
+        run: |
+          .venv\Scripts\Activate.ps1
+          $is_required = python tests/scripts/is_torchcodec_required.py
+          if ($is_required -eq "true") {
+            uv pip install torchcodec
+          }
+      - name: Install torchcodec (Ubuntu & MacOS)
+        if: ${{ inputs.os != 'windows-latest' }}
+        run: |
+          source .venv/bin/activate
+          is_required=$(python tests/scripts/is_torchcodec_required.py)
+          if [ "${is_required}" = "true" ]; then
+            uv pip install torchcodec
+          fi
       - name: Show dependencies (Windows)
         if: ${{ inputs.os == 'windows-latest' }}
         run: |
