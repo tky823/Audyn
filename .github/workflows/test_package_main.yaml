@@ -96,18 +96,16 @@ jobs:
         if: ${{ inputs.os == 'windows-latest' }}
         run: |
           .venv\Scripts\Activate.ps1
-          $is_required = python tests/scripts/is_torchcodec_required.py
-          if ($is_required -eq "true") {
-            uv pip install torchcodec
-          }
+          python tests/scripts/is_torchcodec_required.py `
+          --path requirements-torchcodec.txt
+          uv pip install -r requirements-torchcodec.txt
       - name: Install torchcodec (Ubuntu & MacOS)
         if: ${{ inputs.os != 'windows-latest' }}
         run: |
           source .venv/bin/activate
-          is_required=$(python tests/scripts/is_torchcodec_required.py)
-          if [ "${is_required}" = "true" ]; then
-            uv pip install torchcodec
-          fi
+          python tests/scripts/is_torchcodec_required.py \
+          --path requirements-torchcodec.txt
+          uv pip install -r requirements-torchcodec.txt
       - name: Show dependencies (Windows)
         if: ${{ inputs.os == 'windows-latest' }}
         run: |
@@ -262,18 +260,16 @@ jobs:
         if: ${{ inputs.os == 'windows-latest' }}
         run: |
           .venv\Scripts\Activate.ps1
-          $is_required = python tests/scripts/is_torchcodec_required.py
-          if ($is_required -eq "true") {
-            uv pip install torchcodec
-          }
+          python tests/scripts/is_torchcodec_required.py `
+          --path requirements-torchcodec.txt
+          uv pip install -r requirements-torchcodec.txt
       - name: Install torchcodec (Ubuntu & MacOS)
         if: ${{ inputs.os != 'windows-latest' }}
         run: |
           source .venv/bin/activate
-          is_required=$(python tests/scripts/is_torchcodec_required.py)
-          if [ "${is_required}" = "true" ]; then
-            uv pip install torchcodec
-          fi
+          python tests/scripts/is_torchcodec_required.py \
+          --path requirements-torchcodec.txt
+          uv pip install -r requirements-torchcodec.txt
       - name: Show dependencies (Windows)
         if: ${{ inputs.os == 'windows-latest' }}
         run: |
