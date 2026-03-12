@@ -10,7 +10,7 @@ def main() -> None:
     torch_version = version.parse(torch.__version__)
 
     if torch_version >= version.parse("2.9"):
-        torchcodec_version = "0" + "." + torch_version.minor
+        torchcodec_version = "0" + "." + str(torch_version.minor)
 
         with open(args.path, mode="w") as f:
             f.write("torchcodec==" + torchcodec_version)
