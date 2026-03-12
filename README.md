@@ -65,6 +65,14 @@ export OMP_NUM_THREADS=<SUITABLE/VALUE/FOR/ENVIRONMENT>
 pip install -e "."
 ```
 
+### Backend of torchaudio
+
+For `torch>=2.9`, `torchcodec` is required as backend of `torchaudio`:
+
+```sh
+pip install torchcodec
+```
+
 ## Development
 
 ```shell
