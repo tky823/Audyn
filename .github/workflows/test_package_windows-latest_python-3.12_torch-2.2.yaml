@@ -1,0 +1,17 @@
+name: windows-latest/3.12/2.2
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  package:
+    uses: ./.github/workflows/test_package_windows-latest.yaml
+    with:
+      python-version: "3.12"
+      torch-version: "2.2.2"
+    secrets:
+      ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
