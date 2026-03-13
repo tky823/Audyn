@@ -1,11 +1,15 @@
 from typing import Any, Iterator, List, Optional
 
 import torch
+from packaging import version
 from torch.utils.data import RandomSampler, Sampler
 
 __all__ = [
     "RandomStemsDNRSampler",
 ]
+
+
+IS_TORCH_LT_2_10 = version.parse(torch.__version__) < version.parse("2.10")
 
 
 class RandomStemsDNRSampler(Sampler):
@@ -47,7 +51,10 @@ class RandomStemsDNRSampler(Sampler):
         num_samples: Optional[int] = None,
         generator=None,
     ) -> None:
-        super().__init__(track_names)
+        if IS_TORCH_LT_2_10:
+            super().__init__(track_names)
+        else:
+            super().__init__()
 
         self.replacement = True
         self.stem_sampler = _ReplacementRandomStemsSampler(

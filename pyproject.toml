@@ -1,6 +1,6 @@
 [build-system]
 requires = [
-    "setuptools",
+    "setuptools < 81",
     "torch",
 ]
 build-backend = "setuptools.build_meta"
@@ -22,11 +22,11 @@ dependencies = [
     "torch",
     "torchaudio",
     "torchvision",
-    "torchcodec < 0.10.0; sys_platform != 'darwin' or platform_machine != 'x86_64'",
     "tensorboard",
     "numpy",
     "webdataset",
     "inflect",
+    "setuptools < 81",
 ]
 dynamic = [
     "version",

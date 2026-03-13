@@ -35,6 +35,12 @@ jobs:
         run: |
           source .venv/bin/activate
           uv pip install ".[docs]"
+      - name: Install torchcodec
+        run: |
+          source .venv/bin/activate
+          python tests/scripts/overwrite_torchcodec_requirement.py \
+          --path requirements-torchcodec.txt
+          uv pip install -r requirements-torchcodec.txt
       - name: Build docs
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
