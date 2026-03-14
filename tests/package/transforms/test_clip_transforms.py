@@ -1,6 +1,7 @@
 import os
 import tempfile
 
+import pytest
 import torch
 import torchvision.transforms.v2 as vT
 from audyn_test import allclose
@@ -9,9 +10,10 @@ from PIL import Image
 
 from audyn.transforms.clip import OpenAICLIPImageTransform
 from audyn.utils._github import download_file_from_github_release
+from audyn.utils.data.download import download_file
 
 
-def test_openai_clip_transform() -> None:
+def test_openai_clip_transform(image: Image) -> None:
     pretrained_model_name = "openai-clip-base-patch32"
 
     url = "https://github.com/tky823/Audyn/releases/download/v0.3.1/test_official_openai-clip.pth"  # noqa: E501
@@ -22,21 +24,10 @@ def test_openai_clip_transform() -> None:
     download_file_from_github_release(url, path)
 
     data = torch.load(path, weights_only=True)
-
-    image_bytes = data["input"]
     expected_output = data[pretrained_model_name]["transform"]
 
     to_tensor = vT.Compose([vT.ToImage()])
     transform = OpenAICLIPImageTransform()
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        image_path = os.path.join(temp_dir, "input.jpg")
-
-        with open(image_path, mode="wb") as f:
-            f.write(image_bytes)
-
-        image = Image.open(image_path)
-
     output = transform(image)
 
     allclose(expected_output, output, atol=1e-6)
@@ -47,3 +38,14 @@ def test_openai_clip_transform() -> None:
     loss = torch.abs(output - output_torch)
 
     assert loss.mean() < 1e-4
+
+
+@pytest.fixture
+def image() -> Image:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        url = "http://images.cocodataset.org/val2017/000000039769.jpg"
+        path = os.path.join(temp_dir, "000000039769.jpg")
+        download_file(url, path)
+        image = Image.open(path)
+
+    return image
