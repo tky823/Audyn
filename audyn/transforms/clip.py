@@ -1,10 +1,11 @@
 import torch
 import torch.nn as nn
+import torchvision
 import torchvision.transforms.v2 as vT
 from packaging import version
 from PIL.Image import Image
 
-IS_TORCHVISION_LT_0_16 = version.parse(vT.__version__) < version.parse("0.16")
+IS_TORCHVISION_LT_0_16 = version.parse(torchvision.__version__) < version.parse("0.16")
 
 
 class OpenAICLIPImageTransform(nn.Module):
