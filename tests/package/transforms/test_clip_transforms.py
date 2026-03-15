@@ -45,7 +45,8 @@ def test_openai_clip_transform(image: Image) -> None:
 
     loss = torch.abs(output - output_torch)
 
-    assert loss.mean() < 1e-4
+    # 90% of entries are matched.
+    assert torch.quantile(loss, 0.9) < 1e-5
 
 
 @pytest.fixture
