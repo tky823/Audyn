@@ -3,14 +3,18 @@ import tempfile
 
 import pytest
 import torch
+import torchvision
 import torchvision.transforms.v2 as vT
 from audyn_test import allclose
 from audyn_test.utils import audyn_test_cache_dir
+from packaging import version
 from PIL import Image
 
 from audyn.transforms.clip import OpenAICLIPImageTransform
 from audyn.utils._github import download_file_from_github_release
 from audyn.utils.data.download import download_file
+
+IS_TORCHVISION_LT_0_16 = version.parse(torchvision.__version__) < version.parse("0.16")
 
 
 def test_openai_clip_transform(image: Image) -> None:
@@ -26,7 +30,11 @@ def test_openai_clip_transform(image: Image) -> None:
     data = torch.load(path, weights_only=True)
     expected_output = data[pretrained_model_name]["transform"]
 
-    to_tensor = vT.Compose([vT.ToImage()])
+    if IS_TORCHVISION_LT_0_16:
+        to_tensor = vT.PILToTensor()
+    else:
+        to_tensor = vT.ToImage()
+
     transform = OpenAICLIPImageTransform()
     output = transform(image)
 
@@ -47,5 +55,6 @@ def image() -> Image:
         path = os.path.join(temp_dir, "000000039769.jpg")
         download_file(url, path)
         image = Image.open(path)
+        image = image.copy()
 
     return image
