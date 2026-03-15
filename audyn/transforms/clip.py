@@ -13,7 +13,7 @@ class OpenAICLIPImageTransform(nn.Module):
         super().__init__()
 
         transforms = [
-            vT.Resize(size, interpolation=vT.InterpolationMode.BICUBIC),
+            vT.Resize(size, interpolation=vT.InterpolationMode.BICUBIC, antialias=True),
             vT.CenterCrop(size),
         ]
 
