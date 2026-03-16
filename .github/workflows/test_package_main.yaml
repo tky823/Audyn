@@ -87,11 +87,6 @@ jobs:
         run: |
           source .venv/bin/activate
           uv pip install -e ".[dev,tests]"
-      - name: Install dependencies (Ubuntu & MacOS)
-        if: ${{ inputs.os != 'windows-latest' }}
-        run: |
-          source .venv/bin/activate
-          uv pip install -e ".[recipes]"
       - name: Install torchcodec (Windows)
         if: ${{ inputs.os == 'windows-latest' }}
         run: |

@@ -14,7 +14,7 @@ from audyn.utils.data.download import download_file
 
 
 def test_openai_image_encoder_composer(coco_samples) -> None:
-    url = "https://github.com/tky823/Audyn/releases/download/v0.1.0/test_official_openai-clip.pth"  # noqa: E501
+    url = "https://github.com/tky823/Audyn/releases/download/v0.3.1/test_official_openai-clip.pth"  # noqa: E501
 
     filename = os.path.basename(url)
     path = os.path.join(audyn_test_cache_dir, filename)
@@ -31,8 +31,9 @@ def test_openai_image_encoder_composer(coco_samples) -> None:
     list_batch = composer(list_batch)
 
     for sample in list_batch:
-        expected_sample = torch.load(path, weights_only=True)
-        allclose(sample["image"], expected_sample["input"])
+        data = torch.load(path, weights_only=True)
+        expected_output = data["openai-clip-base-patch32"]["transform"]
+        allclose(sample["image"], expected_output, atol=1e-6)
 
         break
 

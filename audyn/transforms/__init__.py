@@ -11,6 +11,7 @@ from .clap import (
     MicrosoftCLAPAudioEncoder2023MelSpectrogram,
     MicrosoftCLAPAudioEncoder2023WaveformPad,
 )
+from .clip import OpenAICLIPImageTransform
 from .cqt import CQT, ConstantQTransform
 from .hifigan import HiFiGANMelSpectrogram
 from .hubert import HuBERTMFCC
@@ -67,4 +68,6 @@ __all__ = [
     "MusicTaggingTransformerMelSpectrogram",
     # MusicFM
     "MusicFMMelSpectrogram",
+    # CLIP
+    "OpenAICLIPImageTransform",
 ]

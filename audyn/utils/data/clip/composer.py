@@ -1,7 +1,6 @@
 from typing import Any, Dict
 
-import torchvision.transforms as vT
-
+from ....transforms.clip import OpenAICLIPImageTransform
 from ..composer import Composer
 
 __all__ = [
@@ -25,6 +24,7 @@ class OpenAICLIPImageEncoderComposer(Composer):
         output_key: str,
         size: int = 224,
         *,
+        training: bool = False,
         decode_audio_as_waveform: bool = True,
         decode_audio_as_monoral: bool = True,
     ) -> None:
@@ -33,27 +33,22 @@ class OpenAICLIPImageEncoderComposer(Composer):
             decode_audio_as_monoral=decode_audio_as_monoral,
         )
 
-        self.transforms = vT.Compose(
-            [
-                vT.Resize(size, interpolation=vT.InterpolationMode.BICUBIC),
-                vT.CenterCrop(size),
-                vT.ToTensor(),
-                vT.Normalize(
-                    [0.48145466, 0.4578275, 0.40821073],
-                    [0.26862954, 0.26130258, 0.27577711],
-                ),
-            ]
-        )
+        self.transform = OpenAICLIPImageTransform(size=size)
 
         self.input_key = input_key
         self.output_key = output_key
+
+        if training:
+            self.transform.train()
+        else:
+            self.transform.eval()
 
     def process(self, sample: Dict[str, Any]) -> Dict[str, Any]:
         input_key = self.input_key
         output_key = self.output_key
 
         image = sample[input_key]
-        sample[output_key] = self.transforms(image)
+        sample[output_key] = self.transform(image)
 
         return sample
 
