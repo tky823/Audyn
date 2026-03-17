@@ -54,6 +54,7 @@ def download_beatthis(config: DictConfig) -> None:
         "smc",
         "tapcorrect",
     ]
+    annotation_filename = "beat_this_annotations"
 
     if root is None:
         raise ValueError("Set root directory.")
@@ -74,12 +75,23 @@ def download_beatthis(config: DictConfig) -> None:
         if not os.path.exists(path):
             _download_file(_url, path, chunk_size=chunk_size)
 
+    _url = url + f"{annotation_filename}.zip"
+    path = os.path.join(root, f"{annotation_filename}.zip")
+
+    if not os.path.exists(path):
+        _download_file(_url, path, chunk_size=chunk_size)
+
     if unpack:
         for filename in filenames:
             _url = url + f"{filename}.zip"
             path = os.path.join(root, f"{filename}.zip")
             _root = os.path.join(root, filename)
             _unpack_zip(path, f"{filename}.npz", _root)
+
+        _url = url + f"{annotation_filename}.zip"
+        path = os.path.join(root, f"{annotation_filename}.zip")
+        _root = os.path.join(root, "annotations")
+        _unpack_annotation_zip(path, _root)
 
 
 def _download_file(url: str, path: str, chunk_size: int = DEFAULT_CHUNK_SIZE) -> None:
@@ -119,3 +131,14 @@ def _unpack_zip(path: str, filename: str, root: str) -> None:
             feature = torch.from_numpy(feature)
             feature = feature.transpose(0, 1)
             torch.save(feature, _path)
+
+
+def _unpack_annotation_zip(path: str, root: str) -> None:
+    os.makedirs(root, exist_ok=True)
+
+    with zipfile.ZipFile(path) as f, tempfile.TemporaryDirectory() as temp_dir:
+        f.extractall(temp_dir)
+
+        for _filename in os.listdir(temp_dir):
+            _path = os.path.join(temp_dir, _filename)
+            shutil.move(_path, root)
