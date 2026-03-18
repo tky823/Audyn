@@ -74,4 +74,4 @@ rm -r dump/
 rm -r exp/
 rm -r tensorboard/
 
-rm ../../_common  # for Windows
+rm -r ../../_common  # for Windows
