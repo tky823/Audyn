@@ -59,24 +59,20 @@ jobs:
       - name: Show version of FFmpeg
         run: |
           ffmpeg -version
-      - name: Overwrite torch version in pyproject.toml (Windows)
-        if: ${{ inputs.os == 'windows-latest' }}
-        env:
-          PYTHON_VERSION: ${{ inputs.python-version }}
-          TORCH_VERSION: ${{ inputs.torch-version }}
-        run: |
-          uv venv --python ${env:PYTHON_VERSION}
-          .venv\Scripts\Activate.ps1
-          uv pip install packaging
-          python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${env:TORCH_VERSION}
-      - name: Overwrite torch version in pyproject.toml (Ubuntu & MacOS)
-        if: ${{ inputs.os != 'windows-latest' }}
+      - name: Overwrite torch version in pyproject.toml
+        shell: bash
         env:
           PYTHON_VERSION: ${{ inputs.python-version }}
           TORCH_VERSION: ${{ inputs.torch-version }}
         run: |
           uv venv --python ${PYTHON_VERSION}
-          source .venv/bin/activate
+
+          if [ "${RUNNER_OS}" == "Windows" ]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
+
           uv pip install packaging
           python tests/scripts/overwrite_pyproject_toml.py --path pyproject.toml --torch-version ${TORCH_VERSION}
       - name: Install dependencies (Windows)
