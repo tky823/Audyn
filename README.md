@@ -110,6 +110,12 @@ sphinx-autobuild docs docs/_build/html
 pytest tests/package
 ```
 
+To include DDP tests
+
+```shell
+pytest tests/package --runddp
+```
+
 To include slow tests
 
 ```shell
