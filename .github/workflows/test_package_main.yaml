@@ -14,6 +14,9 @@ on:
       torch-version:
         required: true
         type: string
+      run-ddp:
+        required: true
+        type: boolean
     secrets:
       ACCESS_TOKEN:
         required: true
@@ -146,7 +149,16 @@ jobs:
           source .venv/bin/activate
           uv run --active pytest -vvv tests/torchhub/
       - name: Pytest for releasing package (Windows)
-        if: ${{ inputs.os == 'windows-latest' && startsWith(github.head_ref, 'release/') }}
+        if: ${{ inputs.os == 'windows-latest' && inputs.run-ddp && startsWith(github.head_ref, 'release/') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          MPLBACKEND: AGG
+          USE_LIBUV: 0
+        run: |
+          .venv\Scripts\Activate.ps1
+          uv run --active pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml --runslow --runddp -p no:faulthandler tests/package/
+      - name: Pytest for releasing package (Windows)
+        if: ${{ inputs.os == 'windows-latest' && ! inputs.run-ddp && startsWith(github.head_ref, 'release/') }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           MPLBACKEND: AGG
@@ -155,7 +167,16 @@ jobs:
           .venv\Scripts\Activate.ps1
           uv run --active pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml --runslow -p no:faulthandler tests/package/
       - name: Pytest for updating package (Windows)
-        if: ${{ inputs.os == 'windows-latest' && ! startsWith(github.head_ref, 'release/') }}
+        if: ${{ inputs.os == 'windows-latest' && inputs.run-ddp && ! startsWith(github.head_ref, 'release/') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          MPLBACKEND: AGG
+          USE_LIBUV: 0
+        run: |
+          .venv\Scripts\Activate.ps1
+          uv run --active pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml --runddp -p no:faulthandler tests/package/
+      - name: Pytest for updating package (Windows)
+        if: ${{ inputs.os == 'windows-latest' && ! inputs.run-ddp && ! startsWith(github.head_ref, 'release/') }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           MPLBACKEND: AGG
@@ -164,14 +185,28 @@ jobs:
           .venv\Scripts\Activate.ps1
           uv run --active pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml -p no:faulthandler tests/package/
       - name: Pytest for releasing package (Ubuntu & MacOS)
-        if: ${{ inputs.os != 'windows-latest' && startsWith(github.head_ref, 'release/') }}
+        if: ${{ inputs.os != 'windows-latest' && inputs.run-ddp && startsWith(github.head_ref, 'release/') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: |
+          source .venv/bin/activate
+          uv run --active pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml --runslow --runddp tests/package/
+      - name: Pytest for releasing package (Ubuntu & MacOS)
+        if: ${{ inputs.os != 'windows-latest' && ! inputs.run-ddp && startsWith(github.head_ref, 'release/') }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
           source .venv/bin/activate
           uv run --active pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml --runslow tests/package/
       - name: Pytest for updating package (Ubuntu & MacOS)
-        if: ${{ inputs.os != 'windows-latest' && ! startsWith(github.head_ref, 'release/') }}
+        if: ${{ inputs.os != 'windows-latest' && inputs.run-ddp && ! startsWith(github.head_ref, 'release/') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: |
+          source .venv/bin/activate
+          uv run --active pytest -vvv --log-cli-level=ERROR --cov=audyn/ --cov-report=xml --runddp tests/package/
+      - name: Pytest for updating package (Ubuntu & MacOS)
+        if: ${{ inputs.os != 'windows-latest' && ! inputs.run-ddp && ! startsWith(github.head_ref, 'release/') }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
