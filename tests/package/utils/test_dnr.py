@@ -156,7 +156,7 @@ def test_dnr_dataset(
 
 
 @retry_on_file_not_found(3)
-@pytest.mark.runddp
+@pytest.mark.ddp
 @pytest.mark.parametrize("replacement", [True, False])
 @pytest.mark.parametrize("num_workers", [1, 2])
 @pytest.mark.parametrize("divisible_by_num_workers", [True, False])

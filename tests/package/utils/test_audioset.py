@@ -159,7 +159,7 @@ def test_weighted_audioset_webdataset(
 
 
 @retry_on_file_not_found(3)
-@pytest.mark.runddp
+@pytest.mark.ddp
 @pytest.mark.parametrize("dataset_type", [None, "PaSST"])
 @pytest.mark.parametrize("num_workers", [0, 2])
 @pytest.mark.parametrize("divisible_by_num_workers", [True, False])
