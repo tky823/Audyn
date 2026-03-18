@@ -5,6 +5,7 @@ import tempfile
 from datetime import timedelta
 from typing import Tuple
 
+import pytest
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
@@ -108,6 +109,7 @@ def test_residual_vector_quantizer() -> None:
 
 
 @retry_on_file_not_found(3)
+@pytest.mark.ddp
 def test_residual_vector_quantizer_ddp() -> None:
     """Ensure ResidualVectorQuantizer works well for DDP."""
     port = str(torch.randint(0, 2**16, ()).item())

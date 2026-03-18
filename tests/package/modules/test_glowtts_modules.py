@@ -2,6 +2,7 @@ import os
 import sys
 import tempfile
 
+import pytest
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
@@ -221,6 +222,7 @@ def test_masked_act_norm1d() -> None:
     allclose(std, torch.ones(()), atol=1e-6)
 
 
+@pytest.mark.ddp
 def test_masked_act_norm1d_ddp() -> None:
     """Ensure MaskedActNorm1d works well for DDP."""
     torch.manual_seed(0)

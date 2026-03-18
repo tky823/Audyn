@@ -3,6 +3,7 @@ import sys
 import tempfile
 from datetime import timedelta
 
+import pytest
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
@@ -58,6 +59,7 @@ def test_kmeans_clustering() -> None:
     )
 
 
+@pytest.mark.ddp
 def test_kmeans_clustering_ddp() -> None:
     port = select_random_port()
     seed = 0

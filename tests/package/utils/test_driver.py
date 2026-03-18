@@ -256,6 +256,7 @@ def test_base_drivers(
         monkeypatch.undo()
 
 
+@pytest.mark.ddp
 @pytest.mark.parametrize("train_name", ["dummy", "dummy_ddp"])
 def test_base_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str) -> None:
     """Test BaseTrainer for DDP."""
@@ -380,6 +381,7 @@ def test_base_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str) -> None:
         monkeypatch.undo()
 
 
+@pytest.mark.ddp
 @pytest.mark.parametrize("dataset_type", [None, "PaSST"])
 @pytest.mark.parametrize("composer_pattern", [1, 2])
 def test_base_trainer_ddp_for_audioset(
@@ -605,6 +607,7 @@ def test_base_trainer_ddp_for_audioset(
         monkeypatch.undo()
 
 
+@pytest.mark.ddp
 def test_base_trainer_ddp_for_musdb18(
     monkeypatch: MonkeyPatch,
 ) -> None:
@@ -755,6 +758,7 @@ def test_base_trainer_ddp_for_musdb18(
         monkeypatch.undo()
 
 
+@pytest.mark.ddp
 def test_base_trainer_ddp_for_dnr(
     monkeypatch: MonkeyPatch,
 ) -> None:
@@ -1707,6 +1711,7 @@ def test_gan_trainer(
         monkeypatch.undo()
 
 
+@pytest.mark.ddp
 @pytest.mark.parametrize("train_name", ["dummy_gan", "dummy_gan_ddp"])
 @pytest.mark.parametrize("dataloader_type", ["torch", "audyn_sequential"])
 def test_gan_trainer_ddp(monkeypatch: MonkeyPatch, train_name: str, dataloader_type: str) -> None:

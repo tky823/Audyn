@@ -67,6 +67,7 @@ def test_mean_average_precision_known_map(mink: int) -> None:
 
 
 @retry_on_file_not_found(3)
+@pytest.mark.ddp
 @pytest.mark.parametrize("mink", parameters_mink)
 def test_mean_average_precision_ddp_oracle(mink: int) -> None:
     port = select_random_port()
@@ -143,6 +144,7 @@ def test_mean_average_precision_ddp_oracle(mink: int) -> None:
 
 
 @retry_on_file_not_found(3)
+@pytest.mark.ddp
 @pytest.mark.parametrize("mink", parameters_mink)
 def test_mean_average_precision_ddp_known_map(mink: int) -> None:
     if IS_WINDOWS:
@@ -275,6 +277,7 @@ def test_median_rank(mink: int) -> None:
 
 
 @retry_on_file_not_found(3)
+@pytest.mark.ddp
 @pytest.mark.parametrize("ranks", ["oracle", "random"])
 @pytest.mark.parametrize("mink", parameters_mink)
 def test_median_rank_ddp(ranks: str, mink: int) -> None:
