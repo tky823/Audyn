@@ -302,4 +302,4 @@ jobs:
           fi
   
           cd tests/recipes/
-          . ./test_all.sh
+          bash ./test_all.sh
