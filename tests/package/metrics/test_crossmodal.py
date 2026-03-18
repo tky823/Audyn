@@ -61,6 +61,7 @@ def test_crossmodal_mean_average_precision() -> None:
 
 
 @retry_on_file_not_found(3)
+@pytest.mark.ddp
 @pytest.mark.parametrize("strategy", ["oracle", "random"])
 def test_crossmodal_mean_average_precision_ddp_itemwise(strategy: str) -> None:
     port = select_random_port()
@@ -161,6 +162,7 @@ def test_crossmodal_mean_average_precision_ddp_itemwise(strategy: str) -> None:
 
 
 @retry_on_file_not_found(3)
+@pytest.mark.ddp
 @pytest.mark.parametrize("strategy", ["oracle", "random"])
 def test_crossmodal_mean_average_precision_ddp_batchwise(strategy: str) -> None:
     port = select_random_port()
@@ -306,6 +308,7 @@ def test_crossmodal_median_rank(mink: int) -> None:
 
 
 @retry_on_file_not_found(3)
+@pytest.mark.ddp
 @pytest.mark.parametrize("mink", parameters_mink)
 @pytest.mark.parametrize("strategy", ["oracle", "random"])
 def test_crossmodal_median_rank_ddp_itemwise(mink: int, strategy: str) -> None:
@@ -406,6 +409,7 @@ def test_crossmodal_median_rank_ddp_itemwise(mink: int, strategy: str) -> None:
 
 
 @retry_on_file_not_found(3)
+@pytest.mark.ddp
 @pytest.mark.parametrize("mink", parameters_mink)
 @pytest.mark.parametrize("strategy", ["oracle", "random"])
 def test_crossmodal_median_rank_ddp_batchwise(mink: int, strategy: str) -> None:

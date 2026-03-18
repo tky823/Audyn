@@ -19,23 +19,29 @@ IS_WINDOWS = sys.platform == "win32"
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption("--runslow", action="store_true", default=False, help="Run slow tests.")
+    parser.addoption("--runddp", action="store_true", default=False, help="Run DDP tests.")
 
 
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "slow: mark test as slow to run")
+    config.addinivalue_line("markers", "ddp: mark test as distributed data parallel")
 
     reset_random_port()
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: List[pytest.Item]) -> None:
-    if config.getoption("--runslow"):
-        return
+    run_slow = config.getoption("--runslow")
+    run_ddp = config.getoption("--runddp")
 
-    skip_slow = pytest.mark.skip(reason="Need --runslow option to run")
+    skip_slow = pytest.mark.skip(reason="need --runslow option to run")
+    skip_ddp = pytest.mark.skip(reason="need --runddp option to run")
 
     for item in items:
-        if "slow" in item.keywords:
+        if "slow" in item.keywords and not run_slow:
             item.add_marker(skip_slow)
+
+        if "ddp" in item.keywords and not run_ddp:
+            item.add_marker(skip_ddp)
 
 
 def pytest_sessionfinish(session: Session, exitstatus: ExitCode) -> None:

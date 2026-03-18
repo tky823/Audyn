@@ -11,7 +11,7 @@ import torch.multiprocessing as mp
 import torchaudio
 import webdataset as wds
 from audyn_test.utils import select_random_port
-from audyn_test.utils.ddp import set_ddp_environment
+from audyn_test.utils.ddp import retry_on_file_not_found, set_ddp_environment
 from torch.utils.data import DataLoader
 
 from audyn.transforms.ast import AudioSpectrogramTransformerMelSpectrogram
@@ -158,6 +158,8 @@ def test_weighted_audioset_webdataset(
         dataset.close_all()
 
 
+@retry_on_file_not_found(3)
+@pytest.mark.ddp
 @pytest.mark.parametrize("dataset_type", [None, "PaSST"])
 @pytest.mark.parametrize("num_workers", [0, 2])
 @pytest.mark.parametrize("divisible_by_num_workers", [True, False])

@@ -13,6 +13,7 @@ jobs:
       # https://github.com/python/cpython/issues/125235
       python-version: "3.13.1"
       torch-version: "2.6.0"
+      run-ddp: true
     secrets:
       ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

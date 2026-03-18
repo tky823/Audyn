@@ -109,6 +109,7 @@ def test_info_nce_loss(reduction: str) -> None:
 
 
 @retry_on_file_not_found(3)
+@pytest.mark.ddp
 @pytest.mark.parametrize("dim", [0, 1, 2])
 def test_info_nce_loss_ddp(dim: int) -> None:
     """Ensure InterInfoNCELoss and IntraInfoNCELoss work well for DDP."""
@@ -278,6 +279,7 @@ def test_ntxent_loss(reduction: str) -> None:
 
 
 @retry_on_file_not_found(3)
+@pytest.mark.ddp
 @pytest.mark.parametrize("dim", [0, 1, 2])
 def test_ntxent_loss_ddp(dim: int) -> None:
     """Ensure InterNTXentLoss and IntraNTXentLoss work well for DDP."""
@@ -698,6 +700,7 @@ def test_inter_ntxent_loss(reduction: str) -> None:
 
 
 @retry_on_file_not_found(3)
+@pytest.mark.ddp
 @pytest.mark.parametrize("dim", [0, 1])
 def test_inter_info_nce_loss_ddp(dim: int) -> None:
     """Ensure InterInfoNCELoss works well for DDP."""
@@ -859,6 +862,7 @@ def test_inter_info_nce_loss_ddp(dim: int) -> None:
 
 
 @retry_on_file_not_found(3)
+@pytest.mark.ddp
 @pytest.mark.parametrize("dim", [0, 1])
 def test_inter_ntxent_loss_ddp(dim: int) -> None:
     """Ensure InterNTXentLoss works well for DDP."""

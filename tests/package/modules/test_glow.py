@@ -2,6 +2,7 @@ import os
 import sys
 import tempfile
 
+import pytest
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
@@ -133,6 +134,7 @@ def test_act_norm1d() -> None:
     allclose(logdet, zeros)
 
 
+@pytest.mark.ddp
 def test_act_norm1d_ddp() -> None:
     """Ensure ActNorm1d works well for DDP."""
     torch.manual_seed(0)

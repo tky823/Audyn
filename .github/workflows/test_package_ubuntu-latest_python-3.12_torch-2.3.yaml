@@ -12,6 +12,7 @@ jobs:
     with:
       python-version: "3.12"
       torch-version: "2.3.0"
+      run-ddp: true
     secrets:
       ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

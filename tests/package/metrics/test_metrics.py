@@ -3,6 +3,7 @@ import sys
 import tempfile
 from datetime import timedelta
 
+import pytest
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
@@ -44,6 +45,7 @@ def test_mean_metric() -> None:
 
 
 @retry_on_file_not_found(3)
+@pytest.mark.ddp
 def test_mean_metric_ddp() -> None:
     port = select_random_port()
     seed = 0

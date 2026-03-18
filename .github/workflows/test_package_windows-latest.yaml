@@ -8,6 +8,9 @@ on:
       torch-version:
         required: true
         type: string
+      run-ddp:
+        required: true
+        type: boolean
     secrets:
       ACCESS_TOKEN:
         required: true
@@ -20,6 +23,7 @@ jobs:
       os: windows-latest
       python-version: ${{ inputs.python-version }}
       torch-version: ${{ inputs.torch-version }}
+      run-ddp: ${{ inputs.run-ddp }}
     secrets:
       ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
