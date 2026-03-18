@@ -9,7 +9,7 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 from audyn_test import allclose
 from audyn_test.utils import select_random_port
-from audyn_test.utils.ddp import set_ddp_environment
+from audyn_test.utils.ddp import retry_on_file_not_found, set_ddp_environment
 from omegaconf import OmegaConf
 
 from audyn.functional.clustering import (
@@ -126,6 +126,8 @@ def test_kmeans_clustering_ddp() -> None:
             allclose(data_rank["centroids"], centroids)
 
 
+@retry_on_file_not_found(3)
+@pytest.mark.ddp
 def test_minibatch_kmeans_clustering_ddp() -> None:
     port = select_random_port()
     seed = 0
