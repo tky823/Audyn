@@ -13,7 +13,7 @@ import torch.multiprocessing as mp
 import torchaudio
 from audyn_test import allclose
 from audyn_test.utils import select_random_port
-from audyn_test.utils.ddp import set_ddp_environment
+from audyn_test.utils.ddp import retry_on_file_not_found, set_ddp_environment
 from torch.utils.data import DataLoader
 
 from audyn.utils.data import Collator, Mixer
@@ -155,6 +155,8 @@ def test_dnr_dataset(
             assert len(set(filenames)) == len(dataset.filenames)
 
 
+@retry_on_file_not_found(3)
+@pytest.mark.runddp
 @pytest.mark.parametrize("replacement", [True, False])
 @pytest.mark.parametrize("num_workers", [1, 2])
 @pytest.mark.parametrize("divisible_by_num_workers", [True, False])
