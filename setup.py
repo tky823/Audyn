@@ -137,7 +137,7 @@ class BuildExtension(_BuildExtension):
         else:
             compiler = get_cxx_compiler()
 
-        if ext.name == "audyn._cpp_extensions.monotonic_align" and not IS_WINDOWS:
+        if ext.name == "audyn._C.monotonic_align" and not IS_WINDOWS:
             # TODO: support Windows
             which = subprocess.check_output(["which", compiler], stderr=subprocess.STDOUT)
             compiler = os.path.realpath(which.decode(*SUBPROCESS_DECODE_ARGS).strip())
