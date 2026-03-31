@@ -1,11 +1,12 @@
 import os
 import warnings
-from typing import Dict, Optional, OrderedDict
+from typing import Dict, Optional, OrderedDict, Tuple
 
 import torch
 import torch.nn as nn
 from omegaconf import OmegaConf
 
+from ..modules.musicfm import RandomProjectionQuantizer, _Masker
 from ..utils._github import download_file_from_github_release
 
 
@@ -116,6 +117,40 @@ class MusicFM(nn.Module):
             output = self.head(output)
 
         return output
+
+
+class MusicFMMaskedTokenModel(MusicFM):
+    def __init__(
+        self,
+        projector: RandomProjectionQuantizer,
+        masker: _Masker,
+        embedding: nn.Module,
+        backbone: nn.Module,
+        head: Optional[nn.Module] = None,
+    ) -> None:
+        super(MusicFM, self).__init__()
+
+        self.projector = projector
+        self.masker = masker
+        self.embedding = embedding
+        self.backbone = backbone
+        self.aggregator = nn.Identity()
+        self.head = head
+
+    def forward(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.LongTensor, torch.Tensor]:
+        _, _, indices = self.projector(input)
+        x, masking_mask = self.masker(input)
+
+        if x.dim() == 3:
+            x = x.unsqueeze(dim=-3)
+        else:
+            raise ValueError("Only 3D inputs are supported.")
+
+        x = self.embedding(x)
+        x = self.backbone(x)
+        output = self.head(x)
+
+        return output, indices, masking_mask
 
 
 def _create_pretrained_model_configs() -> Dict[str, Dict[str, str]]:

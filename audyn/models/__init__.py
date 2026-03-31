@@ -18,7 +18,7 @@ from .music_tagging_transformer import (
     MusicTaggingTransformer,
     MusicTaggingTransformerLinearProbing,
 )
-from .musicfm import MusicFM
+from .musicfm import MusicFM, MusicFMMaskedTokenModel
 from .passt import PaSST
 from .roformer import (
     RoFormerDecoder,
@@ -102,4 +102,5 @@ __all__ = [
     "OpenAICLIPImageEncoder",
     # MusicFM
     "MusicFM",
+    "MusicFMMaskedTokenModel",
 ]
