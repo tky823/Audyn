@@ -126,6 +126,7 @@ class MusicFMMaskedTokenModel(MusicFM):
         masker: _Masker,
         embedding: nn.Module,
         backbone: nn.Module,
+        aggregator: nn.Module = nn.Identity(),
         head: Optional[nn.Module] = None,
     ) -> None:
         super(MusicFM, self).__init__()
@@ -134,7 +135,7 @@ class MusicFMMaskedTokenModel(MusicFM):
         self.masker = masker
         self.embedding = embedding
         self.backbone = backbone
-        self.aggregator = nn.Identity()
+        self.aggregator = aggregator
         self.head = head
 
     def forward(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.LongTensor, torch.Tensor]:
