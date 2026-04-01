@@ -40,7 +40,7 @@ class MusicFM(nn.Module):
         aggregator: Optional[nn.Module] = None,
         head: Optional[nn.Module] = None,
     ) -> "MusicFM":
-        """Build pretrained AudioSpectrogramTransformer.
+        """Build pretrained MusicFM.
 
         Args:
             pretrained_model_name_or_path (str): Path to pretrained model or name of pretrained model.
@@ -55,7 +55,7 @@ class MusicFM(nn.Module):
         .. note::
 
             Supported pretrained model names are
-                - fma
+                - musicfm_fma
                 - musicfm_msd
 
         """  # noqa: E501
@@ -71,6 +71,16 @@ class MusicFM(nn.Module):
             )
             model_state_dict: OrderedDict = state_dict["model"]
             resolved_config = state_dict["resolved_config"]
+
+            # remove projector & masker from MusicFMMaskedTokenModel
+            _ = resolved_config["model"].pop("projector")
+            _ = resolved_config["model"].pop("masker")
+            keys = list(model_state_dict.keys())
+
+            for key in keys:
+                if key.startswith("projector.") or key.startswith("masker."):
+                    _ = model_state_dict.pop(key)
+
             resolved_config = OmegaConf.create(resolved_config)
             pretrained_model_config = resolved_config.model
             pretrained_model_config["_target_"] = f"{cls.__module__}.{cls.__name__}"
@@ -153,6 +163,72 @@ class MusicFMMaskedTokenModel(MusicFM):
 
         return output, indices, masking_mask
 
+    @classmethod
+    def build_from_pretrained(
+        cls,
+        pretrained_model_name_or_path: str,
+        aggregator: Optional[nn.Module] = None,
+        head: Optional[nn.Module] = None,
+    ) -> "MusicFMMaskedTokenModel":
+        """Build pretrained MusicFMMaskedTokenModel.
+
+        Args:
+            pretrained_model_name_or_path (str): Path to pretrained model or name of pretrained model.
+            aggregator (nn.Module, optional): Aggregator module.
+            head (nn.Module, optional): Head module.
+
+        Examples:
+
+            >>> from audyn.models import MusicFMMaskedTokenModel
+            >>> model = MusicFMMaskedTokenModel.build_from_pretrained("musicfm_msd")
+
+        .. note::
+
+            Supported pretrained model names are
+                - musicfm_fma
+                - musicfm_msd
+
+        """  # noqa: E501
+        from ..utils._hydra.utils import instantiate  # to avoid circular import
+
+        pretrained_model_configs = _create_pretrained_model_configs()
+
+        if os.path.exists(pretrained_model_name_or_path):
+            state_dict = torch.load(
+                pretrained_model_name_or_path,
+                map_location=lambda storage, loc: storage,
+                weights_only=True,
+            )
+            model_state_dict: OrderedDict = state_dict["model"]
+            resolved_config = state_dict["resolved_config"]
+            resolved_config = OmegaConf.create(resolved_config)
+            pretrained_model_config = resolved_config.model
+            pretrained_model_config["_target_"] = f"{cls.__module__}.{cls.__name__}"
+            model: MusicFMMaskedTokenModel = instantiate(pretrained_model_config)
+            model.load_state_dict(model_state_dict)
+
+            if aggregator is not None:
+                model.aggregator = aggregator
+
+            if head is not None:
+                model.head = head
+
+            return model
+        elif pretrained_model_name_or_path in pretrained_model_configs:
+            config = pretrained_model_configs[pretrained_model_name_or_path]
+            url = config["url"]
+            path = config["path"]
+            download_file_from_github_release(url, path=path)
+            model = cls.build_from_pretrained(
+                path,
+                aggregator=aggregator,
+                head=head,
+            )
+
+            return model
+        else:
+            raise FileNotFoundError(f"{pretrained_model_name_or_path} does not exist.")
+
 
 def _create_pretrained_model_configs() -> Dict[str, Dict[str, str]]:
     """Create pretrained_model_configs without circular import error."""
@@ -161,14 +237,14 @@ def _create_pretrained_model_configs() -> Dict[str, Dict[str, str]]:
 
     pretrained_model_configs = {
         "musicfm_fma": {
-            "url": "https://github.com/tky823/Audyn/releases/download/v0.3.0/musicfm_fma.pth",  # noqa: E501
-            "path": os.path.join(model_cache_dir, "MusicFM", "6e732c6c", "musicfm_fma.pth"),
-            "sha256": "6e732c6c181f4bcf8f7337178d5c576bf9b6e5f930c86b0f36b723a7d3cf3335",
+            "url": "https://github.com/tky823/Audyn/releases/download/v0.3.1/musicfm_fma.pth",  # noqa: E501
+            "path": os.path.join(model_cache_dir, "MusicFM", "6894b464", "musicfm_fma.pth"),
+            "sha256": "6894b46425cddc214bdabe3144a00b948de873c2d9e4e2b80c6a0a2b0fddd0a7",
         },
         "musicfm_msd": {
-            "url": "https://github.com/tky823/Audyn/releases/download/v0.2.0/musicfm_msd.pth",  # noqa: E501
-            "path": os.path.join(model_cache_dir, "MusicFM", "4f9c8861", "musicfm_msd.pth"),
-            "sha256": "4f9c886171bc4154a558752faeb83ef1147c227579085e192d581d3fd284de1c",
+            "url": "https://github.com/tky823/Audyn/releases/download/v0.3.1/musicfm_msd.pth",  # noqa: E501
+            "path": os.path.join(model_cache_dir, "MusicFM", "14246d18", "musicfm_msd.pth"),
+            "sha256": "14246d18a1b1f5ef904467b71c063c75e4fce493ebdf372d71f924e3815c7a33",
         },
     }
 
