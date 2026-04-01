@@ -706,3 +706,8 @@ class Masker(_Masker):
         output = torch.where(_mask, noise, input)
 
         return output, mask
+
+    def extra_repr(self) -> str:
+        s = "mask_rate={mask_rate}, window_size={window_size}, noise_scale={noise_scale}"
+
+        return s.format(**self.__dict__)
