@@ -702,7 +702,9 @@ class Masker(_Masker):
         mask = u < self.mask_rate
         _mask = mask.repeat_interleave(self.window_size, dim=-1)
         _mask = _mask.view(batch_size, 1, n_frames).expand(-1, n_bins, -1)
-        noise = self.noise_scale * torch.randn_like(input, generator=self.generator)
+        noise = self.noise_scale * torch.randn(
+            (batch_size, n_bins, n_frames), generator=self.generator
+        )
         output = torch.where(_mask, noise, input)
 
         return output, mask
