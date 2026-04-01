@@ -14,8 +14,10 @@ def main() -> None:
 
 
 def overwrite_pyproject_toml(path: str, torch_version: str) -> None:
-    unspecified = '"torch",'
-    specified = '"torch=={}",'.format(torch_version)
+    unspecified_torch = '"torch",'
+    specified_torch = '"torch=={}",'.format(torch_version)
+    unspecified_torchaudio = '"torchaudio",'
+    specified_torchaudio = '"torchaudio=={}",'.format(torch_version)
 
     is_torch_lt_2_3 = version.parse(torch_version) < version.parse("2.3")
 
@@ -24,8 +26,10 @@ def overwrite_pyproject_toml(path: str, torch_version: str) -> None:
 
         with open(path) as f_in, open(temp_path, mode="w") as f_out:
             for line in f_in:
-                if unspecified in line:
-                    line = line.replace(unspecified, specified)
+                if unspecified_torch in line:
+                    line = line.replace(unspecified_torch, specified_torch)
+                elif unspecified_torchaudio in line:
+                    line = line.replace(unspecified_torchaudio, specified_torchaudio)
                 elif '"numpy",' in line and is_torch_lt_2_3:
                     line = line.replace('"numpy",', '"numpy<2.0",')
 

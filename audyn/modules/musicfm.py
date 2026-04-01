@@ -599,3 +599,117 @@ class ConformerRotaryPositionalEmbedding(RotaryPositionalEmbedding):
             output = x.transpose(0, 1).contiguous()
 
         return output
+
+
+class RandomProjectionQuantizer(nn.Module):
+    def __init__(
+        self, in_channels: int, out_channels: int, codebook_size: int, downsample_rate: int = 4
+    ) -> None:
+        super().__init__()
+
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.codebook_size = codebook_size
+        self.downsample_rate = downsample_rate
+
+        weight = torch.empty((out_channels, downsample_rate * in_channels))
+        codebooks = torch.empty((codebook_size, out_channels))
+
+        nn.init.xavier_normal_(weight)
+        nn.init.normal_(codebooks)
+
+        codebooks = F.normalize(codebooks, dim=-1, p=2)
+
+        self.register_buffer("weight", weight)
+        self.register_buffer("codebooks", codebooks)
+
+    def forward(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.LongTensor]:
+        downsample_rate = self.downsample_rate
+
+        batch_size, in_channels, length = input.size()
+
+        weight: torch.Tensor = self.weight
+        codebooks: torch.Tensor = self.codebooks
+
+        x = input.view(batch_size, in_channels, length // downsample_rate, downsample_rate)
+        x = x.permute(0, 3, 1, 2)
+        x = x.reshape(batch_size, downsample_rate * in_channels, length // downsample_rate)
+        output = F.conv1d(x, weight.unsqueeze(dim=-1))
+        x = F.normalize(output, dim=-2, p=2)
+        x = F.conv1d(x, codebooks.unsqueeze(dim=-1))
+        indices = torch.argmax(x, dim=-2)
+        quantized = F.embedding(indices, codebooks)
+        quantized = quantized.permute(0, 2, 1).contiguous()
+
+        return output, quantized, indices
+
+
+class _Masker(nn.Module):
+    """Base class of masker."""
+
+
+class Masker(_Masker):
+    """Replace some frames with random noise.
+
+    Args:
+        window_size (int): Window size for masking.
+        mask_rate (float): Masking rate. Should be between 0 and 1.
+        noise_scale (float): Scale of noise used in masked frames.
+        seed (int): Random seed for masking.
+
+    """
+
+    def __init__(
+        self,
+        mask_rate: float,
+        window_size: int = 4,
+        noise_scale: float = 0.1,
+        seed: int = 0,
+    ) -> None:
+        super().__init__()
+
+        self.mask_rate = mask_rate
+        self.window_size = window_size
+        self.noise_scale = noise_scale
+
+        self.generator = None
+        self.seed = seed
+
+    def forward(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.BoolTensor]:
+        """Forward pass of Masker.
+
+        Args:
+            input (torch.Tensor): Spectrogram-like feature of shape (batch_size, n_bins, n_frames).
+
+        Returns:
+            tuple: Tuple of tensors containing
+
+                - torch.Tensor: Masked input of same shape as input.
+                - torch.BoolTensor: Masking mask of shape (batch_size, n_frames // window_size),
+                    where masked positions are ``True``.
+
+        """
+        device = input.device
+        batch_size, n_bins, n_frames = input.size()
+
+        assert n_frames % self.window_size == 0, "Input length must be divisible by window_size."
+
+        if self.generator is None:
+            self.generator = torch.Generator(device=device)
+            self.generator.manual_seed(self.seed)
+
+        u = torch.rand(batch_size, n_frames // self.window_size, generator=self.generator)
+        mask = u < self.mask_rate
+        _mask = mask.repeat_interleave(self.window_size, dim=-1)
+        _mask = _mask.view(batch_size, 1, n_frames).expand(-1, n_bins, -1)
+        noise = self.noise_scale * torch.randn(
+            (batch_size, n_bins, n_frames), generator=self.generator
+        )
+        output = torch.where(_mask, noise, input)
+
+        return output, mask
+
+    def extra_repr(self) -> str:
+        s = "mask_rate={mask_rate}, window_size={window_size}, noise_scale={noise_scale}"
+
+        return s.format(**self.__dict__)
