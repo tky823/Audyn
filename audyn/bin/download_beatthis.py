@@ -1,6 +1,5 @@
 import os
 import shutil
-import tempfile
 import uuid
 import zipfile
 
@@ -110,7 +109,9 @@ def _download_file(url: str, path: str, chunk_size: int = DEFAULT_CHUNK_SIZE) ->
 def _unpack_zip(path: str, filename: str, root: str) -> None:
     import numpy as np
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    temp_dir = os.path.join(os.path.dirname(root), os.path.basename(root) + str(uuid.uuid4())[:8])
+
+    try:
         with zipfile.ZipFile(path, "r") as f:
             f.extractall(temp_dir)
 
@@ -131,14 +132,23 @@ def _unpack_zip(path: str, filename: str, root: str) -> None:
             feature = torch.from_numpy(feature)
             feature = feature.transpose(0, 1)
             torch.save(feature, _path)
+    finally:
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
 
 
 def _unpack_annotation_zip(path: str, root: str) -> None:
     os.makedirs(root, exist_ok=True)
 
-    with zipfile.ZipFile(path) as f, tempfile.TemporaryDirectory() as temp_dir:
-        f.extractall(temp_dir)
+    temp_dir = os.path.join(os.path.dirname(root), os.path.basename(root) + str(uuid.uuid4())[:8])
 
-        for _filename in os.listdir(temp_dir):
-            _path = os.path.join(temp_dir, _filename)
-            shutil.move(_path, root)
+    try:
+        with zipfile.ZipFile(path) as f:
+            f.extractall(temp_dir)
+
+            for _filename in os.listdir(temp_dir):
+                _path = os.path.join(temp_dir, _filename)
+                shutil.move(_path, root)
+    finally:
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
