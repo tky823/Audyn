@@ -66,6 +66,7 @@ audyn-download-openmic2018 = "audyn.bin.download_openmic2018:main"
 audyn-download-mtat = "audyn.bin.download_mtat:main"
 audyn-download-singmos = "audyn.bin.download_singmos:main"
 audyn-download-song-describer = "audyn.bin.download_song_describer:main"
+audyn-download-beatthis = "audyn.bin.download_beatthis:main"
 
 [tool.setuptools.dynamic]
 version = {attr = "audyn.__version__"}
