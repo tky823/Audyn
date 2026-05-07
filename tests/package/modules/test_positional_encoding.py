@@ -171,7 +171,17 @@ def test_partial_rotary_positional_embedding(batch_first: bool, fraction: float)
 
     assert partial_output.size() == input.size()
 
-    if fraction == 1:
+    if fraction < 1:
+        num_rotary_features = int(fraction * embed_dim)
+        _, identity_input = torch.split(
+            input, [num_rotary_features, embed_dim - num_rotary_features], dim=-1
+        )
+        _, identity_partial_output = torch.split(
+            partial_output, [num_rotary_features, embed_dim - num_rotary_features], dim=-1
+        )
+
+        assert torch.allclose(identity_partial_output, identity_input)
+    else:
         output = positional_encoding(input)
 
         assert torch.allclose(partial_output, output)
@@ -187,8 +197,8 @@ def test_partial_rotary_positional_embedding(batch_first: bool, fraction: float)
         q = q.permute(1, 0, 2)
         k = k.permute(1, 0, 2)
 
-    q = positional_encoding(q)
-    k = positional_encoding(k)
+    q = partial_positional_encoding(q)
+    k = partial_positional_encoding(k)
 
     if batch_first:
         k = k.transpose(-2, -1)
