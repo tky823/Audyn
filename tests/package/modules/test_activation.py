@@ -970,6 +970,7 @@ def test_partial_rotary_positional_attn(
         num_heads,
         bias=bias,
         share_heads=share_heads,
+        fraction=fraction,
         batch_first=batch_first,
     )
 
