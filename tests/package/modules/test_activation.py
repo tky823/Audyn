@@ -7,6 +7,7 @@ from audyn_test import allclose
 
 from audyn.modules.activation import (
     ExtrapolatablePositionalMultiheadAttention,
+    PartialRotaryPositionalMultiheadAttention,
     RelativePositionalMultiheadAttention,
     RotaryPositionalMultiheadAttention,
     SlidingWindowMultiheadAttention,
@@ -27,7 +28,7 @@ def test_trainable_absolute_positional_attn(
 
     batch_size = 3
     max_pos_length, max_query_length, max_key_length = 16, 12, 10
-    embed_dim, kdim, vdim = 8, 4, 5
+    embed_dim, kdim, vdim = 16, 4, 5
     num_heads = 4
 
     (query, key, value), (query_length, key_length) = create_qkv(
@@ -183,7 +184,7 @@ def test_relative_positional_attn(
 
     batch_size = 3
     max_query_length, max_key_length = 12, 10
-    embed_dim, kdim, vdim = 8, 4, 5
+    embed_dim, kdim, vdim = 16, 4, 5
     num_heads = 4
 
     (query, key, value), (query_length, key_length) = create_qkv(
@@ -402,7 +403,7 @@ def test_transformer_xl_relative_positional_attn(
 
     batch_size = 3
     max_query_length, max_key_length = 12, 10
-    embed_dim, kdim, vdim = 8, 4, 5
+    embed_dim, kdim, vdim = 16, 4, 5
     num_heads = 4
 
     (query, key, value), (query_length, key_length) = create_qkv(
@@ -557,7 +558,7 @@ def test_rotary_positional_attn(
 
     batch_size = 3
     max_query_length, max_key_length = 12, 10
-    embed_dim, kdim, vdim = 8, 4, 5
+    embed_dim, kdim, vdim = 16, 4, 5
     num_heads = 4
 
     (query, key, value), (query_length, key_length) = create_qkv(
@@ -705,7 +706,7 @@ def test_extrapolatable_positional_attn(
 
     batch_size = 3
     max_query_length, max_key_length = 12, 10
-    embed_dim, kdim, vdim = 8, 4, 5
+    embed_dim, kdim, vdim = 16, 4, 5
     num_heads = 4
 
     (query, key, value), (query_length, key_length) = create_qkv(
@@ -844,6 +845,156 @@ def test_extrapolatable_positional_attn(
 @pytest.mark.parametrize("bias", [True, False])
 @pytest.mark.parametrize("batch_first", [True, False])
 @pytest.mark.parametrize("use_attn_mask", [True, False])
+@pytest.mark.parametrize("share_heads", [True, False])
+@pytest.mark.parametrize("need_weights", [True, False])
+def test_partial_rotary_positional_attn(
+    bias: bool, batch_first: bool, use_attn_mask: bool, share_heads: bool, need_weights: bool
+) -> None:
+    torch.manual_seed(0)
+
+    batch_size = 3
+    max_query_length, max_key_length = 12, 10
+    embed_dim, kdim, vdim = 16, 4, 5
+    num_heads = 4
+    fraction = 0.5
+
+    (query, key, value), (query_length, key_length) = create_qkv(
+        batch_size, max_query_length, max_key_length, embed_dim, batch_first=batch_first
+    )
+    max_query_length = torch.max(query_length).item()
+    max_key_length = torch.max(key_length).item()
+
+    key_padding_mask, attn_mask = create_padding_masks(query_length, key_length)
+
+    if not use_attn_mask:
+        attn_mask = None
+
+    rotary_mha = PartialRotaryPositionalMultiheadAttention(
+        embed_dim,
+        num_heads,
+        bias=bias,
+        share_heads=share_heads,
+        fraction=fraction,
+        batch_first=batch_first,
+    )
+
+    rotary_output, rotary_attn_weights = rotary_mha(
+        query,
+        key,
+        value,
+        key_padding_mask=key_padding_mask,
+        attn_mask=attn_mask,
+        need_weights=need_weights,
+        average_attn_weights=need_weights,
+    )
+
+    if batch_first:
+        assert rotary_output.size() == (batch_size, max_query_length, embed_dim)
+    else:
+        assert rotary_output.size() == (max_query_length, batch_size, embed_dim)
+
+    if need_weights:
+        assert rotary_attn_weights.size() == (batch_size, max_query_length, max_key_length)
+
+    # ensure invariance of relative positions
+    if batch_first:
+        random_padding = torch.randn((batch_size, 1, embed_dim))
+        query = torch.cat([random_padding, query], dim=1)
+        key = torch.cat([random_padding, key], dim=1)
+        value = torch.cat([random_padding, value], dim=1)
+    else:
+        random_padding = torch.randn((1, batch_size, embed_dim))
+        query = torch.cat([random_padding, query], dim=0)
+        key = torch.cat([random_padding, key], dim=0)
+        value = torch.cat([random_padding, value], dim=0)
+
+    padding = torch.full((batch_size, 1), fill_value=True)
+    key_padding_mask = torch.cat([padding, key_padding_mask], dim=1)
+
+    if attn_mask is None:
+        # Even when attn_mask is None, positions of key_padding_mask will be ignored
+        # in attention weights.
+        pass
+    else:
+        padding = torch.full((max_query_length, 1), fill_value=True)
+        attn_mask = torch.cat([padding, attn_mask], dim=-1)
+        padding = torch.full((1, max_key_length + 1), fill_value=False)
+        attn_mask = torch.cat([padding, attn_mask], dim=-2)
+
+    padded_rotary_output, padded_rotary_attn_weights = rotary_mha(
+        query,
+        key,
+        value,
+        key_padding_mask=key_padding_mask,
+        attn_mask=attn_mask,
+        need_weights=need_weights,
+        average_attn_weights=need_weights,
+    )
+
+    if batch_first:
+        _, padded_rotary_output = torch.split(padded_rotary_output, [1, max_query_length], dim=1)
+    else:
+        _, padded_rotary_output = torch.split(padded_rotary_output, [1, max_query_length], dim=0)
+
+    assert torch.allclose(padded_rotary_output, rotary_output, atol=1e-7)
+
+    if need_weights:
+        _, padded_rotary_attn_weights = torch.split(
+            padded_rotary_attn_weights, [1, max_query_length], dim=-2
+        )
+        _, padded_rotary_attn_weights = torch.split(
+            padded_rotary_attn_weights, [1, max_key_length], dim=-1
+        )
+
+        assert torch.allclose(padded_rotary_attn_weights, rotary_attn_weights, atol=1e-6)
+
+    (query, key, value), (query_length, key_length) = create_qkv(
+        batch_size,
+        max_query_length,
+        max_key_length,
+        embed_dim,
+        kdim=kdim,
+        vdim=vdim,
+        batch_first=batch_first,
+    )
+    max_query_length = torch.max(query_length).item()
+    max_key_length = torch.max(key_length).item()
+
+    key_padding_mask, attn_mask = create_padding_masks(query_length, key_length)
+
+    if not use_attn_mask:
+        attn_mask = None
+
+    rotary_mha = PartialRotaryPositionalMultiheadAttention(
+        embed_dim,
+        num_heads,
+        bias=bias,
+        share_heads=share_heads,
+        batch_first=batch_first,
+    )
+
+    rotary_output, rotary_attn_weights = rotary_mha(
+        query,
+        key,
+        value,
+        key_padding_mask=key_padding_mask,
+        attn_mask=attn_mask,
+        need_weights=need_weights,
+        average_attn_weights=need_weights,
+    )
+
+    if batch_first:
+        assert rotary_output.size() == (batch_size, max_query_length, embed_dim)
+    else:
+        assert rotary_output.size() == (max_query_length, batch_size, embed_dim)
+
+    if need_weights:
+        assert rotary_attn_weights.size() == (batch_size, max_query_length, max_key_length)
+
+
+@pytest.mark.parametrize("bias", [True, False])
+@pytest.mark.parametrize("batch_first", [True, False])
+@pytest.mark.parametrize("use_attn_mask", [True, False])
 @pytest.mark.parametrize("need_weights", [True, False])
 @pytest.mark.parametrize("average_attn_weights", [True, False])
 def test_sliding_window_attn(
@@ -857,7 +1008,7 @@ def test_sliding_window_attn(
 
     batch_size = 3
     max_query_length, max_key_length = 12, 10
-    embed_dim = 8
+    embed_dim = 16
     num_heads = 4
     window_size = 2
 
