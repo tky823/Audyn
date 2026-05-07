@@ -122,11 +122,11 @@ def test_trainable_absolute_positional_attn(
     else:
         assert absolute_output.size() == (max_query_length, batch_size, embed_dim)
 
-    assert torch.allclose(output, absolute_output, atol=1e-7)
+    allclose(output, absolute_output, atol=1e-7)
 
     if need_weights:
         assert absolute_attn_weights.size() == (batch_size, max_query_length, max_key_length)
-        assert torch.allclose(attn_weights, absolute_attn_weights)
+        allclose(attn_weights, absolute_attn_weights)
 
     (query, key, value), (query_length, key_length) = create_qkv(
         batch_size,
@@ -638,7 +638,7 @@ def test_rotary_positional_attn(
     else:
         _, padded_rotary_output = torch.split(padded_rotary_output, [1, max_query_length], dim=0)
 
-    assert torch.allclose(padded_rotary_output, rotary_output, atol=1e-7)
+    allclose(padded_rotary_output, rotary_output, atol=1e-7)
 
     if need_weights:
         _, padded_rotary_attn_weights = torch.split(
@@ -648,7 +648,7 @@ def test_rotary_positional_attn(
             padded_rotary_attn_weights, [1, max_key_length], dim=-1
         )
 
-        assert torch.allclose(padded_rotary_attn_weights, rotary_attn_weights, atol=1e-6)
+        allclose(padded_rotary_attn_weights, rotary_attn_weights, atol=1e-6)
 
     (query, key, value), (query_length, key_length) = create_qkv(
         batch_size,
@@ -786,7 +786,7 @@ def test_extrapolatable_positional_attn(
     else:
         _, padded_xpos_output = torch.split(padded_xpos_output, [1, max_query_length], dim=0)
 
-    assert torch.allclose(padded_xpos_output, xpos_output, atol=1e-5)
+    allclose(padded_xpos_output, xpos_output, atol=1e-5)
 
     if need_weights:
         _, padded_xpos_attn_weights = torch.split(
@@ -796,7 +796,7 @@ def test_extrapolatable_positional_attn(
             padded_xpos_attn_weights, [1, max_key_length], dim=-1
         )
 
-        assert torch.allclose(padded_xpos_attn_weights, xpos_attn_weights, atol=1e-6)
+        allclose(padded_xpos_attn_weights, xpos_attn_weights, atol=1e-6)
 
     (query, key, value), (query_length, key_length) = create_qkv(
         batch_size,
@@ -936,7 +936,7 @@ def test_partial_rotary_positional_attn(
     else:
         _, padded_rotary_output = torch.split(padded_rotary_output, [1, max_query_length], dim=0)
 
-    assert torch.allclose(padded_rotary_output, rotary_output, atol=1e-7)
+    allclose(padded_rotary_output, rotary_output, atol=1e-7)
 
     if need_weights:
         _, padded_rotary_attn_weights = torch.split(
@@ -946,7 +946,7 @@ def test_partial_rotary_positional_attn(
             padded_rotary_attn_weights, [1, max_key_length], dim=-1
         )
 
-        assert torch.allclose(padded_rotary_attn_weights, rotary_attn_weights, atol=1e-6)
+        allclose(padded_rotary_attn_weights, rotary_attn_weights, atol=1e-6)
 
     (query, key, value), (query_length, key_length) = create_qkv(
         batch_size,
@@ -1095,7 +1095,7 @@ def test_sliding_window_attn(
     swa_output = swa_output.masked_fill(padding_mask.unsqueeze(dim=-1), 0)
     output = output.masked_fill(padding_mask.unsqueeze(dim=-1), 0)
 
-    assert torch.allclose(swa_output, output, atol=1e-7)
+    allclose(swa_output, output, atol=1e-7)
 
     if need_weights:
         if not batch_first:
@@ -1109,7 +1109,7 @@ def test_sliding_window_attn(
         swa_attn_weights = swa_attn_weights.masked_fill(padding_mask, 0)
         attn_weights = attn_weights.masked_fill(padding_mask, 0)
 
-        assert torch.allclose(swa_attn_weights, attn_weights, atol=1e-7)
+        allclose(swa_attn_weights, attn_weights, atol=1e-7)
 
 
 def create_qkv(
