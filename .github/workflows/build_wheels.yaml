@@ -1,9 +1,10 @@
 name: Build wheels
 
 on:
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
+  release:
+    types:
+      - published
 
 jobs:
   build_wheels:
@@ -92,4 +93,28 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+          verbose: true
+
+  publish_to_pypi:
+    name: Publish to PyPI
+    needs:
+      - build_wheels
+      - build_sdist
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    environment:
+      name: pypi
+      url: https://pypi.org/p/Audyn
+    permissions:
+      id-token: write
+    steps:
+      - name: Download all the dists
+        uses: actions/download-artifact@v4
+        with:
+          pattern: python-package-*
+          path: dist/
+          merge-multiple: true
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
           verbose: true
