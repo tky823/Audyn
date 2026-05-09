@@ -12,6 +12,7 @@ from ..functional.activation import (
 )
 from .positional_encoding import (
     ExtrapolatablePositionalEmbedding,
+    PartialRotaryPositionalEmbedding,
     RotaryPositionalEmbedding,
 )
 
@@ -21,6 +22,7 @@ __all__ = [
     "TransformerXLRelativePositionalMultiheadAttention",
     "RotaryPositionalMultiheadAttention",
     "ExtrapolatablePositionalMultiheadAttention",
+    "PartialRotaryPositionalMultiheadAttention",
     "SlidingWindowMultiheadAttention",
 ]
 
@@ -1466,6 +1468,56 @@ class ExtrapolatablePositionalMultiheadAttention(_MultiheadAttention):
         output = x.view(input_length, batch_size, embed_dim)
 
         return output
+
+
+class PartialRotaryPositionalMultiheadAttention(RotaryPositionalMultiheadAttention):
+    """Multihead attention using partial rotary positional representation."""
+
+    def __init__(
+        self,
+        embed_dim: int,
+        num_heads: int,
+        dropout: float = 0,
+        bias: bool = True,
+        add_bias_kv: bool = False,
+        add_zero_attn: bool = False,
+        kdim: Optional[int] = None,
+        vdim: Optional[int] = None,
+        base: int = 10000,
+        share_heads: bool = True,
+        fraction: float = 0.5,
+        batch_first: bool = False,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
+    ) -> None:
+        factory_kwargs = {
+            "device": device,
+            "dtype": dtype,
+        }
+        super(RotaryPositionalMultiheadAttention, self).__init__(
+            embed_dim,
+            num_heads,
+            dropout=dropout,
+            bias=bias,
+            add_bias_kv=add_bias_kv,
+            add_zero_attn=add_zero_attn,
+            kdim=kdim,
+            vdim=vdim,
+            batch_first=batch_first,
+            **factory_kwargs,
+        )
+
+        if add_bias_kv:
+            raise NotImplementedError("add_bias_kv is not supported.")
+
+        if add_zero_attn:
+            raise NotImplementedError("add_zero_attn is not supported.")
+
+        self.rope = PartialRotaryPositionalEmbedding(
+            base=base, fraction=fraction, batch_first=batch_first
+        )
+
+        self.share_heads = share_heads
 
 
 class SlidingWindowMultiheadAttention(_MultiheadAttention):

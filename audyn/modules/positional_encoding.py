@@ -3,6 +3,7 @@ import torch.nn as nn
 
 from ..functional.positional_encoding import (
     extrapolatable_rotary_positional_embedding,
+    partial_rotary_positional_embedding,
     rotary_positional_embedding,
 )
 
@@ -10,8 +11,10 @@ __all__ = [
     "AbsolutePositionalEncoding",
     "RotaryPositionalEmbedding",
     "ExtrapolatablePositionalEmbedding",
+    "PartialRotaryPositionalEmbedding",
     "RoPE",
     "XPos",
+    "PartialRoPE",
 ]
 
 
@@ -159,3 +162,53 @@ class ExtrapolatablePositionalEmbedding(nn.Module):
 
 class XPos(ExtrapolatablePositionalEmbedding):
     """Alias of ExtrapolatablePositionalEmbedding."""
+
+
+class PartialRotaryPositionalEmbedding(nn.Module):
+    """Partial RoPE proposed in [#khan2026fractional]_.
+
+    Args:
+        base (int): Base value for calculating frequencies. Default is 10000.
+        fraction (float): Proportion of features (0.0 to 1.0) to which
+            rotary transformation is applied. Default is 0.5.
+        batch_first (bool): If True, input and output tensors are in
+            (batch_size, length, num_features) format. Default is True.
+
+    .. [#khan2026fractional]
+        M. A. Khan et al., "Fractional Rotation, Full Potential? Investigating Performance and Convergence of Partial RoPE,"
+        2026.
+
+    """
+
+    def __init__(
+        self,
+        base: int = 10000,
+        fraction: float = 0.5,
+        batch_first: bool = True,
+    ) -> None:
+        super().__init__()
+
+        self.base = base
+        self.fraction = fraction
+        self.batch_first = batch_first
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of p-RoPE.
+
+        Args:
+            input (torch.Tensor): Sequence of shape (batch_size, length, num_features)
+                if ``batch_first=True``, otherwise (length, batch_size, num_features).
+
+        Returns:
+            torch.Tensor: Sequence of same shape as input.
+
+        """
+        output = partial_rotary_positional_embedding(
+            input, base=self.base, fraction=self.fraction, batch_first=self.batch_first
+        )
+
+        return output
+
+
+class PartialRoPE(PartialRotaryPositionalEmbedding):
+    """Alias of PartialRotaryPositionalEmbedding."""
