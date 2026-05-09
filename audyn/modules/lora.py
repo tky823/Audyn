@@ -1,4 +1,3 @@
-import copy
 import math
 from typing import Any, Dict, Optional, Tuple, Union
 
@@ -24,6 +23,8 @@ class LoRALinear(nn.Module):
         weight (nn.Parameter or torch.Tensor, optional): Weight parameter in ``nn.Linear``.
         bias (nn.Parameter or torch.Tensor, optional): Bias parameter in ``nn.Linear``.
         rank (int): Rank of weight matrices. Small value (e.g. 8) is expected in LoRA.
+        alpha (float): Scaling factor that controls magnitude of LoRA update. Update
+            is scaled by ``alpha / rank``. Default: ``16``.
         persistent (bool): If ``persistent=True``, original ``weight`` and ``bias`` are
             stored in ``state_dict``. Default: ``False``.
 
@@ -34,6 +35,8 @@ class LoRALinear(nn.Module):
         weight: Union[nn.Parameter, torch.Tensor],
         bias: Optional[Union[nn.Parameter, torch.Tensor]] = None,
         rank: int = 8,
+        alpha: float = 16,
+        dropout: float = 0.05,
         persistent: bool = False,
         dtype: torch.dtype = None,
         device: torch.device = None,
@@ -45,10 +48,10 @@ class LoRALinear(nn.Module):
 
         super().__init__()
 
-        weight = copy.copy(weight.data)
+        weight = weight.detach().clone()
 
         if bias is not None:
-            bias = copy.copy(bias.data)
+            bias = bias.detach().clone()
 
         # register weight and bias as buffer
         self.register_buffer("weight", weight, persistent=persistent)
@@ -58,30 +61,33 @@ class LoRALinear(nn.Module):
 
         self.weight_in = nn.Parameter(torch.empty((rank, in_features), **factory_kwargs))
         self.weight_out = nn.Parameter(torch.empty((out_features, rank), **factory_kwargs))
+        self.dropout = nn.Dropout(p=dropout)
 
         self.in_features = in_features
         self.out_features = out_features
         self.rank = rank
+        self.alpha = alpha
 
         self._reset_parameters()
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         x = F.linear(input, self.weight, bias=self.bias)
-        x_lora = F.linear(input, self.weight_in)
+        x_lora = self.dropout(input)
+        x_lora = F.linear(x_lora, self.weight_in)
         x_lora = F.linear(x_lora, self.weight_out)
-        output = x + x_lora
+        output = x + (self.alpha / self.rank) * x_lora
 
         return output
 
     def _reset_parameters(self) -> None:
-        std = 1 / math.sqrt(self.rank)
-        self.weight_in.data.normal_(std=std)
-        self.weight_out.data.zero_()
+        nn.init.kaiming_uniform_(self.weight_in, a=math.sqrt(5))
+        nn.init.zeros_(self.weight_out)
 
     def extra_repr(self) -> str:
         s = f"in_features={self.in_features}, out_features={self.out_features}"
         s += f", bias={self.bias is not None}"
         s += f", rank={self.rank}"
+        s += f", alpha={self.alpha}"
 
         return s
 
@@ -90,6 +96,8 @@ class LoRALinear(nn.Module):
         cls,
         module: nn.Linear,
         rank: int = 8,
+        alpha: float = 16,
+        dropout: float = 0.05,
         persistent: bool = False,
     ) -> "LoRALinear":
         weight = module.weight
@@ -104,6 +112,8 @@ class LoRALinear(nn.Module):
             weight,
             bias=bias,
             rank=rank,
+            alpha=alpha,
+            dropout=dropout,
             persistent=persistent,
             **factory_kwargs,
         )
@@ -188,9 +198,9 @@ class LoRAMultiheadAttention(nn.Module):
                 in_proj_weight, [embed_dim] * 3, dim=-2
             )
 
-        q_proj_weight = copy.deepcopy(q_proj_weight.data)
-        k_proj_weight = copy.deepcopy(k_proj_weight.data)
-        v_proj_weight = copy.deepcopy(v_proj_weight.data)
+        q_proj_weight = q_proj_weight.detach().clone()
+        k_proj_weight = k_proj_weight.detach().clone()
+        v_proj_weight = v_proj_weight.detach().clone()
 
         if _qkv_same_embed_dim:
             in_proj_weight = torch.cat([q_proj_weight, k_proj_weight, v_proj_weight], dim=-2)
@@ -219,7 +229,7 @@ class LoRAMultiheadAttention(nn.Module):
         if in_proj_bias is None:
             self.register_buffer("in_proj_bias", None, persistent=persistent)
         else:
-            in_proj_bias = copy.deepcopy(in_proj_bias.data)
+            in_proj_bias = in_proj_bias.detach().clone()
             self.register_buffer("in_proj_bias", in_proj_bias, persistent=persistent)
 
         self.out_proj = LoRALinear(
