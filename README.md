@@ -34,7 +34,9 @@ Audyn is PyTorch toolkit for audio synthesis.
 You can install by pip.
 
 ```shell
-pip install git+https://github.com/tky823/Audyn.git
+pip install Audyn
+# from source
+# pip install git+https://github.com/tky823/Audyn.git
 ```
 
 or clone this repository.
