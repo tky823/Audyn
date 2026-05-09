@@ -151,7 +151,7 @@ def apply_lora_to_mha(
     dropout: float = 0.05,
     persistent: bool = False,
 ) -> LoRAMultiheadAttention:
-    weight = module.in_proj_weight
+    weight = module.out_proj.weight
 
     factory_kwargs = {
         "device": weight.device,
@@ -160,7 +160,7 @@ def apply_lora_to_mha(
 
     applied = LoRAMultiheadAttention(
         module.num_heads,
-        weight,
+        module.in_proj_weight,
         in_proj_bias=module.in_proj_bias,
         bias_k=module.bias_k,
         bias_v=module.bias_v,
@@ -189,7 +189,7 @@ def apply_lora_to_rope_mha(
     dropout: float = 0.05,
     persistent: bool = False,
 ) -> LoRARotaryPositionalMultiheadAttention:
-    weight = module.in_proj_weight
+    weight = module.out_proj.weight
 
     factory_kwargs = {
         "device": weight.device,
@@ -198,7 +198,7 @@ def apply_lora_to_rope_mha(
 
     applied = LoRARotaryPositionalMultiheadAttention(
         module.num_heads,
-        weight,
+        module.in_proj_weight,
         in_proj_bias=module.in_proj_bias,
         bias_k=module.bias_k,
         bias_v=module.bias_v,
@@ -229,7 +229,7 @@ def apply_lora_to_xpos_mha(
     dropout: float = 0.05,
     persistent: bool = False,
 ) -> LoRAExtrapolatablePositionalMultiheadAttention:
-    weight = module.in_proj_weight
+    weight = module.out_proj.weight
 
     factory_kwargs = {
         "device": weight.device,
@@ -238,7 +238,7 @@ def apply_lora_to_xpos_mha(
 
     applied = LoRAExtrapolatablePositionalMultiheadAttention(
         module.num_heads,
-        weight,
+        module.in_proj_weight,
         in_proj_bias=module.in_proj_bias,
         bias_k=module.bias_k,
         bias_v=module.bias_v,
@@ -269,7 +269,7 @@ def apply_lora_to_partial_rope_mha(
     dropout: float = 0.05,
     persistent: bool = False,
 ) -> LoRAPartialRotaryPositionalMultiheadAttention:
-    weight = module.in_proj_weight
+    weight = module.out_proj.weight
 
     factory_kwargs = {
         "device": weight.device,
@@ -278,7 +278,7 @@ def apply_lora_to_partial_rope_mha(
 
     applied = LoRAPartialRotaryPositionalMultiheadAttention(
         module.num_heads,
-        weight,
+        module.in_proj_weight,
         in_proj_bias=module.in_proj_bias,
         bias_k=module.bias_k,
         bias_v=module.bias_v,
