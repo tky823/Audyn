@@ -24,7 +24,7 @@ class LoRALinear(nn.Module):
         bias (nn.Parameter or torch.Tensor, optional): Bias parameter in ``nn.Linear``.
         rank (int): Rank of weight matrices. Small value (e.g. 8) is expected in LoRA.
         alpha (float): Scaling factor that controls magnitude of LoRA update. Update
-            is scaled by ``alpha / rank``. Default: ``16``.
+            is scaled by ``alpha / rank``. Default: ``rank``.
         persistent (bool): If ``persistent=True``, original ``weight`` and ``bias`` are
             stored in ``state_dict``. Default: ``False``.
 
@@ -35,7 +35,7 @@ class LoRALinear(nn.Module):
         weight: Union[nn.Parameter, torch.Tensor],
         bias: Optional[Union[nn.Parameter, torch.Tensor]] = None,
         rank: int = 8,
-        alpha: float = 16,
+        alpha: Optional[float] = None,
         dropout: float = 0.05,
         persistent: bool = False,
         dtype: torch.dtype = None,
@@ -52,6 +52,9 @@ class LoRALinear(nn.Module):
 
         if bias is not None:
             bias = bias.detach().clone()
+
+        if alpha is None:
+            alpha = rank
 
         # register weight and bias as buffer
         self.register_buffer("weight", weight, persistent=persistent)
@@ -96,7 +99,7 @@ class LoRALinear(nn.Module):
         cls,
         module: nn.Linear,
         rank: int = 8,
-        alpha: float = 16,
+        alpha: Optional[float] = None,
         dropout: float = 0.05,
         persistent: bool = False,
     ) -> "LoRALinear":
@@ -127,7 +130,7 @@ class LoRAMultiheadAttention(nn.Module):
     Args:
         rank (int): Rank of weight matrices. Small value (e.g. 8) is expected in LoRA.
         alpha (float): Scaling factor that controls magnitude of LoRA update. Update
-            is scaled by ``alpha / rank``. Default: ``16``.
+            is scaled by ``alpha / rank``. Default: ``rank``.
         persistent (bool): If ``persistent=True``, original ``weight`` and ``bias`` are
             stored in ``state_dict``. Default: ``False``.
 
@@ -149,7 +152,7 @@ class LoRAMultiheadAttention(nn.Module):
         v_proj_weight: Optional[torch.Tensor] = None,
         batch_first: bool = False,
         rank: int = 8,
-        alpha: float = 16,
+        alpha: Optional[float] = None,
         lora_dropout: float = 0.05,
         persistent: bool = False,
         dtype: torch.dtype = None,
@@ -196,6 +199,9 @@ class LoRAMultiheadAttention(nn.Module):
             _qkv_same_embed_dim = True
         else:
             _qkv_same_embed_dim = False
+
+        if alpha is None:
+            alpha = rank
 
         if _qkv_same_embed_dim:
             q_proj_weight, k_proj_weight, v_proj_weight = torch.split(
@@ -426,7 +432,7 @@ class LoRAMultiheadAttention(nn.Module):
         cls,
         module: nn.MultiheadAttention,
         rank: int = 8,
-        alpha: float = 16,
+        alpha: Optional[float] = None,
         dropout: float = 0.05,
         persistent: bool = False,
     ) -> "LoRAMultiheadAttention":
