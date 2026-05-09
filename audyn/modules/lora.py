@@ -238,6 +238,7 @@ class LoRAMultiheadAttention(nn.Module):
             self.register_buffer("k_proj_weight", k_proj_weight, persistent=persistent)
             self.register_buffer("v_proj_weight", v_proj_weight, persistent=persistent)
 
+            self.register_parameter("in_proj_weight_in", None)
             self.q_proj_weight_in = nn.Parameter(torch.empty((rank, embed_dim), **factory_kwargs))
             self.k_proj_weight_in = nn.Parameter(torch.empty((rank, _kdim), **factory_kwargs))
             self.v_proj_weight_in = nn.Parameter(torch.empty((rank, _vdim), **factory_kwargs))
