@@ -126,6 +126,8 @@ class LoRAMultiheadAttention(nn.Module):
 
     Args:
         rank (int): Rank of weight matrices. Small value (e.g. 8) is expected in LoRA.
+        alpha (float): Scaling factor that controls magnitude of LoRA update. Update
+            is scaled by ``alpha / rank``. Default: ``16``.
         persistent (bool): If ``persistent=True``, original ``weight`` and ``bias`` are
             stored in ``state_dict``. Default: ``False``.
 
@@ -147,6 +149,8 @@ class LoRAMultiheadAttention(nn.Module):
         v_proj_weight: Optional[torch.Tensor] = None,
         batch_first: bool = False,
         rank: int = 8,
+        alpha: float = 16,
+        lora_dropout: float = 0.05,
         persistent: bool = False,
         dtype: torch.dtype = None,
         device: torch.device = None,
@@ -232,10 +236,14 @@ class LoRAMultiheadAttention(nn.Module):
             in_proj_bias = in_proj_bias.detach().clone()
             self.register_buffer("in_proj_bias", in_proj_bias, persistent=persistent)
 
+        self.lora_dropout = nn.Dropout(p=lora_dropout)
+
         self.out_proj = LoRALinear(
             out_proj_weight,
             bias=out_proj_bias,
             rank=rank,
+            alpha=alpha,
+            dropout=lora_dropout,
             persistent=persistent,
             **factory_kwargs,
         )
@@ -252,22 +260,21 @@ class LoRAMultiheadAttention(nn.Module):
         self.batch_first = batch_first
 
         self.rank = rank
+        self.alpha = alpha
 
         self._reset_parameters()
 
     def _reset_parameters(self) -> None:
-        std = 1 / math.sqrt(self.rank)
-
-        if self.in_proj_weight_in is None:
-            self.q_proj_weight_in.data.normal_(std=std)
-            self.k_proj_weight_in.data.normal_(std=std)
-            self.v_proj_weight_in.data.normal_(std=std)
+        if self._qkv_same_embed_dim:
+            nn.init.kaiming_uniform_(self.in_proj_weight_in, a=math.sqrt(5))
         else:
-            self.in_proj_weight_in.data.normal_(std=std)
+            nn.init.kaiming_uniform_(self.q_proj_weight_in, a=math.sqrt(5))
+            nn.init.kaiming_uniform_(self.k_proj_weight_in, a=math.sqrt(5))
+            nn.init.kaiming_uniform_(self.v_proj_weight_in, a=math.sqrt(5))
 
-        self.q_proj_weight_out.data.zero_()
-        self.k_proj_weight_out.data.zero_()
-        self.v_proj_weight_out.data.zero_()
+        nn.init.zeros_(self.q_proj_weight_out)
+        nn.init.zeros_(self.k_proj_weight_out)
+        nn.init.zeros_(self.v_proj_weight_out)
 
     def forward(
         self,
@@ -353,15 +360,18 @@ class LoRAMultiheadAttention(nn.Module):
         k = F.linear(key, k_proj_weight, bias=k_proj_bias)
         v = F.linear(value, v_proj_weight, bias=v_proj_bias)
 
-        q_lora = F.linear(query, q_proj_weight_in)
+        q_lora = self.lora_dropout(query)
+        q_lora = F.linear(q_lora, q_proj_weight_in)
         q_lora = F.linear(q_lora, q_proj_weight_out)
-        q = q + q_lora
-        k_lora = F.linear(key, k_proj_weight_in)
+        q = q + (self.alpha / self.rank) * q_lora
+        k_lora = self.lora_dropout(key)
+        k_lora = F.linear(k_lora, k_proj_weight_in)
         k_lora = F.linear(k_lora, k_proj_weight_out)
-        k = k + k_lora
-        v_lora = F.linear(value, v_proj_weight_in)
+        k = k + (self.alpha / self.rank) * k_lora
+        v_lora = self.lora_dropout(value)
+        v_lora = F.linear(v_lora, v_proj_weight_in)
         v_lora = F.linear(v_lora, v_proj_weight_out)
-        v = v + v_lora
+        v = v + (self.alpha / self.rank) * v_lora
 
         q = q.view(query_length, batch_size, num_heads, head_dim)
         k = k.view(key_length, batch_size, num_heads, head_dim)
@@ -416,6 +426,8 @@ class LoRAMultiheadAttention(nn.Module):
         cls,
         module: nn.MultiheadAttention,
         rank: int = 8,
+        alpha: float = 16,
+        dropout: float = 0.05,
         persistent: bool = False,
     ) -> "LoRAMultiheadAttention":
         in_proj_weight = module.in_proj_weight
@@ -440,6 +452,8 @@ class LoRAMultiheadAttention(nn.Module):
             v_proj_weight=module.v_proj_weight,
             batch_first=module.batch_first,
             rank=rank,
+            alpha=alpha,
+            lora_dropout=dropout,
             persistent=persistent,
             **factory_kwargs,
         )
