@@ -1,4 +1,5 @@
 import copy
+from typing import Optional
 
 import torch.nn as nn
 
@@ -11,12 +12,20 @@ __all__ = [
 ]
 
 
-def apply_lora(module: nn.Module, rank: int = 8, persistent: bool = False) -> nn.Module:
+def apply_lora(
+    module: nn.Module,
+    rank: int = 8,
+    alpha: Optional[float] = None,
+    dropout: float = 0.05,
+    persistent: bool = False,
+) -> nn.Module:
     """Apply LoRA to modules. Now, only ``nn.Linear`` and ``nn.MultiheadAttention`` are supported.
 
     Args:
         module (nn.Module): Module to which LoRA applies.
         rank (int): Rank of weight matrices. Small value (e.g. 8) is expected in LoRA.
+        alpha (float): Scaling factor that controls magnitude of LoRA update. Update
+            is scaled by ``alpha / rank``. Default: ``rank``.
         persistent (bool): If ``persistent=True``, original ``weight`` and ``bias`` are
             stored in ``state_dict``. Default: ``False``.
 
@@ -30,12 +39,16 @@ def apply_lora(module: nn.Module, rank: int = 8, persistent: bool = False) -> nn
         module = apply_lora_to_linear(
             module,
             rank=rank,
+            alpha=alpha,
+            dropout=dropout,
             persistent=persistent,
         )
     elif isinstance(module, nn.MultiheadAttention):
         module = apply_lora_to_mha(
             module,
             rank=rank,
+            alpha=alpha,
+            dropout=dropout,
             persistent=persistent,
         )
     else:
@@ -43,6 +56,8 @@ def apply_lora(module: nn.Module, rank: int = 8, persistent: bool = False) -> nn
             child_module = apply_lora(
                 child_module,
                 rank=rank,
+                alpha=alpha,
+                dropout=dropout,
                 persistent=persistent,
             )
 
@@ -51,7 +66,13 @@ def apply_lora(module: nn.Module, rank: int = 8, persistent: bool = False) -> nn
     return module
 
 
-def apply_lora_to_linear(module: nn.Linear, rank: int = 8, persistent: bool = False) -> LoRALinear:
+def apply_lora_to_linear(
+    module: nn.Linear,
+    rank: int = 8,
+    alpha: Optional[float] = None,
+    dropout: float = 0.05,
+    persistent: bool = False,
+) -> LoRALinear:
     weight = module.weight.data
 
     if module.bias is None:
@@ -68,6 +89,8 @@ def apply_lora_to_linear(module: nn.Linear, rank: int = 8, persistent: bool = Fa
         weight,
         bias=bias,
         rank=rank,
+        alpha=alpha,
+        dropout=dropout,
         persistent=persistent,
         **factory_kwargs,
     )
@@ -76,7 +99,11 @@ def apply_lora_to_linear(module: nn.Linear, rank: int = 8, persistent: bool = Fa
 
 
 def apply_lora_to_mha(
-    module: nn.MultiheadAttention, rank: int = 8, persistent: bool = False
+    module: nn.MultiheadAttention,
+    rank: int = 8,
+    alpha: Optional[float] = None,
+    dropout: float = 0.05,
+    persistent: bool = False,
 ) -> LoRAMultiheadAttention:
     weight = module.in_proj_weight
 
@@ -100,6 +127,8 @@ def apply_lora_to_mha(
         v_proj_weight=module.v_proj_weight,
         batch_first=module.batch_first,
         rank=rank,
+        alpha=alpha,
+        lora_dropout=dropout,
         persistent=persistent,
         **factory_kwargs,
     )
