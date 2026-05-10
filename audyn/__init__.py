@@ -14,7 +14,7 @@ __all__ = [
     "main",
 ]
 
-__version__ = "0.3.3.dev0"
+__version__ = "0.4.0"
 
 IS_WINDOWS = sys.platform == "win32"
 
