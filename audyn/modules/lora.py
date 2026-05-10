@@ -74,18 +74,18 @@ class LoRALinear(nn.Module):
 
         self.weight_in = nn.Parameter(torch.empty((rank, in_features), **factory_kwargs))
         self.weight_out = nn.Parameter(torch.empty((out_features, rank), **factory_kwargs))
-        self.dropout = nn.Dropout(p=dropout)
 
         self.in_features = in_features
         self.out_features = out_features
         self.rank = rank
         self.alpha = alpha
+        self.dropout = dropout
 
         self._reset_parameters()
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         x = F.linear(input, self.weight, bias=self.bias)
-        x_lora = self.dropout(input)
+        x_lora = F.dropout(input, p=self.dropout, training=self.training)
         x_lora = F.linear(x_lora, self.weight_in)
         x_lora = F.linear(x_lora, self.weight_out)
         output = x + (self.alpha / self.rank) * x_lora
@@ -99,8 +99,7 @@ class LoRALinear(nn.Module):
     def extra_repr(self) -> str:
         s = f"in_features={self.in_features}, out_features={self.out_features}"
         s += f", bias={self.bias is not None}"
-        s += f", rank={self.rank}"
-        s += f", alpha={self.alpha}"
+        s += f", rank={self.rank}, alpha={self.alpha}, dropout={self.dropout}"
 
         return s
 
@@ -253,8 +252,6 @@ class LoRAMultiheadAttention(nn.Module):
             in_proj_bias = in_proj_bias.detach().clone()
             self.register_buffer("in_proj_bias", in_proj_bias, persistent=persistent)
 
-        self.lora_dropout = nn.Dropout(p=lora_dropout)
-
         self.out_proj = LoRALinear(
             out_proj_weight,
             bias=out_proj_bias,
@@ -278,6 +275,7 @@ class LoRAMultiheadAttention(nn.Module):
 
         self.rank = rank
         self.alpha = alpha
+        self.lora_dropout = lora_dropout
 
         self._reset_parameters()
 
@@ -378,15 +376,15 @@ class LoRAMultiheadAttention(nn.Module):
         v = F.linear(value, v_proj_weight, bias=v_proj_bias)
 
         scale = self.alpha / rank
-        q_lora = self.lora_dropout(query)
+        q_lora = F.dropout(query, p=self.lora_dropout, training=self.training)
         q_lora = F.linear(q_lora, q_proj_weight_in)
         q_lora = F.linear(q_lora, q_proj_weight_out)
         q = q + scale * q_lora
-        k_lora = self.lora_dropout(key)
+        k_lora = F.dropout(key, p=self.lora_dropout, training=self.training)
         k_lora = F.linear(k_lora, k_proj_weight_in)
         k_lora = F.linear(k_lora, k_proj_weight_out)
         k = k + scale * k_lora
-        v_lora = self.lora_dropout(value)
+        v_lora = F.dropout(value, p=self.lora_dropout, training=self.training)
         v_lora = F.linear(v_lora, v_proj_weight_in)
         v_lora = F.linear(v_lora, v_proj_weight_out)
         v = v + scale * v_lora
@@ -649,15 +647,15 @@ class LoRARotaryPositionalMultiheadAttention(LoRAMultiheadAttention):
         v = F.linear(value, v_proj_weight, bias=v_proj_bias)
 
         scale = self.alpha / rank
-        q_lora = self.lora_dropout(query)
+        q_lora = F.dropout(query, p=self.lora_dropout, training=self.training)
         q_lora = F.linear(q_lora, q_proj_weight_in)
         q_lora = F.linear(q_lora, q_proj_weight_out)
         q = q + scale * q_lora
-        k_lora = self.lora_dropout(key)
+        k_lora = F.dropout(key, p=self.lora_dropout, training=self.training)
         k_lora = F.linear(k_lora, k_proj_weight_in)
         k_lora = F.linear(k_lora, k_proj_weight_out)
         k = k + scale * k_lora
-        v_lora = self.lora_dropout(value)
+        v_lora = F.dropout(value, p=self.lora_dropout, training=self.training)
         v_lora = F.linear(v_lora, v_proj_weight_in)
         v_lora = F.linear(v_lora, v_proj_weight_out)
         v = v + scale * v_lora
@@ -932,15 +930,15 @@ class LoRAExtrapolatablePositionalMultiheadAttention(LoRAMultiheadAttention):
         v = F.linear(value, v_proj_weight, bias=v_proj_bias)
 
         scale = self.alpha / rank
-        q_lora = self.lora_dropout(query)
+        q_lora = F.dropout(query, p=self.lora_dropout, training=self.training)
         q_lora = F.linear(q_lora, q_proj_weight_in)
         q_lora = F.linear(q_lora, q_proj_weight_out)
         q = q + scale * q_lora
-        k_lora = self.lora_dropout(key)
+        k_lora = F.dropout(key, p=self.lora_dropout, training=self.training)
         k_lora = F.linear(k_lora, k_proj_weight_in)
         k_lora = F.linear(k_lora, k_proj_weight_out)
         k = k + scale * k_lora
-        v_lora = self.lora_dropout(value)
+        v_lora = F.dropout(value, p=self.lora_dropout, training=self.training)
         v_lora = F.linear(v_lora, v_proj_weight_in)
         v_lora = F.linear(v_lora, v_proj_weight_out)
         v = v + scale * v_lora
