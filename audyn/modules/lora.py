@@ -1,4 +1,3 @@
-import copy
 import math
 from typing import Any, Dict, Optional, Tuple, Union
 
@@ -8,6 +7,16 @@ import torch.nn.functional as F
 from packaging import version
 
 from ..functional.activation import scaled_dot_product_attention
+from .activation import (
+    ExtrapolatablePositionalMultiheadAttention,
+    PartialRotaryPositionalMultiheadAttention,
+    RotaryPositionalMultiheadAttention,
+)
+from .positional_encoding import (
+    ExtrapolatablePositionalEmbedding,
+    PartialRotaryPositionalEmbedding,
+    RotaryPositionalEmbedding,
+)
 
 __all__ = [
     "LoRALinear",
@@ -24,6 +33,8 @@ class LoRALinear(nn.Module):
         weight (nn.Parameter or torch.Tensor, optional): Weight parameter in ``nn.Linear``.
         bias (nn.Parameter or torch.Tensor, optional): Bias parameter in ``nn.Linear``.
         rank (int): Rank of weight matrices. Small value (e.g. 8) is expected in LoRA.
+        alpha (float): Scaling factor that controls magnitude of LoRA update. Update
+            is scaled by ``alpha / rank``. Default: ``rank``.
         persistent (bool): If ``persistent=True``, original ``weight`` and ``bias`` are
             stored in ``state_dict``. Default: ``False``.
 
@@ -34,6 +45,8 @@ class LoRALinear(nn.Module):
         weight: Union[nn.Parameter, torch.Tensor],
         bias: Optional[Union[nn.Parameter, torch.Tensor]] = None,
         rank: int = 8,
+        alpha: Optional[float] = None,
+        dropout: float = 0.05,
         persistent: bool = False,
         dtype: torch.dtype = None,
         device: torch.device = None,
@@ -45,10 +58,13 @@ class LoRALinear(nn.Module):
 
         super().__init__()
 
-        weight = copy.copy(weight.data)
+        weight = weight.detach().clone()
 
         if bias is not None:
-            bias = copy.copy(bias.data)
+            bias = bias.detach().clone()
+
+        if alpha is None:
+            alpha = rank
 
         # register weight and bias as buffer
         self.register_buffer("weight", weight, persistent=persistent)
@@ -62,26 +78,28 @@ class LoRALinear(nn.Module):
         self.in_features = in_features
         self.out_features = out_features
         self.rank = rank
+        self.alpha = alpha
+        self.dropout = dropout
 
         self._reset_parameters()
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         x = F.linear(input, self.weight, bias=self.bias)
-        x_lora = F.linear(input, self.weight_in)
+        x_lora = F.dropout(input, p=self.dropout, training=self.training)
+        x_lora = F.linear(x_lora, self.weight_in)
         x_lora = F.linear(x_lora, self.weight_out)
-        output = x + x_lora
+        output = x + (self.alpha / self.rank) * x_lora
 
         return output
 
     def _reset_parameters(self) -> None:
-        std = 1 / math.sqrt(self.rank)
-        self.weight_in.data.normal_(std=std)
-        self.weight_out.data.zero_()
+        nn.init.kaiming_uniform_(self.weight_in, a=math.sqrt(5))
+        nn.init.zeros_(self.weight_out)
 
     def extra_repr(self) -> str:
         s = f"in_features={self.in_features}, out_features={self.out_features}"
         s += f", bias={self.bias is not None}"
-        s += f", rank={self.rank}"
+        s += f", rank={self.rank}, alpha={self.alpha}, dropout={self.dropout}"
 
         return s
 
@@ -90,6 +108,8 @@ class LoRALinear(nn.Module):
         cls,
         module: nn.Linear,
         rank: int = 8,
+        alpha: Optional[float] = None,
+        dropout: float = 0.05,
         persistent: bool = False,
     ) -> "LoRALinear":
         weight = module.weight
@@ -104,6 +124,8 @@ class LoRALinear(nn.Module):
             weight,
             bias=bias,
             rank=rank,
+            alpha=alpha,
+            dropout=dropout,
             persistent=persistent,
             **factory_kwargs,
         )
@@ -116,6 +138,8 @@ class LoRAMultiheadAttention(nn.Module):
 
     Args:
         rank (int): Rank of weight matrices. Small value (e.g. 8) is expected in LoRA.
+        alpha (float): Scaling factor that controls magnitude of LoRA update. Update
+            is scaled by ``alpha / rank``. Default: ``rank``.
         persistent (bool): If ``persistent=True``, original ``weight`` and ``bias`` are
             stored in ``state_dict``. Default: ``False``.
 
@@ -137,6 +161,8 @@ class LoRAMultiheadAttention(nn.Module):
         v_proj_weight: Optional[torch.Tensor] = None,
         batch_first: bool = False,
         rank: int = 8,
+        alpha: Optional[float] = None,
+        lora_dropout: float = 0.05,
         persistent: bool = False,
         dtype: torch.dtype = None,
         device: torch.device = None,
@@ -183,14 +209,17 @@ class LoRAMultiheadAttention(nn.Module):
         else:
             _qkv_same_embed_dim = False
 
+        if alpha is None:
+            alpha = rank
+
         if _qkv_same_embed_dim:
             q_proj_weight, k_proj_weight, v_proj_weight = torch.split(
                 in_proj_weight, [embed_dim] * 3, dim=-2
             )
 
-        q_proj_weight = copy.deepcopy(q_proj_weight.data)
-        k_proj_weight = copy.deepcopy(k_proj_weight.data)
-        v_proj_weight = copy.deepcopy(v_proj_weight.data)
+        q_proj_weight = q_proj_weight.detach().clone()
+        k_proj_weight = k_proj_weight.detach().clone()
+        v_proj_weight = v_proj_weight.detach().clone()
 
         if _qkv_same_embed_dim:
             in_proj_weight = torch.cat([q_proj_weight, k_proj_weight, v_proj_weight], dim=-2)
@@ -208,6 +237,7 @@ class LoRAMultiheadAttention(nn.Module):
             self.register_buffer("k_proj_weight", k_proj_weight, persistent=persistent)
             self.register_buffer("v_proj_weight", v_proj_weight, persistent=persistent)
 
+            self.register_parameter("in_proj_weight_in", None)
             self.q_proj_weight_in = nn.Parameter(torch.empty((rank, embed_dim), **factory_kwargs))
             self.k_proj_weight_in = nn.Parameter(torch.empty((rank, _kdim), **factory_kwargs))
             self.v_proj_weight_in = nn.Parameter(torch.empty((rank, _vdim), **factory_kwargs))
@@ -219,13 +249,15 @@ class LoRAMultiheadAttention(nn.Module):
         if in_proj_bias is None:
             self.register_buffer("in_proj_bias", None, persistent=persistent)
         else:
-            in_proj_bias = copy.deepcopy(in_proj_bias.data)
+            in_proj_bias = in_proj_bias.detach().clone()
             self.register_buffer("in_proj_bias", in_proj_bias, persistent=persistent)
 
         self.out_proj = LoRALinear(
             out_proj_weight,
             bias=out_proj_bias,
             rank=rank,
+            alpha=alpha,
+            dropout=lora_dropout,
             persistent=persistent,
             **factory_kwargs,
         )
@@ -242,22 +274,22 @@ class LoRAMultiheadAttention(nn.Module):
         self.batch_first = batch_first
 
         self.rank = rank
+        self.alpha = alpha
+        self.lora_dropout = lora_dropout
 
         self._reset_parameters()
 
     def _reset_parameters(self) -> None:
-        std = 1 / math.sqrt(self.rank)
-
-        if self.in_proj_weight_in is None:
-            self.q_proj_weight_in.data.normal_(std=std)
-            self.k_proj_weight_in.data.normal_(std=std)
-            self.v_proj_weight_in.data.normal_(std=std)
+        if self._qkv_same_embed_dim:
+            nn.init.kaiming_uniform_(self.in_proj_weight_in, a=math.sqrt(5))
         else:
-            self.in_proj_weight_in.data.normal_(std=std)
+            nn.init.kaiming_uniform_(self.q_proj_weight_in, a=math.sqrt(5))
+            nn.init.kaiming_uniform_(self.k_proj_weight_in, a=math.sqrt(5))
+            nn.init.kaiming_uniform_(self.v_proj_weight_in, a=math.sqrt(5))
 
-        self.q_proj_weight_out.data.zero_()
-        self.k_proj_weight_out.data.zero_()
-        self.v_proj_weight_out.data.zero_()
+        nn.init.zeros_(self.q_proj_weight_out)
+        nn.init.zeros_(self.k_proj_weight_out)
+        nn.init.zeros_(self.v_proj_weight_out)
 
     def forward(
         self,
@@ -343,15 +375,19 @@ class LoRAMultiheadAttention(nn.Module):
         k = F.linear(key, k_proj_weight, bias=k_proj_bias)
         v = F.linear(value, v_proj_weight, bias=v_proj_bias)
 
-        q_lora = F.linear(query, q_proj_weight_in)
+        scale = self.alpha / rank
+        q_lora = F.dropout(query, p=self.lora_dropout, training=self.training)
+        q_lora = F.linear(q_lora, q_proj_weight_in)
         q_lora = F.linear(q_lora, q_proj_weight_out)
-        q = q + q_lora
-        k_lora = F.linear(key, k_proj_weight_in)
+        q = q + scale * q_lora
+        k_lora = F.dropout(key, p=self.lora_dropout, training=self.training)
+        k_lora = F.linear(k_lora, k_proj_weight_in)
         k_lora = F.linear(k_lora, k_proj_weight_out)
-        k = k + k_lora
-        v_lora = F.linear(value, v_proj_weight_in)
+        k = k + scale * k_lora
+        v_lora = F.dropout(value, p=self.lora_dropout, training=self.training)
+        v_lora = F.linear(v_lora, v_proj_weight_in)
         v_lora = F.linear(v_lora, v_proj_weight_out)
-        v = v + v_lora
+        v = v + scale * v_lora
 
         q = q.view(query_length, batch_size, num_heads, head_dim)
         k = k.view(key_length, batch_size, num_heads, head_dim)
@@ -406,6 +442,8 @@ class LoRAMultiheadAttention(nn.Module):
         cls,
         module: nn.MultiheadAttention,
         rank: int = 8,
+        alpha: Optional[float] = None,
+        dropout: float = 0.05,
         persistent: bool = False,
     ) -> "LoRAMultiheadAttention":
         in_proj_weight = module.in_proj_weight
@@ -430,6 +468,727 @@ class LoRAMultiheadAttention(nn.Module):
             v_proj_weight=module.v_proj_weight,
             batch_first=module.batch_first,
             rank=rank,
+            alpha=alpha,
+            lora_dropout=dropout,
+            persistent=persistent,
+            **factory_kwargs,
+        )
+
+        return module
+
+
+class LoRARotaryPositionalMultiheadAttention(LoRAMultiheadAttention):
+    """Multihead attention using rotary positional representation for low-rank adaptation."""
+
+    def __init__(
+        self,
+        num_heads: int,
+        in_proj_weight: torch.Tensor,
+        in_proj_bias: Optional[torch.Tensor],
+        bias_k: Optional[torch.Tensor] = None,
+        bias_v: Optional[torch.Tensor] = None,
+        add_zero_attn: bool = False,
+        dropout: float = 0.0,
+        out_proj_weight: torch.Tensor = None,
+        out_proj_bias: Optional[torch.Tensor] = None,
+        q_proj_weight: Optional[torch.Tensor] = None,
+        k_proj_weight: Optional[torch.Tensor] = None,
+        v_proj_weight: Optional[torch.Tensor] = None,
+        base: int = 10000,
+        share_heads: bool = True,
+        batch_first: bool = False,
+        rank: int = 8,
+        alpha: Optional[float] = None,
+        lora_dropout: float = 0.05,
+        persistent: bool = False,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
+    ) -> None:
+        factory_kwargs = {
+            "device": device,
+            "dtype": dtype,
+        }
+        super().__init__(
+            num_heads,
+            in_proj_weight=in_proj_weight,
+            in_proj_bias=in_proj_bias,
+            bias_k=bias_k,
+            bias_v=bias_v,
+            add_zero_attn=add_zero_attn,
+            dropout=dropout,
+            out_proj_weight=out_proj_weight,
+            out_proj_bias=out_proj_bias,
+            q_proj_weight=q_proj_weight,
+            k_proj_weight=k_proj_weight,
+            v_proj_weight=v_proj_weight,
+            batch_first=batch_first,
+            rank=rank,
+            alpha=alpha,
+            lora_dropout=lora_dropout,
+            persistent=persistent,
+            **factory_kwargs,
+        )
+
+        if bias_k is not None or bias_v is not None:
+            raise NotImplementedError("add_bias_kv is not supported.")
+
+        if add_zero_attn:
+            raise NotImplementedError("add_zero_attn is not supported.")
+
+        self.rope = RotaryPositionalEmbedding(base=base, batch_first=batch_first)
+
+        self.share_heads = share_heads
+
+    def forward(
+        self,
+        query: torch.Tensor,
+        key: torch.Tensor,
+        value: torch.Tensor,
+        key_padding_mask: Optional[torch.Tensor] = None,
+        need_weights: bool = True,
+        attn_mask: Optional[torch.Tensor] = None,
+        average_attn_weights: bool = True,
+        **kwargs,
+    ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        """Forward pass of LoRARotaryPositionalMultiheadAttention.
+
+        Args:
+            query (torch.Tensor): Sequence of shape (batch_size, query_length, embed_dim)
+                if ``batch_first=True``, otherwise (query_length, batch_size, embed_dim).
+            key (torch.Tensor): Sequence of shape (batch_size, key_length, embed_dim)
+                if ``batch_first=True``, otherwise (key_length, batch_size, embed_dim).
+            key_padding_mask (torch.BoolTensor, optional): Padding mask of shape
+                (batch_size, key_length).
+            attn_mask (torch.BoolTensor, optional): Attention padding mask of
+                shape (query_length, key_length) or
+                (batch_size * num_heads, query_length, key_length).
+
+        Returns:
+            tuple: Tuple of tensors containing
+
+                - torch.Tensor: Sequence of same shape as input.
+                - torch.Tensor: Attention weights of shape
+                    (batch_size, num_heads, query_length, key_length) if
+                    ``average_attn_weights=True``, otherwise
+                    (batch_size, query_length, key_length).
+
+        """
+        self.validate_kwargs(kwargs)
+
+        embed_dim = self.embed_dim
+        dropout = self.dropout
+        batch_first = self.batch_first
+        num_heads = self.num_heads
+        in_proj_weight = self.in_proj_weight
+        in_proj_bias = self.in_proj_bias
+        in_proj_weight_in = self.in_proj_weight_in
+        q_proj_weight_out = self.q_proj_weight_out
+        k_proj_weight_out = self.k_proj_weight_out
+        v_proj_weight_out = self.v_proj_weight_out
+        rank = self.rank
+
+        head_dim = embed_dim // num_heads
+
+        if batch_first:
+            # make sure that the transpose op does not affect the "is" property
+            if key is value:
+                if query is key:
+                    query = key = value = query.transpose(1, 0)
+                else:
+                    query, key = (x.transpose(1, 0) for x in (query, key))
+                    value = key
+            else:
+                query, key, value = (x.transpose(1, 0) for x in (query, key, value))
+
+        query_length, batch_size, _ = query.size()
+        key_length, _, _ = key.size()
+
+        key_padding_mask = F._canonical_mask(
+            mask=key_padding_mask,
+            mask_name="key_padding_mask",
+            other_type=F._none_or_dtype(attn_mask),
+            other_name="attn_mask",
+            target_type=query.dtype,
+        )
+
+        attn_mask = F._canonical_mask(
+            mask=attn_mask,
+            mask_name="attn_mask",
+            other_type=None,
+            other_name="",
+            target_type=query.dtype,
+            check_other=False,
+        )
+
+        if self._qkv_same_embed_dim:
+            q_proj_weight, k_proj_weight, v_proj_weight = torch.split(
+                in_proj_weight, [embed_dim] * 3, dim=-2
+            )
+            q_proj_weight_in, k_proj_weight_in, v_proj_weight_in = torch.split(
+                in_proj_weight_in, [rank] * 3, dim=-2
+            )
+        else:
+            q_proj_weight = self.q_proj_weight
+            k_proj_weight = self.k_proj_weight
+            v_proj_weight = self.v_proj_weight
+            q_proj_weight_in = self.q_proj_weight_in
+            k_proj_weight_in = self.k_proj_weight_in
+            v_proj_weight_in = self.v_proj_weight_in
+
+        if self.in_proj_bias is None:
+            q_proj_bias, k_proj_bias, v_proj_bias = None, None, None
+        else:
+            q_proj_bias, k_proj_bias, v_proj_bias = torch.split(
+                in_proj_bias, [embed_dim] * 3, dim=0
+            )
+
+        q = F.linear(query, q_proj_weight, bias=q_proj_bias)
+        k = F.linear(key, k_proj_weight, bias=k_proj_bias)
+        v = F.linear(value, v_proj_weight, bias=v_proj_bias)
+
+        scale = self.alpha / rank
+        q_lora = F.dropout(query, p=self.lora_dropout, training=self.training)
+        q_lora = F.linear(q_lora, q_proj_weight_in)
+        q_lora = F.linear(q_lora, q_proj_weight_out)
+        q = q + scale * q_lora
+        k_lora = F.dropout(key, p=self.lora_dropout, training=self.training)
+        k_lora = F.linear(k_lora, k_proj_weight_in)
+        k_lora = F.linear(k_lora, k_proj_weight_out)
+        k = k + scale * k_lora
+        v_lora = F.dropout(value, p=self.lora_dropout, training=self.training)
+        v_lora = F.linear(v_lora, v_proj_weight_in)
+        v_lora = F.linear(v_lora, v_proj_weight_out)
+        v = v + scale * v_lora
+
+        q = self._apply_positional_embedding(q.contiguous())
+        k = self._apply_positional_embedding(k.contiguous())
+
+        q = q.view(query_length, batch_size, num_heads, head_dim)
+        k = k.view(key_length, batch_size, num_heads, head_dim)
+        v = v.view(key_length, batch_size, num_heads, head_dim)
+
+        q = q.permute(1, 2, 0, 3)
+        k = k.permute(1, 2, 0, 3)
+        v = v.permute(1, 2, 0, 3)
+
+        dropout_p = dropout if self.training else 0
+
+        qkv, attn_weights = scaled_dot_product_attention(
+            q,
+            k,
+            v,
+            key_padding_mask=key_padding_mask,
+            attn_mask=attn_mask,
+            dropout_p=dropout_p,
+            need_weights=need_weights,
+        )
+
+        if batch_first:
+            qkv = qkv.permute(0, 2, 1, 3).contiguous()
+            qkv = qkv.view(batch_size, query_length, embed_dim)
+        else:
+            qkv = qkv.permute(2, 0, 1, 3).contiguous()
+            qkv = qkv.view(query_length, batch_size, embed_dim)
+
+        output = self.out_proj(qkv)
+
+        if average_attn_weights and need_weights:
+            attn_weights = attn_weights.mean(dim=1)
+
+        if not need_weights:
+            attn_weights = None
+
+        return output, attn_weights
+
+    def _apply_positional_embedding(self, input: torch.Tensor) -> torch.Tensor:
+        """Apply positional embedding to input.
+
+        Args:
+            input (torch.Tensor): Sequence of shape (length, batch_size, embed_dim).
+
+        Returns:
+            torch.Tensor: Output sequence same shape as input.
+
+        """
+        share_heads = self.share_heads
+        num_heads = self.num_heads
+        input_length, batch_size, embed_dim = input.size()
+        head_dim = embed_dim // num_heads
+
+        if share_heads:
+            x = input.view(input_length, batch_size * num_heads, head_dim)
+        else:
+            x = input.view(input_length, batch_size, num_heads * head_dim)
+
+        if self.batch_first:
+            x = x.transpose(1, 0)
+
+        x = self.rope(x)
+
+        if self.batch_first:
+            x = x.transpose(1, 0).contiguous()
+
+        output = x.view(input_length, batch_size, embed_dim)
+
+        return output
+
+    @classmethod
+    def build_from_mha(
+        cls,
+        module: RotaryPositionalMultiheadAttention,
+        rank: int = 8,
+        alpha: Optional[float] = None,
+        dropout: float = 0.05,
+        persistent: bool = False,
+    ) -> "LoRARotaryPositionalMultiheadAttention":
+        in_proj_weight = module.in_proj_weight
+
+        factory_kwargs = {
+            "dtype": in_proj_weight.dtype,
+            "device": in_proj_weight.device,
+        }
+
+        module = cls(
+            module.num_heads,
+            module.in_proj_weight,
+            in_proj_bias=module.in_proj_bias,
+            bias_k=module.bias_k,
+            bias_v=module.bias_v,
+            add_zero_attn=module.add_zero_attn,
+            dropout=module.dropout,
+            out_proj_weight=module.out_proj.weight,
+            out_proj_bias=module.out_proj.bias,
+            q_proj_weight=module.q_proj_weight,
+            k_proj_weight=module.k_proj_weight,
+            v_proj_weight=module.v_proj_weight,
+            base=module.rope.base,
+            share_heads=module.share_heads,
+            batch_first=module.batch_first,
+            rank=rank,
+            alpha=alpha,
+            lora_dropout=dropout,
+            persistent=persistent,
+            **factory_kwargs,
+        )
+
+        return module
+
+
+class LoRAExtrapolatablePositionalMultiheadAttention(LoRAMultiheadAttention):
+    """Multihead attention using extrapolatable positional representation for low-rank adaptation."""
+
+    def __init__(
+        self,
+        num_heads: int,
+        in_proj_weight: torch.Tensor,
+        in_proj_bias: Optional[torch.Tensor],
+        bias_k: Optional[torch.Tensor] = None,
+        bias_v: Optional[torch.Tensor] = None,
+        add_zero_attn: bool = False,
+        dropout: float = 0.0,
+        out_proj_weight: torch.Tensor = None,
+        out_proj_bias: Optional[torch.Tensor] = None,
+        q_proj_weight: Optional[torch.Tensor] = None,
+        k_proj_weight: Optional[torch.Tensor] = None,
+        v_proj_weight: Optional[torch.Tensor] = None,
+        base: int = 10000,
+        share_heads: bool = True,
+        batch_first: bool = False,
+        rank: int = 8,
+        alpha: Optional[float] = None,
+        lora_dropout: float = 0.05,
+        persistent: bool = False,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
+    ) -> None:
+        factory_kwargs = {
+            "device": device,
+            "dtype": dtype,
+        }
+        super().__init__(
+            num_heads,
+            in_proj_weight=in_proj_weight,
+            in_proj_bias=in_proj_bias,
+            bias_k=bias_k,
+            bias_v=bias_v,
+            add_zero_attn=add_zero_attn,
+            dropout=dropout,
+            out_proj_weight=out_proj_weight,
+            out_proj_bias=out_proj_bias,
+            q_proj_weight=q_proj_weight,
+            k_proj_weight=k_proj_weight,
+            v_proj_weight=v_proj_weight,
+            batch_first=batch_first,
+            rank=rank,
+            alpha=alpha,
+            lora_dropout=lora_dropout,
+            persistent=persistent,
+            **factory_kwargs,
+        )
+
+        if bias_k is not None or bias_v is not None:
+            raise NotImplementedError("add_bias_kv is not supported.")
+
+        if add_zero_attn:
+            raise NotImplementedError("add_zero_attn is not supported.")
+
+        self.q_xpos = ExtrapolatablePositionalEmbedding(False, base=base, batch_first=batch_first)
+        self.k_xpos = ExtrapolatablePositionalEmbedding(True, base=base, batch_first=batch_first)
+
+        self.share_heads = share_heads
+
+    def forward(
+        self,
+        query: torch.Tensor,
+        key: torch.Tensor,
+        value: torch.Tensor,
+        key_padding_mask: Optional[torch.Tensor] = None,
+        need_weights: bool = True,
+        attn_mask: Optional[torch.Tensor] = None,
+        average_attn_weights: bool = True,
+        **kwargs,
+    ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        """Forward pass of LoRAExtrapolatablePositionalMultiheadAttention.
+
+        Args:
+            query (torch.Tensor): Sequence of shape (batch_size, query_length, embed_dim)
+                if ``batch_first=True``, otherwise (query_length, batch_size, embed_dim).
+            key (torch.Tensor): Sequence of shape (batch_size, key_length, embed_dim)
+                if ``batch_first=True``, otherwise (key_length, batch_size, embed_dim).
+            key_padding_mask (torch.BoolTensor, optional): Padding mask of shape
+                (batch_size, key_length).
+            attn_mask (torch.BoolTensor, optional): Attention padding mask of
+                shape (query_length, key_length) or
+                (batch_size * num_heads, query_length, key_length).
+
+        Returns:
+            tuple: Tuple of tensors containing
+
+                - torch.Tensor: Sequence of same shape as input.
+                - torch.Tensor: Attention weights of shape
+                    (batch_size, num_heads, query_length, key_length) if
+                    ``average_attn_weights=True``, otherwise
+                    (batch_size, query_length, key_length).
+
+        """
+        self.validate_kwargs(kwargs)
+
+        embed_dim = self.embed_dim
+        dropout = self.dropout
+        batch_first = self.batch_first
+        num_heads = self.num_heads
+        in_proj_weight = self.in_proj_weight
+        in_proj_bias = self.in_proj_bias
+        in_proj_weight_in = self.in_proj_weight_in
+        q_proj_weight_out = self.q_proj_weight_out
+        k_proj_weight_out = self.k_proj_weight_out
+        v_proj_weight_out = self.v_proj_weight_out
+        rank = self.rank
+
+        head_dim = embed_dim // num_heads
+
+        if batch_first:
+            if key is value:
+                if query is key:
+                    query = key = value = query.transpose(1, 0)
+                else:
+                    query = query.transpose(1, 0)
+                    key = key.transpose(1, 0)
+                    value = key
+            else:
+                query = query.transpose(1, 0)
+                key = key.transpose(1, 0)
+                value = value.transpose(1, 0)
+
+        query_length, batch_size, _ = query.size()
+        key_length, _, _ = key.size()
+
+        if self._qkv_same_embed_dim:
+            q_proj_weight, k_proj_weight, v_proj_weight = torch.split(
+                in_proj_weight, [embed_dim] * 3, dim=-2
+            )
+            q_proj_weight_in, k_proj_weight_in, v_proj_weight_in = torch.split(
+                in_proj_weight_in, [rank] * 3, dim=-2
+            )
+        else:
+            q_proj_weight = self.q_proj_weight
+            k_proj_weight = self.k_proj_weight
+            v_proj_weight = self.v_proj_weight
+            q_proj_weight_in = self.q_proj_weight_in
+            k_proj_weight_in = self.k_proj_weight_in
+            v_proj_weight_in = self.v_proj_weight_in
+
+        if self.in_proj_bias is None:
+            q_proj_bias, k_proj_bias, v_proj_bias = None, None, None
+        else:
+            q_proj_bias, k_proj_bias, v_proj_bias = torch.split(
+                in_proj_bias, [embed_dim] * 3, dim=0
+            )
+
+        q = F.linear(query, q_proj_weight, bias=q_proj_bias)
+        k = F.linear(key, k_proj_weight, bias=k_proj_bias)
+        v = F.linear(value, v_proj_weight, bias=v_proj_bias)
+
+        scale = self.alpha / rank
+        q_lora = F.dropout(query, p=self.lora_dropout, training=self.training)
+        q_lora = F.linear(q_lora, q_proj_weight_in)
+        q_lora = F.linear(q_lora, q_proj_weight_out)
+        q = q + scale * q_lora
+        k_lora = F.dropout(key, p=self.lora_dropout, training=self.training)
+        k_lora = F.linear(k_lora, k_proj_weight_in)
+        k_lora = F.linear(k_lora, k_proj_weight_out)
+        k = k + scale * k_lora
+        v_lora = F.dropout(value, p=self.lora_dropout, training=self.training)
+        v_lora = F.linear(v_lora, v_proj_weight_in)
+        v_lora = F.linear(v_lora, v_proj_weight_out)
+        v = v + scale * v_lora
+
+        q = self._apply_q_positional_embedding(q.contiguous())
+        k = self._apply_k_positional_embedding(k.contiguous())
+
+        q = q.view(query_length, batch_size, num_heads, head_dim)
+        k = k.view(key_length, batch_size, num_heads, head_dim)
+        v = v.view(key_length, batch_size, num_heads, head_dim)
+
+        q = q.permute(1, 2, 0, 3)
+        k = k.permute(1, 2, 0, 3)
+        v = v.permute(1, 2, 0, 3)
+
+        dropout_p = dropout if self.training else 0
+
+        qkv, attn_weights = scaled_dot_product_attention(
+            q,
+            k,
+            v,
+            key_padding_mask=key_padding_mask,
+            attn_mask=attn_mask,
+            dropout_p=dropout_p,
+            need_weights=need_weights,
+        )
+
+        if batch_first:
+            qkv = qkv.permute(0, 2, 1, 3).contiguous()
+            qkv = qkv.view(batch_size, query_length, embed_dim)
+        else:
+            qkv = qkv.permute(2, 0, 1, 3).contiguous()
+            qkv = qkv.view(query_length, batch_size, embed_dim)
+
+        output = self.out_proj(qkv)
+
+        if average_attn_weights and need_weights:
+            attn_weights = attn_weights.mean(dim=1)
+
+        if not need_weights:
+            attn_weights = None
+
+        return output, attn_weights
+
+    def _apply_q_positional_embedding(self, input: torch.Tensor) -> torch.Tensor:
+        """Apply positional embedding to query.
+
+        Args:
+            query (torch.Tensor): Sequence of shape (length, batch_size, num_heads, head_dim).
+
+        Returns:
+            torch.Tensor: Output sequence same shape as query.
+
+        """
+        output = self._apply_positional_embedding(input, xpos=self.q_xpos)
+
+        return output
+
+    def _apply_k_positional_embedding(self, input: torch.Tensor) -> torch.Tensor:
+        """Apply positional embedding to key.
+
+        Args:
+            key (torch.Tensor): Sequence of shape (length, batch_size, num_heads, head_dim).
+
+        Returns:
+            torch.Tensor: Output sequence same shape as key.
+
+        """
+        output = self._apply_positional_embedding(input, xpos=self.k_xpos)
+
+        return output
+
+    def _apply_positional_embedding(
+        self, input: torch.Tensor, xpos: ExtrapolatablePositionalEmbedding
+    ) -> torch.Tensor:
+        """Apply positional embedding to input.
+
+        Args:
+            input (torch.Tensor): Sequence of shape (length, batch_size, num_heads, head_dim).
+            xpos (ExtrapolatablePositionalEmbedding): xPos for query or key.
+
+        Returns:
+            torch.Tensor: Output sequence same shape as input.
+
+        """
+        share_heads = self.share_heads
+        num_heads = self.num_heads
+        input_length, batch_size, embed_dim = input.size()
+        head_dim = embed_dim // num_heads
+
+        if share_heads:
+            x = input.view(input_length, batch_size * num_heads, head_dim)
+        else:
+            x = input.view(input_length, batch_size, num_heads * head_dim)
+
+        if self.batch_first:
+            x = x.transpose(1, 0)
+
+        x = xpos(x)
+
+        if self.batch_first:
+            x = x.transpose(1, 0).contiguous()
+
+        output = x.view(input_length, batch_size, embed_dim)
+
+        return output
+
+    @classmethod
+    def build_from_mha(
+        cls,
+        module: ExtrapolatablePositionalMultiheadAttention,
+        rank: int = 8,
+        alpha: Optional[float] = None,
+        dropout: float = 0.05,
+        persistent: bool = False,
+    ) -> "LoRAExtrapolatablePositionalMultiheadAttention":
+        in_proj_weight = module.in_proj_weight
+
+        factory_kwargs = {
+            "dtype": in_proj_weight.dtype,
+            "device": in_proj_weight.device,
+        }
+
+        module = cls(
+            module.num_heads,
+            module.in_proj_weight,
+            in_proj_bias=module.in_proj_bias,
+            bias_k=module.bias_k,
+            bias_v=module.bias_v,
+            add_zero_attn=module.add_zero_attn,
+            dropout=module.dropout,
+            out_proj_weight=module.out_proj.weight,
+            out_proj_bias=module.out_proj.bias,
+            q_proj_weight=module.q_proj_weight,
+            k_proj_weight=module.k_proj_weight,
+            v_proj_weight=module.v_proj_weight,
+            base=module.k_xpos.base,
+            share_heads=module.share_heads,
+            batch_first=module.batch_first,
+            rank=rank,
+            alpha=alpha,
+            lora_dropout=dropout,
+            persistent=persistent,
+            **factory_kwargs,
+        )
+
+        return module
+
+
+class LoRAPartialRotaryPositionalMultiheadAttention(LoRARotaryPositionalMultiheadAttention):
+    """Multihead attention using partial rotary positional representation for low-rank adaptation."""
+
+    def __init__(
+        self,
+        num_heads: int,
+        in_proj_weight: torch.Tensor,
+        in_proj_bias: Optional[torch.Tensor],
+        bias_k: Optional[torch.Tensor] = None,
+        bias_v: Optional[torch.Tensor] = None,
+        add_zero_attn: bool = False,
+        dropout: float = 0.0,
+        out_proj_weight: torch.Tensor = None,
+        out_proj_bias: Optional[torch.Tensor] = None,
+        q_proj_weight: Optional[torch.Tensor] = None,
+        k_proj_weight: Optional[torch.Tensor] = None,
+        v_proj_weight: Optional[torch.Tensor] = None,
+        base: int = 10000,
+        share_heads: bool = True,
+        fraction: float = 0.5,
+        batch_first: bool = False,
+        rank: int = 8,
+        alpha: Optional[float] = None,
+        lora_dropout: float = 0.05,
+        persistent: bool = False,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
+    ) -> None:
+        factory_kwargs = {
+            "device": device,
+            "dtype": dtype,
+        }
+        super().__init__(
+            num_heads,
+            in_proj_weight=in_proj_weight,
+            in_proj_bias=in_proj_bias,
+            bias_k=bias_k,
+            bias_v=bias_v,
+            add_zero_attn=add_zero_attn,
+            dropout=dropout,
+            out_proj_weight=out_proj_weight,
+            out_proj_bias=out_proj_bias,
+            q_proj_weight=q_proj_weight,
+            k_proj_weight=k_proj_weight,
+            v_proj_weight=v_proj_weight,
+            batch_first=batch_first,
+            rank=rank,
+            alpha=alpha,
+            lora_dropout=lora_dropout,
+            persistent=persistent,
+            **factory_kwargs,
+        )
+
+        if bias_k is not None or bias_v is not None:
+            raise NotImplementedError("add_bias_kv is not supported.")
+
+        if add_zero_attn:
+            raise NotImplementedError("add_zero_attn is not supported.")
+
+        self.rope = PartialRotaryPositionalEmbedding(
+            base=base, fraction=fraction, batch_first=batch_first
+        )
+
+        self.share_heads = share_heads
+
+    @classmethod
+    def build_from_mha(
+        cls,
+        module: PartialRotaryPositionalMultiheadAttention,
+        rank: int = 8,
+        alpha: Optional[float] = None,
+        dropout: float = 0.05,
+        persistent: bool = False,
+    ) -> "LoRARotaryPositionalMultiheadAttention":
+        in_proj_weight = module.in_proj_weight
+
+        factory_kwargs = {
+            "dtype": in_proj_weight.dtype,
+            "device": in_proj_weight.device,
+        }
+
+        module = cls(
+            module.num_heads,
+            module.in_proj_weight,
+            in_proj_bias=module.in_proj_bias,
+            bias_k=module.bias_k,
+            bias_v=module.bias_v,
+            add_zero_attn=module.add_zero_attn,
+            dropout=module.dropout,
+            out_proj_weight=module.out_proj.weight,
+            out_proj_bias=module.out_proj.bias,
+            q_proj_weight=module.q_proj_weight,
+            k_proj_weight=module.k_proj_weight,
+            v_proj_weight=module.v_proj_weight,
+            base=module.rope.base,
+            share_heads=module.share_heads,
+            fraction=module.rope.fraction,
+            batch_first=module.batch_first,
+            rank=rank,
+            alpha=alpha,
+            lora_dropout=dropout,
             persistent=persistent,
             **factory_kwargs,
         )

@@ -1209,7 +1209,7 @@ class RotaryPositionalMultiheadAttention(_MultiheadAttention):
         """Apply positional embedding to input.
 
         Args:
-            input (torch.Tensor): Sequence of shape (length, batch_size, num_heads, head_dim).
+            input (torch.Tensor): Sequence of shape (length, batch_size, embed_dim).
 
         Returns:
             torch.Tensor: Output sequence same shape as input.
@@ -1410,7 +1410,7 @@ class ExtrapolatablePositionalMultiheadAttention(_MultiheadAttention):
         """Apply positional embedding to query.
 
         Args:
-            query (torch.Tensor): Sequence of shape (length, batch_size, num_heads, head_dim).
+            query (torch.Tensor): Sequence of shape (length, batch_size, embed_dim).
 
         Returns:
             torch.Tensor: Output sequence same shape as query.
@@ -1424,7 +1424,7 @@ class ExtrapolatablePositionalMultiheadAttention(_MultiheadAttention):
         """Apply positional embedding to key.
 
         Args:
-            key (torch.Tensor): Sequence of shape (length, batch_size, num_heads, head_dim).
+            key (torch.Tensor): Sequence of shape (length, batch_size, embed_dim).
 
         Returns:
             torch.Tensor: Output sequence same shape as key.
@@ -1440,7 +1440,7 @@ class ExtrapolatablePositionalMultiheadAttention(_MultiheadAttention):
         """Apply positional embedding to input.
 
         Args:
-            input (torch.Tensor): Sequence of shape (length, batch_size, num_heads, head_dim).
+            input (torch.Tensor): Sequence of shape (length, batch_size, embed_dim).
             xpos (ExtrapolatablePositionalEmbedding): xPos for query or key.
 
         Returns:
