@@ -165,6 +165,7 @@ def hz_to_midi(
     return midi
 
 
+@torch.no_grad()
 def compute_bipartite_match_precision_recall_fscore(
     input: torch.Tensor,
     target: torch.Tensor,
@@ -173,6 +174,11 @@ def compute_bipartite_match_precision_recall_fscore(
     tolerance: float = 0.5,
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Compute precision, recall, and F-score for batched 1D bipartite matching.
+
+    .. note::
+
+        Unlike the Hopcroft-Karp algorithm which minimizes the total time deviation,
+        this approach purely maximizes the number of matches.
 
     Args:
         input (torch.Tensor): Estimated boundary timestamps of shape
@@ -195,6 +201,10 @@ def compute_bipartite_match_precision_recall_fscore(
     """
     batch_size = input.size(0)
 
+    src_device = input.device
+    input = input.cpu()
+    target = target.cpu()
+
     if input_lengths is None:
         input_lengths = torch.full(
             (batch_size,), input.size(-1), device=input.device, dtype=torch.long
@@ -205,8 +215,15 @@ def compute_bipartite_match_precision_recall_fscore(
             (batch_size,), target.size(-1), device=target.device, dtype=torch.long
         )
 
-    precision, recall, fscore = bipartite_match.compute_bipartite_match_precision_recall_fscore(
+    input_lengths = input_lengths.cpu()
+    target_lengths = target_lengths.cpu()
+
+    precision, recall, f_score = bipartite_match.compute_bipartite_match_precision_recall_fscore(
         input, target, input_lengths, target_lengths, tolerance
     )
 
-    return precision, recall, fscore
+    precision = precision.to(src_device)
+    recall = recall.to(src_device)
+    f_score = f_score.to(src_device)
+
+    return precision, recall, f_score

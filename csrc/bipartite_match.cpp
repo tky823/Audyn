@@ -55,8 +55,8 @@ namespace audyn
                             {
             for (int64_t batch_idx = start; batch_idx < end; batch_idx++)
             {
-                const float *current_input = input_ptr + batch_idx * max_input_nodes;
-                const float *current_target = target_ptr + batch_idx * max_target_nodes;
+                const float *_input = input_ptr + batch_idx * max_input_nodes;
+                const float *_target = target_ptr + batch_idx * max_target_nodes;
 
                 int64_t num_inputs = input_lengths_ptr[batch_idx];
                 int64_t num_targets = target_lengths_ptr[batch_idx];
@@ -70,8 +70,8 @@ namespace audyn
 
                 while (i < num_inputs && j < num_targets)
                 {
-                    float x_i = current_input[i];
-                    float y_j = current_target[j];
+                    float x_i = _input[i];
+                    float y_j = _target[j];
 
                     if (std::abs(x_i - y_j) <= tolerance)
                     {
