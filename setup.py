@@ -122,6 +122,15 @@ class BuildExtension(_BuildExtension):
             },
         )
 
+    cpp_extensions.append(
+        {
+            "name": "audyn._C.bipartite_match",
+            "sources": [
+                "csrc/bipartite_match.cpp",
+            ],
+        },
+    )
+
     def run(self) -> None:
         if self.editable_mode:
             # create directories to save ".so" files in editable mode.

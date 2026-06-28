@@ -1,8 +1,10 @@
 import math
 from numbers import Number
-from typing import List, Union
+from typing import List, Optional, Tuple, Union
 
 import torch
+
+from ..._C import bipartite_match
 
 __all__ = [
     "note_to_hz",
@@ -161,3 +163,67 @@ def hz_to_midi(
     midi = 12 * log_freq + 69 - 4 * octave
 
     return midi
+
+
+@torch.no_grad()
+def compute_bipartite_match_precision_recall_fscore(
+    input: torch.Tensor,
+    target: torch.Tensor,
+    input_lengths: Optional[torch.LongTensor] = None,
+    target_lengths: Optional[torch.LongTensor] = None,
+    tolerance: float = 0.5,
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Compute precision, recall, and F-score for batched 1D bipartite matching.
+
+    .. note::
+
+        Unlike the Hopcroft-Karp algorithm which minimizes the total time deviation,
+        this approach purely maximizes the number of matches.
+
+    Args:
+        input (torch.Tensor): Estimated boundary timestamps of shape
+            (batch_size, max_input_length). Must be sorted in ascending order.
+        target (torch.Tensor): Groundtruth boundary timestamps of shape
+            (batch_size, max_target_length). Must be sorted in ascending order.
+        input_lengths (torch.LongTensor, optional): Lengths of each sequence in input of shape
+            (batch_size,).
+        target_lengths (torch.LongTensor, optional): Lengths of each sequence in target of shape
+            (batch_size,).
+        tolerance (float, optional): Maximum allowed absolute time difference (in seconds)
+            between an input and target boundary to be considered match. Default: ``0.5``.
+
+    Returns:
+        tuple: Tuple of tensors containing:
+            - torch.Tensor: Precision scores of shape (batch_size,)
+            - torch.Tensor: Recall scores of shape (batch_size,)
+            - torch.Tensor: F-scores of shape (batch_size,)
+
+    """
+    batch_size = input.size(0)
+
+    src_device = input.device
+    input = input.cpu()
+    target = target.cpu()
+
+    if input_lengths is None:
+        input_lengths = torch.full(
+            (batch_size,), input.size(-1), device=input.device, dtype=torch.long
+        )
+
+    if target_lengths is None:
+        target_lengths = torch.full(
+            (batch_size,), target.size(-1), device=target.device, dtype=torch.long
+        )
+
+    input_lengths = input_lengths.cpu()
+    target_lengths = target_lengths.cpu()
+
+    precision, recall, f_score = bipartite_match.compute_bipartite_match_precision_recall_fscore(
+        input, target, input_lengths, target_lengths, tolerance
+    )
+
+    precision = precision.to(src_device)
+    recall = recall.to(src_device)
+    f_score = f_score.to(src_device)
+
+    return precision, recall, f_score
