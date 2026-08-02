@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -21,20 +21,27 @@ class PaSSTMelSpectrogram(nn.Module):
         f_min: float = 0,
         f_max: Optional[float] = None,
         n_mels: Optional[int] = None,
+        freq_aug_param: Optional[Tuple[int, int]] = None,
         freq_mask_param: Optional[int] = None,
         time_mask_param: Optional[int] = None,
         mean: float = 0,
         std: float = 1,
         take_log: bool = True,
         eps: float = 0.00001,
+        seed: int = 0,
     ) -> None:
         super().__init__()
 
         if win_length is None:
             win_length = 800
 
+        if freq_aug_param is None:
+            freq_aug_param = (1, 1000)
+        else:
+            assert len(freq_aug_param) == 2
+
         if f_max is None:
-            f_max = sample_rate // 2 - 1000
+            f_max = sample_rate // 2 - freq_aug_param[1] // 2
 
         self.sample_rate = sample_rate
         self.n_fft = n_fft
@@ -42,11 +49,13 @@ class PaSSTMelSpectrogram(nn.Module):
         self.hop_length = hop_length
         self.f_min = f_min
         self.f_max = f_max
+        self.freq_aug_param = freq_aug_param
         self.n_mels = n_mels
         self.mean = mean
         self.std = std
         self.take_log = take_log
         self.eps = eps
+
         self.fbank_kwargs = {
             "vtln_low": 100.0,
             "vtln_high": -500.0,
@@ -68,6 +77,9 @@ class PaSSTMelSpectrogram(nn.Module):
             "window", torch.hann_window(win_length, periodic=False), persistent=False
         )
 
+        self.generator = torch.Generator()
+        self.generator.manual_seed(seed)
+
     def forward(self, waveform: torch.Tensor) -> torch.Tensor:
         """Mel-spectrogram transform.
 
@@ -83,9 +95,6 @@ class PaSSTMelSpectrogram(nn.Module):
         mean = self.mean
         std = self.std
         take_log = self.take_log
-
-        if self.training:
-            raise NotImplementedError("Training mode is not supported.")
 
         preemphasis_coefficient = self.preemphasis_coefficient.view(1, 1, -1)
         window = self.window.to(waveform.device)
@@ -107,12 +116,27 @@ class PaSSTMelSpectrogram(nn.Module):
             return_complex=True,
         )
         spectrogram = torch.abs(spectrogram) ** 2
+
+        if self.training:
+            f_min_offset, f_max_offset = self.freq_aug_param
+            # f_min
+            offset = torch.randint(0, f_min_offset, (), generator=self.generator)
+            f_min = self.f_min + offset.item()
+            # f_max
+            offset = f_max_offset // 2 - torch.randint(
+                0, f_max_offset, (), generator=self.generator
+            )
+            f_max = self.f_max + offset.item()
+        else:
+            f_min = self.f_min
+            f_max = self.f_max
+
         mel_basis, _ = aCK.get_mel_banks(
             self.n_mels,
             self.n_fft,
             self.sample_rate,
-            self.f_min,
-            self.f_max,
+            f_min,
+            f_max,
             **self.fbank_kwargs,
         )
         mel_basis = F.pad(mel_basis, (0, 1), mode="constant", value=0)
@@ -156,9 +180,6 @@ class PaSSTMelSpectrogram(nn.Module):
 
         Args:
             dataset (str): Dataset name. Now, ``audioset`` is available.
-            n_frames (int, optional): Number of frames. During pretraining by AudioSet, this
-                parameter is typically ``1024``. During finetuning, any number is available,
-                but we use ``100`` by default.
 
         Returns:
             PaSSTMelSpectrogram: Mel-spectrogram transform.
