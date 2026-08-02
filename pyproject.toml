@@ -85,6 +85,9 @@ audyn = [
 [tool.ruff]
 line-length = 99
 
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
 [tool.ruff.lint.isort]
 section-order = [
     "future",
