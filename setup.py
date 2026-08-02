@@ -131,15 +131,6 @@ class BuildExtension(_BuildExtension):
         },
     )
 
-    def run(self) -> None:
-        if self.editable_mode:
-            # create directories to save ".so" files in editable mode.
-            for cpp_extension in self.cpp_extensions:
-                *pkg_names, _ = cpp_extension["name"].split(".")
-                os.makedirs("/".join(pkg_names), exist_ok=True)
-
-        super().run()
-
     def build_extension(self, ext: Extension) -> None:
         if hasattr(self.compiler, "compiler_cxx"):
             compiler = self.compiler.compiler_cxx[0]
