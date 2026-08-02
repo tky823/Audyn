@@ -137,7 +137,7 @@ class BuildExtension(_BuildExtension):
                 ext.extra_compile_args.append("-O3")
 
             # environment-dependent optimization
-            if is_flag_accepted(compiler, "-march=native"):
+            if not IS_MACOS and is_flag_accepted(compiler, "-march=native"):
                 ext.extra_compile_args.append("-march=native")
 
             # availability of OpenMP
