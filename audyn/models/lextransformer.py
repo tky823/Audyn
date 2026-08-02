@@ -1,6 +1,6 @@
 """Implementation of LEX (length-extrapolatable) Transformer.
-Ported from https://github.com/pytorch/pytorch/blob/e8836759d0898c29262b5370e16970d697cbaf3a/torch/nn/modules/transformer.py.  # noqa: E501
-"""
+Ported from https://github.com/pytorch/pytorch/blob/e8836759d0898c29262b5370e16970d697cbaf3a/torch/nn/modules/transformer.py.
+"""  # noqa: E501
 
 from typing import Callable, Optional, Union
 

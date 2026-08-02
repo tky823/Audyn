@@ -16,69 +16,55 @@ IS_LINUX = sys.platform.startswith("linux")
 
 IS_TORCH_GE_2_4 = version.parse(torch.__version__) >= version.parse("2.4")
 
-
 SUBPROCESS_DECODE_ARGS = ("oem",) if IS_WINDOWS else ()
 
 
-def is_openmp_supported(compiler: str) -> bool:
-    """Check if OpenMP is available."""
-    is_supported = None
-
+def get_openmp_flags(compiler: str) -> tuple[bool, list[str], list[str]]:
+    """
+    Check if OpenMP is available.
+    Returns: (is_supported, compile_flags, link_flags)
+    """
     with tempfile.TemporaryDirectory() as temp_dir:
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".cpp", dir=temp_dir) as f:
-            cpp_text = """
-            #include <omp.h>
+        cpp_file = os.path.join(temp_dir, "test.cpp")
+        with open(cpp_file, "w") as f:
+            f.write("#include <omp.h>\nint main() { return 0; }\n")
 
-            int main() {
-                return 0;
-            }
-            """
-            f.write(cpp_text)
+        if compiler == "cl":
+            cflags = ["/openmp"]
+            ldflags = []
+        elif IS_MACOS:
+            # Apple Clang requires these specific flags for OpenMP
+            cflags = ["-Xpreprocessor", "-fopenmp"]
+            ldflags = ["-lomp"]
+        else:
+            cflags = ["-fopenmp"]
+            ldflags = ["-fopenmp"]
 
-            try:
-                if compiler == "cl":
-                    flag = "/openmp"
-                else:
-                    flag = "-fopenmp"
+        cmd = [compiler, cpp_file] + cflags + ldflags
 
-                subprocess.check_output([compiler, f.name, flag])
-                is_supported = True
-            except subprocess.CalledProcessError:
-                is_supported = False
-
-    if is_supported is None:
-        raise RuntimeError("Unexpected error happened while checking if OpenMP is available.")
-
-    return is_supported
+        try:
+            # Suppress output for clean installation logs
+            subprocess.check_call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return True, cflags, ldflags
+        except subprocess.CalledProcessError:
+            return False, [], []
 
 
 def is_flag_accepted(compiler: str, flag: str) -> bool:
-    """Check if flag is available."""
-    is_accepted = None
-
+    """Check if a specific compiler flag is available."""
     with tempfile.TemporaryDirectory() as temp_dir:
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".cpp", dir=temp_dir) as f:
-            cpp_text = """
-            int main() {
-                return 0;
-            }
-            """
-            f.write(cpp_text)
+        cpp_file = os.path.join(temp_dir, "test.cpp")
+        with open(cpp_file, "w") as f:
+            f.write("int main() { return 0; }\n")
 
-            try:
-                if compiler == "cl":
-                    subprocess.check_output([compiler])
-                else:
-                    subprocess.check_output([compiler, f.name, flag])
-
-                is_accepted = True
-            except subprocess.CalledProcessError:
-                is_accepted = False
-
-    if is_accepted is None:
-        raise RuntimeError(f"Unexpected error happened while checking if {flag} is available.")
-
-    return is_accepted
+        try:
+            # Simply attempt to compile the empty file with the given flag
+            subprocess.check_call(
+                [compiler, cpp_file, flag], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+            return True
+        except subprocess.CalledProcessError:
+            return False
 
 
 def get_cxx_compiler() -> str:
@@ -131,20 +117,15 @@ class BuildExtension(_BuildExtension):
         },
     )
 
-    def run(self) -> None:
-        if self.editable_mode:
-            # create directories to save ".so" files in editable mode.
-            for cpp_extension in self.cpp_extensions:
-                *pkg_names, _ = cpp_extension["name"].split(".")
-                os.makedirs("/".join(pkg_names), exist_ok=True)
-
-        super().run()
-
     def build_extension(self, ext: Extension) -> None:
         if hasattr(self.compiler, "compiler_cxx"):
             compiler = self.compiler.compiler_cxx[0]
         else:
             compiler = get_cxx_compiler()
+
+        # Fix for older PyTorch versions on macOS (is_arithmetic error)
+        if IS_MACOS and is_flag_accepted(compiler, "-Wno-invalid-specialization"):
+            ext.extra_compile_args.append("-Wno-invalid-specialization")
 
         if ext.name == "audyn._C.monotonic_align" and not IS_WINDOWS:
             # TODO: support Windows
@@ -156,13 +137,15 @@ class BuildExtension(_BuildExtension):
                 ext.extra_compile_args.append("-O3")
 
             # environment-dependent optimization
-            if is_flag_accepted(compiler, "-march=native"):
+            if not IS_MACOS and is_flag_accepted(compiler, "-march=native"):
                 ext.extra_compile_args.append("-march=native")
 
             # availability of OpenMP
-            if is_openmp_supported(compiler):
-                ext.extra_compile_args.append("-fopenmp")
-                ext.extra_link_args.append("-fopenmp")
+            is_omp_supported, omp_cflags, omp_ldflags = get_openmp_flags(compiler)
+
+            if is_omp_supported:
+                ext.extra_compile_args.extend(omp_cflags)
+                ext.extra_link_args.extend(omp_ldflags)
 
         return super().build_extension(ext)
 

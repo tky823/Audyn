@@ -775,7 +775,8 @@ class LoRARotaryPositionalMultiheadAttention(LoRAMultiheadAttention):
 
 
 class LoRAExtrapolatablePositionalMultiheadAttention(LoRAMultiheadAttention):
-    """Multihead attention using extrapolatable positional representation for low-rank adaptation."""
+    """Multihead attention using extrapolatable positional representation
+    for low-rank adaptation."""
 
     def __init__(
         self,
@@ -1089,7 +1090,8 @@ class LoRAExtrapolatablePositionalMultiheadAttention(LoRAMultiheadAttention):
 
 
 class LoRAPartialRotaryPositionalMultiheadAttention(LoRARotaryPositionalMultiheadAttention):
-    """Multihead attention using partial rotary positional representation for low-rank adaptation."""
+    """Multihead attention using partial rotary positional representation
+    for low-rank adaptation."""
 
     def __init__(
         self,

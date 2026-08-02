@@ -565,9 +565,8 @@ class MaskedStackedResidualConvBlock1d(StackedResidualConvBlock1d):
                 dilation = dilation_rate**layer_idx
 
                 assert stride == 1, (
-                    "When dilated convolution, stride is expected to be 1, but {} is given.".format(
-                        stride
-                    )
+                    "When dilated convolution, stride is expected to be 1, "
+                    "but {} is given.".format(stride)
                 )
             else:
                 dilation = 1

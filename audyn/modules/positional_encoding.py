@@ -178,7 +178,7 @@ class PartialRotaryPositionalEmbedding(nn.Module):
         M. A. Khan et al., "Fractional Rotation, Full Potential? Investigating Performance and Convergence of Partial RoPE,"
         2026.
 
-    """
+    """  # noqa: E501
 
     def __init__(
         self,

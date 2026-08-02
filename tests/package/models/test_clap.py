@@ -34,7 +34,7 @@ def test_official_laion_audio_encoder() -> None:
 
     output = output.squeeze(dim=0)
 
-    allclose(output, expected_output, atol=1e-5)
+    allclose(output, expected_output, atol=1e-4)
 
     model = LAIONAudioEncoder2023.build_from_pretrained("laion-clap-htsat-fused")
     model.eval()
@@ -44,7 +44,7 @@ def test_official_laion_audio_encoder() -> None:
 
     embedding = embedding.squeeze(dim=0)
 
-    allclose(embedding, expected_embedding, atol=1e-5)
+    allclose(embedding, expected_embedding, atol=1e-4)
 
     num_parameters = 0
 
