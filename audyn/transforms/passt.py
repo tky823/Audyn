@@ -10,13 +10,17 @@ from ..amp import autocast, get_autocast_device_type
 from ..utils.data.audioset.passt import mean as _audioset_mean
 from ..utils.data.audioset.passt import std as _audioset_std
 
+__all__ = [
+    "PaSSTMelSpectrogram",
+]
+
 
 class PaSSTMelSpectrogram(nn.Module):
     def __init__(
         self,
         sample_rate: int,
         n_fft: int = 1024,
-        win_length: Optional[int] = None,
+        win_length: int = 800,
         hop_length: int = 320,
         f_min: float = 0,
         f_max: Optional[float] = None,
@@ -31,9 +35,6 @@ class PaSSTMelSpectrogram(nn.Module):
         seed: int = 0,
     ) -> None:
         super().__init__()
-
-        if win_length is None:
-            win_length = 800
 
         if freq_aug_param is None:
             freq_aug_param = (1, 1000)
