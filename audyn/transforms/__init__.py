@@ -19,6 +19,7 @@ from .kaldi import KaldiMelSpectrogram, KaldiMFCC
 from .librosa import LibrosaMelSpectrogram
 from .music_tagging_transformer import MusicTaggingTransformerMelSpectrogram
 from .musicfm import MusicFMMelSpectrogram
+from .passt import PaSSTMelSpectrogram
 from .resample import DynamicResample
 from .slicer import WaveformSlicer
 from .stft import (
@@ -51,6 +52,8 @@ __all__ = [
     # AST
     "AudioSpectrogramTransformerMelSpectrogram",
     "ASTMelSpectrogram",
+    # PaSST
+    "PaSSTMelSpectrogram",
     # HuBERT
     "HuBERTMFCC",
     # CLAP
