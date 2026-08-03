@@ -43,8 +43,12 @@ def get_openmp_flags(compiler: str) -> tuple[bool, list[str], list[str]]:
         cmd = [compiler, cpp_file] + cflags + ldflags
 
         try:
-            # Suppress output for clean installation logs
-            subprocess.check_call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.check_call(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                cwd=temp_dir,
+            )
             return True, cflags, ldflags
         except subprocess.CalledProcessError:
             return False, [], []
@@ -60,7 +64,10 @@ def is_flag_accepted(compiler: str, flag: str) -> bool:
         try:
             # Simply attempt to compile the empty file with the given flag
             subprocess.check_call(
-                [compiler, cpp_file, flag], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                [compiler, cpp_file, flag],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                cwd=temp_dir,
             )
             return True
         except subprocess.CalledProcessError:
