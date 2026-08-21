@@ -172,7 +172,7 @@ class MusicFMMelSpectrogram(aT.MelSpectrogram):
 
             Supported pretrained model names are
                 - fma
-                - musicfm_msd
+                - msd
 
         """
         from ..utils import model_cache_dir
