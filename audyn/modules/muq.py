@@ -1,8 +1,10 @@
 from typing import Tuple
 
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
+from ..modules.musicfm import Masker
 from ..modules.vq import VectorQuantizer as _VectorQuantizer
 
 
@@ -42,6 +44,67 @@ class VectorQuantizer(_VectorQuantizer):
         output, indices = _quantize_vector(input, self.codebook.weight)
 
         return output, indices
+
+
+class MultiMasker(Masker):
+    def __init__(
+        self,
+        mask_rate: float,
+        num_stages: int,
+        window_size: int = 4,
+        noise_scale: float = 0.1,
+        seed: int = 0,
+    ) -> None:
+        super().__init__(
+            mask_rate,
+            window_size=window_size,
+            noise_scale=noise_scale,
+            seed=seed,
+        )
+
+        self.num_stages = num_stages
+
+    def forward(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.BoolTensor]:
+        output, mask = super().forward(input)
+
+        _, num_frams = mask.size()
+
+        mask = mask.unsqueeze(dim=-2)
+        mask = mask.expand(-1, self.num_stages, num_frams)
+
+        return output, mask
+
+
+class MultiLinear(nn.Linear):
+    def __init__(
+        self,
+        in_features: int,
+        out_features: int,
+        num_stages: int,
+        bias: bool = True,
+        device: torch.device = None,
+        dtype: torch.dtype = None,
+    ) -> None:
+        factory_kwargs = {
+            "device": device,
+            "dtype": dtype,
+        }
+
+        super().__init__(in_features, num_stages * out_features, bias=bias, **factory_kwargs)
+
+        self.num_stages = num_stages
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        num_stages = self.num_stages
+
+        x = super().forward(input)
+
+        batch_size, *shape, out_features = x.size()
+        x = x.view(batch_size, -1, num_stages, out_features // num_stages)
+        x = x.permute(0, 2, 1, 3)
+        output = x.reshape(batch_size, num_stages, *shape, out_features // num_stages)
+
+        return output
 
 
 def _quantize_vector(
