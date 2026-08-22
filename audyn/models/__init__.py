@@ -14,6 +14,7 @@ from .encodec import EnCodec
 from .fastspeech import FastSpeech, MultiSpeakerFastSpeech
 from .hifigan import HiFiGANDiscriminator, HiFiGANGenerator, HiFiGANVocoder
 from .hubert import HuBERT
+from .muq import MuQ, MuQMaskedTokenModel
 from .music_tagging_transformer import (
     MusicTaggingTransformer,
     MusicTaggingTransformerLinearProbing,
@@ -103,4 +104,7 @@ __all__ = [
     # MusicFM
     "MusicFM",
     "MusicFMMaskedTokenModel",
+    # MuQ
+    "MuQ",
+    "MuQMaskedTokenModel",
 ]

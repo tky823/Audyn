@@ -1,13 +1,57 @@
-from typing import Tuple
+from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
 from packaging import version
 
-from ..modules.muq import VectorQuantizer
+from ..modules.muq import MultiMasker, VectorQuantizer
+from .musicfm import MusicFM as _MusicFM
 from .vqvae import VQVAE as VQVAE
 
 IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
+
+
+class MuQ(_MusicFM):
+    pass
+
+
+class MuQMaskedTokenModel(MuQ):
+    def __init__(
+        self,
+        projector: "MuQRVQ",
+        masker: MultiMasker,
+        embedding: nn.Module,
+        backbone: nn.Module,
+        aggregator: nn.Module = nn.Identity(),
+        head: Optional[nn.Module] = None,
+    ) -> None:
+        super(_MusicFM, self).__init__()
+
+        self.projector = projector
+        self.masker = masker
+        self.embedding = embedding
+        self.backbone = backbone
+        self.aggregator = aggregator
+        self.head = head
+
+    def forward(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.LongTensor, torch.Tensor]:
+        if isinstance(self.projector, MuQRVQ):
+            _, _, _, _, indices = self.projector(input)
+        else:
+            raise ValueError(f"{type(self.projector)} is not supported as projector.")
+
+        x, masking_mask = self.masker(input)
+
+        if x.dim() == 3:
+            x = x.unsqueeze(dim=-3)
+        else:
+            raise ValueError("Only 3D inputs are supported.")
+
+        x = self.embedding(x)
+        x = self.backbone(x)
+        output = self.head(x)
+
+        return output, indices, masking_mask
 
 
 class MuQRVQ(nn.Module):
@@ -65,7 +109,7 @@ class MuQRVQ(nn.Module):
         residual = []
         indices = []
 
-        for index, layer in enumerate(self.backbone):
+        for layer in self.backbone:
             _output, _encoded, _quantized, _indices = layer(x)
             reconstructed = reconstructed + _output
 
