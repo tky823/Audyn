@@ -292,7 +292,8 @@ class RVQVAE(BaseVAE):
                     (batch_size, num_stages, embedding_dim, *).
                 - torch.Tensor: Residual vectors of shape
                     (batch_size, num_stages, embedding_dim, *).
-                - torch.LongTensor: Indices of indices in codebook of shape (batch_size, *).
+                - torch.LongTensor: Indices of indices in codebook of shape
+                    (batch_size, num_stages, *).
 
         """
         quantized, residual, indices = self.vector_quantizer(input)
