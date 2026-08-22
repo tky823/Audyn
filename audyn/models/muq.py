@@ -1,10 +1,13 @@
-from typing import Optional, Tuple
+import os
+from typing import Dict, Optional, OrderedDict, Tuple
 
 import torch
 import torch.nn as nn
+from omegaconf import OmegaConf
 from packaging import version
 
 from ..modules.muq import MultiMasker, VectorQuantizer
+from ..utils._github import download_file_from_github_release
 from .musicfm import MusicFM as _MusicFM
 from .vqvae import VQVAE as VQVAE
 
@@ -52,6 +55,71 @@ class MuQMaskedTokenModel(MuQ):
         output = self.head(x)
 
         return output, indices, masking_mask
+
+    @classmethod
+    def build_from_pretrained(
+        cls,
+        pretrained_model_name_or_path: str,
+        aggregator: Optional[nn.Module] = None,
+        head: Optional[nn.Module] = None,
+    ) -> "MuQMaskedTokenModel":
+        """Build pretrained MuQMaskedTokenModel.
+
+        Args:
+            pretrained_model_name_or_path (str): Path to pretrained model or name of pretrained model.
+            aggregator (nn.Module, optional): Aggregator module.
+            head (nn.Module, optional): Head module.
+
+        Examples:
+
+            >>> from audyn.models import MuQMaskedTokenModel
+            >>> model = MuQMaskedTokenModel.build_from_pretrained("muq_msd")
+
+        .. note::
+
+            Supported pretrained model names are
+                - muq_msd
+
+        """  # noqa: E501
+        from ..utils._hydra.utils import instantiate  # to avoid circular import
+
+        pretrained_model_configs = _create_pretrained_model_configs()
+
+        if os.path.exists(pretrained_model_name_or_path):
+            state_dict = torch.load(
+                pretrained_model_name_or_path,
+                map_location=lambda storage, loc: storage,
+                weights_only=True,
+            )
+            model_state_dict: OrderedDict = state_dict["model"]
+            resolved_config = state_dict["resolved_config"]
+            resolved_config = OmegaConf.create(resolved_config)
+            pretrained_model_config = resolved_config.model
+            pretrained_model_config["_target_"] = f"{cls.__module__}.{cls.__name__}"
+            model: MuQMaskedTokenModel = instantiate(pretrained_model_config)
+            model.load_state_dict(model_state_dict)
+
+            if aggregator is not None:
+                model.aggregator = aggregator
+
+            if head is not None:
+                model.head = head
+
+            return model
+        elif pretrained_model_name_or_path in pretrained_model_configs:
+            config = pretrained_model_configs[pretrained_model_name_or_path]
+            url = config["url"]
+            path = config["path"]
+            download_file_from_github_release(url, path=path)
+            model = cls.build_from_pretrained(
+                path,
+                aggregator=aggregator,
+                head=head,
+            )
+
+            return model
+        else:
+            raise FileNotFoundError(f"{pretrained_model_name_or_path} does not exist.")
 
 
 class MuQRVQ(nn.Module):
@@ -146,3 +214,19 @@ class MuQRVQ(nn.Module):
                 layer.decoder = weight_norm_fn(layer.decoder)
 
             self.registered_weight_norms.add("backbone")
+
+
+def _create_pretrained_model_configs() -> Dict[str, Dict[str, str]]:
+    """Create pretrained_model_configs without circular import error."""
+
+    from ..utils import model_cache_dir
+
+    pretrained_model_configs = {
+        "muq_msd": {
+            "url": "https://github.com/tky823/Audyn/releases/download/v0.3.1/muq_msd.pth",
+            "path": os.path.join(model_cache_dir, "MuQ", "ecbecef5", "muq_msd.pth"),
+            "sha256": "ecbecef5334f971cff823818797fe5049d1b3cdd2e6613e3c79e59986291edcc",
+        },
+    }
+
+    return pretrained_model_configs
