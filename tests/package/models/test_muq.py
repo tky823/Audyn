@@ -8,7 +8,7 @@ from audyn.models.muq import MuQMaskedTokenModel, MuQRVQ
 from audyn.utils._github import download_file_from_github_release
 
 
-def test_musicfm_masked_token_model() -> None:
+def test_muq_masked_token_model() -> None:
     # regression test
     url = "https://github.com/tky823/Audyn/releases/download/v0.3.0/test_official_muq.pth"  # noqa: E501
     path = os.path.join(audyn_test_cache_dir, "test_official_muq.pth")
