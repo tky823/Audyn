@@ -97,7 +97,9 @@ class MuQMaskedTokenModel(MuQ):
             pretrained_model_config = resolved_config.model
             pretrained_model_config["_target_"] = f"{cls.__module__}.{cls.__name__}"
             model: MuQMaskedTokenModel = instantiate(pretrained_model_config)
+            model.projector.remove_weight_norm_()
             model.load_state_dict(model_state_dict)
+            model.projector.weight_norm_()
 
             if aggregator is not None:
                 model.aggregator = aggregator
@@ -214,6 +216,22 @@ class MuQRVQ(nn.Module):
                 layer.decoder = weight_norm_fn(layer.decoder)
 
             self.registered_weight_norms.add("backbone")
+
+    def remove_weight_norm_(self) -> None:
+        if IS_TORCH_LT_2_1:
+            remove_weight_norm_fn = nn.utils.remove_weight_norm
+            remove_weight_norm_args = ()
+        else:
+            remove_weight_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_weight_norm_args = ("weight",)
+
+        if "backbone" in self.registered_weight_norms:
+            for layer in self.backbone:
+                layer: VQVAE
+                layer.encoder = remove_weight_norm_fn(layer.encoder, *remove_weight_norm_args)
+                layer.decoder = remove_weight_norm_fn(layer.decoder, *remove_weight_norm_args)
+
+            self.registered_weight_norms.remove("backbone")
 
 
 def _create_pretrained_model_configs() -> Dict[str, Dict[str, str]]:
