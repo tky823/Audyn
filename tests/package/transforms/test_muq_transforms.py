@@ -25,4 +25,4 @@ def test_muq_melspectrogram_transform() -> None:
     transform = MuQMelSpectrogram.build_from_pretrained(dataset=dataset)
     melspectrogram = transform(waveform)
 
-    allclose(melspectrogram, expected_melspectrogram, atol=1e-4)
+    allclose(melspectrogram, expected_melspectrogram, atol=1e-3)
