@@ -242,8 +242,8 @@ def _create_pretrained_model_configs() -> Dict[str, Dict[str, str]]:
     pretrained_model_configs = {
         "muq_msd": {
             "url": "https://github.com/tky823/Audyn/releases/download/v0.3.1/muq_msd.pth",
-            "path": os.path.join(model_cache_dir, "MuQ", "5531d183", "muq_msd.pth"),
-            "sha256": "5531d183eb4417d0a3dce19841de03cc72cefbd5b9476bde9aca8293e8e1382e",
+            "path": os.path.join(model_cache_dir, "MuQ", "883a2c0c", "muq_msd.pth"),
+            "sha256": "883a2c0c99d93f8319a0c2016576230b6423fea0737ed7c648a61559530866fa",
         },
     }
 
