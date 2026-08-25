@@ -2,6 +2,7 @@ import os
 import subprocess
 import sys
 import tempfile
+from typing import List, Tuple
 
 import torch
 from packaging import version
@@ -19,11 +20,8 @@ IS_TORCH_GE_2_4 = version.parse(torch.__version__) >= version.parse("2.4")
 SUBPROCESS_DECODE_ARGS = ("oem",) if IS_WINDOWS else ()
 
 
-def get_openmp_flags(compiler: str) -> tuple[bool, list[str], list[str]]:
-    """
-    Check if OpenMP is available.
-    Returns: (is_supported, compile_flags, link_flags)
-    """
+def get_openmp_flags(compiler: str) -> Tuple[bool, List[str], List[str]]:
+    """Check if OpenMP is available."""
     with tempfile.TemporaryDirectory() as temp_dir:
         cpp_file = os.path.join(temp_dir, "test.cpp")
         with open(cpp_file, "w") as f:
@@ -43,8 +41,12 @@ def get_openmp_flags(compiler: str) -> tuple[bool, list[str], list[str]]:
         cmd = [compiler, cpp_file] + cflags + ldflags
 
         try:
-            # Suppress output for clean installation logs
-            subprocess.check_call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.check_call(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                cwd=temp_dir,
+            )
             return True, cflags, ldflags
         except subprocess.CalledProcessError:
             return False, [], []
@@ -60,7 +62,10 @@ def is_flag_accepted(compiler: str, flag: str) -> bool:
         try:
             # Simply attempt to compile the empty file with the given flag
             subprocess.check_call(
-                [compiler, cpp_file, flag], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                [compiler, cpp_file, flag],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                cwd=temp_dir,
             )
             return True
         except subprocess.CalledProcessError:

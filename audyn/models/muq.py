@@ -1,0 +1,250 @@
+import os
+from typing import Dict, Optional, OrderedDict, Tuple
+
+import torch
+import torch.nn as nn
+from omegaconf import OmegaConf
+from packaging import version
+
+from ..modules.muq import MultiMasker, VectorQuantizer
+from ..utils._github import download_file_from_github_release
+from .musicfm import MusicFM as _MusicFM
+from .vqvae import VQVAE as VQVAE
+
+IS_TORCH_LT_2_1 = version.parse(torch.__version__) < version.parse("2.1")
+
+
+class MuQ(_MusicFM):
+    pass
+
+
+class MuQMaskedTokenModel(MuQ):
+    def __init__(
+        self,
+        projector: "MuQRVQ",
+        masker: MultiMasker,
+        embedding: nn.Module,
+        backbone: nn.Module,
+        aggregator: nn.Module = nn.Identity(),
+        head: Optional[nn.Module] = None,
+    ) -> None:
+        super(_MusicFM, self).__init__()
+
+        self.projector = projector
+        self.masker = masker
+        self.embedding = embedding
+        self.backbone = backbone
+        self.aggregator = aggregator
+        self.head = head
+
+    def forward(self, input: torch.Tensor) -> Tuple[torch.Tensor, torch.LongTensor, torch.Tensor]:
+        if isinstance(self.projector, MuQRVQ):
+            _, _, _, _, indices = self.projector(input)
+        else:
+            raise ValueError(f"{type(self.projector)} is not supported as projector.")
+
+        x, masking_mask = self.masker(input)
+
+        if x.dim() == 3:
+            x = x.unsqueeze(dim=-3)
+        else:
+            raise ValueError("Only 3D inputs are supported.")
+
+        x = self.embedding(x)
+        x = self.backbone(x)
+        output = self.head(x)
+
+        return output, indices, masking_mask
+
+    @classmethod
+    def build_from_pretrained(
+        cls,
+        pretrained_model_name_or_path: str,
+        aggregator: Optional[nn.Module] = None,
+        head: Optional[nn.Module] = None,
+    ) -> "MuQMaskedTokenModel":
+        """Build pretrained MuQMaskedTokenModel.
+
+        Args:
+            pretrained_model_name_or_path (str): Path to pretrained model or name of pretrained model.
+            aggregator (nn.Module, optional): Aggregator module.
+            head (nn.Module, optional): Head module.
+
+        Examples:
+
+            >>> from audyn.models import MuQMaskedTokenModel
+            >>> model = MuQMaskedTokenModel.build_from_pretrained("muq_msd")
+
+        .. note::
+
+            Supported pretrained model names are
+                - muq_msd
+
+        """  # noqa: E501
+        from ..utils._hydra.utils import instantiate  # to avoid circular import
+
+        pretrained_model_configs = _create_pretrained_model_configs()
+
+        if os.path.exists(pretrained_model_name_or_path):
+            state_dict = torch.load(
+                pretrained_model_name_or_path,
+                map_location=lambda storage, loc: storage,
+                weights_only=True,
+            )
+            model_state_dict: OrderedDict = state_dict["model"]
+            resolved_config = state_dict["resolved_config"]
+            resolved_config = OmegaConf.create(resolved_config)
+            pretrained_model_config = resolved_config.model
+            pretrained_model_config["_target_"] = f"{cls.__module__}.{cls.__name__}"
+            model: MuQMaskedTokenModel = instantiate(pretrained_model_config)
+            model.projector.remove_weight_norm_()
+            model.load_state_dict(model_state_dict)
+            model.projector.weight_norm_()
+
+            if aggregator is not None:
+                model.aggregator = aggregator
+
+            if head is not None:
+                model.head = head
+
+            return model
+        elif pretrained_model_name_or_path in pretrained_model_configs:
+            config = pretrained_model_configs[pretrained_model_name_or_path]
+            url = config["url"]
+            path = config["path"]
+            download_file_from_github_release(url, path=path)
+            model = cls.build_from_pretrained(
+                path,
+                aggregator=aggregator,
+                head=head,
+            )
+
+            return model
+        else:
+            raise FileNotFoundError(f"{pretrained_model_name_or_path} does not exist.")
+
+
+class MuQRVQ(nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        codebook_size: int,
+        embedding_dim: int,
+        num_stages: int,
+        downsample_rate: int = 4,
+    ) -> None:
+        super().__init__()
+
+        backbone = []
+
+        for _ in range(num_stages):
+            encoder = nn.Conv1d(
+                in_channels * downsample_rate, embedding_dim, kernel_size=1, stride=1
+            )
+            decoder = nn.Conv1d(
+                embedding_dim, in_channels * downsample_rate, kernel_size=1, stride=1
+            )
+            vector_quantizer = VectorQuantizer(codebook_size, embedding_dim)
+            layer = VQVAE(encoder, decoder, vector_quantizer=vector_quantizer)
+            backbone.append(layer)
+
+        self.backbone = nn.ModuleList(backbone)
+
+        self.in_channels = in_channels
+        self.codebook_size = codebook_size
+        self.num_stages = num_stages
+        self.downsample_rate = downsample_rate
+
+        self.registered_weight_norms = set()
+
+        self.weight_norm_()
+
+    def forward(
+        self, input: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.LongTensor]:
+        """Forward pass of MuQRVQ."""
+        downsample_rate = self.downsample_rate
+
+        batch_size, in_channels, num_frames = input.size()
+
+        assert num_frames % downsample_rate == 0
+
+        x = input.view(batch_size, in_channels, num_frames // downsample_rate, downsample_rate)
+        x = x.permute(0, 3, 1, 2)
+        x = x.reshape(batch_size, downsample_rate * in_channels, num_frames // downsample_rate)
+
+        reconstructed = 0
+        encoded = []
+        quantized = []
+        residual = []
+        indices = []
+
+        for layer in self.backbone:
+            _output, _encoded, _quantized, _indices = layer(x)
+            reconstructed = reconstructed + _output
+
+            encoded.append(_encoded)
+            quantized.append(_quantized)
+            residual.append(x)
+            indices.append(_indices)
+
+            x = x - _output
+
+        encoded = torch.stack(encoded, dim=1)
+        quantized = torch.stack(quantized, dim=1)
+        residual = torch.stack(residual, dim=1)
+        indices = torch.stack(indices, dim=1)
+
+        x = reconstructed.view(
+            batch_size, downsample_rate, in_channels, num_frames // downsample_rate
+        )
+        x = x.permute(0, 2, 3, 1)
+        output = x.reshape(batch_size, in_channels, num_frames)
+
+        return output, encoded, quantized, residual, indices
+
+    def weight_norm_(self) -> None:
+        if IS_TORCH_LT_2_1:
+            weight_norm_fn = nn.utils.weight_norm
+        else:
+            weight_norm_fn = nn.utils.parametrizations.weight_norm
+
+        if "backbone" not in self.registered_weight_norms:
+            for layer in self.backbone:
+                layer: VQVAE
+                layer.encoder = weight_norm_fn(layer.encoder)
+                layer.decoder = weight_norm_fn(layer.decoder)
+
+            self.registered_weight_norms.add("backbone")
+
+    def remove_weight_norm_(self) -> None:
+        if IS_TORCH_LT_2_1:
+            remove_weight_norm_fn = nn.utils.remove_weight_norm
+            remove_weight_norm_args = ()
+        else:
+            remove_weight_norm_fn = nn.utils.parametrize.remove_parametrizations
+            remove_weight_norm_args = ("weight",)
+
+        if "backbone" in self.registered_weight_norms:
+            for layer in self.backbone:
+                layer: VQVAE
+                layer.encoder = remove_weight_norm_fn(layer.encoder, *remove_weight_norm_args)
+                layer.decoder = remove_weight_norm_fn(layer.decoder, *remove_weight_norm_args)
+
+            self.registered_weight_norms.remove("backbone")
+
+
+def _create_pretrained_model_configs() -> Dict[str, Dict[str, str]]:
+    """Create pretrained_model_configs without circular import error."""
+
+    from ..utils import model_cache_dir
+
+    pretrained_model_configs = {
+        "muq_msd": {
+            "url": "https://github.com/tky823/Audyn/releases/download/v0.3.1/muq_msd.pth",
+            "path": os.path.join(model_cache_dir, "MuQ", "883a2c0c", "muq_msd.pth"),
+            "sha256": "883a2c0c99d93f8319a0c2016576230b6423fea0737ed7c648a61559530866fa",
+        },
+    }
+
+    return pretrained_model_configs

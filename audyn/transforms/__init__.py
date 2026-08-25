@@ -17,6 +17,7 @@ from .hifigan import HiFiGANMelSpectrogram
 from .hubert import HuBERTMFCC
 from .kaldi import KaldiMelSpectrogram, KaldiMFCC
 from .librosa import LibrosaMelSpectrogram
+from .muq import MuQMelSpectrogram
 from .music_tagging_transformer import MusicTaggingTransformerMelSpectrogram
 from .musicfm import MusicFMMelSpectrogram
 from .passt import PaSSTMelSpectrogram
@@ -71,6 +72,8 @@ __all__ = [
     "MusicTaggingTransformerMelSpectrogram",
     # MusicFM
     "MusicFMMelSpectrogram",
+    # MuQ
+    "MuQMelSpectrogram",
     # CLIP
     "OpenAICLIPImageTransform",
 ]
