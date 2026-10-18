@@ -12,6 +12,7 @@ from .conv_tasnet import ConvTasNet
 from .dprnn_tasnet import DPRNNTasNet
 from .encodec import EnCodec
 from .fastspeech import FastSpeech, MultiSpeakerFastSpeech
+from .flan_t5 import FlanT5Encoder
 from .hifigan import HiFiGANDiscriminator, HiFiGANGenerator, HiFiGANVocoder
 from .hubert import HuBERT
 from .muq import MuQ, MuQMaskedTokenModel
@@ -118,4 +119,6 @@ __all__ = [
     "T5EncoderLayer",
     "T5Encoder",
     "T5TransformerEncoder",
+    # Flan-T5
+    "FlanT5Encoder",
 ]
