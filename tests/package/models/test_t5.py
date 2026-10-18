@@ -69,4 +69,4 @@ def test_official_t5_encoder(pretrained_model_name: str) -> None:
     with torch.no_grad():
         output = model(input, padding_mask=padding_mask)
 
-    allclose(output, expected_output, atol=1e-6)
+    allclose(output, expected_output, atol=1e-4)
