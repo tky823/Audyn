@@ -1,14 +1,18 @@
 """T5-specific Transformer building blocks."""
 
+import math
 from typing import Optional
 
 import torch
 import torch.nn.functional as F
+from packaging import version
 
 from ..functional.activation import scaled_dot_product_attention
 from .activation import _MultiheadAttention
 
 __all__ = ["T5RelativePositionalMultiheadAttention"]
+
+IS_TORCH_LT_2_4 = version.parse(torch.__version__) < version.parse("2.4")
 
 
 class T5RelativePositionalMultiheadAttention(_MultiheadAttention):
@@ -142,6 +146,14 @@ class T5RelativePositionalMultiheadAttention(_MultiheadAttention):
             else:
                 attention_bias = attention_bias + attn_mask
 
+        if IS_TORCH_LT_2_4:
+            # Older SDPA versions do not accept ``scale``. T5 uses unscaled
+            # query-key dot products, so cancel SDPA's default 1/sqrt(head_dim).
+            q = q * math.sqrt(head_dim)
+            scale_kwargs = {}
+        else:
+            scale_kwargs = {"scale": 1.0}
+
         output, weights = scaled_dot_product_attention(
             q,
             k,
@@ -149,7 +161,7 @@ class T5RelativePositionalMultiheadAttention(_MultiheadAttention):
             attn_mask=attention_bias,
             dropout_p=self.dropout if self.training else 0.0,
             need_weights=need_weights,
-            scale=1.0,
+            **scale_kwargs,
         )
         output = output.transpose(1, 2).contiguous()
         output = output.view(batch_size, query_length, embed_dim)
