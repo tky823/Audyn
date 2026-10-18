@@ -12,6 +12,7 @@ from .conv_tasnet import ConvTasNet
 from .dprnn_tasnet import DPRNNTasNet
 from .encodec import EnCodec
 from .fastspeech import FastSpeech, MultiSpeakerFastSpeech
+from .flan_t5 import FlanT5Encoder
 from .hifigan import HiFiGANDiscriminator, HiFiGANGenerator, HiFiGANVocoder
 from .hubert import HuBERT
 from .muq import MuQ, MuQMaskedTokenModel
@@ -34,6 +35,12 @@ from .ssast import (
     SSASTMPM,
     MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel,
     SelfSupervisedAudioSpectrogramTransformer,
+)
+from .t5 import (
+    T5Encoder,
+    T5EncoderLayer,
+    T5RelativePositionalMultiheadAttention,
+    T5TransformerEncoder,
 )
 from .vae import BaseVAE
 from .vqvae import VQVAE, GumbelVQVAE
@@ -107,4 +114,11 @@ __all__ = [
     # MuQ
     "MuQ",
     "MuQMaskedTokenModel",
+    # T5
+    "T5RelativePositionalMultiheadAttention",
+    "T5EncoderLayer",
+    "T5Encoder",
+    "T5TransformerEncoder",
+    # Flan-T5
+    "FlanT5Encoder",
 ]

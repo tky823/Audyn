@@ -118,7 +118,8 @@ def scaled_dot_product_attention(
         attn_weights = None
     else:
         key = key.transpose(-2, -1)
-        qk = torch.matmul(query, key) / math.sqrt(head_dim)
+        scale = kwargs.get("scale", 1 / math.sqrt(head_dim))
+        qk = torch.matmul(query, key) * scale
 
         if attn_mask is not None:
             qk = qk + attn_mask
