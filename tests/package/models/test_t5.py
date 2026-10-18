@@ -46,8 +46,9 @@ def test_t5_encoder(batch_first: bool) -> None:
     assert torch.isfinite(output).all()
 
 
-def test_official_t5_encoder() -> None:
-    url = "https://github.com/tky823/Audyn/releases/download/v0.3.2/test_t5-base.pth"
+@pytest.mark.parametrize("pretrained_model_name", ["t5-base", "t5-large"])
+def test_official_t5_encoder(pretrained_model_name: str) -> None:
+    url = "https://github.com/tky823/Audyn/releases/download/v0.3.2/test_t5.pth"
 
     filename = os.path.basename(url)
     path = os.path.join(audyn_test_cache_dir, filename)
@@ -58,11 +59,11 @@ def test_official_t5_encoder() -> None:
         weights_only=True,
     )
 
-    input = data["t5-base"]["input"]
-    padding_mask = data["t5-base"]["padding_mask"]
-    expected_output = data["t5-base"]["output"]
+    input = data[pretrained_model_name]["input"]
+    padding_mask = data[pretrained_model_name]["padding_mask"]
+    expected_output = data[pretrained_model_name]["output"]
 
-    model = T5Encoder.build_from_pretrained("t5-base")
+    model = T5Encoder.build_from_pretrained(pretrained_model_name)
     model.eval()
 
     with torch.no_grad():
