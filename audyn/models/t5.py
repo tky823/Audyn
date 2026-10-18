@@ -37,7 +37,6 @@ class T5Encoder(nn.Module):
             the ``d_model`` of the layers in ``backbone``.
         backbone: Transformer encoder stack. Its layers must expose
             ``self_attn.batch_first`` and ``self_attn.num_heads``.
-        norm: Optional output normalization applied after the encoder stack.
         batch_first: If ``True``, ``input`` has shape
             ``(batch_size, length)`` and the feature tensors use
             ``(batch_size, length, embedding_dim)``. If ``False``,
@@ -68,7 +67,6 @@ class T5Encoder(nn.Module):
         self,
         embedding: nn.Embedding,
         backbone: nn.TransformerEncoder,
-        norm: Optional[nn.Module] = None,
         batch_first: bool = True,
         num_relative_position_buckets: int = 32,
         relative_position_max_distance: int = 128,
@@ -80,7 +78,6 @@ class T5Encoder(nn.Module):
 
         self.embedding = embedding
         self.backbone = backbone
-        self.norm = norm
         self.batch_first = batch_first
 
         if len(self.backbone.layers) == 0:
@@ -177,9 +174,6 @@ class T5Encoder(nn.Module):
             src_key_padding_mask=padding_mask,
         )
 
-        if self.norm is not None:
-            x = self.norm(x)
-
         return x
 
     def _relative_position_bucket(self, relative_position: torch.Tensor) -> torch.Tensor:
@@ -241,6 +235,57 @@ class T5Encoder(nn.Module):
         positional_embedding = F.embedding(buckets, self.relative_attention_bias)
 
         return positional_embedding.permute(2, 0, 1)
+
+
+class T5TransformerEncoder(nn.TransformerEncoder):
+    """TransformerEncoder stack that forwards one shared T5 position bias.
+
+    Unlike :class:`torch.nn.TransformerEncoder`, this stack accepts
+    ``positional_embedding`` and passes the same tensor to every layer. This
+    preserves the T5 design in which the relative position bias is computed
+    once and reused throughout the encoder.
+
+    The stack itself still follows the ``TransformerEncoder`` convention: its
+    layers are stored in ``self.layers`` and an optional final ``self.norm``
+    is applied after all layers.
+    """
+
+    def forward(
+        self,
+        src: torch.Tensor,
+        mask: Optional[torch.Tensor] = None,
+        src_key_padding_mask: Optional[torch.Tensor] = None,
+        is_causal: bool = False,
+        positional_embedding: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """Run all encoder layers while sharing the position bias.
+
+        Args:
+            src: Input features with the layout expected by the layers.
+            mask: Optional attention mask forwarded as ``src_mask``.
+            src_key_padding_mask: Optional ``(batch_size, length)`` padding mask.
+            is_causal: Causal attention flag forwarded to each layer. T5
+                encoder attention rejects ``True``.
+            positional_embedding: Shared relative position bias.
+
+        Returns:
+            Encoder output with the same shape as ``src``.
+        """
+        output = src
+
+        for layer in self.layers:
+            output = layer(
+                output,
+                src_mask=mask,
+                src_key_padding_mask=src_key_padding_mask,
+                positional_embedding=positional_embedding,
+                is_causal=is_causal,
+            )
+
+        if self.norm is not None:
+            output = self.norm(output)
+
+        return output
 
 
 class T5EncoderLayer(nn.Module):
@@ -416,57 +461,6 @@ class T5EncoderLayer(nn.Module):
         x = self.linear3(x)
 
         return self.dropout(x)
-
-
-class T5TransformerEncoder(nn.TransformerEncoder):
-    """TransformerEncoder stack that forwards one shared T5 position bias.
-
-    Unlike :class:`torch.nn.TransformerEncoder`, this stack accepts
-    ``positional_embedding`` and passes the same tensor to every layer. This
-    preserves the T5 design in which the relative position bias is computed
-    once and reused throughout the encoder.
-
-    The stack itself still follows the ``TransformerEncoder`` convention: its
-    layers are stored in ``self.layers`` and an optional final ``self.norm``
-    is applied after all layers.
-    """
-
-    def forward(
-        self,
-        src: torch.Tensor,
-        mask: Optional[torch.Tensor] = None,
-        src_key_padding_mask: Optional[torch.Tensor] = None,
-        is_causal: bool = False,
-        positional_embedding: Optional[torch.Tensor] = None,
-    ) -> torch.Tensor:
-        """Run all encoder layers while sharing the position bias.
-
-        Args:
-            src: Input features with the layout expected by the layers.
-            mask: Optional attention mask forwarded as ``src_mask``.
-            src_key_padding_mask: Optional ``(batch_size, length)`` padding mask.
-            is_causal: Causal attention flag forwarded to each layer. T5
-                encoder attention rejects ``True``.
-            positional_embedding: Shared relative position bias.
-
-        Returns:
-            Encoder output with the same shape as ``src``.
-        """
-        output = src
-
-        for layer in self.layers:
-            output = layer(
-                output,
-                src_mask=mask,
-                src_key_padding_mask=src_key_padding_mask,
-                positional_embedding=positional_embedding,
-                is_causal=is_causal,
-            )
-
-        if self.norm is not None:
-            output = self.norm(output)
-
-        return output
 
 
 class GELU(nn.Module):
