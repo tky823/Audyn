@@ -35,6 +35,12 @@ from .ssast import (
     MultiTaskSelfSupervisedAudioSpectrogramTransformerMaskedPatchModel,
     SelfSupervisedAudioSpectrogramTransformer,
 )
+from .t5 import (
+    T5Encoder,
+    T5EncoderLayer,
+    T5RelativePositionalMultiheadAttention,
+    T5TransformerEncoder,
+)
 from .vae import BaseVAE
 from .vqvae import VQVAE, GumbelVQVAE
 from .waveglow import MultiSpeakerWaveGlow, WaveGlow
@@ -107,4 +113,9 @@ __all__ = [
     # MuQ
     "MuQ",
     "MuQMaskedTokenModel",
+    # T5
+    "T5RelativePositionalMultiheadAttention",
+    "T5EncoderLayer",
+    "T5Encoder",
+    "T5TransformerEncoder",
 ]
