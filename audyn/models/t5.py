@@ -16,6 +16,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from omegaconf import OmegaConf
+from packaging import version
 
 from ..modules.t5 import T5RelativePositionalMultiheadAttention
 from ..modules.transformer import get_activation
@@ -26,6 +27,8 @@ __all__ = [
     "T5EncoderLayer",
     "T5Encoder",
 ]
+
+IS_TORCH_LT_2_4 = version.parse(torch.__version__) < version.parse("2.4")
 
 
 class T5Encoder(nn.Module):
@@ -181,6 +184,22 @@ class T5Encoder(nn.Module):
             )
             model_state_dict: OrderedDict = state_dict["model"]
             resolved_config = state_dict["resolved_config"]
+
+            if IS_TORCH_LT_2_4:
+
+                def _replace_rmsnorm(config) -> None:
+                    if isinstance(config, dict):
+                        for key, value in config.items():
+                            if key == "_target_" and value == "torch.nn.RMSNorm":
+                                config[key] = "audyn.modules.normalization.RMSNorm"
+                            else:
+                                _replace_rmsnorm(value)
+                    elif isinstance(config, list):
+                        for value in config:
+                            _replace_rmsnorm(value)
+
+                _replace_rmsnorm(resolved_config)
+
             resolved_config = OmegaConf.create(resolved_config)
             pretrained_model_config = resolved_config.model
             model: T5Encoder = instantiate(pretrained_model_config)
@@ -565,19 +584,19 @@ def _get_normalization(
     Returns:
         An RMSNorm module.
     """
-    if hasattr(nn, "RMSNorm"):
+    if IS_TORCH_LT_2_4:
+        from ..modules.normalization import RMSNorm
+
+        return RMSNorm(
+            normalized_shape,
+            eps=eps,
+            device=device,
+            dtype=dtype,
+        )
+    else:
         return nn.RMSNorm(
             normalized_shape,
             eps=eps,
             device=device,
             dtype=dtype,
         )
-
-    from ..modules.normalization import RMSNorm
-
-    return RMSNorm(
-        normalized_shape,
-        eps=eps,
-        device=device,
-        dtype=dtype,
-    )
