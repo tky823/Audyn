@@ -1,16 +1,38 @@
 import math
+import os
 from numbers import Number
-from typing import List, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union
 
 import torch
-
-from ..._C import bipartite_match
 
 __all__ = [
     "note_to_hz",
     "midi_to_hz",
     "hz_to_midi",
 ]
+
+
+def _load_bipartite_match() -> Callable:
+    """Load the prebuilt bipartite matcher or JIT-compile it on demand."""
+    try:
+        from ..._C import bipartite_match
+    except ImportError:
+        from os.path import dirname
+
+        from torch.utils.cpp_extension import load
+
+        source_dir = os.path.join(
+            dirname(dirname(dirname(dirname(os.path.abspath(__file__))))),
+            "csrc",
+        )
+
+        return load(
+            name="audyn._C.bipartite_match",
+            sources=[os.path.join(source_dir, "bipartite_match.cpp")],
+            extra_include_paths=[source_dir],
+        )
+
+    return bipartite_match
 
 
 def note_to_hz(note: Union[str, List[str]]) -> Union[float, List[float]]:
@@ -218,6 +240,7 @@ def compute_bipartite_match_precision_recall_fscore(
     input_lengths = input_lengths.cpu()
     target_lengths = target_lengths.cpu()
 
+    bipartite_match = _load_bipartite_match()
     precision, recall, f_score = bipartite_match.compute_bipartite_match_precision_recall_fscore(
         input, target, input_lengths, target_lengths, tolerance
     )
