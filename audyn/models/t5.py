@@ -8,14 +8,18 @@ computed once before the encoder stack and explicitly passed to every layer.
 """
 
 import math
+import os
+from collections import OrderedDict
 from typing import Callable, Optional, Union
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from omegaconf import OmegaConf
 
 from ..modules.t5 import T5RelativePositionalMultiheadAttention
 from ..modules.transformer import get_activation
+from ..utils._github import download_file_from_github_release
 
 __all__ = [
     "T5TransformerEncoder",
@@ -127,6 +131,66 @@ class T5Encoder(nn.Module):
                 dtype=dtype,
             )
         )
+
+    @classmethod
+    def build_from_pretrained(
+        cls,
+        pretrained_model_name_or_path: str,
+    ) -> "T5Encoder":
+        """Build a pretrained T5 encoder.
+
+        Args:
+            pretrained_model_name_or_path: Path to a pretrained model or the
+                name of a supported pretrained model.
+
+        Returns:
+            T5Encoder: The pretrained T5 encoder.
+
+        Examples:
+
+            >>> from audyn.models import T5Encoder
+            >>> model = T5Encoder.build_from_pretrained("t5-base")
+
+        .. note::
+
+            Supported pretrained model names are
+                - t5-base
+
+        """
+        from ..utils import instantiate, model_cache_dir
+
+        pretrained_model_configs = {
+            "t5-base": {
+                "url": "https://github.com/tky823/Audyn/releases/download/v0.3.2/t5-base.pth",  # noqa: E501
+                "path": os.path.join(model_cache_dir, "T5", "e2358d75", "t5-base.pth"),
+                "sha256": "e2358d756914f9700f25619cf71f99ac0c1997986d993d4cdf26d59fe99c27bf",
+            },
+        }
+
+        if os.path.exists(pretrained_model_name_or_path):
+            state_dict = torch.load(
+                pretrained_model_name_or_path,
+                map_location=lambda storage, loc: storage,
+                weights_only=True,
+            )
+            model_state_dict: OrderedDict = state_dict["model"]
+            resolved_config = state_dict["resolved_config"]
+            resolved_config = OmegaConf.create(resolved_config)
+            pretrained_model_config = resolved_config.model
+            model: T5Encoder = instantiate(pretrained_model_config)
+            model.load_state_dict(model_state_dict)
+
+            return model
+        elif pretrained_model_name_or_path in pretrained_model_configs:
+            config = pretrained_model_configs[pretrained_model_name_or_path]
+            url = config["url"]
+            path = config["path"]
+            download_file_from_github_release(url, path=path)
+            model = cls.build_from_pretrained(path)
+
+            return model
+        else:
+            raise FileNotFoundError(f"{pretrained_model_name_or_path} does not exist.")
 
     def forward(
         self,
