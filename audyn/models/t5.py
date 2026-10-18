@@ -155,6 +155,7 @@ class T5Encoder(nn.Module):
 
             Supported pretrained model names are
                 - t5-base
+                - t5-large
 
         """
         from ..utils import instantiate, model_cache_dir
@@ -164,6 +165,11 @@ class T5Encoder(nn.Module):
                 "url": "https://github.com/tky823/Audyn/releases/download/v0.3.2/t5-base.pth",  # noqa: E501
                 "path": os.path.join(model_cache_dir, "T5", "e2358d75", "t5-base.pth"),
                 "sha256": "e2358d756914f9700f25619cf71f99ac0c1997986d993d4cdf26d59fe99c27bf",
+            },
+            "t5-large": {
+                "url": "https://github.com/tky823/Audyn/releases/download/v0.3.2/t5-large.pth",  # noqa: E501
+                "path": os.path.join(model_cache_dir, "T5", "5b1ea2c0", "t5-large.pth"),
+                "sha256": "5b1ea2c07bbc8cecec7e7f673239731c15e242e9d0f54fd7165b37a6b4763960",
             },
         }
 
