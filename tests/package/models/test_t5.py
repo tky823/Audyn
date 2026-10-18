@@ -1,8 +1,13 @@
+import os
+
 import pytest
 import torch
 import torch.nn as nn
+from audyn_test import allclose
+from audyn_test.utils import audyn_test_cache_dir
 
 from audyn.models import T5Encoder, T5EncoderLayer, T5TransformerEncoder
+from audyn.utils._github import download_file_from_github_release
 
 
 @pytest.mark.parametrize("batch_first", [True, False])
@@ -39,3 +44,28 @@ def test_t5_encoder(batch_first: bool) -> None:
 
     assert output.size() == expected_shape
     assert torch.isfinite(output).all()
+
+
+def test_official_t5_encoder() -> None:
+    url = "https://github.com/tky823/Audyn/releases/download/v0.3.2/test_t5-base.pth"
+
+    filename = os.path.basename(url)
+    path = os.path.join(audyn_test_cache_dir, filename)
+    download_file_from_github_release(url, path)
+
+    data = torch.load(
+        path,
+        weights_only=True,
+    )
+
+    input = data["t5-base"]["input"]
+    padding_mask = data["t5-base"]["padding_mask"]
+    expected_output = data["t5-base"]["output"]
+
+    model = T5Encoder.build_from_pretrained("t5-base")
+    model.eval()
+
+    with torch.no_grad():
+        output = model(input, padding_mask=padding_mask)
+
+    allclose(output, expected_output, atol=1e-6)
