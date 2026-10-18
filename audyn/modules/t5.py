@@ -5,6 +5,7 @@ from typing import Optional
 import torch
 import torch.nn.functional as F
 
+from ..functional.activation import scaled_dot_product_attention
 from .activation import _MultiheadAttention
 
 __all__ = ["T5RelativePositionalMultiheadAttention"]
@@ -19,7 +20,7 @@ class T5RelativePositionalMultiheadAttention(_MultiheadAttention):
         num_heads: int,
         *,
         dropout: float = 0.0,
-        batch_first: bool = True,
+        batch_first: bool = False,
         device=None,
         dtype=None,
     ) -> None:
@@ -70,18 +71,18 @@ class T5RelativePositionalMultiheadAttention(_MultiheadAttention):
         q = q.view(batch_size, query_length, self.num_heads, head_dim).transpose(1, 2)
         k = k.view(batch_size, key_length, self.num_heads, head_dim).transpose(1, 2)
         v = v.view(batch_size, key_length, self.num_heads, head_dim).transpose(1, 2)
-        qk = torch.matmul(q, k.transpose(-2, -1))
+        attention_dtype = q.dtype
 
         if positional_embedding is None:
-            pass
+            attention_bias = None
         else:
-            positional_embedding = positional_embedding.to(dtype=qk.dtype)
+            positional_embedding = positional_embedding.to(dtype=attention_dtype)
 
             if positional_embedding.dim() == 3:
                 if positional_embedding.size(0) == self.num_heads:
-                    qk = qk + positional_embedding.unsqueeze(0)
+                    attention_bias = positional_embedding.unsqueeze(0)
                 elif positional_embedding.size(0) == batch_size * self.num_heads:
-                    qk = qk + positional_embedding.view(
+                    attention_bias = positional_embedding.view(
                         batch_size, self.num_heads, query_length, key_length
                     )
                 else:
@@ -90,7 +91,7 @@ class T5RelativePositionalMultiheadAttention(_MultiheadAttention):
                         "num_heads or batch_size * num_heads."
                     )
             elif positional_embedding.dim() == 4:
-                qk = qk + positional_embedding
+                attention_bias = positional_embedding
             else:
                 raise ValueError("positional_embedding must have 3 or 4 dimensions.")
 
@@ -99,66 +100,57 @@ class T5RelativePositionalMultiheadAttention(_MultiheadAttention):
             mask_name="padding_mask",
             other_type=F._none_or_dtype(attn_mask),
             other_name="attn_mask",
-            target_type=qk.dtype,
+            target_type=attention_dtype,
         )
         attn_mask = F._canonical_mask(
             mask=attn_mask,
             mask_name="attn_mask",
             other_type=None,
             other_name="",
-            target_type=qk.dtype,
+            target_type=attention_dtype,
             check_other=False,
         )
 
         if padding_mask is not None:
             padding_mask = padding_mask.view(batch_size, 1, 1, key_length)
 
-            if attn_mask is None:
-                attn_mask = padding_mask
+            if attention_bias is None:
+                attention_bias = padding_mask
             else:
-                if attn_mask.dim() == 2:
-                    pass
-                elif attn_mask.dim() == 3:
-                    if attn_mask.size(0) == self.num_heads:
-                        attn_mask = attn_mask.unsqueeze(0)
-                        attn_mask = attn_mask.expand(batch_size, -1, -1, -1)
-                    elif attn_mask.size(0) == batch_size * self.num_heads:
-                        attn_mask = attn_mask.view(
-                            batch_size, self.num_heads, query_length, key_length
-                        )
-                    else:
-                        raise ValueError(
-                            "The first dimension of a 3D attn_mask must be "
-                            "num_heads or batch_size * num_heads."
-                        )
-                else:
-                    raise ValueError("attn_mask must have 2 or 3 dimensions.")
-
-                attn_mask = attn_mask + padding_mask
+                attention_bias = attention_bias + padding_mask
 
         if attn_mask is not None:
             if attn_mask.dim() == 2:
-                qk = qk + attn_mask
+                attn_mask = attn_mask.view(1, 1, query_length, key_length)
             elif attn_mask.dim() == 3:
                 if attn_mask.size(0) == self.num_heads:
-                    qk = qk + attn_mask.unsqueeze(0)
+                    attn_mask = attn_mask.unsqueeze(0)
                 elif attn_mask.size(0) == batch_size * self.num_heads:
-                    qk = qk + attn_mask.view(batch_size, self.num_heads, query_length, key_length)
+                    attn_mask = attn_mask.view(
+                        batch_size, self.num_heads, query_length, key_length
+                    )
                 else:
                     raise ValueError(
                         "The first dimension of a 3D attn_mask must be "
                         "num_heads or batch_size * num_heads."
                     )
-            elif attn_mask.dim() == 4:
-                qk = qk + attn_mask
-            else:
+            elif attn_mask.dim() != 4:
                 raise ValueError("attn_mask must have 2, 3, or 4 dimensions.")
 
-        dtype = qk.dtype
-        weights = F.softmax(qk.float(), dim=-1)  # numerical stability
-        weights = weights.to(dtype=dtype)
-        weights = F.dropout(weights, p=self.dropout, training=self.training)
-        output = torch.matmul(weights, v)
+            if attention_bias is None:
+                attention_bias = attn_mask
+            else:
+                attention_bias = attention_bias + attn_mask
+
+        output, weights = scaled_dot_product_attention(
+            q,
+            k,
+            v,
+            attn_mask=attention_bias,
+            dropout_p=self.dropout if self.training else 0.0,
+            need_weights=need_weights,
+            scale=1.0,
+        )
         output = output.transpose(1, 2).contiguous()
         output = output.view(batch_size, query_length, embed_dim)
         output = F.linear(output, out_proj_weight, out_proj_bias)
