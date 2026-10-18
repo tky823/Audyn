@@ -1,3 +1,4 @@
+import math
 from typing import Optional, Tuple
 
 import torch
@@ -117,7 +118,7 @@ def scaled_dot_product_attention(
         attn_weights = None
     else:
         key = key.transpose(-2, -1)
-        scale = kwargs.get("scale", head_dim**-0.5)
+        scale = kwargs.get("scale", 1 / math.sqrt(head_dim))
         qk = torch.matmul(query, key) * scale
 
         if attn_mask is not None:
