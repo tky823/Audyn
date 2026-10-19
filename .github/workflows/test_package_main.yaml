@@ -99,7 +99,8 @@ jobs:
           fi
 
           python tests/scripts/overwrite_torchcodec_requirement.py \
-            --path requirements-torchcodec.txt
+            --path requirements-torchcodec.txt \
+            --cpu-only
 
           uv pip install -r requirements-torchcodec.txt
       - name: Show dependencies
@@ -276,7 +277,8 @@ jobs:
           fi
 
           python tests/scripts/overwrite_torchcodec_requirement.py \
-            --path requirements-torchcodec.txt
+            --path requirements-torchcodec.txt \
+            --cpu-only
 
           uv pip install -r requirements-torchcodec.txt
       - name: Show dependencies
