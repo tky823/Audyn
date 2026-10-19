@@ -12,10 +12,10 @@ def main() -> None:
 
     if torch_version >= version.parse("2.9"):
         torchcodec_version = "0" + "." + str(torch_version.minor)
-        is_linux_or_windows = sys.platform in ("linux", "win32")
+        is_linux = sys.platform == "linux"
 
         with open(args.path, mode="w") as f:
-            if args.cpu_only and torch_version >= version.parse("2.11") and is_linux_or_windows:
+            if args.cpu_only and torch_version >= version.parse("2.11") and is_linux:
                 f.write("--index-url https://download.pytorch.org/whl/cpu\n")
 
             f.write("torchcodec==" + torchcodec_version + "\n")
