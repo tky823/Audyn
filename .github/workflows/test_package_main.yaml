@@ -133,6 +133,28 @@ jobs:
             source .venv/bin/activate
           fi
 
+          echo "TorchCodec requirement:"
+          cat requirements-torchcodec.txt
+
+          python - <<'PY'
+          import importlib.metadata
+          import traceback
+
+          for package in ("torch", "torchaudio", "torchcodec"):
+              try:
+                  print(f"{package}=={importlib.metadata.version(package)}")
+              except importlib.metadata.PackageNotFoundError:
+                  print(f"{package} is not installed")
+
+          try:
+              from torchcodec.decoders import AudioDecoder
+
+              print(f"torchcodec.decoders.AudioDecoder import: OK ({AudioDecoder})")
+          except Exception:
+              print("torchcodec.decoders.AudioDecoder import failed:")
+              traceback.print_exc()
+          PY
+
           python tests/scripts/list_torchaudio_backends.py
           python tests/scripts/verify_torchaudio_backends.py
       - name: Pytest for torch.hub
@@ -287,6 +309,28 @@ jobs:
           else
             source .venv/bin/activate
           fi
+
+          echo "TorchCodec requirement:"
+          cat requirements-torchcodec.txt
+
+          python - <<'PY'
+          import importlib.metadata
+          import traceback
+
+          for package in ("torch", "torchaudio", "torchcodec"):
+              try:
+                  print(f"{package}=={importlib.metadata.version(package)}")
+              except importlib.metadata.PackageNotFoundError:
+                  print(f"{package} is not installed")
+
+          try:
+              from torchcodec.decoders import AudioDecoder
+
+              print(f"torchcodec.decoders.AudioDecoder import: OK ({AudioDecoder})")
+          except Exception:
+              print("torchcodec.decoders.AudioDecoder import failed:")
+              traceback.print_exc()
+          PY
 
           python tests/scripts/list_torchaudio_backends.py
           python tests/scripts/verify_torchaudio_backends.py
