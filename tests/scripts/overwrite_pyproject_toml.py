@@ -17,7 +17,9 @@ def overwrite_pyproject_toml(path: str, torch_version: str) -> None:
     unspecified_torch = '"torch",'
     specified_torch = '"torch=={}",'.format(torch_version)
     unspecified_torchaudio = '"torchaudio",'
-    specified_torchaudio = '"torchaudio=={}",'.format(torch_version)
+    max_torchaudio_version = version.parse("2.11.0")
+    torchaudio_version = min(version.parse(torch_version), max_torchaudio_version)
+    specified_torchaudio = '"torchaudio=={}",'.format(torchaudio_version)
 
     is_torch_lt_2_3 = version.parse(torch_version) < version.parse("2.3")
 
