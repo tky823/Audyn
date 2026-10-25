@@ -1,4 +1,4 @@
-name: macos-latest/3.12/2.6
+name: ubuntu-latest/3.12/2.11
 on:
   push:
     branches:
@@ -8,11 +8,11 @@ on:
       - main
 jobs:
   package:
-    uses: ./.github/workflows/test_package_macos-latest.yaml
+    uses: ./.github/workflows/test_package_ubuntu-latest.yaml
     with:
       python-version: "3.12"
-      torch-version: "2.6.0"
-      run-ddp: false
+      torch-version: "2.11.0"
+      run-ddp: true
     secrets:
       ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

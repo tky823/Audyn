@@ -1,4 +1,4 @@
-name: macos-latest/3.13/2.9
+name: macos-latest/3.12/2.11
 on:
   push:
     branches:
@@ -10,8 +10,8 @@ jobs:
   package:
     uses: ./.github/workflows/test_package_macos-latest.yaml
     with:
-      python-version: "3.13"
-      torch-version: "2.9.0"
+      python-version: "3.12"
+      torch-version: "2.11.0"
       run-ddp: false
     secrets:
       ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
