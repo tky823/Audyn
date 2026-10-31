@@ -4,6 +4,8 @@ from itertools import combinations
 import torch
 import torch.nn as nn
 
+from ..functional.diarization import powerset_to_multilabel as _powerset_to_multilabel
+
 
 class PowerSet(nn.Module):
     """Convert powerset classification scores to multi-label predictions.
@@ -30,9 +32,7 @@ class PowerSet(nn.Module):
         for size in range(max_subset + 1):
             num_powerset_classes += math.comb(num_classes, size)
 
-        self.num_powerset_classes = num_powerset_classes
-
-        powerset_to_multilabel = torch.zeros(self.num_powerset_classes, num_classes)
+        powerset_to_multilabel = torch.zeros(num_powerset_classes, num_classes)
         index = 0
 
         for size in range(max_subset + 1):
@@ -57,16 +57,13 @@ class PowerSet(nn.Module):
         if input.dim() != 3:
             raise ValueError(f"Expected 3-dimensional input, but got {input.dim()} dimensions.")
 
-        if input.size(1) != self.num_powerset_classes:
-            raise ValueError(
-                f"Expected {self.num_powerset_classes} powerset classes, but got {input.size(1)}."
-            )
-
-        indices = torch.argmax(input, dim=1)
-        multilabel = self.powerset_to_multilabel[indices]
-        output = multilabel.transpose(1, 2).contiguous()
+        output = _powerset_to_multilabel(input, powerset_to_multilabel=self.powerset_to_multilabel)
 
         return output
+
+    @property
+    def num_powerset_classes(self) -> int:
+        return self.powerset_to_multilabel.size(0)
 
     def extra_repr(self) -> str:
         return f"num_classes={self.num_classes}, max_subset={self.max_subset}"
