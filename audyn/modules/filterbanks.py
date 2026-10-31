@@ -79,7 +79,7 @@ class QuadratureSincConv1d(nn.Module):
         self.min_bandwidth = min_bandwidth
 
         window = window_fn(kernel_size)
-        self.register_buffer("window", window)
+        self.register_buffer("window", window, persistent=False)
 
         m_min = _hz_to_mel(30.0, mel_scale=mel_scale)
         m_max = _hz_to_mel(
@@ -146,3 +146,11 @@ class QuadratureSincConv1d(nn.Module):
         )
 
         return output
+
+    def extra_repr(self) -> str:
+        n_bins = 2 * self.min_freqs.size(0)
+
+        s = "1, {n_bins}".format(n_bins=n_bins)
+        s += ", kernel_size={kernel_size}, stride={stride}"
+
+        return s.format(**self.__dict__)
