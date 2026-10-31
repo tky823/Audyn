@@ -22,6 +22,7 @@ from .music_tagging_transformer import (
 )
 from .musicfm import MusicFM, MusicFMMaskedTokenModel
 from .passt import PaSST
+from .pyannote import PyannoteCompatibleSpeakerSegmenter
 from .roformer import (
     RoFormerDecoder,
     RoFormerDecoderLayer,
@@ -74,6 +75,8 @@ __all__ = [
     "HiFiGANDiscriminator",
     # WaveNeXt Vocoder
     "WaveNeXtVocoder",
+    # diarization
+    "PyannoteCompatibleSpeakerSegmenter",
     # VAE
     "BaseVAE",
     "VQVAE",
