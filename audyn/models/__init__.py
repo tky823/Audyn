@@ -22,6 +22,7 @@ from .music_tagging_transformer import (
 )
 from .musicfm import MusicFM, MusicFMMaskedTokenModel
 from .passt import PaSST
+from .pyannote import PyannoteCompatibleSpeakerSegmenter
 from .roformer import (
     RoFormerDecoder,
     RoFormerDecoderLayer,
@@ -77,6 +78,8 @@ __all__ = [
     "WaveNeXtVocoder",
     # SincNet
     "SincNet",
+    # diarization
+    "PyannoteCompatibleSpeakerSegmenter",
     # VAE
     "BaseVAE",
     "VQVAE",
