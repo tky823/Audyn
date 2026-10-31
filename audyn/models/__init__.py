@@ -30,7 +30,6 @@ from .roformer import (
     RoFormerEncoderLayer,
 )
 from .rvqvae import RVQVAE
-from .sincnet import SincNet
 from .soundstream import SoundStream
 from .ssast import (
     SSAST,
@@ -76,8 +75,6 @@ __all__ = [
     "HiFiGANDiscriminator",
     # WaveNeXt Vocoder
     "WaveNeXtVocoder",
-    # SincNet
-    "SincNet",
     # diarization
     "PyannoteCompatibleSpeakerSegmenter",
     # VAE
