@@ -87,11 +87,11 @@ class PIT(nn.Module):
         self.criterion = criterion
 
         if num_sources is None:
-            self.register_buffer("permutations", None)
+            self.register_buffer("permutations", None, persistent=False)
         else:
             permutations = itertools.permutations(range(num_sources))
             permutations = torch.tensor(list(permutations), dtype=torch.long)
-            self.register_buffer("permutations", permutations)
+            self.register_buffer("permutations", permutations, persistent=False)
 
     def forward(
         self, input: torch.Tensor, target: torch.Tensor
