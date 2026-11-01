@@ -1,4 +1,4 @@
-from .diarization import PowerSet
+from .diarization import Powerset
 from .filterbanks import QuadratureSincConv1d
 from .manifold import ManifoldEmbedding, PoincareEmbedding
 
@@ -6,5 +6,5 @@ __all__ = [
     "ManifoldEmbedding",
     "PoincareEmbedding",
     "QuadratureSincConv1d",
-    "PowerSet",
+    "Powerset",
 ]

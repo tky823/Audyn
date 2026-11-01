@@ -5,7 +5,7 @@ from audyn_test import allclose
 from audyn_test.utils import audyn_test_cache_dir
 
 from audyn.models.pyannote import PyannoteCompatibleSpeakerSegmenter
-from audyn.modules.diarization import PowerSet
+from audyn.modules.diarization import Powerset
 from audyn.utils._github import download_file_from_github_release
 
 
@@ -28,7 +28,7 @@ def test_official_speaker_segmenter() -> None:
     num_speakers = 3
 
     model = PyannoteCompatibleSpeakerSegmenter.build_from_pretrained("pyannote-3.0")
-    to_multilabel = PowerSet(num_classes=num_speakers, max_subset=2)
+    to_multilabel = Powerset(num_classes=num_speakers, max_subset=2)
 
     input = input.view(1, 1, -1)
 

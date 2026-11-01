@@ -7,7 +7,7 @@ import torch.nn as nn
 from ..functional.diarization import powerset_to_multilabel as _powerset_to_multilabel
 
 
-class PowerSet(nn.Module):
+class Powerset(nn.Module):
     """Convert powerset classification scores to multi-label predictions.
 
     The input's class dimension contains scores for subsets of up to ``max_subset``
