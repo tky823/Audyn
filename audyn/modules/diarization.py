@@ -42,7 +42,7 @@ class Powerset(nn.Module):
 
         self.register_buffer("powerset_to_multilabel", powerset_to_multilabel, persistent=False)
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
+    def forward(self, input: torch.Tensor) -> torch.LongTensor:
         """Select the highest-scoring subset for each frame.
 
         Args:
@@ -50,7 +50,7 @@ class Powerset(nn.Module):
                 ``(batch_size, num_powerset_classes, num_frames)``.
 
         Returns:
-            torch.Tensor: Binary labels of shape
+            torch.LongTensor: Binary labels of shape
                 ``(batch_size, num_classes, num_frames)``.
 
         """
