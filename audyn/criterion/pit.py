@@ -21,7 +21,7 @@ def pit(
     Args:
         criterion (nn.Module or callable): Criterion to apply PIT.
         input (torch.Tensor): Input feature of shape (batch_size, num_sources, \*).
-        output (torch.Tensor): Target feature of shape (batch_size, num_sources, \*).
+        target (torch.Tensor): Target feature of shape (batch_size, num_sources, \*).
 
     Returns:
         tuple: Tuple of tensors containing
@@ -100,7 +100,7 @@ class PIT(nn.Module):
 
         Args:
             input (torch.Tensor): Input feature of shape (batch_size, num_sources, \*).
-            output (torch.Tensor): Target feature of shape (batch_size, num_sources, \*).
+            target (torch.Tensor): Target feature of shape (batch_size, num_sources, \*).
 
         Returns:
             tuple: Tuple of tensors containing
