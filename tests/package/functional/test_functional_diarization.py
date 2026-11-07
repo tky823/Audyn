@@ -25,9 +25,7 @@ def test_multilabel_to_powerset() -> None:
     ).squeeze(-1)
     assert lookup.dtype == torch.long
     assert torch.equal(multilabel_to_powerset(activity, lookup), expected)
-    assert torch.equal(
-        multilabel_to_powerset(activity, powerset_to_multilabel=lookup), expected
-    )
+    assert torch.equal(multilabel_to_powerset(activity, powerset_to_multilabel=lookup), expected)
     assert torch.equal(multilabel_to_powerset(activity, 3, max_subset=2), expected)
 
     decoded = powerset_to_multilabel(
@@ -35,10 +33,13 @@ def test_multilabel_to_powerset() -> None:
     )
     assert torch.equal(decoded, activity[:, :, :-1])
     assert decoded.dtype == torch.long
-    assert powerset_to_multilabel(
-        torch.nn.functional.one_hot(actual[:, :-1], num_classes=7).transpose(1, 2),
-        lookup.float(),
-    ).dtype == torch.long
+    assert (
+        powerset_to_multilabel(
+            torch.nn.functional.one_hot(actual[:, :-1], num_classes=7).transpose(1, 2),
+            lookup.float(),
+        ).dtype
+        == torch.long
+    )
 
 
 @pytest.mark.parametrize(
