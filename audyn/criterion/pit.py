@@ -21,7 +21,7 @@ def pit(
     Args:
         criterion (nn.Module or callable): Criterion to apply PIT.
         input (torch.Tensor): Input feature of shape (batch_size, num_sources, \*).
-        output (torch.Tensor): Target feature of shape (batch_size, num_sources, \*).
+        target (torch.Tensor): Target feature of shape (batch_size, num_sources, \*).
 
     Returns:
         tuple: Tuple of tensors containing
@@ -87,11 +87,11 @@ class PIT(nn.Module):
         self.criterion = criterion
 
         if num_sources is None:
-            self.register_buffer("permutations", None)
+            self.register_buffer("permutations", None, persistent=False)
         else:
             permutations = itertools.permutations(range(num_sources))
             permutations = torch.tensor(list(permutations), dtype=torch.long)
-            self.register_buffer("permutations", permutations)
+            self.register_buffer("permutations", permutations, persistent=False)
 
     def forward(
         self, input: torch.Tensor, target: torch.Tensor
@@ -100,7 +100,7 @@ class PIT(nn.Module):
 
         Args:
             input (torch.Tensor): Input feature of shape (batch_size, num_sources, \*).
-            output (torch.Tensor): Target feature of shape (batch_size, num_sources, \*).
+            target (torch.Tensor): Target feature of shape (batch_size, num_sources, \*).
 
         Returns:
             tuple: Tuple of tensors containing
