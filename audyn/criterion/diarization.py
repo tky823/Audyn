@@ -1,7 +1,9 @@
 import itertools
+from typing import Union
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from ..functional.diarization import multilabel_to_powerset, powerset_to_multilabel
 
@@ -16,10 +18,19 @@ class PowersetPITLoss(nn.Module):
     Args:
         num_classes (int): Number of multilabel speaker classes.
         max_subset (int): Maximum number of active speakers in a powerset class.
+        approximate (str or bool): Method used to select a speaker permutation.
+            ``"mse"`` (default) and ``"mae"`` compare hard multilabel predictions
+            with the target. ``"none"`` minimizes the powerset cross-entropy.
+            ``True`` is equivalent to ``"mse"`` and ``False`` to ``"none"``.
 
     """
 
-    def __init__(self, num_classes: int, max_subset: int) -> None:
+    def __init__(
+        self,
+        num_classes: int,
+        max_subset: int,
+        approximate: Union[str, bool] = "mse",
+    ) -> None:
         super().__init__()
 
         if not isinstance(num_classes, int) or num_classes < 1:
@@ -28,13 +39,31 @@ class PowersetPITLoss(nn.Module):
         if not isinstance(max_subset, int) or not 0 <= max_subset <= num_classes:
             raise ValueError("max_subset must be an integer between 0 and num_classes.")
 
+        if not isinstance(approximate, (str, bool)):
+            raise ValueError('approximate must be "mse", "mae", "none", or a bool.')
+
+        if approximate is True:
+            approximate = "mse"
+        elif approximate is False:
+            approximate = "none"
+
+        if approximate == "mse":
+            surrogate_criterion = nn.MSELoss(reduction="none")
+        elif approximate == "mae":
+            surrogate_criterion = nn.L1Loss(reduction="none")
+        elif approximate == "none":
+            surrogate_criterion = None
+        else:
+            raise ValueError('approximate must be "mse", "mae", "none", or a bool.')
+
         permutations = itertools.permutations(range(num_classes))
         permutations = torch.tensor(list(permutations), dtype=torch.long)
 
         self.num_classes = num_classes
         self.max_subset = max_subset
         self.criterion = nn.CrossEntropyLoss()
-        self.surrogate_criterion = nn.MSELoss(reduction="none")
+        self.approximate = approximate != "none"
+        self.surrogate_criterion = surrogate_criterion
         self.register_buffer("permutations", permutations, persistent=False)
 
     def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
@@ -63,22 +92,36 @@ class PowersetPITLoss(nn.Module):
             raise ValueError("input and target must have matching batch and frame dimensions.")
 
         with torch.no_grad():
-            multilabel_input = powerset_to_multilabel(
-                input, num_classes=self.num_classes, max_subset=self.max_subset
-            )
-            multilabel_input = multilabel_input.to(dtype=input.dtype)
-            multilabel_target = target.to(dtype=input.dtype)
-            possible_surrogate_loss = []
+            possible_permutation_loss = []
 
-            for permutation in self.permutations:
-                surrogate_loss = self.surrogate_criterion(
-                    multilabel_input, multilabel_target[:, permutation]
+            if self.approximate:
+                multilabel_input = powerset_to_multilabel(
+                    input, num_classes=self.num_classes, max_subset=self.max_subset
                 )
-                surrogate_loss = surrogate_loss.mean(dim=-1)
-                possible_surrogate_loss.append(surrogate_loss.sum(dim=-1))
+                multilabel_input = multilabel_input.to(dtype=input.dtype)
 
-            possible_surrogate_loss = torch.stack(possible_surrogate_loss, dim=0)
-            indices = torch.argmin(possible_surrogate_loss, dim=0)
+                for permutation in self.permutations:
+                    permuted_target = target[:, permutation]
+                    elementwise_loss = self.surrogate_criterion(
+                        multilabel_input, permuted_target.to(dtype=input.dtype)
+                    )
+                    permutation_loss = elementwise_loss.mean(dim=-1)
+                    permutation_loss = permutation_loss.sum(dim=-1)
+
+                    possible_permutation_loss.append(permutation_loss)
+            else:
+                for permutation in self.permutations:
+                    permuted_target = target[:, permutation]
+                    powerset_target = multilabel_to_powerset(
+                        permuted_target, num_classes=self.num_classes, max_subset=self.max_subset
+                    )
+                    permutation_loss = F.cross_entropy(input, powerset_target, reduction="none")
+                    permutation_loss = permutation_loss.mean(dim=-1)
+
+                    possible_permutation_loss.append(permutation_loss)
+
+            possible_permutation_loss = torch.stack(possible_permutation_loss, dim=0)
+            indices = torch.argmin(possible_permutation_loss, dim=0)
             permutation = self.permutations[indices]
             permutation = permutation.unsqueeze(dim=-1).expand_as(target)
             permuted_target = torch.gather(target, dim=1, index=permutation)
@@ -86,4 +129,7 @@ class PowersetPITLoss(nn.Module):
                 permuted_target, num_classes=self.num_classes, max_subset=self.max_subset
             )
 
-        return self.criterion(input, powerset_target)
+        # TODO: Support frame-wise weights in the final cross-entropy loss.
+        loss = self.criterion(input, powerset_target)
+
+        return loss
