@@ -34,7 +34,7 @@ class PowersetPITLoss(nn.Module):
         self.num_classes = num_classes
         self.max_subset = max_subset
         self.criterion = nn.CrossEntropyLoss()
-        self.surrogate_criterion = nn.BCELoss(reduction="none")
+        self.surrogate_criterion = nn.MSELoss(reduction="none")
         self.register_buffer("permutations", permutations, persistent=False)
 
     def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
@@ -74,7 +74,8 @@ class PowersetPITLoss(nn.Module):
                 surrogate_loss = self.surrogate_criterion(
                     multilabel_input, multilabel_target[:, permutation]
                 )
-                possible_surrogate_loss.append(surrogate_loss.mean(dim=-1).sum(dim=-1))
+                surrogate_loss = surrogate_loss.mean(dim=-1)
+                possible_surrogate_loss.append(surrogate_loss.sum(dim=-1))
 
             possible_surrogate_loss = torch.stack(possible_surrogate_loss, dim=0)
             indices = torch.argmin(possible_surrogate_loss, dim=0)
