@@ -179,7 +179,9 @@ jobs:
             PYTEST_FLAGS="${PYTEST_FLAGS} --runddp"
           fi
 
-          PYTEST_FLAGS="${PYTEST_FLAGS} --runslow"
+          if [[ "${{ github.head_ref }}" == release/* ]]; then
+            PYTEST_FLAGS="${PYTEST_FLAGS} --runslow"
+          fi
 
           if [ "${RUNNER_OS}" = "Windows" ]]; then
             PYTEST_FLAGS="${PYTEST_FLAGS} -p no:faulthandler"
