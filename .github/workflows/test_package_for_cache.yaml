@@ -5,10 +5,10 @@ on:
       os:
         description: "Operating system"
         required: true
-        default: "ubuntu-latest"
+        default: "ubuntu-24.04"
         type: choice
         options:
-          - ubuntu-latest
+          - ubuntu-24.04
           - macos-latest
           - windows-latest
       python-version:
@@ -46,7 +46,7 @@ jobs:
         run: |
           powershell -File tests/scripts/install_windows_dependencies.ps1
       - name: Install dependencies (Ubuntu)
-        if: ${{ inputs.os == 'ubuntu-latest' }}
+        if: ${{ inputs.os == 'ubuntu-24.04' }}
         run: |
           . tests/scripts/install_ubuntu_dependencies.sh
       - name: Install dependencies (MacOS)

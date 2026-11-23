@@ -48,7 +48,7 @@ jobs:
         run: |
           powershell -File tests/scripts/install_windows_dependencies.ps1
       - name: Install dependencies (Ubuntu)
-        if: ${{ inputs.os == 'ubuntu-latest' }}
+        if: ${{ inputs.os == 'ubuntu-24.04' }}
         run: |
           . tests/scripts/free_ubuntu_disk.sh
           . tests/scripts/install_ubuntu_dependencies.sh
@@ -159,7 +159,7 @@ jobs:
           python tests/scripts/list_torchaudio_backends.py
           python tests/scripts/verify_torchaudio_backends.py
       - name: Pytest for torch.hub
-        if: ${{ inputs.python-version == '3.13' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.6.0' }}
+        if: ${{ inputs.python-version == '3.13' && inputs.os == 'ubuntu-24.04' && inputs.torch-version == '2.6.0' }}
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           GITHUB_HEAD_REF: ${{ github.head_ref }}
@@ -195,7 +195,7 @@ jobs:
 
           uv run --active pytest -vvv ${PYTEST_FLAGS} tests/package/
       - name: Upload coverage reports to Codecov
-        if: ${{ inputs.python-version == '3.13' && inputs.os == 'ubuntu-latest' && inputs.torch-version == '2.6.0' }}
+        if: ${{ inputs.python-version == '3.13' && inputs.os == 'ubuntu-24.04' && inputs.torch-version == '2.6.0' }}
         uses: codecov/codecov-action@v3
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -226,7 +226,7 @@ jobs:
         run: |
           powershell -File tests/scripts/install_windows_dependencies.ps1
       - name: Install dependencies (Ubuntu)
-        if: ${{ inputs.os == 'ubuntu-latest' }}
+        if: ${{ inputs.os == 'ubuntu-24.04' }}
         run: |
           . tests/scripts/free_ubuntu_disk.sh
           . tests/scripts/install_ubuntu_dependencies.sh
