@@ -189,8 +189,16 @@ def test_multisource_multichannel_bsroformer() -> None:
     assert output.size() == (batch_size, num_sources, in_channels, n_bins, n_frames)
 
 
+def test_audio_separator_compatible_bsroformer_build_from_config() -> None:
+    torch.manual_seed(0)
+
+    in_channels = 1
+
+    _ = AudioSeparatorCompatibleBandSplitRoFormer.build_from_config(in_channels)
+
+
 @pytest.mark.slow
-def test_audio_separator_compatible_bsroformer() -> None:
+def test_official_audio_separator_compatible_bsroformer() -> None:
     torch.manual_seed(0)
 
     url = "https://github.com/tky823/Audyn/releases/download/v0.4.0/test_audio-separator_melbsroformer.pth"  # noqa: E501
