@@ -134,6 +134,7 @@ namespace audyn
 {
     at::Tensor hungarian(const at::Tensor &cost)
     {
+        // based on Kuhn-Munkres method
         TORCH_CHECK(cost.dim() == 3, "cost must be a 3-dimensional tensor");
         TORCH_CHECK(cost.size(1) == cost.size(2), "cost must contain square matrices");
         TORCH_CHECK(cost.device().is_cpu(), "cost must be on the CPU");
