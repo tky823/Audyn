@@ -14,12 +14,12 @@ on:
       python-version:
         description: "Python version"
         required: true
-        default: "3.12"
+        default: "3.13"
         type: string
       torch-version:
         description: "PyTorch version"
         required: true
-        default: "2.6.0"
+        default: "2.13.0"
         type: string
       run-ddp:
         description: "Run DDP tests or not"
