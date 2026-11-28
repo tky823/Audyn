@@ -80,11 +80,19 @@ def test_audio_separator_attention_weights_and_gradients(batch_first, separate_q
     assert weights.shape == (2, 2, 3, 3)
 
 
-@pytest.mark.parametrize("norm,norm_first", [("rms", True), ("layer_norm", False)])
-def test_audio_separator_encoder_norm_paths(norm, norm_first) -> None:
+@pytest.mark.parametrize(
+    "norm,norm_first,bias", [("rms", True, False), ("layer_norm", False, True)]
+)
+def test_audio_separator_encoder_norm_paths(norm, norm_first, bias) -> None:
     torch.manual_seed(0)
     layer = AudioSeparatorCompatibleRoFormerEncoderLayer(
-        8, 2, dim_feedforward=12, norm=norm, norm_first=norm_first, batch_first=True
+        8,
+        2,
+        dim_feedforward=12,
+        norm=norm,
+        norm_first=norm_first,
+        batch_first=True,
+        bias=bias,
     )
     input = torch.randn(2, 3, 8, requires_grad=True)
 
@@ -93,6 +101,17 @@ def test_audio_separator_encoder_norm_paths(norm, norm_first) -> None:
 
     assert output.shape == input.shape
     assert input.grad is not None and torch.isfinite(input.grad).all()
+
+
+def test_audio_separator_encoder_layer_norm_on_torch_2_0(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("audyn.modules.bsroformer.IS_TORCH_LT_2_1", True)
+    layer = AudioSeparatorCompatibleRoFormerEncoderLayer(
+        8, 2, norm="layer_norm", bias=True, batch_first=True
+    )
+
+    assert layer(torch.randn(1, 3, 8)).shape == (1, 3, 8)
 
 
 def test_audio_separator_encoder_rejects_causal_attention() -> None:
