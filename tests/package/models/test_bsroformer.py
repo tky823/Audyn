@@ -1,10 +1,13 @@
 import os
+from pathlib import Path
 
+import hydra
 import pytest
 import torch
 import torch.nn as nn
 from audyn_test import allclose
 from audyn_test.utils import audyn_test_cache_dir
+from omegaconf import OmegaConf
 
 from audyn.models.bsroformer import (
     AudioSeparatorCompatibleBandSplitRoFormer,
@@ -250,3 +253,44 @@ def test_audio_separator_compatible_bsroformer_without_torch_rmsnorm(
     output = model(input)
 
     assert output.size() == input.size()
+
+
+def test_audio_separator_compatible_bsroformer_loads_local_checkpoint(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def build_small_model() -> AudioSeparatorCompatibleBandSplitRoFormer:
+        bins = [[0, 2], [1, 3]]
+        return AudioSeparatorCompatibleBandSplitRoFormer(
+            AudioSeparatorCompatibleBandSplitModule(1, bins, 8, norm="rms"),
+            AudioSeparatorCompatibleBandMergeModule(1, bins, 8, hidden_channels=12),
+            AudioSeparatorCompatibleBandSplitRoFormerBackbone(
+                8, 2, 4, 12, num_blocks=1, norm="rms", dropout=0, bias=False
+            ),
+        )
+
+    torch.manual_seed(0)
+    expected = build_small_model()
+    checkpoint = tmp_path / "model.pth"
+    torch.save(
+        {
+            "resolved_config": OmegaConf.to_container(
+                OmegaConf.create({"model": {"_target_": "unused.for.mock"}})
+            ),
+            "model": expected.state_dict(),
+        },
+        checkpoint,
+    )
+    monkeypatch.setattr(hydra.utils, "instantiate", lambda config: build_small_model())
+
+    actual = AudioSeparatorCompatibleBandSplitRoFormer.build_from_pretrained(str(checkpoint))
+    input = torch.randn(1, 1, 3, 4, dtype=torch.complex64)
+    expected.eval()
+    actual.eval()
+
+    with torch.no_grad():
+        torch.testing.assert_close(actual(input), expected(input))
+
+
+def test_audio_separator_compatible_bsroformer_unknown_checkpoint() -> None:
+    with pytest.raises(ValueError, match="is not found"):
+        AudioSeparatorCompatibleBandSplitRoFormer.build_from_pretrained("unknown-model")
