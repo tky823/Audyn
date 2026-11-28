@@ -17,6 +17,7 @@ Submodules
    audyn.models.passt
    audyn.models.clap
    audyn.models.roformer
+   audyn.models.bsroformer
    audyn.models.clip
 
 Classes
@@ -475,6 +476,18 @@ Rotary Transformer (RoFormer)
 .. autoclass:: audyn.models.RoFormerDecoderLayer
 .. autoclass:: audyn.models.RoFormerEncoder
 .. autoclass:: audyn.models.RoFormerDecoder
+
+Band-split RoFormer (BSRoFormer)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: audyn.models.BandSplitRoFormer
+   :members: build_from_config, forward
+
+.. autoclass:: audyn.models.AudioSeparatorCompatibleBandSplitRoFormer
+   :members: build_from_config, build_from_pretrained
+
+.. autoclass:: audyn.models.bsroformer.MultiSourceMultiChannelBandSplitRoFormer
+   :members: build_from_config, forward
 
 Music Tagging Transformer
 ^^^^^^^^^^^^^^^^^^^^^^^^^
