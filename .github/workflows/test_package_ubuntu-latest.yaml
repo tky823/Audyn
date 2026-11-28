@@ -1,4 +1,4 @@
-name: Test package on ubuntu-latest
+name: Test package on ubuntu-24.04
 on:
   workflow_call:
     inputs:
@@ -20,7 +20,7 @@ jobs:
   package:
     uses: ./.github/workflows/test_package_main.yaml
     with:
-      os: ubuntu-latest
+      os: ubuntu-24.04
       python-version: ${{ inputs.python-version }}
       torch-version: ${{ inputs.torch-version }}
       run-ddp: ${{ inputs.run-ddp }}

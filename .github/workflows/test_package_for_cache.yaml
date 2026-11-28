@@ -5,21 +5,21 @@ on:
       os:
         description: "Operating system"
         required: true
-        default: "ubuntu-latest"
+        default: "ubuntu-24.04"
         type: choice
         options:
-          - ubuntu-latest
+          - ubuntu-24.04
           - macos-latest
           - windows-latest
       python-version:
         description: "Python version"
         required: true
-        default: "3.12"
+        default: "3.13"
         type: string
       torch-version:
         description: "PyTorch version"
         required: true
-        default: "2.6.0"
+        default: "2.13.0"
         type: string
       run-ddp:
         description: "Run DDP tests or not"
@@ -46,7 +46,7 @@ jobs:
         run: |
           powershell -File tests/scripts/install_windows_dependencies.ps1
       - name: Install dependencies (Ubuntu)
-        if: ${{ inputs.os == 'ubuntu-latest' }}
+        if: ${{ inputs.os == 'ubuntu-24.04' }}
         run: |
           . tests/scripts/install_ubuntu_dependencies.sh
       - name: Install dependencies (MacOS)

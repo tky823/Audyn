@@ -11,8 +11,10 @@ from .glu import GLU
 __all__ = [
     "BandSplitModule",
     "BandMergeModule",
+    "AudioSeparatorCompatibleBandMergeModule",
     "BandSplitBlock",
     "BandMergeBlock",
+    "AudioSeparatorCompatibleBandMergeBlock",
     "BandSplitRNNBackbone",
     "BandSplitRNNBlock",
     "IntraRNN",
@@ -369,6 +371,145 @@ class MultiSourceMultiChannelBandMergeModule(nn.Module):
         return output
 
 
+class AudioSeparatorCompatibleBandSplitModule(MultiChannelBandSplitModule):
+    def __init__(
+        self,
+        in_channels: int,
+        bins: Union[List[int], List[Tuple[int, int]]],
+        embed_dim: int,
+        norm: bool | str | Callable[[torch.Tensor], torch.Tensor] = False,
+        eps: float = 1e-12,
+    ) -> None:
+        super(MultiChannelBandSplitModule, self).__init__()
+
+        self.in_channels = in_channels
+        self.bins = bins
+        self.embed_dim = embed_dim
+
+        backbone = []
+
+        for _bins in bins:
+            if isinstance(_bins, int):
+                n_bins = _bins
+            else:
+                start_bin, end_bin = _bins
+                n_bins = end_bin - start_bin
+
+            block = AudioSeparatorCompatibleMultiChannelBandSplitBlock(
+                in_channels,
+                n_bins,
+                embed_dim,
+                norm=norm,
+                eps=eps,
+            )
+            backbone.append(block)
+
+        self.backbone = nn.ModuleList(backbone)
+
+
+class AudioSeparatorCompatibleBandMergeModule(MultiChannelBandMergeModule):
+    """Band merge module compatible with audio-separator."""
+
+    def __init__(
+        self,
+        out_channels: int,
+        bins: Union[List[int], List[Tuple[int, int]]],
+        embed_dim: int,
+        hidden_channels: int = 1536,
+        num_layers: int = 2,
+        norm: bool | str | Callable[[torch.Tensor], torch.Tensor] = False,
+        eps: float = 1e-12,
+    ) -> None:
+        super(MultiChannelBandMergeModule, self).__init__()
+
+        self.out_channels = out_channels
+        self.bins = bins
+        self.embed_dim = embed_dim
+
+        backbone = []
+
+        if isinstance(bins[0], int):
+            frequency_overlap = False
+        else:
+            frequency_overlap = True
+
+        max_bin = 0
+
+        for _bins in bins:
+            if frequency_overlap:
+                start_bin, end_bin = _bins
+                n_bins = end_bin - start_bin
+                max_bin = end_bin
+            else:
+                n_bins = _bins
+                max_bin += _bins
+
+            block = AudioSeparatorCompatibleBandMergeBlock(
+                out_channels,
+                n_bins,
+                embed_dim,
+                hidden_channels=hidden_channels,
+                num_layers=num_layers,
+                norm=norm,
+                eps=eps,
+            )
+            backbone.append(block)
+
+        self.backbone = nn.ModuleList(backbone)
+
+        if frequency_overlap:
+            frequency_assignment = self.build_frequency_assignment(bins, n_bins=max_bin)
+        else:
+            frequency_assignment = None
+
+        self.register_buffer("frequency_assignment", frequency_assignment, persistent=False)
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of BandMergeModule.
+
+        Args:
+            input (torch.Tensor): Split feature of shape  (*, embed_dim, len(bins), n_frames).
+
+        Returns:
+            torch.Tensor: Spectrogram-like feature of shape (*, n_bins, n_frames).
+
+        """
+        bins = self.bins
+        frequency_assignment = self.frequency_assignment
+
+        n_bands = input.size(-2)
+        x = torch.unbind(input, dim=-2)
+        x_stacked = []
+
+        if isinstance(bins[0], int):
+            assert len(bins) == n_bands
+
+            for band_idx in range(n_bands):
+                x_band = x[band_idx]
+                block = self.backbone[band_idx]
+                x_band = block(x_band)
+                x_stacked.append(x_band)
+
+            output = torch.cat(x_stacked, dim=-2)
+        else:
+            n_bins = frequency_assignment.size(-1)
+
+            for band_idx in range(n_bands):
+                start_idx, end_idx = bins[band_idx]
+                x_band = x[band_idx]
+                block = self.backbone[band_idx]
+                x_band = block(x_band)
+                x_band = F.pad(x_band, (0, 0, start_idx, n_bins - end_idx))
+                x_stacked.append(x_band)
+
+            x_stacked = torch.stack(x_stacked, dim=-3)
+            x_stacked = frequency_assignment.unsqueeze(dim=-1) * x_stacked
+            bands_per_frequency = frequency_assignment.sum(dim=0)
+            output = x_stacked.sum(dim=-3) / bands_per_frequency.unsqueeze(dim=-1)
+
+        return output
+
+
 class BandSplitBlock(nn.Module):
     """BandSplitBlock composed of layer norm and linear.
 
@@ -534,7 +675,10 @@ class MultiChannelBandSplitBlock(nn.Module):
         x = torch.view_as_real(x)
         x = x.permute(0, 2, 1, 3).contiguous()
         x = x.view(-1, n_frames, in_channels * n_bins * 2)
-        x = self.norm(x)
+
+        if self.norm is not None:
+            x = self.norm(x)
+
         x = self.linear(x)
         x = x.permute(0, 2, 1).contiguous()
         output = x.view(*batch_shape, embed_dim, n_frames)
@@ -615,7 +759,10 @@ class MultiChannelBandMergeBlock(nn.Module):
         x = input.contiguous()
         x = x.view(-1, embed_dim, n_frames)
         x = x.permute(0, 2, 1).contiguous()
-        x = self.norm(x)
+
+        if self.norm is not None:
+            x = self.norm(x)
+
         x = self.mlp(x)
         x = x.view(-1, n_frames, out_channels * n_bins, 2)
         x = torch.view_as_complex(x)
@@ -623,6 +770,122 @@ class MultiChannelBandMergeBlock(nn.Module):
         output = x.view(*batch_shape, out_channels, n_bins, n_frames)
 
         return output
+
+
+class AudioSeparatorCompatibleMultiChannelBandSplitBlock(MultiChannelBandSplitBlock):
+    """MultiChannelBandSplitBlock composed of layer norm and linear compatible
+    with audio-separator.
+
+    Args:
+        in_channels (int): Number of input channels.
+        n_bins (int): Number of bins in band.
+        embed_dim (int): Embedding dimension.
+
+    """
+
+    def __init__(
+        self,
+        in_channels: int,
+        n_bins: int,
+        embed_dim: int,
+        norm: bool | str | Callable[[torch.Tensor], torch.Tensor] = True,
+        eps: float = 1e-12,
+    ) -> None:
+        super(MultiChannelBandSplitBlock, self).__init__()
+
+        if isinstance(norm, bool):
+            if norm:
+                self.norm = nn.LayerNorm(2 * in_channels * n_bins, eps=eps)
+            else:
+                self.norm = None
+        elif callable(norm):
+            self.norm = norm
+        elif isinstance(norm, str):
+            if norm.lower() in ["ln", "layer_norm"]:
+                self.norm = nn.LayerNorm(2 * in_channels * n_bins, eps=eps)
+            elif norm.lower() in ["rms", "rms_norm", "rmsnorm"]:
+                if hasattr(nn, "RMSNorm"):
+                    self.norm = nn.RMSNorm(2 * in_channels * n_bins, eps=eps)
+                else:
+                    from .normalization import RMSNorm
+
+                    self.norm = RMSNorm(2 * in_channels * n_bins, eps=eps)
+            else:
+                raise ValueError(f"Unsupported norm type: {norm}")
+        else:
+            raise ValueError(f"Unsupported norm type: {type(norm)}")
+
+        self.linear = nn.Linear(2 * in_channels * n_bins, embed_dim)
+
+        self.in_channels = in_channels
+        self.n_bins = n_bins
+        self.embed_dim = embed_dim
+
+
+class AudioSeparatorCompatibleBandMergeBlock(MultiChannelBandMergeBlock):
+    """BandMergeBlock composed of layer norm and multi-layer perceptron (MLP) compatible
+    with audio-separator.
+
+    Args:
+        out_channels (int): Number of output channels.
+        n_bins (int): Number of bins in band.
+        embed_dim (int): Embedding dimension.
+        num_layers (int): Number of layers in MLP.
+
+    """
+
+    def __init__(
+        self,
+        out_channels: int,
+        n_bins: int,
+        embed_dim: int,
+        hidden_channels: int = 512,
+        num_layers: int = 2,
+        norm: bool | str | Callable[[torch.Tensor], torch.Tensor] = False,
+        eps: float = 1e-12,
+    ) -> None:
+        super(MultiChannelBandMergeBlock, self).__init__()
+
+        if isinstance(norm, bool):
+            if norm:
+                self.norm = nn.LayerNorm(embed_dim, eps=eps)
+            else:
+                self.norm = None
+        elif callable(norm):
+            self.norm = norm
+        elif isinstance(norm, str):
+            if norm.lower() in ["ln", "layer_norm"]:
+                self.norm = nn.LayerNorm(embed_dim, eps=eps)
+            elif norm.lower() in ["rms", "rms_norm", "rmsnorm"]:
+                if hasattr(nn, "RMSNorm"):
+                    self.norm = nn.RMSNorm(embed_dim, eps=eps)
+                else:
+                    from .normalization import RMSNorm
+
+                    self.norm = RMSNorm(embed_dim, eps=eps)
+            else:
+                raise ValueError(f"Unsupported norm type: {norm}")
+        else:
+            raise ValueError(f"Unsupported norm type: {type(norm)}")
+
+        mlp = []
+
+        for layer_idx in range(num_layers):
+            if layer_idx == 0:
+                _in_channels = embed_dim
+            else:
+                _in_channels = hidden_channels
+
+            mlp.append(nn.Linear(_in_channels, hidden_channels))
+            mlp.append(nn.Tanh())
+
+        mlp.append(nn.Linear(hidden_channels, 2 * 2 * out_channels * n_bins))
+        mlp.append(nn.GLU(dim=-1))
+        self.mlp = nn.Sequential(*mlp)
+
+        self.out_channels = out_channels
+        self.n_bins = n_bins
+        self.embed_dim = embed_dim
 
 
 class BandSplitRNNBackbone(nn.Module):

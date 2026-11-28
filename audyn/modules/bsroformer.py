@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from packaging import version
 from torch.nn.modules.activation import NonDynamicallyQuantizableLinear
 
+from ..functional.activation import scaled_dot_product_attention
 from .activation import (
     RotaryPositionalMultiheadAttention as _RotaryPositionalMultiheadAttention,
 )
@@ -630,9 +631,720 @@ class RotaryPositionalMultiheadAttention(_RotaryPositionalMultiheadAttention):
         self.share_heads = share_heads
 
 
+class AudioSeparatorCompatibleBandSplitRoFormerBackbone(BandSplitRoFormerBackbone):
+    """Backbone of BandSplitRoFormer compatible with audio-separator."""
+
+    def __init__(
+        self,
+        num_features: int,
+        num_heads: int,
+        head_channels: int,
+        hidden_channels: int,
+        num_blocks: int = 6,
+        is_causal: bool = False,
+        norm: Optional[Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]] = True,
+        dropout: float = 0.0,
+        activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.gelu,
+        eps: float = 1e-12,
+        rope_base: int = 10000,
+        share_heads: bool = True,
+        norm_first: bool = True,
+        bias: Optional[bool] = None,
+    ) -> None:
+        super(BandSplitRoFormerBackbone, self).__init__()
+
+        backbone = []
+
+        for _ in range(num_blocks):
+            backbone.append(
+                AudioSeparatorCompatibleBandSplitRoFormerBlock(
+                    num_features,
+                    num_heads,
+                    head_channels,
+                    hidden_channels,
+                    is_causal=is_causal,
+                    norm=norm,
+                    dropout=dropout,
+                    activation=activation,
+                    eps=eps,
+                    rope_base=rope_base,
+                    share_heads=share_heads,
+                    norm_first=norm_first,
+                    bias=bias,
+                )
+            )
+
+        self.backbone = nn.Sequential(*backbone)
+
+
+class AudioSeparatorCompatibleBandSplitRoFormerBlock(BandSplitRoFormerBlock):
+    """RoFormer block for band and sequence modeling compatible with audio-separator."""
+
+    def __init__(
+        self,
+        num_features: int,
+        num_heads: int,
+        head_channels: int,
+        hidden_channels: int,
+        is_causal: bool = False,
+        norm: Optional[Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]] = True,
+        dropout: float = 0.0,
+        activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.gelu,
+        eps: float = 1e-12,
+        rope_base: int = 10000,
+        share_heads: bool = True,
+        norm_first: bool = True,
+        bias: Optional[bool] = None,
+    ) -> None:
+        super(BandSplitRoFormerBlock, self).__init__()
+
+        self.band_block = AudioSeparatorCompatibleIntraRoFormer(
+            num_features,
+            num_heads,
+            head_channels,
+            hidden_channels,
+            norm=norm,
+            dropout=dropout,
+            activation=activation,
+            eps=eps,
+            rope_base=rope_base,
+            share_heads=share_heads,
+            norm_first=norm_first,
+            bias=bias,
+        )
+        self.temporal_block = AudioSeparatorCompatibleInterRoFormer(
+            num_features,
+            num_heads,
+            head_channels,
+            hidden_channels,
+            is_causal=is_causal,
+            norm=norm,
+            dropout=dropout,
+            activation=activation,
+            eps=eps,
+            rope_base=rope_base,
+            share_heads=share_heads,
+            norm_first=norm_first,
+            bias=bias,
+        )
+
+
+class AudioSeparatorCompatibleIntraChunkRoFormer(IntraChunkRoFormer):
+    """Intra-chunk dual-path RoFormer compatible with audio-separator."""
+
+    def __init__(
+        self,
+        num_features: int,
+        num_heads: int,
+        head_channels: int,
+        hidden_channels: int,
+        norm: Optional[Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]] = True,
+        dropout: float = 0.0,
+        activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.gelu,
+        eps: float = 1e-12,
+        rope_base: int = 10000,
+        share_heads: bool = True,
+        norm_first: bool = True,
+        bias: Optional[bool] = None,
+    ) -> None:
+        super(IntraChunkRoFormer, self).__init__()
+
+        self.num_features = num_features
+        self.head_channels = head_channels
+        self.hidden_channels = hidden_channels
+
+        if isinstance(norm, bool):
+            if norm:
+                _roformer_norm = "rms"
+            else:
+                raise ValueError("norm=False is not supported for IntraChunkRoFormer.")
+        else:
+            _roformer_norm = norm
+
+        self.roformer = AudioSeparatorCompatibleRoFormerEncoderLayer(
+            num_heads * head_channels,
+            nhead=num_heads,
+            dim_feedforward=hidden_channels,
+            dropout=dropout,
+            activation=activation,
+            norm=_roformer_norm,
+            layer_norm_eps=eps,
+            rope_base=rope_base,
+            share_heads=share_heads,
+            batch_first=True,
+            norm_first=norm_first,
+            qdim=num_features,
+            kdim=num_features,
+            vdim=num_features,
+            bias=bias,
+        )
+
+        if norm is None:
+            self.norm = None
+        elif isinstance(norm, str):
+            if norm == "rms":
+                if hasattr(nn, "RMSNorm"):
+                    if bias is None:
+                        layer_norm_kwargs = {}
+                    elif bias:
+                        raise ValueError("bias=True is not supported for nn.RMSNorm.")
+                    else:
+                        layer_norm_kwargs = {}
+
+                    self.norm = nn.RMSNorm(num_features, eps=eps, **layer_norm_kwargs)
+                else:
+                    from .normalization import RMSNorm
+
+                    if bias is None:
+                        layer_norm_kwargs = {}
+                    else:
+                        layer_norm_kwargs = {"bias": bias}
+
+                    self.norm = RMSNorm(num_features, eps=eps, **layer_norm_kwargs)
+            else:
+                self.norm = get_layer_norm(norm, num_features, eps=eps)
+        elif isinstance(norm, bool):
+            if norm:
+                if hasattr(nn, "RMSNorm"):
+                    if bias is None:
+                        layer_norm_kwargs = {}
+                    elif bias:
+                        raise ValueError("bias=True is not supported for nn.RMSNorm.")
+                    else:
+                        layer_norm_kwargs = {}
+
+                    self.norm = nn.RMSNorm(num_features, eps=eps, **layer_norm_kwargs)
+                else:
+                    from .normalization import RMSNorm
+
+                    if bias is None:
+                        layer_norm_kwargs = {}
+                    else:
+                        layer_norm_kwargs = {"bias": bias}
+
+                    self.norm = RMSNorm(num_features, eps=eps, **layer_norm_kwargs)
+            else:
+                self.norm = None
+        else:
+            raise ValueError(f"{type(norm)} is not supported as norm.")
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of intra-chunk dual-path RoFormer block.
+
+        Args:
+            input (torch.Tensor): Input feature of shape
+                (batch_size, num_features, inter_length, chunk_size).
+
+        Returns:
+            torch.Tensor: Output feature of shape
+                (batch_size, num_features, inter_length, chunk_size).
+
+        """
+        num_features = self.num_features
+        batch_size, _, inter_length, chunk_size = input.size()
+
+        x = input.permute(0, 2, 3, 1).contiguous()
+        x = x.view(batch_size * inter_length, chunk_size, num_features)
+        x = self.roformer(x)
+        x = x.view(batch_size, inter_length * chunk_size, num_features)
+
+        if self.norm is not None:
+            if hasattr(nn, "RMSNorm"):
+                if isinstance(self.norm, nn.RMSNorm):
+                    x = self.norm(x)
+                    x = x.permute(0, 2, 1).contiguous()
+                else:
+                    x = x.permute(0, 2, 1).contiguous()
+                    x = self.norm(x)
+            else:
+                from .normalization import RMSNorm
+
+                if isinstance(self.norm, RMSNorm):
+                    x = self.norm(x)
+                    x = x.permute(0, 2, 1).contiguous()
+                else:
+                    x = x.permute(0, 2, 1).contiguous()
+                    x = self.norm(x)
+
+        # NOTE: no residual path
+        output = x.view(batch_size, num_features, inter_length, chunk_size)
+
+        return output
+
+
+class AudioSeparatorCompatibleInterChunkRoFormer(InterChunkRoFormer):
+    """Inter-chunk dual-path RoFormer compatible with audio-separator."""
+
+    def __init__(
+        self,
+        num_features: int,
+        num_heads: int,
+        head_channels: int,
+        hidden_channels: int,
+        is_causal: bool = False,
+        norm: Optional[Union[bool, str, nn.Module, Callable[[torch.Tensor], torch.Tensor]]] = True,
+        dropout: float = 0.0,
+        activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.gelu,
+        eps: float = 1e-12,
+        rope_base: int = 10000,
+        share_heads: bool = True,
+        norm_first: bool = True,
+        bias: Optional[bool] = None,
+    ) -> None:
+        super(InterChunkRoFormer, self).__init__()
+
+        self.num_features = num_features
+        self.head_channels = head_channels
+        self.hidden_channels = hidden_channels
+        self.is_causal = is_causal
+
+        if isinstance(norm, bool):
+            if norm:
+                _roformer_norm = "rms"
+            else:
+                raise ValueError("norm=False is not supported for InterChunkRoFormer.")
+        else:
+            _roformer_norm = norm
+
+        self.roformer = AudioSeparatorCompatibleRoFormerEncoderLayer(
+            num_heads * head_channels,
+            nhead=num_heads,
+            dim_feedforward=hidden_channels,
+            dropout=dropout,
+            activation=activation,
+            norm=_roformer_norm,
+            layer_norm_eps=eps,
+            rope_base=rope_base,
+            share_heads=share_heads,
+            batch_first=True,
+            norm_first=norm_first,
+            qdim=num_features,
+            kdim=num_features,
+            vdim=num_features,
+            bias=bias,
+        )
+
+        if norm is None:
+            self.norm = None
+        elif isinstance(norm, str):
+            if norm == "rms":
+                if hasattr(nn, "RMSNorm"):
+                    if bias:
+                        raise ValueError("bias=True is not supported for nn.RMSNorm.")
+
+                    self.norm = nn.RMSNorm(num_features, eps=eps)
+                else:
+                    from .normalization import RMSNorm
+
+                    self.norm = RMSNorm(num_features, eps=eps, bias=bool(bias))
+            else:
+                self.norm = get_layer_norm(norm, num_features, eps=eps)
+        elif isinstance(norm, bool):
+            if norm:
+                if hasattr(nn, "RMSNorm"):
+                    if bias:
+                        raise ValueError("bias=True is not supported for nn.RMSNorm.")
+
+                    self.norm = nn.RMSNorm(num_features, eps=eps)
+                else:
+                    from .normalization import RMSNorm
+
+                    self.norm = RMSNorm(num_features, eps=eps, bias=bool(bias))
+        else:
+            raise ValueError(f"{type(norm)} is not supported as norm.")
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        """Forward pass of inter-chunk dual-path RoFormer block.
+
+        Args:
+            input (torch.Tensor): Input feature of shape
+                (batch_size, num_features, inter_length, chunk_size).
+
+        Returns:
+            torch.Tensor: Output feature of shape
+                (batch_size, num_features, inter_length, chunk_size).
+
+        """
+        num_features = self.num_features
+        is_causal = self.is_causal
+        batch_size, _, inter_length, chunk_size = input.size()
+
+        x = input.permute(0, 3, 2, 1).contiguous()
+        x = x.view(batch_size * chunk_size, inter_length, num_features)
+        x = self.roformer(x, is_causal=is_causal)
+        x = x.view(batch_size, chunk_size * inter_length, num_features)
+
+        if self.norm is not None:
+            if hasattr(nn, "RMSNorm"):
+                if isinstance(self.norm, nn.RMSNorm):
+                    x = self.norm(x)
+                    x = x.permute(0, 2, 1).contiguous()
+                else:
+                    x = x.permute(0, 2, 1).contiguous()
+                    x = self.norm(x)
+            else:
+                from .normalization import RMSNorm
+
+                if isinstance(self.norm, RMSNorm):
+                    x = self.norm(x)
+                    x = x.permute(0, 2, 1).contiguous()
+                else:
+                    x = x.permute(0, 2, 1).contiguous()
+                    x = self.norm(x)
+
+        x = x.view(batch_size, num_features, chunk_size, inter_length)
+        # NOTE: no residual path
+        output = x.permute(0, 1, 3, 2).contiguous()
+
+        return output
+
+
+class AudioSeparatorCompatibleRoFormerEncoderLayer(RoFormerEncoderLayer):
+    """RoFormer encoder layer compatible with audio-separator."""
+
+    def __init__(
+        self,
+        d_model: int,
+        nhead: int,
+        dim_feedforward: int = 2048,
+        dropout: float = 0.0,
+        activation: Union[str, Callable[[torch.Tensor], torch.Tensor]] = F.gelu,
+        norm: str = "rms",
+        layer_norm_eps: float = 1e-12,
+        rope_base: int = 10000,
+        share_heads: bool = True,
+        batch_first: bool = False,
+        norm_first: bool = False,
+        qdim: Optional[int] = None,
+        kdim: Optional[int] = None,
+        vdim: Optional[int] = None,
+        bias: bool = False,
+        device: torch.device = None,
+        dtype: torch.dtype = None,
+    ) -> None:
+        factory_kwargs = {
+            "device": device,
+            "dtype": dtype,
+        }
+
+        super(RoFormerEncoderLayer, self).__init__()
+
+        self.self_attn = AudioSeparatorCompatibleRotaryPositionalMultiheadAttention(
+            d_model,
+            nhead,
+            dropout=dropout,
+            bias=bias,
+            qdim=qdim,
+            kdim=kdim,
+            vdim=vdim,
+            base=rope_base,
+            share_heads=share_heads,
+            batch_first=batch_first,
+            **factory_kwargs,
+        )
+
+        if qdim is None:
+            _d_model = d_model
+        else:
+            _d_model = qdim
+
+        self.linear1 = nn.Linear(_d_model, dim_feedforward, bias=True, **factory_kwargs)
+        self.dropout = nn.Dropout(dropout)
+        self.linear2 = nn.Linear(dim_feedforward, _d_model, bias=True, **factory_kwargs)
+
+        self.norm_first = norm_first
+
+        if norm == "layer_norm":
+            if bias is None:
+                bias = True
+
+            if IS_TORCH_LT_2_1:
+                assert bias, "Only bias=True is supported for torch < 2.1."
+
+                layer_norm_kwargs = {}
+            else:
+                layer_norm_kwargs = {"bias": bias}
+
+            self.norm1 = nn.LayerNorm(
+                _d_model, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs
+            )
+            self.norm2 = nn.LayerNorm(
+                _d_model, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs
+            )
+        elif norm == "rms":
+            if hasattr(nn, "RMSNorm"):
+                if bias:
+                    raise ValueError("bias=True is not supported for nn.RMSNorm.")
+
+                norm_cls = nn.RMSNorm
+                layer_norm_kwargs = {}
+            else:
+                from .normalization import RMSNorm
+
+                norm_cls = RMSNorm
+                layer_norm_kwargs = {"bias": bool(bias)}
+
+            self.norm1 = norm_cls(
+                _d_model, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs
+            )
+            self.norm2 = norm_cls(
+                _d_model, eps=layer_norm_eps, **layer_norm_kwargs, **factory_kwargs
+            )
+        else:
+            raise ValueError(f"Unsupported norm type {norm} is found.")
+
+        self.dropout1 = nn.Dropout(dropout)
+        self.dropout2 = nn.Dropout(dropout)
+
+        if isinstance(activation, str):
+            activation = get_activation(activation)
+
+        if activation is F.relu or isinstance(activation, nn.ReLU):
+            self.activation_relu_or_gelu = 1
+        elif activation is F.gelu or isinstance(activation, nn.GELU):
+            self.activation_relu_or_gelu = 2
+        else:
+            self.activation_relu_or_gelu = 0
+
+        self.activation = activation
+
+
+class AudioSeparatorCompatibleRotaryPositionalMultiheadAttention(
+    _RotaryPositionalMultiheadAttention
+):
+    """Multi-head attention compatible with audio-separator."""
+
+    def __init__(
+        self,
+        embed_dim: int,
+        num_heads: int,
+        dropout: float = 0.0,
+        bias: Optional[bool] = None,
+        add_bias_kv: bool = False,
+        add_zero_attn: bool = False,
+        qdim: Optional[int] = None,
+        kdim: Optional[int] = None,
+        vdim: Optional[int] = None,
+        base: int = 10000,
+        share_heads: bool = True,
+        batch_first: bool = True,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
+    ) -> None:
+        factory_kwargs = {
+            "device": device,
+            "dtype": dtype,
+        }
+        super(nn.MultiheadAttention, self).__init__()
+
+        if embed_dim <= 0 or num_heads <= 0:
+            raise ValueError(
+                f"embed_dim and num_heads must be greater than 0,"
+                f" got embed_dim={embed_dim} and num_heads={num_heads} instead"
+            )
+
+        self.embed_dim = embed_dim
+        self.qdim = qdim if qdim is not None else embed_dim
+        self.kdim = kdim if kdim is not None else embed_dim
+        self.vdim = vdim if vdim is not None else embed_dim
+        self._qkv_same_embed_dim = self.kdim == embed_dim and self.vdim == embed_dim
+
+        self.num_heads = num_heads
+        self.dropout = dropout
+        self.batch_first = batch_first
+        self.head_dim = embed_dim // num_heads
+
+        assert self.head_dim * num_heads == self.embed_dim, (
+            "embed_dim must be divisible by num_heads"
+        )
+
+        if not self._qkv_same_embed_dim:
+            self.q_proj_weight = nn.Parameter(
+                torch.empty((embed_dim, self.qdim), **factory_kwargs)
+            )
+            self.k_proj_weight = nn.Parameter(
+                torch.empty((embed_dim, self.kdim), **factory_kwargs)
+            )
+            self.v_proj_weight = nn.Parameter(
+                torch.empty((embed_dim, self.vdim), **factory_kwargs)
+            )
+            self.register_parameter("in_proj_weight", None)
+        else:
+            self.in_proj_weight = nn.Parameter(
+                torch.empty((3 * embed_dim, self.qdim), **factory_kwargs)
+            )
+            self.register_parameter("q_proj_weight", None)
+            self.register_parameter("k_proj_weight", None)
+            self.register_parameter("v_proj_weight", None)
+
+        if bias is None:
+            bias = False
+
+        if bias:
+            self.in_proj_bias = nn.Parameter(torch.empty(3 * embed_dim, **factory_kwargs))
+        else:
+            self.register_parameter("in_proj_bias", None)
+
+        self.gate = nn.Linear(
+            self.qdim, num_heads, bias=True, **factory_kwargs
+        )  # bias is always True
+        self.out_proj = NonDynamicallyQuantizableLinear(
+            embed_dim, self.qdim, bias=bias, **factory_kwargs
+        )
+
+        if add_bias_kv:
+            raise NotImplementedError("add_bias_kv is not supported.")
+        else:
+            self.bias_k = self.bias_v = None
+
+        if add_zero_attn:
+            raise NotImplementedError("add_zero_attn is not supported.")
+
+        self.add_zero_attn = add_zero_attn
+
+        self._reset_parameters()
+
+        self.rope = RotaryPositionalEmbedding(base=base, batch_first=batch_first)
+
+        self.share_heads = share_heads
+
+    def forward(
+        self,
+        query: torch.Tensor,
+        key: torch.Tensor,
+        value: torch.Tensor,
+        key_padding_mask: Optional[torch.Tensor] = None,
+        need_weights: bool = True,
+        attn_mask: Optional[torch.Tensor] = None,
+        average_attn_weights: bool = True,
+        **kwargs,
+    ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        """Forward pass of AudioSeparatorCompatibleRotaryPositionalMultiheadAttention.
+
+        Args:
+            query (torch.Tensor): Sequence of shape (batch_size, query_length, embed_dim)
+                if ``batch_first=True``, otherwise (query_length, batch_size, embed_dim).
+            key (torch.Tensor): Sequence of shape (batch_size, key_length, embed_dim)
+                if ``batch_first=True``, otherwise (key_length, batch_size, embed_dim).
+            key_padding_mask (torch.BoolTensor, optional): Padding mask of shape
+                (batch_size, key_length).
+            attn_mask (torch.BoolTensor, optional): Attention padding mask of
+                shape (query_length, key_length) or
+                (batch_size * num_heads, query_length, key_length).
+
+        Returns:
+            tuple: Tuple of tensors containing
+
+                - torch.Tensor: Sequence of same shape as input.
+                - torch.Tensor: Attention weights of shape
+                    (batch_size, num_heads, query_length, key_length) if
+                    ``average_attn_weights=True``, otherwise
+                    (batch_size, query_length, key_length).
+
+        """
+        self.validate_kwargs(kwargs)
+
+        embed_dim = self.embed_dim
+        dropout = self.dropout
+        batch_first = self.batch_first
+        num_heads = self.num_heads
+        in_proj_weight = self.in_proj_weight
+        in_proj_bias = self.in_proj_bias
+
+        head_dim = embed_dim // num_heads
+
+        if batch_first:
+            if key is value:
+                if query is key:
+                    query = key = value = query.transpose(1, 0)
+                else:
+                    query = query.transpose(1, 0)
+                    key = key.transpose(1, 0)
+                    value = key
+            else:
+                query = query.transpose(1, 0)
+                key = key.transpose(1, 0)
+                value = value.transpose(1, 0)
+
+        query_length, batch_size, _ = query.size()
+        key_length, _, _ = key.size()
+
+        if self._qkv_same_embed_dim:
+            q_proj_weight, k_proj_weight, v_proj_weight = torch.split(
+                in_proj_weight, [embed_dim] * 3, dim=-2
+            )
+        else:
+            q_proj_weight = self.q_proj_weight
+            k_proj_weight = self.k_proj_weight
+            v_proj_weight = self.v_proj_weight
+
+        if self.in_proj_bias is None:
+            q_proj_bias, k_proj_bias, v_proj_bias = None, None, None
+        else:
+            q_proj_bias, k_proj_bias, v_proj_bias = torch.split(
+                in_proj_bias, [embed_dim] * 3, dim=0
+            )
+
+        q = F.linear(query, q_proj_weight, bias=q_proj_bias)
+        k = F.linear(key, k_proj_weight, bias=k_proj_bias)
+        v = F.linear(value, v_proj_weight, bias=v_proj_bias)
+
+        q = self._apply_positional_embedding(q.contiguous())
+        k = self._apply_positional_embedding(k.contiguous())
+
+        q = q.view(query_length, batch_size, num_heads, head_dim)
+        k = k.view(key_length, batch_size, num_heads, head_dim)
+        v = v.view(key_length, batch_size, num_heads, head_dim)
+
+        q = q.permute(1, 2, 0, 3)
+        k = k.permute(1, 2, 0, 3)
+        v = v.permute(1, 2, 0, 3)
+
+        dropout_p = dropout if self.training else 0
+
+        qkv, attn_weights = scaled_dot_product_attention(
+            q,
+            k,
+            v,
+            key_padding_mask=key_padding_mask,
+            attn_mask=attn_mask,
+            dropout_p=dropout_p,
+            need_weights=need_weights,
+        )
+
+        x = self.gate(query)
+        x = F.sigmoid(x.permute(1, 2, 0))
+        qkv = qkv * x.unsqueeze(dim=-1)
+
+        if batch_first:
+            qkv = qkv.permute(0, 2, 1, 3).contiguous()
+            qkv = qkv.view(batch_size, query_length, embed_dim)
+        else:
+            qkv = qkv.permute(2, 0, 1, 3).contiguous()
+            qkv = qkv.view(query_length, batch_size, embed_dim)
+
+        output = self.out_proj(qkv)
+
+        if average_attn_weights and need_weights:
+            attn_weights = attn_weights.mean(dim=1)
+
+        if not need_weights:
+            attn_weights = None
+
+        return output, attn_weights
+
+
 class IntraRoFormer(IntraChunkRoFormer):
     """RoFormer for band modeling in Band-split RoFormer."""
 
 
 class InterRoFormer(InterChunkRoFormer):
     """RoFormer for sequence modeling in Band-split RoFormer."""
+
+
+class AudioSeparatorCompatibleIntraRoFormer(AudioSeparatorCompatibleIntraChunkRoFormer):
+    """RoFormer for band modeling in Band-split RoFormer compatible with audio-separator."""
+
+
+class AudioSeparatorCompatibleInterRoFormer(AudioSeparatorCompatibleInterChunkRoFormer):
+    """RoFormer for sequence modeling in Band-split RoFormer compatible with audio-separator."""

@@ -1,6 +1,10 @@
 from .ast import AST, AudioSpectrogramTransformer
 from .bsrnn import BSRNN, BandSplitRNN
-from .bsroformer import BandSplitRoFormer, BSRoFormer
+from .bsroformer import (
+    AudioSeparatorCompatibleBandSplitRoFormer,
+    BandSplitRoFormer,
+    BSRoFormer,
+)
 from .clap import (
     LAIONAudioEncoder2023,
     LAIONCLAPAudioEncoder2023,
@@ -60,6 +64,7 @@ __all__ = [
     # BandSplitRoFormer
     "BandSplitRoFormer",
     "BSRoFormer",
+    "AudioSeparatorCompatibleBandSplitRoFormer",
     # WaveNet
     "WaveNet",
     "MultiSpeakerWaveNet",
