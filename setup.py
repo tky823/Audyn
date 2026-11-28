@@ -113,13 +113,21 @@ class BuildExtension(_BuildExtension):
             },
         )
 
-    cpp_extensions.append(
-        {
-            "name": "audyn._C.bipartite_match",
-            "sources": [
-                "csrc/bipartite_match.cpp",
-            ],
-        },
+    cpp_extensions.extend(
+        [
+            {
+                "name": "audyn._C.bipartite_match",
+                "sources": [
+                    "csrc/bipartite_match.cpp",
+                ],
+            },
+            {
+                "name": "audyn._C.hungarian",
+                "sources": [
+                    "csrc/hungarian.cpp",
+                ],
+            },
+        ]
     )
 
     def build_extension(self, ext: Extension) -> None:
