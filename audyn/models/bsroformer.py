@@ -339,11 +339,11 @@ class MultiSourceMultiChannelBandSplitRoFormer(BandSplitRoFormer):
         """Forward pass of MultiSourceMultiChannelBandSplitRoFormer.
 
         Args:
-            input (torch.Tensor): Spectrogram of shape (*, in_channels, n_bins, n_frames).
+            input (torch.Tensor): Spectrogram of shape ``(*, in_channels, n_bins, n_frames)``.
 
         Returns:
             torch.Tensor: Separated spectrogram of shape
-                (*, num_sources, in_channels, n_bins, n_frames).
+                ``(*, num_sources, in_channels, n_bins, n_frames)``.
 
         """
         x = self.bandsplit(input)
