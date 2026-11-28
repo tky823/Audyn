@@ -9,11 +9,11 @@
 
 namespace audyn
 {
-    std::tuple<torch::Tensor, torch::Tensor, torch::Tensor> compute_bipartite_match_precision_recall_fscore(
-        torch::Tensor input,
-        torch::Tensor target,
-        torch::Tensor input_lengths,
-        torch::Tensor target_lengths,
+    std::tuple<at::Tensor, at::Tensor, at::Tensor> compute_bipartite_match_precision_recall_fscore(
+        at::Tensor input,
+        at::Tensor target,
+        at::Tensor input_lengths,
+        at::Tensor target_lengths,
         const float tolerance)
     {
         TORCH_CHECK(input.dim() == 2, "input must be a 2D tensor of shape (batch_size, max_input_len)");
@@ -37,10 +37,10 @@ namespace audyn
 
         const int64_t *input_lengths_ptr = input_lengths.data_ptr<int64_t>();
         const int64_t *target_lengths_ptr = target_lengths.data_ptr<int64_t>();
-        auto float32options = torch::TensorOptions().dtype(torch::kFloat32).device(input.device());
-        torch::Tensor precision = torch::zeros({batch_size}, float32options);
-        torch::Tensor recall = torch::zeros({batch_size}, float32options);
-        torch::Tensor f_score = torch::zeros({batch_size}, float32options);
+        auto float32options = at::TensorOptions().dtype(torch::kFloat32).device(input.device());
+        at::Tensor precision = torch::zeros({batch_size}, float32options);
+        at::Tensor recall = torch::zeros({batch_size}, float32options);
+        at::Tensor f_score = torch::zeros({batch_size}, float32options);
 
         const float *input_ptr = input.data_ptr<float>();
         const float *target_ptr = target.data_ptr<float>();
